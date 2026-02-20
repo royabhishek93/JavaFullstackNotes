@@ -65,25 +65,7 @@ String b = "Ashmita";
 
 ---
 
-### Step 3: `String c = "hiAshmita";` (literal)
-```java
-String c = "hiAshmita";
-```
-
-**What happens:**
-1. Compiler sees the literal `"hiAshmita"`
-2. String `"hiAshmita"` is placed in the **String Pool**
-3. Variable `c` (reference) is created on the **stack**
-4. `c` points to `"hiAshmita"` in the String Pool
-
-**Memory count:**
-- String Pool: 3 objects (`"hi"`, `"Ashmita"`, `"hiAshmita"`)
-- Regular Heap: 0 objects
-- Stack: 3 references (`a`, `b`, `c`)
-
----
-
-### Step 4: `String d = a + b;` (runtime concatenation)
+### Step 3: `String d = a + b;` (runtime concatenation)
 ```java
 String d = a + b;
 ```
