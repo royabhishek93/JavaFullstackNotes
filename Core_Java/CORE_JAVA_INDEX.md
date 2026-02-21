@@ -20,85 +20,33 @@
 
 ---
 
-## 📋 All 7 Questions - What's Inside Each File
+## � All Core Java Questions with Links
 
-### Q1: String Pool Memory (75% interviews) 🔥 CRITICAL
-- **Problem:** Where do literals actually go in memory?
-- **Wrong Code:** Thinking all strings go to heap
-- **Right Code:** Literals in pool using `==`, new String in heap
-- **Interview Tip:** "Literals share one object in pool"
-- **Checklist:** Pool vs heap, literals vs new, === usage
-- **Follow-ups:** GC implications, pool size
-
-### Q2: String Concatenation (70% interviews) 🔥 CRITICAL
-- **Problem:** Why does `c == d` return false for concatenated strings?
-- **Wrong Code:** Expecting `+` concat to use string pool
-- **Right Code:** Runtime concat creates new objects, use .equals()
-- **Interview Tip:** "Runtime concatenation bypasses the pool"
-- **Checklist:** When == works vs equals(), performance impact
-- **Follow-ups:** StringBuilder optimization
-
-### Q3: String Intern (50% interviews) ✅ VERY IMPORTANT
-- **Problem:** How to manually force string pooling?
-- **Wrong Code:** Not using intern() when memory critical
-- **Right Code:** Using `.intern()` to force pool lookup
-- **Interview Tip:** "intern() returns reference from pool"
-- **Checklist:** intern() cost/benefit, when to use
-- **Follow-ups:** Performance monitoring
-
-### Q4: String GC (35% interviews) 👍 GOOD TO KNOW
-- **Problem:** What happens to pooled strings during GC?
-- **Wrong Code:** Thinking pool persists forever
-- **Right Code:** Pool strings eligible for garbage collection
-- **Interview Tip:** "Pool is regular heap memory, GC applies"
-- **Checklist:** GC lifecycle, pool cleanup
-- **Follow-ups:** JVM flags, monitoring
-
-### Q5: Immutable Classes (65% interviews) 🔥 CRITICAL
-- **Problem:** What exactly makes a class immutable?
-- **Wrong Code:** Missing final on class or fields
-- **Right Code:** final class, final fields, no setters, defensive copy
-- **Interview Tip:** "4 requirements: class, fields, setters, copy"
-- **Checklist:** All 4 requirements needed together
-- **Follow-ups:** Benefits, thread-safety
-
-### Q6: Defensive Copying (45% interviews) ✅ VERY IMPORTANT
-- **Problem:** Deep vs shallow copy - what's the difference?
-- **Wrong Code:** Direct assignment of mutable fields
-- **Right Code:** Creating defensive copies with new, clone, or copy constructors
-- **Interview Tip:** "Defensive copy protects internal state"
-- **Checklist:** new ArrayList(), clone(), Collections.copy()
-- **Follow-ups:** Performance trade-offs, when needed
-
-### Q7: Return Collections Safely (50% interviews) ✅ VERY IMPORTANT
-- **Problem:** How to safely return internal collections?
-- **Wrong Code:** Returning collection directly (external modification)
-- **Right Code:** Using Collections.unmodifiable* or List.copyOf()
-- **Interview Tip:** "Encapsulate by returning unmodifiable"
-- **Checklist:** Collections.unmodifiable*, List.copyOf(), defensive copy in constructor
-- **Follow-ups:** Java 9+ improvements, performance
+| Priority | Q# | Question | File Link |
+|----------|----|-----------|----|
+| 🔥 CRITICAL | 1 | Where does `"hello"` go in memory? | [Q1_string_pool_memory.md](Q1_string_pool_memory.md) |
+| 🔥 CRITICAL | 2 | Why does `c == d` return false when both are `"hi"`? | [Q2_string_concatenation.md](Q2_string_concatenation.md) |
+| 🔥 CRITICAL | 5 | What makes a class immutable? | [Q5_immutable_class_requirements.md](Q5_immutable_class_requirements.md) |
+| ✅ IMPORTANT | 3 | What does `.intern()` do and when to use it? | [Q3_string_intern_method.md](Q3_string_intern_method.md) |
+| ✅ IMPORTANT | 7 | How do you return mutable collections safely? | [Q7_return_mutable_collections.md](Q7_return_mutable_collections.md) |
+| ✅ IMPORTANT | 6 | What's the difference between `new ArrayList<>(list)` and `.clone()`? | [Q6_defensive_copying_vs_clone.md](Q6_defensive_copying_vs_clone.md) |
+| 👍 GOOD TO KNOW | 4 | How does garbage collection work with String Pool? | [Q4_string_garbage_collection.md](Q4_string_garbage_collection.md) |
 
 ---
 
-### Problem
-Understanding where Java stores string literals vs runtime strings.
+## 💡 Supplementary Interview Guides
 
-### Why It Happens
-Java has a special memory region called the **String Pool** for string literals. This saves memory by reusing identical strings.
+| Topic | File | Coverage | Study Time |
+|-------|------|----------|-----------|
+| **Advanced Multithreading** | [advanced-multithreading-interview.md](advanced-multithreading-interview.md) | 27 questions ranked by importance | 60-90 min |
+| **Method Overloading** | [method-overloading-interview.md](method-overloading-interview.md) | 10 questions on ambiguous scenarios | 20-30 min |
+| **Method Overriding & Hiding** | [method-overriding-hiding-interview.md](method-overriding-hiding-interview.md) | 10 questions on polymorphism | 25-35 min |
 
-### ❌ Wrong Understanding
-```java
-String a = "hello";     // Goes to regular heap
-String b = "hello";     // Also goes to regular heap
-// Developers think: a and b are different objects
-```
+---
 
-### ✅ Right Understanding
-```java
-String a = "hello";           // Goes to String Pool
-String b = "hello";           // Reuses same String Pool reference
-System.out.println(a == b);   // true - SAME object!
-```
+**Last Updated:** February 22, 2026  
+**Total Questions:** 7 Core Java + 3 Supplementary Guides (37 total questions)  
+**Interview Readiness:** Senior/Staff Engineer Level
 
 ### Key Insight
 **String Pool** is part of heap memory where identical string literals are stored once and reused. When the compiler sees `"hello"` twice, it stores it in the pool only once, and both references point to that single object.
