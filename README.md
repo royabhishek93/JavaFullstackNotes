@@ -6,7 +6,26 @@ A comprehensive repository of advanced Java and Spring Framework concepts design
 
 ## 🚀 Quick Start
 
-**New here?** Start with the [Complete Index & Interview Questions Map](INDEX.md) - Shows all topics, questions, and links organized by frequency and difficulty.
+**🎯 See Everything:** [Repository Structure Summary](STRUCTURE_SUMMARY.md) - Complete guide to all study formats, time commitments, and how to choose
+
+**📂 Quick Navigation:** [Individual Questions Guide](INDIVIDUAL_QUESTIONS_GUIDE.md) - Topic finder, study paths by role, example links
+
+**📑 All Questions:** [Complete Index & Interview Questions Map](INDEX.md) - 200+ questions indexed by frequency and difficulty
+
+### ⚡ For Last-Minute Interview Prep (1-2 hours)
+
+**Option 1: Complete Q&A Reference Guides** (consolidated, all questions in one file)
+- [Core Java Q&A Reference](Core_Java/CORE_JAVA_QA_REFERENCE.md) - 15 Q&As (45 mins)
+- [Modern Java 8-21 Q&A Reference](Java8to21/JAVA8TO21_QA_REFERENCE.md) - 12 Q&As (36 mins)
+- [Spring Boot Q&A Reference](SpringBoot/SPRINGBOOT_QA_REFERENCE.md) - 5 Q&As (15 mins)
+
+**Option 2: Individual Question Files** (one file per question, ultra-focused)
+- [📂 Individual Questions Navigation Guide](INDIVIDUAL_QUESTIONS_GUIDE.md) - Complete index with study paths
+- Example: [Q1: Where does `"hello"` go in memory?](Core_Java/Q1_string_pool_memory.md)
+- Example: [Q2: Why does `c == d` return false?](Core_Java/Q2_string_concatenation.md)
+
+**Format for Both Options:**
+Problem → Why It Happens → ❌ Wrong Code → ✅ Right Code → Interview Tip → Quick Checklist
 
 ---
 
@@ -16,17 +35,22 @@ A comprehensive repository of advanced Java and Spring Framework concepts design
 JavaFullstackNotes/
 ├── INDEX.md                                # 📑 COMPLETE QUESTION MAP with links & study paths
 │
-├── Java/
-│   ├── java-interface-default-static-methods.md   # Interface evolution, Java 9+ private methods
-│   ├── java-immutable-complete-guide.md           # Immutable classes & defensive copying (all-in-one)
+├── Core_Java/                              # Fundamental Java concepts (All versions)
+│   ├── CORE_JAVA_QA_REFERENCE.md                   # ⚡ 15 Q&A Reference Guide (interview-ready format)
+│   ├── java-string-memory-allocation.md           # String Pool, heap, stack memory management
+│   ├── java-immutable-complete-guide.md           # Immutable classes & defensive copying
 │   ├── java-multithreading-concurrency-guide.md   # Complete multithreading reference
-│   ├── java-non-blocking-vs-async-interview.md    # Easy English interview prep
-│   ├── java-completablefuture-interview.md        # Parallel task processing
 │   ├── java-volatile-atomic-interview.md          # Thread safety deep dive
-│   ├── java-9-to-21-features.md                   # Modern Java features (sealed classes, records, pattern matching)
-│   └── java-string-memory-allocation.md           # String Pool, heap, stack memory management
+│   └── java-non-blocking-vs-async-interview.md    # Easy English interview prep
 │
-├── Spring/
+├── Java8to21/                              # Modern Java features (Java 8 - Java 21)
+│   ├── JAVA8TO21_QA_REFERENCE.md                  # ⚡ 12 Q&A Reference Guide (interview-ready format)
+│   ├── java-interface-default-static-methods.md   # Interface evolution, Java 9+ private methods
+│   ├── java-completablefuture-interview.md        # Parallel task processing (Java 8+)
+│   └── java-9-to-21-features.md                   # Sealed classes, records, pattern matching
+│
+├── SpringBoot/                             # Spring Framework & Spring Boot
+│   ├── SPRINGBOOT_QA_REFERENCE.md                 # ⚡ 5 Q&A Reference Guide (interview-ready format)
 │   ├── spring-bean-scopes.md               # Bean lifecycle and scope behavior
 │   ├── spring-bean-scopes-interview.md     # Interview Q&A on bean scopes
 │   ├── spring-circular-dependency.md       # Circular dependency detection & solutions
@@ -40,13 +64,19 @@ JavaFullstackNotes/
 
 ## 🚀 New in 2026
 
-### Latest Additions (Easy English Interview Guides)
-- ✅ **[Interface Default & Static Methods](Java/java-interface-default-static-methods.md)** - Evolution without breaking changes (Java 9+ private methods!)
-- ✅ **[Immutable Classes & Defensive Copying](Java/java-immutable-complete-guide.md)** - All-in-one 1100-line guide
-- ✅ **[Multithreading & Concurrency](Java/java-multithreading-concurrency-guide.md)** - Comprehensive 2500-line reference
-- ✅ **[Non-Blocking vs Async](Java/java-non-blocking-vs-async-interview.md)** - Bus/Traffic Controller analogy (easy to understand)
-- ✅ **[CompletableFuture in Production](Java/java-completablefuture-interview.md)** - Real order processing example
-- ✅ **[Volatile vs AtomicInteger](Java/java-volatile-atomic-interview.md)** - Quick decision trees & production scenarios
+### ⚡ NEW: Interview-Ready Q&A Reference Guides
+Perfect for last-minute prep with bite-sized format (2-3 mins per question):
+- ✅ **[Core Java Q&A Reference](Core_Java/CORE_JAVA_QA_REFERENCE.md)** - 15 Q&As covering String memory, immutability, multithreading, volatile/atomic, async
+- ✅ **[Modern Java 8-21 Q&A Reference](Java8to21/JAVA8TO21_QA_REFERENCE.md)** - 12 Q&As covering interface defaults, records, sealed classes, pattern matching, CompletableFuture
+- ✅ **[Spring Boot Q&A Reference](SpringBoot/SPRINGBOOT_QA_REFERENCE.md)** - 5 Q&As covering bean scopes, thread-safety, circular dependencies
+
+### Latest Topic Additions (Easy English Interview Guides)
+- ✅ **[Interface Default & Static Methods](Java8to21/java-interface-default-static-methods.md)** - Evolution without breaking changes (Java 9+ private methods!)
+- ✅ **[Immutable Classes & Defensive Copying](Core_Java/java-immutable-complete-guide.md)** - All-in-one 1100-line guide
+- ✅ **[Multithreading & Concurrency](Core_Java/java-multithreading-concurrency-guide.md)** - Comprehensive 2500-line reference
+- ✅ **[Non-Blocking vs Async](Core_Java/java-non-blocking-vs-async-interview.md)** - Bus/Traffic Controller analogy (easy to understand)
+- ✅ **[CompletableFuture in Production](Java8to21/java-completablefuture-interview.md)** - Real order processing example
+- ✅ **[Volatile vs AtomicInteger](Core_Java/java-volatile-atomic-interview.md)** - Quick decision trees & production scenarios
 
 ### Coming Soon (Tier 1 Priority)
 - 🔜 **Stream API & Functional Programming** - 90%+ interview frequency
@@ -88,14 +118,14 @@ Every concept starts with a **real-world problem**, not abstract definitions:
 ## 📖 Learning Paths
 
 ### Path 1: Core Java Concepts (2-3 hours)
-1. **[String Memory Allocation](Java/java-string-memory-allocation.md)** - Understanding the String Pool, heap, and stack
-2. **[Java 9-21 Features](Java/java-9-to-21-features.md)** - Modern Java syntax (records, sealed classes, pattern matching)
+1. **[String Memory Allocation](Core_Java/java-string-memory-allocation.md)** - Understanding the String Pool, heap, and stack
+2. **[Java 9-21 Features](Java8to21/java-9-to-21-features.md)** - Modern Java syntax (records, sealed classes, pattern matching)
 
 ### Path 2: Spring Framework Fundamentals (2-3 hours)
-1. **[Bean Scopes](Spring/spring-bean-scopes.md)** - How Spring manages bean lifecycle
-2. **[Bean Scopes Interview Q&A](Spring/spring-bean-scopes-interview.md)** - Practice common questions
-3. **[Circular Dependencies](Spring/spring-circular-dependency.md)** - Detection and solutions
-4. **[Singleton Concurrency](Spring/spring-singleton-concurrency.md)** - Thread safety in beans
+1. **[Bean Scopes](SpringBoot/spring-bean-scopes.md)** - How Spring manages bean lifecycle
+2. **[Bean Scopes Interview Q&A](SpringBoot/spring-bean-scopes-interview.md)** - Practice common questions
+3. **[Circular Dependencies](SpringBoot/spring-circular-dependency.md)** - Detection and solutions
+4. **[Singleton Concurrency](SpringBoot/spring-singleton-concurrency.md)** - Thread safety in beans
 
 ### Path 3: Full Preparation (5-6 hours)
 Complete all files in order for comprehensive interview readiness.
@@ -241,11 +271,11 @@ Complete all files in order for comprehensive interview readiness.
 - **Senior Java/Spring Developer:** Complete all topics + connections between concepts
 
 ### By Topic Priority
-- 🔥 [String Memory Allocation](Java/java-string-memory-allocation.md)
-- 🔥 [Sealed Classes & Pattern Matching](Java/java-9-to-21-features.md#must-know-features)
-- 🔥 [Bean Scopes](Spring/spring-bean-scopes.md)
-- ✅ [Records & Text Blocks](Java/java-9-to-21-features.md#should-know-features)
-- ✅ [Circular Dependencies](Spring/spring-circular-dependency.md)
+- 🔥 [String Memory Allocation](Core_Java/java-string-memory-allocation.md)
+- 🔥 [Sealed Classes & Pattern Matching](Java8to21/java-9-to-21-features.md#must-know-features)
+- 🔥 [Bean Scopes](SpringBoot/spring-bean-scopes.md)
+- ✅ [Records & Text Blocks](Java8to21/java-9-to-21-features.md#should-know-features)
+- ✅ [Circular Dependencies](SpringBoot/spring-circular-dependency.md)
 
 ---
 
