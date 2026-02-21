@@ -4,13 +4,20 @@
 
 A comprehensive repository of advanced Java and Spring Framework concepts designed for developers preparing for senior-level interviews. Every topic includes real-world scenarios, working code examples, and common interview questions.
 
+## 🚀 Quick Start
+
+**New here?** Start with the [Complete Index & Interview Questions Map](INDEX.md) - Shows all topics, questions, and links organized by frequency and difficulty.
+
 ---
 
 ## 📚 Repository Structure
 
 ```
 JavaFullstackNotes/
+├── INDEX.md                                # 📑 COMPLETE QUESTION MAP with links & study paths
+│
 ├── Java/
+│   ├── java-interface-default-static-methods.md   # Interface evolution, Java 9+ private methods
 │   ├── java-immutable-complete-guide.md           # Immutable classes & defensive copying (all-in-one)
 │   ├── java-multithreading-concurrency-guide.md   # Complete multithreading reference
 │   ├── java-non-blocking-vs-async-interview.md    # Easy English interview prep
@@ -34,6 +41,7 @@ JavaFullstackNotes/
 ## 🚀 New in 2026
 
 ### Latest Additions (Easy English Interview Guides)
+- ✅ **[Interface Default & Static Methods](Java/java-interface-default-static-methods.md)** - Evolution without breaking changes (Java 9+ private methods!)
 - ✅ **[Immutable Classes & Defensive Copying](Java/java-immutable-complete-guide.md)** - All-in-one 1100-line guide
 - ✅ **[Multithreading & Concurrency](Java/java-multithreading-concurrency-guide.md)** - Comprehensive 2500-line reference
 - ✅ **[Non-Blocking vs Async](Java/java-non-blocking-vs-async-interview.md)** - Bus/Traffic Controller analogy (easy to understand)
@@ -222,6 +230,10 @@ Complete all files in order for comprehensive interview readiness.
 ---
 
 ## 🔗 Quick Links
+
+### Start Here (Recommended)
+- 📑 **[COMPLETE INDEX WITH ALL QUESTIONS](INDEX.md)** ← Best for finding topics & interview Qs
+- 🎯 **[By Interview Frequency](#-key-highlights)** - Most asked topics first
 
 ### By Interview Role
 - **Junior Java Developer:** Focus on String Memory + Java Basics
