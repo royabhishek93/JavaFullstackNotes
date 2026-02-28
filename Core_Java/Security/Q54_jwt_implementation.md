@@ -79,5 +79,65 @@ try {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Not validating signature/algorithm**
+```java
+// ❌ Accepts tokens without checking signature
+Claims claims = Jwts.parserBuilder().build().parseClaimsJws(token).getBody();
+
+// ✅ Always validate signature with signing key
+Jws<Claims> claims = Jwts.parserBuilder()
+    .setSigningKey(SECRET_KEY)
+    .build()
+    .parseClaimsJws(token);
+```
+
+**Pitfall 2: Storing JWT in localStorage**
+```text
+// ❌ localStorage is accessible to JS → XSS steals token
+
+// ✅ Store in httpOnly cookie
+Set-Cookie: access_token=...; HttpOnly; Secure; SameSite=Strict
+```
+
+**Pitfall 3: No refresh token rotation**
+```text
+// ❌ Long-lived access token, never rotated
+exp = 7 days
+
+// ✅ Short-lived access token + rotating refresh token
+access_token: 15 minutes
+refresh_token: 7 days, rotate on every refresh
+```
+
+**Pitfall 4: Using JWT for logout without revocation**
+```text
+// ❌ User logs out, token still valid until expiry
+
+// ✅ Maintain token blacklist or use short TTL + refresh
+```
+
+---
+
+## 🛑 When NOT to Use JWT
+
+- ❌ You need immediate token revocation (sessions easier)
+- ❌ Very large payloads (JWT travels with every request)
+- ❌ Simple monolith where server-side sessions are simpler
+- ✅ DO use: Stateless APIs, mobile apps, multi-service auth
+
+---
+
+## 🔗 Related Questions
+
+- [Q53_auth_basics.md](Q53_auth_basics.md) - Authentication vs authorization
+- [Q55_oauth2.md](Q55_oauth2.md) - OAuth2 flows and JWT
+- [Q57_bcrypt_hashing.md](Q57_bcrypt_hashing.md) - Password hashing before JWT
+- [Q56_spring_security.md](Q56_spring_security.md) - Integrating JWT with Spring
+- [../../API_Design/Q40_api_security.md](../../API_Design/Q40_api_security.md) - API authentication patterns
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q55_oauth2.md](Q55_oauth2.md)**

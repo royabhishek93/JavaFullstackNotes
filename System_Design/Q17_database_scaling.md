@@ -78,5 +78,98 @@ A successful product has 100k concurrent users. Your database is bottleneck. How
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Sharding too early**
+```
+// ❌ Company with 1000 users implements sharding
+// Result: Complexity explosion for no benefit
+
+// ✅ Scaling order:
+1. Optimize queries + indexes (free, 10x improvement)
+2. Add caching (cheap, 10-20x improvement)
+3. Add read replicas (medium cost, 3-5x improvement)
+4. Shard database (LAST RESORT - complexity cost is high)
+```
+
+**Pitfall 2: Not using connection pooling**
+```java
+// ❌ Creating new connection per request
+public User getUser(int id) {
+    Connection conn = DriverManager.getConnection(url);  // 50-100ms overhead!
+    // Query takes 5ms, connection creation takes 50ms
+}
+
+// ✅ Use connection pool (HikariCP)
+@Bean
+public DataSource dataSource() {
+    HikariConfig config = new HikariConfig();
+    config.setMaximumPoolSize(20);  // Reuse connections
+    return new HikariDataSource(config);
+}
+```
+
+**Pitfall 3: Sending writes to read replicas**
+```java
+// ❌ Write-after-read inconsistency
+userService.updateEmail(userId, newEmail);  // Write to master
+User user = userService.getUser(userId);  // Read from replica - OLD EMAIL!
+// Replication lag (10-100ms) causes stale read
+
+// ✅ Read from master after write
+@Transactional
+public void updateAndNotify(int userId, String newEmail) {
+    userRepo.updateEmail(userId, newEmail);  // Master
+    User user = userRepo.findById(userId);  // Force master read
+    emailService.send(user.getEmail());  // Sends to correct email
+}
+```
+
+**Pitfall 4: Not monitoring replication lag**
+```
+// ❌ Replica is 5 minutes behind, users see old data
+// No alerts, no monitoring
+
+// ✅ Monitor replication lag
+SELECT TIMESTAMPDIFF(SECOND, executed_gtid_set, received_gtid_set) AS lag;
+Alert if lag > 1 second
+```
+
+**Pitfall 5: Over-caching without invalidation strategy**
+```java
+// ❌ Cache never expires, stale data forever
+cache.put("user:" + id, user);  // No TTL!
+
+// ✅ Cache with TTL + invalidation
+cache.put("user:" + id, user, 5, TimeUnit.MINUTES);  // Auto-expire
+
+@Transactional
+public void updateUser(User user) {
+    userRepo.save(user);
+    cache.evict("user:" + user.getId());  // Explicit invalidation
+}
+```
+
+---
+
+## 🛑 When NOT to Use Each Strategy
+
+- ❌ **Read Replicas**: Write-heavy workloads (replicas won't help)
+- ❌ **Sharding**: Small datasets (<1M rows), low traffic (<1k concurrent users)
+- ❌ **Caching**: Data changes frequently (cache hit rate <50%)
+- ❌ **Connection Pooling**: Single-user applications (no concurrency)
+- ✅ **DO**: Start simple, measure, then scale based on bottlenecks
+
+---
+
+## 🔗 Related Questions
+
+- [Q18_caching_strategies.md](Q18_caching_strategies.md) - Caching layers for read scaling
+- [Q19_load_balancing.md](Q19_load_balancing.md) - Load balancer configuration
+- [../Core_Java/Database_SQL/Q24_n_plus_one_problem.md](../Core_Java/Database_SQL/Q24_n_plus_one_problem.md) - Query optimization patterns
+- [../Core_Java/Database_SQL/Q28_connection_pooling.md](../Core_Java/Database_SQL/Q28_connection_pooling.md) - HikariCP tuning
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q18_caching_strategies.md](Q18_caching_strategies.md)**

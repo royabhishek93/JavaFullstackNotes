@@ -57,5 +57,50 @@ class SecurityConfig extends WebSecurityConfigurerAdapter {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Confusing OAuth (authorization) with authentication**
+```text
+// ❌ Using OAuth access token as proof of identity
+Access token = permission, not identity
+
+// ✅ Use OpenID Connect for authentication (ID token)
+```
+
+**Pitfall 2: Missing state parameter (CSRF)**
+```text
+// ❌ No state = CSRF risk
+https://accounts.google.com/o/oauth2/v2/auth?client_id=...&redirect_uri=...
+
+// ✅ Include state and verify on callback
+state=secureRandomValue
+```
+
+**Pitfall 3: Using implicit flow**
+```text
+// ❌ Implicit flow exposes tokens in browser
+
+// ✅ Use Authorization Code + PKCE (best practice)
+```
+
+**Pitfall 4: Storing client secret in frontend**
+```js
+// ❌ Client secret in JavaScript bundle
+const CLIENT_SECRET = "abc123";
+
+// ✅ Keep secret on backend, use PKCE for public clients
+```
+
+---
+
+## 🛑 When NOT to Use OAuth 2.0
+
+- ❌ First-party app with only username/password
+- ❌ No third-party access needed (overkill)
+- ❌ Offline systems without internet connectivity
+- ✅ DO use: SSO, third-party login, delegated access
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q56_spring_security.md](Q56_spring_security.md)**

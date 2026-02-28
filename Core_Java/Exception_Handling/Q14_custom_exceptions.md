@@ -199,6 +199,67 @@ try {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Creating too many custom exceptions**
+```java
+// ❌ Exception explosion!
+class UserNotFoundException extends RuntimeException { }
+class UserInactiveException extends RuntimeException { }
+class UserDeletedException extends RuntimeException { }
+class UserSuspendedException extends RuntimeException { }
+
+// ✅ One exception with type or reason
+class UserException extends RuntimeException {
+    enum Reason { NOT_FOUND, INACTIVE, DELETED, SUSPENDED }
+    private final Reason reason;
+    // Constructor with reason
+}
+```
+
+**Pitfall 2: Not preserving the cause**
+```java
+// ❌ Lost original cause!
+catch (SQLException e) {
+    throw new DatabaseException("Query failed");
+}
+
+// ✅ Always preserve cause
+catch (SQLException e) {
+    throw new DatabaseException("Query failed", e);  // Stack trace preserved
+}
+```
+
+**Pitfall 3: Checked custom exceptions**
+```java
+public class UserException extends Exception { }  // ❌ Forces try-catch everywhere!
+
+public class UserException extends RuntimeException { }  // ✅ Modern practice
+```
+
+**Pitfall 4: Empty exception classes**
+```java
+public class PaymentException extends RuntimeException { }  // ❌ No context!
+
+// ✅ Add context fields
+public class PaymentException extends RuntimeException {
+    private final String orderId;
+    private final String cardType;
+    // Getters, constructors
+}
+```
+
+---
+
+## 🛑 When NOT to Create Custom Exceptions
+
+- ❌ For every single error case
+- ❌ When standard exceptions work (IllegalArgumentException, IllegalStateException)
+- ❌ For temporary/local errors (use standard exceptions)
+- ✅ DO create: Domain-specific errors (PaymentException, OrderException), errors needing extra context
+
+---
+
 ## 🔗 Related Questions
 
 - **Q13:** Checked vs Unchecked design

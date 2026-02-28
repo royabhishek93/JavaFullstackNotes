@@ -188,4 +188,83 @@ case Success(String value) -> ...
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Incomplete switch - forgetting the default case (exhaustiveness issue)**
+
+❌ **Wrong approach:**
+```java
+// With sealed classes, compiler can check exhaustiveness
+public sealed class Result permits Success, Failure { }
+
+public String handle(Result result) {
+    return switch (result) {
+        case Success s -> "Success!";
+        // ❌ Missing Failure case!
+        // Compiler ERROR (if sealed) or returns null
+    };
+}
+```
+**Why it fails:** Compiler can't guarantee all cases handled. If new type added to sealed class, old switch statements silently fail.
+
+✅ **Right approach:**
+```java
+public String handle(Result result) {
+    return switch (result) {
+        case Success s -> "Success!";
+        case Failure f -> "Failed: " + f.error();  // All cases covered
+    };
+}
+```
+
+---
+
+**Pitfall 2: Nested record patterns getting too complex**
+
+❌ **Wrong approach:**
+```java
+// Deeply nested destructuring is hard to read
+public String processData(Object data) {
+    return switch (data) {
+        case Payment(String id, Amount(Currency c, double amt), Status(String st)) -> {
+            // 4 levels deep! Hard to understand
+            System.out.println(c + ": " + amt + " (" + st + ")");
+        }
+        default -> "Unknown";
+    };
+}
+```
+**Why it fails:** Pattern gets hard to understand and debug. Good code is readable.
+
+✅ **Right approach:**
+```java
+// Either break into simpler patterns:
+public String processData(Object data) {
+    return switch (data) {
+        case Payment payment -> handlePayment(payment);
+        default -> "Unknown";
+    };
+}
+
+private String handlePayment(Payment payment) {
+    // Process with explicit variables, not nested patterns
+    String id = payment.id();
+    Amount amount = payment.amount();
+    String status = payment.status().toString();
+    
+    return amount.currency() + ": " + amount.value() + " (" + status + ")";
+}
+```
+
+---
+
+## 🛑 When NOT to Use Pattern Matching
+
+1. **When traditional if-else is clearer** → Pattern matching is style, not always better
+2. **For simple type checks** → Don't over-engineer (e.g., if (obj instanceof String) is fine)
+3. **With non-sealed hierarchies** → Pattern matching less useful without exhaustiveness checks
+4. **When targeting Java < 16** → Pattern matching not available
+
+---
+
 **Next:** Study Q9 on text blocks for multiline strings

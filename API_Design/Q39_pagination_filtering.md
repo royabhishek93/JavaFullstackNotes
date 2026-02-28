@@ -51,5 +51,39 @@ GET /api/products?page=1&size=20&sort=price,desc&category=Electronics&minPrice=1
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: No max page size**
+```text
+// ❌ Client requests size=1000000 (DoS risk)
+
+// ✅ Enforce max size (e.g., 100)
+```
+
+**Pitfall 2: Offset pagination on large datasets**
+```text
+// ❌ page=10000 → OFFSET 200000 (slow)
+
+// ✅ Use cursor pagination for big data
+GET /api/products?cursor=abc123
+```
+
+**Pitfall 3: Allowing arbitrary sort fields**
+```text
+// ❌ sort=drop table users
+
+// ✅ Whitelist allowed sort fields
+```
+
+---
+
+## 🛑 When NOT to Use Offset Pagination
+
+- ❌ Large datasets (>10M rows)
+- ❌ Highly dynamic data (offset skips/duplicates)
+- ✅ DO use: Small datasets, admin tools, internal APIs
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q40_api_security.md](Q40_api_security.md)**

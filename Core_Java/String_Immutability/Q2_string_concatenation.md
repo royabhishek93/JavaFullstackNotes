@@ -72,4 +72,12 @@ System.out.println(c.intern() == d);    // true
 
 ---
 
+## 🔗 Related Questions
+
+- [Q1_string_pool_memory.md](Q1_string_pool_memory.md) - String pool fundamentals
+- [Q3_string_intern_method.md](Q3_string_intern_method.md) - Using `.intern()` to force pool lookup
+- [Q5_immutable_class_requirements.md](Q5_immutable_class_requirements.md) - Why strings are immutable
+
+---
+
 **Next:** Study Q3 to learn when `.intern()` is useful

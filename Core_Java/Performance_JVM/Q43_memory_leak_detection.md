@@ -59,5 +59,40 @@ jmap -dump:live,format=b,file=heap.bin 12345
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Increasing heap without fixing leak**
+```text
+// ❌ OOM? Just add more heap
+// Leak still exists, now takes longer to fail
+
+// ✅ Take heap dump, find retained objects
+```
+
+**Pitfall 2: Assuming GC will fix everything**
+```text
+// ❌ GC cannot collect referenced objects
+// Static collections, ThreadLocal, listeners still hold references
+
+// ✅ Remove references or use weak refs
+```
+
+**Pitfall 3: Not comparing heap dumps over time**
+```text
+// ❌ Single heap dump doesn't show growth trend
+
+// ✅ Take 2-3 dumps and compare retained sizes
+```
+
+---
+
+## 🛑 When NOT to Use Weak References
+
+- ❌ Critical caches that must retain data
+- ❌ Objects with strict lifetime requirements
+- ✅ DO use: Optional caches where eviction is safe
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q44_jvm_tuning.md](Q44_jvm_tuning.md)**

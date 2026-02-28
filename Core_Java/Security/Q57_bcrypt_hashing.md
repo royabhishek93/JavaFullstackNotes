@@ -68,5 +68,62 @@ public class SecurityConfig {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using low work factor**
+```java
+// ❌ Too fast, easy to brute force
+new BCryptPasswordEncoder(4);
+
+// ✅ Use 10-12 for production
+new BCryptPasswordEncoder(12);
+```
+
+**Pitfall 2: Re-hashing password on login**
+```java
+// ❌ Wrong - hashing input and comparing strings
+String inputHash = encoder.encode(rawPassword);
+if (inputHash.equals(storedHash)) { ... }  // Always false
+
+// ✅ Use matches()
+if (encoder.matches(rawPassword, storedHash)) { ... }
+```
+
+**Pitfall 3: Migrating from weak hashes without upgrade plan**
+```text
+// ❌ Users keep MD5 hashes forever
+
+// ✅ Rehash on login
+if (isLegacyHash(storedHash) && matchesLegacy(rawPassword)) {
+    user.setPassword(encoder.encode(rawPassword));
+}
+```
+
+**Pitfall 4: Using bcrypt for API tokens**
+```text
+// ❌ bcrypt for short-lived tokens (slow, unnecessary)
+
+// ✅ Use HMAC or random tokens with expiration
+```
+
+---
+
+## 🛑 When NOT to Use bcrypt
+
+- ❌ Very high-throughput auth without caching (latency sensitive)
+- ❌ Hardware-accelerated attackers and large budgets (consider Argon2)
+- ✅ DO use: User passwords, admin credentials, long-lived secrets
+
+---
+
+## 🔗 Related Questions
+
+- [Q53_auth_basics.md](Q53_auth_basics.md) - Authentication fundamentals
+- [Q54_jwt_implementation.md](Q54_jwt_implementation.md) - JWT token security
+- [Q56_spring_security.md](Q56_spring_security.md) - Spring Security configuration
+- [Q58_injection_prevention.md](Q58_injection_prevention.md) - Preventing security vulnerabilities
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q58_injection_prevention.md](Q58_injection_prevention.md)**

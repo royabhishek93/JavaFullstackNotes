@@ -54,5 +54,38 @@ class ProviderContractTest {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Contracts not versioned**
+```text
+// ❌ Provider changes response, old contract still used
+
+// ✅ Version contracts with API versions
+```
+
+**Pitfall 2: Treating contract tests as full integration tests**
+```text
+// ❌ Contract tests replace real integration tests
+
+// ✅ Use both: contracts for compatibility, integration for runtime behavior
+```
+
+**Pitfall 3: Not sharing stubs with consumers**
+```text
+// ❌ Provider generates stubs but consumers never use them
+
+// ✅ Publish stubs to artifact repo (Nexus, Artifactory)
+```
+
+---
+
+## 🛑 When NOT to Use Contract Testing
+
+- ❌ Monolith with single codebase
+- ❌ Tight release coordination (no independent deploys)
+- ✅ DO use: Microservices with independent teams
+
+---
+
 **Last Updated:** February 22, 2026  
 **Previous: [Q51_testcontainers.md](Q51_testcontainers.md) | Next: [../Security/Q53_auth_basics.md](../Security/Q53_auth_basics.md)**

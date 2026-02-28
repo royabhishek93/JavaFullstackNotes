@@ -50,5 +50,108 @@ Bank transfer: $100 from Account A to Account B. If system crashes after debit b
 
 ---
 
+## 🔗 Related Questions
+
+- [Q25_isolation_levels.md](Q25_isolation_levels.md) - Isolation implementation details
+
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Not using transactions at all**
+```java
+// ❌ Without transaction
+public void transfer(long fromId, long toId, double amount) {
+	accountRepo.debit(fromId, amount);  // Executes immediately!
+	accountRepo.credit(toId, amount);   // If this fails, first already committed!
+}
+// Result: Money lost from sender, never credited to receiver
+
+// ✅ Use @Transactional
+@Transactional
+public void transfer(long fromId, long toId, double amount) {
+	accountRepo.debit(fromId, amount);
+	accountRepo.credit(toId, amount);
+}  // Both commit together or rollback together
+```
+
+**Pitfall 2: Catching exceptions inside @Transactional**
+```java
+@Transactional
+public void processOrder(Order order) {
+	try {
+		orderRepo.save(order);
+		inventoryRepo.reserve(order);  // Throws exception
+	} catch (Exception e) {
+		log.error("Error", e);  // ❌ Swallowed! Transaction still commits!
+	}
+}
+
+// ✅ Let exception propagate or mark for rollback
+@Transactional
+public void processOrder(Order order) {
+	try {
+		orderRepo.save(order);
+		inventoryRepo.reserve(order);
+	} catch (Exception e) {
+		throw new OrderException("Failed", e);  // Transaction rolls back
+	}
+}
+```
+
+**Pitfall 3: Long-running transactions**
+```java
+// ❌ Transaction holds locks for seconds
+@Transactional
+public void processOrders(List<Order> orders) {
+	for (Order order : orders) {
+		orderRepo.save(order);
+		emailService.send(order.getEmail());  // 500ms per email!
+	}
+}  // Locks held for seconds!
+
+// ✅ Keep transactions short
+public void processOrders(List<Order> orders) {
+	for (Order order : orders) {
+		saveOrder(order);  // Short transaction
+		emailService.send(order.getEmail());  // Outside transaction
+	}
+}
+
+@Transactional
+private void saveOrder(Order order) {
+	orderRepo.save(order);
+}
+```
+
+**Pitfall 4: Assuming isolation = perfect consistency**
+```java
+// ❌ Two concurrent transfers from same account
+Thread 1: transfer(accountA, accountB, 100);
+Thread 2: transfer(accountA, accountC, 100);
+// Both check balance (100), both proceed → -100 balance!
+
+// ✅ Use pessimistic locking
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT a FROM Account a WHERE a.id = ?1")
+Account findByIdForUpdate(Long id);
+```
+
+---
+
+## 🛑 When ACID Might Be Too Much
+
+- ❌ Logging, analytics (eventual consistency OK)
+- ❌ High-throughput systems (NoSQL might be better)
+- ❌ Distributed microservices (CAP theorem trade-offs)
+- ✅ DO use: Financial transactions, inventory, user data
+
+---
+
+## 🔗 Related Questions
+- [Q24_n_plus_one_problem.md](Q24_n_plus_one_problem.md) - Query optimization
+- [Q27_optimistic_locking.md](Q27_optimistic_locking.md) - Handling concurrent updates
+- [../../Spring/Q3_transactional_proxy_flow.md](../../Spring/Q3_transactional_proxy_flow.md) - Spring @Transactional
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q24_n_plus_one_problem.md](Q24_n_plus_one_problem.md)**

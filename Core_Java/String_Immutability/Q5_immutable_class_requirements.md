@@ -83,4 +83,54 @@ list.add("gaming");  // p is still immutable!
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Forgetting defensive copy in constructor**
+```java
+public Person(List<String> hobbies) {
+    this.hobbies = hobbies;  // ❌ Shares reference - not immutable!
+}
+// Fix: this.hobbies = new ArrayList<>(hobbies);
+```
+
+**Pitfall 2: Returning mutable reference from getter**
+```java
+public List<String> getHobbies() {
+    return hobbies;  // ❌ Caller can modify internal state!
+}
+// Fix: return new ArrayList<>(hobbies) or Collections.unmodifiableList()
+```
+
+**Pitfall 3: Not making class final**
+```java
+public class Person { }  // ❌ Subclass can add mutable state
+// Fix: public final class Person { }
+```
+
+**Pitfall 4: Mutable nested objects**
+```java
+private final Address address;  // ❌ If Address is mutable, Person isn't!
+// Fix: Address must also be immutable, or deep copy it
+```
+
+**Pitfall 5: Date/Calendar fields**
+```java
+private final Date birthDate;  // ❌ Date is mutable!
+public Date getBirthDate() { return birthDate; }  // ❌ Caller can modify!
+
+// Fix: Use LocalDate (immutable) or return new Date(birthDate.getTime())
+private final LocalDate birthDate;  // ✅ LocalDate is immutable
+```
+
+---
+
+## 🛑 When NOT to Use Immutable Classes
+
+- ❌ Frequent state changes (game character position, counters)
+- ❌ Large objects with many fields that change (creates too many objects)
+- ❌ Performance-critical paths with tight memory (heap churn)
+- ✅ DO use: DTOs, configuration, API responses, value objects
+
+---
+
 **Next:** Study Q6 on defensive copying techniques

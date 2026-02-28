@@ -46,5 +46,40 @@ Accept: application/vnd.company.v2+json
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Versioning every tiny change**
+```text
+// ❌ v1.1, v1.2 for every response tweak
+
+// ✅ Use compatible changes without version bump
+Add optional fields, keep existing behavior
+```
+
+**Pitfall 2: Keeping old versions forever**
+```text
+// ❌ Supporting v1, v2, v3, v4 for years
+// Tech debt grows
+
+// ✅ Deprecate with timeline (e.g., 6-12 months)
+```
+
+**Pitfall 3: Breaking changes without version bump**
+```text
+// ❌ Removing field from v1 response
+
+// ✅ New version for breaking changes
+```
+
+---
+
+## 🛑 When NOT to Version
+
+- ❌ Internal APIs with single client (coordinate changes)
+- ❌ Minor non-breaking changes (additive changes)
+- ✅ DO use: Public APIs, breaking changes, multi-client support
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q38_error_responses.md](Q38_error_responses.md)**

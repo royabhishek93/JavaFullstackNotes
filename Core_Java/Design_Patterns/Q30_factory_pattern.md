@@ -42,6 +42,73 @@ class PostgresFactory implements DatabaseFactory { }
 
 "Factory for single object creation. Abstract factory for creating families of related objects. Abstract factory when you need multiple objects to work together (connection + statement builder)."
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Factory with switch/if-else explosion**
+```java
+// ❌ Adding new type requires modifying factory
+class DatabaseFactory {
+    static Database create(String type) {
+        if (type.equals("mysql")) return new MySQLDatabase();
+        else if (type.equals("postgres")) return new PostgresDatabase();
+        else if (type.equals("mongo")) return new MongoDatabase();
+        // Adding new DB = modify this method (violates Open-Closed)
+    }
+}
+
+// ✅ Use map of factories or service provider
+class DatabaseFactory {
+    static Map<String, Supplier<Database>> factories = Map.of(
+        "mysql", MySQLDatabase::new,
+        "postgres", PostgresDatabase::new
+    );
+    static Database create(String type) {
+        return factories.get(type).get();
+    }
+}
+```
+
+**Pitfall 2: Not handling unknown types**
+```java
+// ❌ No handling for invalid type
+Database db = DatabaseFactory.create("oracle");  // NullPointerException!
+
+// ✅ Throw exception or return default
+static Database create(String type) {
+    return factories.getOrDefault(type, () -> {
+        throw new IllegalArgumentException("Unknown DB: " + type);
+    }).get();
+}
+```
+
+**Pitfall 3: Factory doing too much**
+```java
+// ❌ Factory with business logic
+class DatabaseFactory {
+    static Database create(String type) {
+        Database db = new MySQLDatabase();
+        db.connect();  // Don't do this here!
+        db.executeSchema();  // Factory should just create!
+        return db;
+    }
+}
+
+// ✅ Factory only creates, caller configures
+Database db = DatabaseFactory.create("mysql");
+db.connect();
+```
+
+---
+
+## 🛑 When NOT to Use Factory
+
+- ❌ Only one implementation (no abstraction needed)
+- ❌ Simple constructor is sufficient
+- ❌ Dependency injection handles creation (Spring)
+- ✅ DO use: Multiple implementations chosen at runtime
+
+---
+
 ---
 
 **Last Updated:** February 22, 2026  

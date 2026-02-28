@@ -49,6 +49,67 @@ order.processPayment(200);  // Use PayPal
 
 ## 📚 Real Examples
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using if-else instead of strategy**
+```java
+// ❌ Violates Open-Closed principle
+void processPayment(String method, double amount) {
+    if (method.equals("card")) {
+        // credit card logic
+    } else if (method.equals("paypal")) {
+        // paypal logic
+    } else if (method.equals("upi")) {
+        // upi logic
+    }
+    // Adding new method = modify this method
+}
+
+// ✅ Use strategy pattern
+PaymentStrategy strategy = strategyMap.get(method);
+strategy.pay(amount);  // No modification needed for new strategies
+```
+
+**Pitfall 2: Not handling null strategy**
+```java
+// ❌ NullPointerException if strategy not set
+order.processPayment(100);  // strategy is null!
+
+// ✅ Default strategy or validation
+public void processPayment(double amount) {
+    if (strategy == null) throw new IllegalStateException("Payment method not set");
+    strategy.pay(amount);
+}
+```
+
+**Pitfall 3: Stateful strategies**
+```java
+// ❌ Strategy holds state (thread-unsafe!)
+class CreditCardPayment implements PaymentStrategy {
+    private double amount;  // Shared across threads!
+    public void pay(double amount) {
+        this.amount = amount;  // Race condition
+    }
+}
+
+// ✅ Stateless strategies
+public void pay(double amount) {
+    // Use parameters, not instance variables
+    chargeCard(amount);
+}
+```
+
+---
+
+## 🛑 When NOT to Use Strategy
+
+- ❌ Only one implementation (no variation)
+- ❌ Algorithms rarely change (overkill)
+- ❌ Simple logic (if-else is fine)
+- ✅ DO use: Multiple algorithms, runtime selection, testing variations
+
+---
+
 - **Sorting:** Different sort algorithms (quicksort, mergesort)
 - **Compression:** Different compression strategies
 - **Authentication:** Different auth methods (OAuth, JWT, API key)

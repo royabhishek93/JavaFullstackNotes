@@ -64,5 +64,45 @@ void testAsyncAwaitility() {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using Thread.sleep()**
+```java
+// ❌ Unreliable and slow
+Thread.sleep(5000);
+assertTrue(result.isReady());
+
+// ✅ Use Awaitility or get(timeout)
+```
+
+**Pitfall 2: No timeout**
+```java
+// ❌ Test hangs forever
+future.get();
+
+// ✅ Always set timeout
+future.get(5, TimeUnit.SECONDS);
+```
+
+**Pitfall 3: Asserting before completion**
+```java
+// ❌ Assertion runs before async task finishes
+asyncService.process();
+assertEquals("DONE", status);
+
+// ✅ Wait for completion
+asyncService.process().join();
+```
+
+---
+
+## 🛑 When NOT to Use Real Async in Unit Tests
+
+- ❌ Simple business logic (use direct method call)
+- ❌ Deterministic unit tests (mock async behavior)
+- ✅ DO use: Integration tests for async infrastructure
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q50_spring_test_slices.md](Q50_spring_test_slices.md)**

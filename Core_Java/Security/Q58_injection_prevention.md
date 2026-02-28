@@ -59,5 +59,50 @@ stmt.setInt(1, userId);  // Parameterized
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Only validating on client**
+```js
+// ❌ Client-side validation can be bypassed
+if (!email.includes("@")) showError();
+
+// ✅ Always validate on server too
+```
+
+**Pitfall 2: SQL injection via LIKE or ORDER BY**
+```java
+// ❌ String concatenation in LIKE
+String query = "SELECT * FROM users WHERE name LIKE '%" + name + "%'";
+
+// ✅ Use parameterized queries
+String query = "SELECT * FROM users WHERE name LIKE ?";
+stmt.setString(1, "%" + name + "%");
+```
+
+**Pitfall 3: Escaping input instead of output**
+```text
+// ❌ Escaping input once doesn't prevent XSS
+
+// ✅ Escape on output based on context (HTML, JS, URL)
+```
+
+**Pitfall 4: Disabling CSRF globally**
+```java
+// ❌ Disable CSRF for web app
+http.csrf(csrf -> csrf.disable());
+
+// ✅ Disable only for stateless APIs
+```
+
+---
+
+## 🛑 When NOT to Use CSRF Tokens
+
+- ❌ Stateless APIs using Authorization headers
+- ❌ Non-browser clients (mobile, server-to-server)
+- ✅ DO use: Browser-based apps with cookies
+
+---
+
 **Last Updated:** February 22, 2026  
 **Previous: [Q57_password_hashing.md](Q57_password_hashing.md) | Next: [../Observability/Q59_logging_frameworks.md](../Observability/Q59_logging_frameworks.md)**

@@ -229,4 +229,76 @@ CompletableFuture.supplyAsync(() -> 100)
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Blocking with .get() defeats the purpose of async**
+
+❌ **Wrong approach:**
+```java
+// ❌ You wanted async, but then you block immediately
+CompletableFuture<User> future = userService.fetchUser(1);
+User user = future.get();  // ← BLOCKS HERE! Might as well be synchronous
+
+// This is exactly what async was supposed to avoid!
+```
+**Why it fails:** You're losing all benefits of async. Threads get stuck waiting.
+
+✅ **Right approach:**
+```java
+// Chain operations instead of blocking
+userService.fetchUser(1)
+    .thenAccept(user -> {
+        // Use user here, no blocking
+        System.out.println("Got user: " + user.getName());
+    });
+
+// Or return the future and let caller decide when to block
+CompletableFuture<User> future = userService.fetchUser(1);
+return future;  // Return promise, don't consume it
+```
+
+---
+
+**Pitfall 2: Missing exception handling in async operations**
+
+❌ **Wrong approach:**
+```java
+CompletableFuture<User> future = userService.fetchUser(1);
+
+future.thenAccept(user -> {
+    // If user is null, this crashes
+    user.getName().toUpperCase();  // ❌ NullPointerException silently caught
+});
+
+// Exception is swallowed by the framework - you never see it!
+```
+**Why it fails:** Exceptions in async handlers are not propagated. You get silent failures.
+
+✅ **Right approach:**
+```java
+CompletableFuture<User> future = userService.fetchUser(1);
+
+future
+    .thenAccept(user -> {
+        if (user != null) {
+            user.getName().toUpperCase();
+        }
+    })
+    .exceptionally(e -> {
+        log.error("Failed to fetch user", e);
+        return null;
+    });
+```
+
+---
+
+## 🛑 When NOT to Use CompletableFuture
+
+1. **For CPU-bound work** → Threads won't help if CPU-limited
+2. **When you need to block anyway** → Just use synchronous code
+3. **For simple one-shot operations** → Don't over-engineer with futures
+4. **In Java < 8** → Not available
+
+---
+
 **Next:** Study Q11 on chaining async operations with thenCompose and thenApply

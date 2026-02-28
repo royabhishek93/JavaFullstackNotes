@@ -131,6 +131,69 @@ userRepository.findById(789)
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using .get() without checking**
+```java
+Optional<User> opt = findUser(123);
+User user = opt.get();  // ❌ NoSuchElementException if empty!
+User user = opt.orElseThrow(() -> new UserNotFoundException());  // ✅ Better
+```
+
+**Pitfall 2: Using .isPresent() + .get() instead of better methods**
+```java
+// ❌ Verbose, defeats purpose of Optional
+if (opt.isPresent()) {
+    return opt.get().getName();
+}
+return "Unknown";
+
+// ✅ Use map() + orElse()
+return opt.map(User::getName).orElse("Unknown");
+```
+
+**Pitfall 3: Using Optional as parameter**
+```java
+public void process(Optional<User> user) { }  // ❌ Bad - caller confusion
+public void process(User user) { }  // ✅ Use null or overload
+```
+
+**Pitfall 4: Creating Optional with .of() when value can be null**
+```java
+Optional<String> opt = Optional.of(getName());  // ❌ NPE if getName() returns null!
+Optional<String> opt = Optional.ofNullable(getName());  // ✅ Handles null
+```
+
+**Pitfall 5: Using .orElse() with expensive operations**
+```java
+user.orElse(createDefaultUser());  // ❌ createDefaultUser() ALWAYS called!
+user.orElseGet(() -> createDefaultUser());  // ✅ Only called if empty
+```
+
+**Pitfall 6: Nesting Optionals**
+```java
+Optional<Optional<String>> nested = ...;  // ❌ Bad design!
+// Use .flatMap() to unwrap: opt.flatMap(Function.identity())
+```
+
+**Pitfall 7: Using Optional for collections**
+```java
+Optional<List<User>> users = ...;  // ❌ Use empty list instead!
+List<User> users = ...;  // ✅ Return Collections.emptyList() if none
+```
+
+---
+
+## 🛑 When NOT to Use Optional
+
+- ❌ Method parameters (use overloading or null)
+- ❌ Class fields (wastes memory, use null)
+- ❌ Collections/arrays (return empty instead)
+- ❌ Serializable DTOs (Optional not Serializable)
+- ✅ DO use: Return values from query methods, chaining operations
+
+---
+
 ## ➡️ Bonus Follow-ups
 
 1. **"Should you return Optional from methods?"** → Yes, for queries. No, for setters/state changes.

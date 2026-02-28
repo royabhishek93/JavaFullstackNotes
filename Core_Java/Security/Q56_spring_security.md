@@ -55,5 +55,61 @@ public class SecurityConfig {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Disabling CSRF for browser apps**
+```java
+// ❌ Disables CSRF for form-based login
+http.csrf(csrf -> csrf.disable());
+
+// ✅ Keep CSRF for browser apps, disable only for stateless APIs
+```
+
+**Pitfall 2: Overly broad permitAll**
+```java
+// ❌ Exposes everything
+http.authorizeHttpRequests(authz -> authz
+    .requestMatchers("/**").permitAll()
+);
+
+// ✅ Restrict public endpoints only
+http.authorizeHttpRequests(authz -> authz
+    .requestMatchers("/public/**", "/login").permitAll()
+    .anyRequest().authenticated()
+);
+```
+
+**Pitfall 3: Misordered matchers**
+```java
+// ❌ Specific rules after anyRequest()
+authz.anyRequest().authenticated();
+authz.requestMatchers("/admin/**").hasRole("ADMIN");  // Never reached!
+
+// ✅ Order matters
+authz.requestMatchers("/admin/**").hasRole("ADMIN")
+     .anyRequest().authenticated();
+```
+
+**Pitfall 4: Using @PreAuthorize without enabling method security**
+```java
+// ❌ Annotation ignored if method security not enabled
+@PreAuthorize("hasRole('ADMIN')")
+public void adminTask() {}
+
+// ✅ Enable method security
+@EnableMethodSecurity
+```
+
+---
+
+## 🛑 When NOT to Use Default Config
+
+- ❌ Stateless APIs using JWT (disable sessions + CSRF)
+- ❌ Custom auth flows (use AuthenticationProvider)
+- ❌ Reactive apps (use Spring Security for WebFlux)
+- ✅ DO use: Standard form login, role-based access, simple apps
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q57_password_hashing.md](Q57_password_hashing.md)**

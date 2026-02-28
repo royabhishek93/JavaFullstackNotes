@@ -85,6 +85,85 @@ public sealed class Payment { }
 public final class CashPayment extends Payment { }
 ```
 
+- ✅ `sealed class` + `permits ClassName1, ClassName2`
+- ✅ All permitted classes must be `final` or `sealed`
+- ✅ Compile-time exhaustion checking with pattern matching
+- ✅ Prevents unauthorized subclassing
+
+---
+
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Forgetting to make permitted classes final or sealed**
+
+❌ **Wrong approach:**
+```java
+public sealed class Shape permits Circle, Square { }
+
+// ❌ WRONG: Circle is not final or sealed!
+public class Circle extends Shape {
+    // Now someone can extend Circle:
+    public class ColoredCircle extends Circle { }  // ❌ No longer sealed!
+}
+```
+**Why it fails:** Breaks the sealed contract - your Shape hierarchy is no longer controlled.
+
+✅ **Right approach:**
+```java
+public sealed class Shape permits Circle, Square { }
+
+// ✅ CORRECT: All permitted classes are final
+public final class Circle extends Shape { }
+public final class Square extends Shape { }
+
+// ✅ Or if you want subcategories, use sealed:
+public sealed class Polygon extends Shape permits Square, Triangle { }
+public final class Square extends Polygon { }
+public final class Triangle extends Polygon { }
+```
+
+---
+
+**Pitfall 2: Adding new subclass and forgetting to update permits list**
+
+❌ **Wrong approach:**
+```java
+public sealed class PaymentMethod permits CreditCard, PayPal { }
+
+// Later, you add a new payment method
+public final class Bitcoin extends PaymentMethod { }
+
+// ❌ Won't compile! Bitcoin not in permits!
+// But only fails when someone tries to extend
+```
+**Why it fails:** No compile-time reminder that you forgot to update permits.
+
+✅ **Right approach:**
+```java
+public sealed class PaymentMethod 
+    permits CreditCard, PayPal, Bitcoin, ApplePay {
+    // Keep permits list synchronized with actual implementations
+}
+
+// Or use same file (nested classes) - then permits not needed:
+public sealed class PaymentMethod {
+    public static final class CreditCard extends PaymentMethod { }
+    public static final class PayPal extends PaymentMethod { }
+    public static final class Bitcoin extends PaymentMethod { }
+}
+```
+
+---
+
+## 🛑 When NOT to Use Sealed Classes
+
+1. **For open-ended frameworks** → Users should be able to extend
+2. **For public APIs where flexibility matters** → Don't restrict subclasses
+3. **In Java 16 or earlier** → Sealed classes need Java 17+ as finalization
+4. **When you don't have all subclasses planned** → Design later, don't seal prematurely
+
+---
+
 ## Real Example: Type-Safe Enum Pattern
 
 ```java

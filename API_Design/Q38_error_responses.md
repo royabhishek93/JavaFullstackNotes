@@ -46,5 +46,44 @@ Different errors return different formats. Client doesn't know how to parse.
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Inconsistent error shapes**
+```json
+// ❌ Different endpoints return different formats
+{ "error": "Invalid input" }
+{ "message": "Bad request" }
+
+// ✅ Standard structure everywhere
+{ "status": 400, "error": "ValidationError", "message": "..." }
+```
+
+**Pitfall 2: Using message for logic**
+```text
+// ❌ Client checks message text
+if (error.message.contains("expired")) ...
+
+// ✅ Use error codes
+error.code == "TOKEN_EXPIRED"
+```
+
+**Pitfall 3: Leaking internal errors**
+```text
+// ❌ Stack traces in response
+"NullPointerException at UserService.java:42"
+
+// ✅ Generic message for client, detailed logs server-side
+```
+
+---
+
+## 🛑 When NOT to Expose Details
+
+- ❌ Security-sensitive failures (auth, database)
+- ❌ Internal exceptions and stack traces
+- ✅ DO expose: Field validation errors with safe details
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q39_pagination_filtering.md](Q39_pagination_filtering.md)**

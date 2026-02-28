@@ -74,5 +74,89 @@ Product product = cache.get("P123");  // Hit or loads from DB
 
 ---
 
+---
+
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Cache stampede (thundering herd)**
+```java
+// ❌ 10k requests all miss cache at same time, all hit DB!
+Product product = cache.get(id);
+if (product == null) {
+    product = db.findById(id);  // 10k DB queries simultaneously!
+    cache.put(id, product);
+}
+
+// ✅ Use locking or probabilistic early expiration
+synchronized (lock) {
+    product = cache.get(id);
+    if (product == null) {
+        product = db.findById(id);
+        cache.put(id, product);
+    }
+}
+```
+
+**Pitfall 2: Not setting TTL (time-to-live)**
+```java
+// ❌ Data cached forever, stale data
+cache.put("product:" + id, product);  // No expiration!
+
+// ✅ Always set TTL
+cache.put("product:" + id, product, 5, TimeUnit.MINUTES);
+```
+
+**Pitfall 3: Cache invalidation after DB update**
+```java
+// ❌ Old data in cache after update
+productRepo.save(product);  // DB updated
+cache.evict("product:" + id);  // What if this fails? Stale cache!
+
+// ✅ Transactional invalidation or write-through
+@Transactional
+public void updateProduct(Product product) {
+    productRepo.save(product);
+    cache.evict("product:" + product.getId());
+}
+```
+
+**Pitfall 4: Caching large objects**
+```java
+// ❌ Caching 10MB user profile
+cache.put(userId, userWithAllOrders);  // 10MB serialized!
+
+// ✅ Cache only what you need
+cache.put(userId, new UserSummary(name, email));  // 1KB
+```
+
+**Pitfall 5: Not monitoring cache hit rate**
+```
+// ❌ Cache hit rate = 20%, but you don't know!
+// You're paying for Redis but getting no benefit
+
+// ✅ Monitor metrics
+Cache hit rate > 80% = good
+Cache hit rate < 50% = review caching strategy
+```
+
+---
+
+## 🛑 When NOT to Use Caching
+
+- ❌ Data changes every request (cache hit rate <20%)
+- ❌ Data must be real-time (e.g., stock trading prices)
+- ❌ Cache infrastructure cost > database cost (rare)
+- ✅ DO cache: Read-heavy workloads, hot data (80/20 rule)
+
+---
+
+## 🔗 Related Questions
+
+- [Q17_database_scaling.md](Q17_database_scaling.md) - Database read replicas and sharding
+- [Q19_load_balancing.md](Q19_load_balancing.md) - Distributing cache load
+- [Q22_message_queues.md](Q22_message_queues.md) - Cache invalidation via events
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q19_load_balancing.md](Q19_load_balancing.md)**

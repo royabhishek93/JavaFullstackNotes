@@ -55,5 +55,46 @@ DELETE /api/v1/orders/{id}                   (204 No Content)
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using POST for updates**
+```http
+// ❌ POST used for update
+POST /api/users/123 { "name": "John" }
+// Hard to retry safely
+
+// ✅ Use PUT/PATCH for updates
+PATCH /api/users/123 { "name": "John" }
+```
+
+**Pitfall 2: PUT with partial payload**
+```http
+// ❌ PUT should replace entire resource
+PUT /api/users/123 { "name": "John" }
+// What about missing fields?
+
+// ✅ Use PATCH for partial
+PATCH /api/users/123 { "name": "John" }
+```
+
+**Pitfall 3: DELETE returning 200 with body**
+```http
+// ❌ Inconsistent response
+DELETE /api/users/123 → 200 { "message": "deleted" }
+
+// ✅ 204 No Content
+DELETE /api/users/123 → 204 No Content
+```
+
+---
+
+## 🛑 When NOT to Use PATCH
+
+- ❌ Full replacement (use PUT)
+- ❌ Complex partial updates without clear schema
+- ✅ DO use: Small field updates, JSON Patch/merge patch
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q36_http_status_codes.md](Q36_http_status_codes.md)**

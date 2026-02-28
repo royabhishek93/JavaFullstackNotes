@@ -49,5 +49,39 @@ When to return 201, 204, 400, 401, 403, 404, 500?
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Returning 200 for errors**
+```json
+// ❌ Always 200 with error payload
+{ "success": false, "error": "Invalid input" }
+
+// ✅ Use proper status code
+HTTP 400 Bad Request
+{ "error": "Invalid input" }
+```
+
+**Pitfall 2: Using 401 instead of 403**
+```text
+// ❌ 401 for authenticated user without permission
+// ✅ 403 for authenticated but forbidden
+```
+
+**Pitfall 3: Using 500 for client mistakes**
+```text
+// ❌ 500 for invalid JSON
+// ✅ 400 for client input errors
+```
+
+---
+
+## 🛑 When NOT to Use 204
+
+- ❌ When client needs response body (return 200)
+- ❌ For async operations (return 202 Accepted)
+- ✅ DO use: Successful deletes or updates with no body
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q37_api_versioning.md](Q37_api_versioning.md)**

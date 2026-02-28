@@ -97,6 +97,107 @@ Stream<Integer> range = Stream.iterate(1, i -> i + 1).limit(10);
 
 "Static methods in interfaces are utilities and factories. They can't be overridden - they're not polymorphic. Use them for factory patterns like `Collections.emptyList()` or validation utilities."
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Trying to override static interface methods**
+
+❌ **Wrong approach:**
+```java
+public interface PaymentProcessor {
+    static PaymentProcessor create(String type) {
+        return switch (type) {
+            case "stripe" -> new StripePayment();
+            default -> new GenericPayment();
+        };
+    }
+}
+
+public class StripePayment implements PaymentProcessor {
+    @Override
+    // ❌ WRONG: Can't override static methods!
+    static PaymentProcessor create(String type) {
+        return new StripePayment();
+    }
+}
+```
+**Why it fails:** Static methods aren't polymorphic. You're just shadowing, not overriding. Interfaces can't override interface static methods.
+
+✅ **Right approach:**
+```java
+// Static methods in interfaces are utilities, not part of contract
+public interface PaymentProcessor {
+    void processPayment(double amount);  // Abstract - must override
+    
+    // Static utility - not overridable
+    static PaymentProcessor create(String type) {
+        return switch (type) {
+            case "stripe" -> new StripePayment();
+            default -> new GenericPayment();
+        };
+    }
+}
+
+// When you need polymorphic factory:
+public class StripePayment implements PaymentProcessor {
+    public static StripePayment create() {  // Same name, different class
+        return new StripePayment();
+    }
+}
+```
+
+---
+
+**Pitfall 2: Putting stateful logic in static interface methods**
+
+❌ **Wrong approach:**
+```java
+public interface UserService {
+    static Map<Integer, User> cache = new HashMap<>();  // ❌ Static in interface!
+    
+    static User getCachedUser(int id) {
+        return cache.get(id);  // Shared by ALL classes
+    }
+}
+
+public class DatabaseUserService implements UserService { }
+public class CachingUserService implements UserService { }
+
+// Both classes share the SAME cache!
+DatabaseUserService.getCachedUser(1);  // Uses shared cache
+CachingUserService.getCachedUser(1);   // Uses same shared cache
+```
+**Why it fails:** Static fields in interfaces are shared by everything. One class might poison the cache for another.
+
+✅ **Right approach:**
+```java
+// Static utilities should be stateless
+public interface UserService {
+    User getUser(int id);
+    
+    // Utility - stateless
+    static boolean isValidId(int id) {
+        return id > 0;
+    }
+}
+
+// State belongs in implementing classes
+public class CachingUserService implements UserService {
+    private final Map<Integer, User> cache = new HashMap<>();
+    // ✅ Each instance has its own cache
+}
+```
+
+---
+
+## 🛑 When NOT to Use Static Interface Methods
+
+1. **For creating instances with state** → Use factory classes instead
+2. **For operations that need to share state** → Use singleton classes
+3. **When visibility should differ per implementation** → Use abstract methods
+4. **For methods that must be overridden** → Make them abstract
+
+---
+
 ## Quick Checklist
 
 - ✅ `static` keyword + method body in interface

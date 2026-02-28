@@ -48,6 +48,73 @@ Service service = new LoggingDecorator(
 ## 📚 Real Examples
 
 - **Java I/O:** `BufferedInputStream`, `GZIPInputStream` decorate `InputStream`
+
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Too many layers**
+```java
+// ❌ 10 layers deep
+Service service = new LoggingDecorator(
+    new CachingDecorator(
+        new AuthDecorator(
+            new RateLimitDecorator(
+                new RetryDecorator(
+                    // ... 5 more layers
+                )
+            )
+        )
+    )
+);
+// Result: Stack traces 100 lines deep, debugging nightmare
+
+// ✅ Use aspect-oriented programming (Spring AOP)
+@Logging @Caching @Auth
+public class Service { }
+```
+
+**Pitfall 2: Order dependency**
+```java
+// ❌ Auth must be before logging, wrong order breaks
+Service service = new LoggingDecorator(  // Logs even unauthorized!
+    new AuthDecorator(actualService)
+);
+
+// ✅ Document required order or enforce programmatically
+Service service = new AuthDecorator(  // Auth first
+    new LoggingDecorator(actualService)  // Then log
+);
+```
+
+**Pitfall 3: Not delegating correctly**
+```java
+// ❌ Decorator forgets to call wrapped
+class CachingDecorator implements Service {
+    public String execute() {
+        if (cache.has(key)) return cache.get(key);
+        // Forgot to call wrapped.execute()!
+        return null;
+    }
+}
+
+// ✅ Always delegate
+public String execute() {
+    if (cache.has(key)) return cache.get(key);
+    String result = wrapped.execute();
+    cache.put(key, result);
+    return result;
+}
+```
+
+---
+
+## 🛑 When NOT to Use Decorator
+
+- ❌ Complex order dependencies (use AOP)
+- ❌ Many decorators (hard to manage)
+- ❌ When framework provides (Spring @Transactional, @Cacheable)
+- ✅ DO use: Adding behavior without modifying code, composable concerns
+
+---
 - **Spring:** `@Transactional`, `@Cacheable` decorate methods
 - **Web:** Add compression, encryption, logging to HTTP responses
 

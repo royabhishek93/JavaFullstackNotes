@@ -37,6 +37,77 @@ Transaction A locks Table 1, waits for Table 2. Transaction B locks Table 2, wai
 
 "Prevent deadlock: 1) Always acquire locks in same order, 2) Use short transactions, 3) Set timeout and retry with exponential backoff, 4) Use READ_COMMITTED isolation if possible."
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Inconsistent lock ordering**
+```java
+// ❌ Transaction A
+@Transactional
+public void transferAtoB() {
+	accountRepo.lock(accountA);
+	accountRepo.lock(accountB);  // A → B order
+}
+
+// ❌ Transaction B
+@Transactional
+public void transferBtoA() {
+	accountRepo.lock(accountB);
+	accountRepo.lock(accountA);  // B → A order - DEADLOCK!
+}
+
+// ✅ Always same order (sort by ID)
+public void transfer(Account from, Account to) {
+	Account first = from.getId() < to.getId() ? from : to;
+	Account second = from.getId() < to.getId() ? to : from;
+	accountRepo.lock(first);
+	accountRepo.lock(second);
+}
+```
+
+**Pitfall 2: Not handling deadlock with retry**
+```java
+// ❌ Deadlock causes failure, no retry
+@Transactional
+public void processOrder(Order order) {
+	orderRepo.save(order);  // Deadlock → exception → fail
+}
+
+// ✅ Retry with backoff
+@Retryable(value = DeadlockLoserDataAccessException.class, maxAttempts = 3, backoff = @Backoff(delay = 100))
+@Transactional
+public void processOrder(Order order) {
+	orderRepo.save(order);
+}
+```
+
+**Pitfall 3: Long transactions increase deadlock chance**
+```java
+// ❌ Transaction holds locks for 10 seconds
+@Transactional
+public void generateReport() {
+	List<Order> orders = orderRepo.findAll();  // Locks rows
+	// 10 seconds of processing
+	// Other transactions waiting → deadlock risk
+}
+
+// ✅ Short transaction
+public void generateReport() {
+	List<Order> orders = readOrders();  // 100ms transaction
+	processReport(orders);  // No locks held
+}
+```
+
+---
+
+## 🛑 When Deadlocks Are Hard to Avoid
+
+- ❌ Complex multi-table updates with unpredictable order
+- ❌ High concurrency + SERIALIZABLE isolation
+- ❌ Application doesn't control lock order (third-party library)
+- ✅ **Solution**: Lock ordering + timeout + retry with exponential backoff
+
+---
+
 ---
 
 **Last Updated:** February 22, 2026  

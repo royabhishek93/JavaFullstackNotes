@@ -149,6 +149,86 @@ List<Order> expensive = orders.parallelStream()
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using parallel streams for I/O operations**
+```java
+// ❌ Parallel doesn't help I/O - actually slower!
+list.parallelStream()
+    .forEach(item -> database.save(item));  // DB bottleneck, not CPU
+
+// ✅ Use sequential for I/O
+list.stream().forEach(item -> database.save(item));
+```
+
+**Pitfall 2: Shared mutable state in parallel operations**
+```java
+List<String> results = new ArrayList<>();  // ❌ Not thread-safe!
+list.parallelStream()
+    .forEach(item -> results.add(item.toUpperCase()));  // Race condition!
+
+// ✅ Use proper collector
+List<String> results = list.parallelStream()
+    .map(String::toUpperCase)
+    .collect(Collectors.toList());  // Thread-safe collector
+```
+
+**Pitfall 3: Using parallel for small datasets**
+```java
+// ❌ Overhead > benefit for < 1000 elements
+List.of(1, 2, 3, 4, 5).parallelStream().filter(...);  // Slower than sequential!
+
+// ✅ Use parallel only for large datasets
+if (list.size() > 10000) {
+    list.parallelStream()...
+} else {
+    list.stream()...
+}
+```
+
+**Pitfall 4: Order-dependent operations in parallel**
+```java
+// ❌ Order not guaranteed in parallel
+list.parallelStream().forEach(System.out::println);  // Random order!
+
+// ✅ Use forEachOrdered() if order matters
+list.parallelStream().forEachOrdered(System.out::println);
+// Or just use sequential: list.stream().forEach(...)
+```
+
+**Pitfall 5: Using non-thread-safe collectors**
+```java
+// ❌ HashMap not thread-safe
+Map<String, Integer> map = list.parallelStream()
+    .collect(HashMap::new, (m, s) -> m.put(s, s.length()), HashMap::putAll);
+
+// ✅ Use Collectors.toMap() or ConcurrentHashMap
+Map<String, Integer> map = list.parallelStream()
+    .collect(Collectors.toMap(s -> s, String::length));
+```
+
+**Pitfall 6: Blocking operations in parallel stream**
+```java
+// ❌ Thread.sleep() blocks ForkJoinPool threads
+list.parallelStream().forEach(item -> {
+    Thread.sleep(1000);  // Blocks thread!
+    process(item);
+});
+```
+
+---
+
+## 🛑 When NOT to Use Parallel Streams
+
+- ❌ Small datasets (< 1000 elements)
+- ❌ I/O-bound operations (DB, file, network)
+- ❌ Operations with locks/synchronization
+- ❌ Order-dependent logic
+- ❌ Complex stateful operations
+- ✅ DO use: CPU-intensive calculations on large datasets (> 10k), pure functions, stateless operations
+
+---
+
 ## ➡️ Bonus Follow-ups
 
 1. **"When is parallel SLOWER?"** → Small datasets, I/O operations, complex side effects

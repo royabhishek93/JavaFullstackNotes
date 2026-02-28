@@ -55,5 +55,40 @@ java \
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Tuning without baseline**
+```text
+// ❌ Changing GC flags blindly
+
+// ✅ Measure current GC pause + throughput first
+```
+
+**Pitfall 2: Oversizing heap**
+```text
+// ❌ Huge heap → long GC pauses
+-Xms32g -Xmx32g
+
+// ✅ Right-size heap based on usage
+```
+
+**Pitfall 3: Using dev settings in prod**
+```text
+// ❌ Small heap from local dev
+-Xmx512m
+
+// ✅ Production-specific sizing
+```
+
+---
+
+## 🛑 When NOT to Tune JVM Flags
+
+- ❌ Before identifying bottleneck (CPU, I/O, DB?)
+- ❌ Without monitoring GC logs
+- ✅ DO use: After profiling confirms GC is the bottleneck
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q45_profiling_tools.md](Q45_profiling_tools.md)**

@@ -55,5 +55,38 @@ public void stringConcatenation() {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Profiling in debug mode**
+```text
+// ❌ Debug build alters performance
+
+// ✅ Profile release-like builds
+```
+
+**Pitfall 2: Benchmarking without warm-up**
+```text
+// ❌ JIT not warmed, results misleading
+
+// ✅ Use JMH (handles warm-up + forks)
+```
+
+**Pitfall 3: Using heavy profilers in prod**
+```text
+// ❌ Instrumentation profilers add big overhead
+
+// ✅ Use sampling profilers (async-profiler, JFR)
+```
+
+---
+
+## 🛑 When NOT to Benchmark
+
+- ❌ Single run with no warm-up
+- ❌ Microbenchmarks for I/O-heavy code
+- ✅ DO use: JMH for CPU-bound comparisons
+
+---
+
 **Last Updated:** February 22, 2026  
 **Previous: [Q44_jvm_tuning.md](Q44_jvm_tuning.md) | Next: [../Testing/Q46_test_types.md](../Testing/Q46_test_types.md)**

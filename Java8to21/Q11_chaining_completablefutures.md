@@ -231,4 +231,77 @@ CompletableFuture.anyOf(fetch1, fetch2, fetch3)
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using thenApply instead of thenCompose (nested futures)**
+
+❌ **Wrong approach:**
+```java
+// ❌ WRONG: thenApply returns CompletableFuture<CompletableFuture<Payment>>
+CompletableFuture<CompletableFuture<Payment>> nested = 
+    userService.fetchUser(1)
+        .thenApply(user -> paymentService.fetchPayments(user.getId()));
+
+// Now you need double get()
+Payment payment = nested.get().get();  // ← UGLY!
+```
+**Why it fails:** You end up with nested futures - clunky and error-prone.
+
+✅ **Right approach:**
+```java
+// ✅ RIGHT: thenCompose flattens the futures
+CompletableFuture<Payment> flat = 
+    userService.fetchUser(1)
+        .thenCompose(user -> paymentService.fetchPayments(user.getId()));
+
+// Single get()
+Payment payment = flat.get();  // ✅ Clean
+```
+
+---
+
+**Pitfall 2: Losing intermediate values in long chains**
+
+❌ **Wrong approach:**
+```java
+// You lose the user object!
+CompletableFuture<UserProfile> result = 
+    userService.fetchUser(1)
+        .thenCompose(user -> 
+            paymentService.fetchPayments(user.getId())
+        )
+        .thenCompose(payments -> 
+            // user is gone! Can't reference it anymore
+            prefsService.fetchPreferences(???)  // ❌ What user ID?
+        );
+```
+**Why it fails:** Each step only sees the result of the previous step.
+
+✅ **Right approach:**
+```java
+// Use variable binding in each step
+CompletableFuture<UserProfile> result = 
+    userService.fetchUser(1)
+        .thenCompose(user -> 
+            paymentService.fetchPayments(user.getId())
+                .thenCompose(payments ->
+                    prefsService.fetchPreferences(user.getId())  // Still have user!
+                        .thenApply(prefs -> 
+                            new UserProfile(user, payments, prefs)
+                        )
+                )
+        );
+```
+
+---
+
+## 🛑 When NOT to Chain CompletableFutures
+
+1. **When operations are independent** → Use `allOf()` instead
+2. **When you have many steps (5+)** → Code becomes hard to read
+3. **When you need to reference first value multiple times** → Extract to variable first
+4. **For simple transformations** → Use `thenApply()` directly
+
+---
+
 **Next:** Study Q12 on exception handling in async operations

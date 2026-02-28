@@ -247,4 +247,78 @@ CompletableFuture.failedFuture(new Exception())
 
 ---
 
-**Java8to21 Complete!** You've covered all 12 Modern Java interview questions. Next: Study Spring Bean Scopes (SpringBoot folder)
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Swallowing exceptions with exceptionally(e -> null)**
+
+❌ **Wrong approach:**
+```java
+CompletableFuture<User> future = userService.fetchUser(1)
+    .exceptionally(e -> null);  // ❌ Swallows exception, returns null
+
+User user = future.get();
+if (user != null) {
+    String name = user.getName();  // ❌ What if user is null?
+}
+
+// Exception is gone - you don't know what failed!
+```
+**Why it fails:** Exception is silent. Later code gets null and might crash with NullPointerException instead of actual error.
+
+✅ **Right approach:**
+```java
+CompletableFuture<User> future = userService.fetchUser(1)
+    .exceptionally(e -> {
+        log.error("Failed to fetch user", e);
+        return new User(0, "Unknown");  // Return sensible default, not null
+    });
+
+User user = future.get();
+String name = user.getName();  // Safe - always has value
+```
+
+---
+
+**Pitfall 2: Blocking in exception handler**
+
+❌ **Wrong approach:**
+```java
+future.exceptionally(e -> {
+    try {
+        // ❌ BLOCKING in exception handler - defeats async!
+        return userService.fetchUserFromBackup(1).get();  // get() blocks!
+    } catch (Exception ex) {
+        return null;
+    }
+});
+
+// You just turned async operation into sync again
+```
+**Why it fails:** Blocks the executor thread, preventing it from handling other async work.
+
+✅ **Right approach:**
+```java
+// Chain exceptions, don't block in handlers
+future.exceptionally(e -> {
+    log.warn("Primary failed, providing default");
+    return new User(0, "Unknown");  // Return immediately, no blocking
+});
+
+// OR use thenCompose for async fallback:
+future.thenCompose(user -> 
+    userService.fetchUserFromBackup(1)  // Async call, returns CompletableFuture
+);
+```
+
+---
+
+## 🛑 When NOT to Ignore Exceptions
+
+1. **Never silently return null from exceptionally()** → Always log or return default
+2. **Don't swallow exceptions in thenAccept()** → Use .exceptionally() on the future
+3. **Don't block in exception handlers** → Chain async calls instead
+4. **Don't assume exceptions will propagate** → Always add exception handlers to chains
+
+---
+
+**Java8to21 Complete!** You've covered all 12 Modern Java interview questions. Next: Study Spring Bean Scopes (Spring folder)

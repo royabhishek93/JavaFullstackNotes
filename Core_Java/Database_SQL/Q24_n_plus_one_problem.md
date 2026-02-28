@@ -50,5 +50,90 @@ List<Order> orders = orderRepository.findByUserId(userId);  // 1 query
 
 ---
 
+## 🔗 Related Questions
+
+- [Q25_isolation_levels.md](Q25_isolation_levels.md) - Transaction isolation levels
+
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Not detecting N+1 in development**
+```java
+// ❌ Looks fine in code
+User user = userRepository.findById(123);
+for (Order order : user.getOrders()) {  // N+1 happens here!
+    process(order);
+}
+// Only 1 order in dev DB → seems fast
+// Production: 1000 orders → 1001 queries!
+
+// ✅ Enable query logging in application.properties
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+```
+
+**Pitfall 2: Using FetchType.EAGER everywhere**
+```java
+// ❌ Always fetches orders, even when not needed
+@OneToMany(fetch = FetchType.EAGER)
+private List<Order> orders;
+
+User user = userRepository.findById(123);  // Fetches orders too!
+// 99% of time orders not needed → wasted query
+
+// ✅ Use LAZY + explicit JOIN FETCH when needed
+@OneToMany(fetch = FetchType.LAZY)
+private List<Order> orders;
+
+@Query("SELECT u FROM User u LEFT JOIN FETCH u.orders WHERE u.id = ?1")
+User findWithOrders(Long id);  // Only when orders needed
+```
+
+**Pitfall 3: JOIN FETCH with pagination**
+```java
+// ❌ In-memory pagination after JOIN (slow!)
+@Query("SELECT u FROM User u LEFT JOIN FETCH u.orders")
+Page<User> findAll(Pageable pageable);  // WARNING: Hibernate loads ALL users into memory!
+
+// ✅ Use separate query + batch fetch
+@Query("SELECT u FROM User u")
+Page<User> findAll(Pageable pageable);
+
+@BatchSize(size = 25)
+@OneToMany
+private List<Order> orders;  // Fetches in batches when accessed
+```
+
+**Pitfall 4: N+1 in Streams**
+```java
+// ❌ N+1 hidden in stream
+users.stream()
+    .map(user -> user.getOrders().size())  // N queries!
+    .collect(Collectors.toList());
+
+// ✅ Fetch all data first
+List<User> usersWithOrders = userRepository.findAllWithOrders();
+usersWithOrders.stream()
+    .map(user -> user.getOrders().size())
+    .collect(Collectors.toList());
+```
+
+---
+
+## 🛑 When NOT to Use JOIN FETCH
+
+- ❌ Pagination (causes in-memory pagination)
+- ❌ Multiple collections (cartesian product explosion)
+- ❌ When child data not always needed (use LAZY)
+- ✅ DO use: Single collection, data always needed together
+
+---
+
+## 🔗 Related Questions
+- [Q28_connection_pooling.md](Q28_connection_pooling.md) - Connection pool tuning
+- [../../System_Design/Q17_database_scaling.md](../../System_Design/Q17_database_scaling.md) - Database read replicas
+- [../Stream_API/Q14_employee_stream_operations.md](../Stream_API/Q14_employee_stream_operations.md) - In-memory data processing alternative
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q25_isolation_levels.md](Q25_isolation_levels.md)**

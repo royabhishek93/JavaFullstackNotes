@@ -223,4 +223,80 @@ Java 16+: Standard feature
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Indentation confusion - leading spaces included when you don't expect**
+
+❌ **Wrong approach:**
+```java
+String xml = """
+     <root>
+       <child>value</child>
+     </root>
+    """;
+
+// ❌ Includes those leading spaces!
+// Result: "     <root>\n       <child>value</child>\n     </root>"
+// Breaks XML parsing if indentation-sensitive
+```
+**Why it fails:** Text blocks trim common leading whitespace across ALL lines, but inconsistent indentation fails.
+
+✅ **Right approach:**
+```java
+// Align closing triple-quotes with content
+String xml = """
+    <root>
+      <child>value</child>
+    </root>
+    """;
+// Result: "<root>\n  <child>value</child>\n</root>"
+// Or use consistent indentation throughout
+```
+
+---
+
+**Pitfall 2: Trying to use text blocks for code templates (don't - leads to brittle strings)**
+
+❌ **Wrong approach:**
+```java
+String javaCode = """
+    public class %s {
+        private String name = "%s";
+        
+        public void doSomething() {
+            System.out.println(name);
+        }
+    }
+    """;
+
+// Using String.format() later - error-prone
+String classCode = String.format(javaCode, "MyClass", "test");
+// What if you forget a placeholder?
+```
+**Why it fails:** Generating code via string templates is brittle and hard to maintain.
+
+✅ **Right approach:**
+```java
+// For SQL: use prepared statements, not template strings
+String sql = """
+    SELECT * FROM users
+    WHERE id = ?
+    """;
+// Use binding, not string substitution
+
+// For code generation: use JavaPoet or similar tools
+// Don't treat code as plain text
+```
+
+---
+
+## 🛑 When NOT to Use Text Blocks
+
+1. **For single-line strings** → Use regular string literals
+2. **For code generation** → Use code generation libraries (JavaPoet)
+3. **For security-sensitive data** → Don't embed secrets in text blocks
+4. **In Java < 13** → Not available, use traditional concatenation
+
+---
+
 **Next:** Study Q10 on CompletableFuture for async operations

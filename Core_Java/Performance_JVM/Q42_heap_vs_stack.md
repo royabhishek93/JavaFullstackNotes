@@ -42,5 +42,40 @@ void method() {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Assuming objects live on stack**
+```java
+// ❌ Objects are always on heap
+User user = new User();  // Reference on stack, object on heap
+
+// ✅ Only primitives and references are on stack
+```
+
+**Pitfall 2: Increasing stack for deep recursion**
+```text
+// ❌ Masking recursion bug with large stack
+-Xss8m
+
+// ✅ Fix recursion or use iterative approach
+```
+
+**Pitfall 3: Forgetting stack is per-thread**
+```text
+// ❌ 1000 threads * 2MB stack = 2GB memory
+
+// ✅ Use thread pools + smaller stacks if needed
+```
+
+---
+
+## 🛑 When NOT to Increase Stack Size
+
+- ❌ High thread count apps (memory blow-up)
+- ❌ To hide recursion bugs
+- ✅ DO use: Legit deep recursion with limited thread count
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q43_memory_leak_detection.md](Q43_memory_leak_detection.md)**

@@ -53,5 +53,40 @@ class CorsConfig {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Allowing all origins**
+```java
+// ❌ Allows any website to call API
+registry.addMapping("/api/**").allowedOrigins("*");
+
+// ✅ Whitelist trusted origins
+registry.addMapping("/api/**").allowedOrigins("https://frontend.com");
+```
+
+**Pitfall 2: Missing rate limiting**
+```text
+// ❌ Unlimited requests → brute force or abuse
+
+// ✅ Rate limit (e.g., 100 req/min per IP)
+```
+
+**Pitfall 3: No HTTPS enforcement**
+```text
+// ❌ Tokens sent over HTTP
+
+// ✅ Redirect HTTP to HTTPS + HSTS
+```
+
+---
+
+## 🛑 When NOT to Allow Credentials in CORS
+
+- ❌ Wildcard origins (security risk)
+- ❌ Public APIs without cookies
+- ✅ DO use: Same-site auth cookies for trusted origins
+
+---
+
 **Last Updated:** February 22, 2026  
 **Previous: [Q39_pagination_filtering.md](Q39_pagination_filtering.md) | Next: [../Performance_JVM/Q41_garbage_collection_types.md](../Performance_JVM/Q41_garbage_collection_types.md)**

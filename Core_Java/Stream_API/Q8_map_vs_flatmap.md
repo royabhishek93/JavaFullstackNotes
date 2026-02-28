@@ -113,6 +113,49 @@ List<String> allCategories = products.stream()
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using map() when you need flatMap()**
+```java
+List<List<String>> nested = List.of(List.of("a", "b"), List.of("c"));
+Stream<Stream<String>> wrong = nested.stream().map(list -> list.stream());  // ❌ Nested!
+Stream<String> correct = nested.stream().flatMap(list -> list.stream());  // ✅ Flat
+```
+
+**Pitfall 2: Forgetting to collect() the flattened stream**
+```java
+Stream<String> stream = list.stream().flatMap(...);
+// ❌ Stream is lazy - nothing executed yet!
+List<String> result = stream.collect(Collectors.toList());  // ✅ Now executed
+```
+
+**Pitfall 3: Using flatMap() for simple transformations**
+```java
+// ❌ Overkill - map() is simpler
+list.stream().flatMap(s -> Stream.of(s.toUpperCase())).collect(...);
+// ✅ Just use map()
+list.stream().map(String::toUpperCase).collect(...);
+```
+
+**Pitfall 4: Not handling Optional in flatMap**
+```java
+// ❌ Returns Stream<Optional<User>>
+stream.map(id -> userRepository.findById(id));
+// ✅ Returns Stream<User> (empties removed)
+stream.flatMap(id -> userRepository.findById(id).stream());
+```
+
+---
+
+## 🛑 When NOT to Use flatMap()
+
+- ❌ Simple 1-to-1 transformations (use `map()` instead)
+- ❌ When you actually want nested structure
+- ❌ Debugging (harder to trace than map)
+- ✅ DO use: Flattening collections, Optional unwrapping, nested stream operations
+
+---
+
 ## ➡️ Bonus Follow-ups
 
 1. **"Can you use map() with flatMap()?"** → Yes, chain them: `.flatMap(...).map(...)`

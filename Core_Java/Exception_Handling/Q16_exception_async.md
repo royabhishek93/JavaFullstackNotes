@@ -201,6 +201,112 @@ public OrderConfirmation processOrder(Order order) {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Forgetting to handle CompletionException**
+```java
+// ❌ Catches wrong exception type!
+CompletableFuture.supplyAsync(() -> {
+    throw new IllegalArgumentException("Bad input");
+}).exceptionally(ex -> {
+    if (ex instanceof IllegalArgumentException) {  // NEVER matches!
+        // This block never executes
+    }
+    return null;
+});
+
+// ✅ CompletableFuture wraps in CompletionException
+.exceptionally(ex -> {
+    Throwable cause = ex.getCause();  // Real exception is the cause!
+    if (cause instanceof IllegalArgumentException) {
+        // Now it works
+    }
+    return null;
+});
+```
+
+**Pitfall 2: Not handling exceptions at all**
+```java
+// ❌ Exception silently swallowed!
+CompletableFuture.supplyAsync(() -> {
+    throw new RuntimeException("Failed");
+}).thenApply(result -> processResult(result));  // NEVER CALLED
+// No .exceptionally() = exception lost forever
+
+// ✅ Always add exception handler
+CompletableFuture.supplyAsync(() -> {
+    throw new RuntimeException("Failed");
+})
+.thenApply(result -> processResult(result))
+.exceptionally(ex -> {
+    logger.error("Processing failed", ex);
+    return defaultResult();
+});
+```
+
+**Pitfall 3: Blocking with .join() without handling exception**
+```java
+// ❌ CompletionException thrown to caller
+String result = CompletableFuture.supplyAsync(() -> {
+    throw new IOException("Network error");
+}).join();  // Throws CompletionException with IOException as cause
+
+// ✅ Handle before joining
+String result = CompletableFuture.supplyAsync(() -> {
+    throw new IOException("Network error");
+})
+.exceptionally(ex -> "fallback")
+.join();  // Safe - no exception
+```
+
+**Pitfall 4: Using .get() without timeout**
+```java
+// ❌ Can block forever!
+try {
+    String result = future.get();  // Infinite wait
+} catch (InterruptedException | ExecutionException e) {
+    // ...
+}
+
+// ✅ Always use timeout
+try {
+    String result = future.get(5, TimeUnit.SECONDS);
+} catch (TimeoutException e) {
+    future.cancel(true);  // Cancel on timeout
+} catch (InterruptedException | ExecutionException e) {
+    // Handle error
+}
+```
+
+**Pitfall 5: Exception in .whenComplete() propagates**
+```java
+// ❌ New exception replaces original!
+CompletableFuture.supplyAsync(() -> "data")
+    .whenComplete((result, ex) -> {
+        throw new RuntimeException("Logging failed");  // Replaces original exception!
+    });
+
+// ✅ Don't throw in whenComplete
+.whenComplete((result, ex) -> {
+    try {
+        logger.info("Result: " + result);
+    } catch (Exception loggingEx) {
+        // Swallow logging errors, don't propagate
+    }
+});
+```
+
+---
+
+## 🛑 When Async Exception Handling Gets Complex
+
+- ❌ Deep chains with multiple .exceptionally() (hard to debug)
+- ❌ Mixing sync and async exception handling (confusing)
+- ❌ Using async for CPU-bound work that can fail (overhead not worth it)
+- ✅ DO use: I/O operations, network calls, independent tasks that can fail
+
+---
+
 ## 🔗 Related Questions
 
 - **Q12:** Parallel Streams (similar async exception handling issues)

@@ -58,5 +58,40 @@ class RepositoryTest {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using latest Docker tag**
+```text
+// ❌ Unstable test environment
+new PostgreSQLContainer<>("postgres:latest");
+
+// ✅ Pin version
+new PostgreSQLContainer<>("postgres:14");
+```
+
+**Pitfall 2: Starting container per test method**
+```text
+// ❌ Very slow tests
+
+// ✅ Use static container for class-level reuse
+```
+
+**Pitfall 3: Using Testcontainers for unit tests**
+```text
+// ❌ Slow and unnecessary
+
+// ✅ Use for integration tests only
+```
+
+---
+
+## 🛑 When NOT to Use Testcontainers
+
+- ❌ Unit tests (too slow)
+- ❌ Environments without Docker (limitations)
+- ✅ DO use: Integration tests needing real infra
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q52_contract_testing.md](Q52_contract_testing.md)**

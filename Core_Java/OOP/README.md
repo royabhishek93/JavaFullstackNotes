@@ -9,6 +9,14 @@ Core OOP concepts: method overloading, method overriding, polymorphism, and enca
 | [method-overloading-interview.md](_InterviewGuides/method-overloading-interview.md) | 10 questions on ambiguous scenarios | 20-30 min |
 | [method-overriding-hiding-interview.md](_InterviewGuides/method-overriding-hiding-interview.md) | 10 questions on polymorphism & hiding | 25-35 min |
 
+## Key Questions
+
+| Q # | Topic | Frequency | File |
+|-----|-------|-----------|------|
+| Q11 | Reference type vs Object type in polymorphism | 78% | [Q11_runtime_polymorphism.md](Q11_runtime_polymorphism.md) |
+
+---
+
 ## Topics Covered
 
 ### Method Overloading

@@ -47,5 +47,94 @@ Should Flipkart be one big monolith or 100+ microservices?
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Premature microservices**
+```
+// ❌ 3-person startup with 20 microservices
+// Result: More time debugging network than building features
+
+// ✅ Start with modular monolith
+// Split to microservices when: >50 engineers, >100k QPS, independent scaling needs
+```
+
+**Pitfall 2: Distributed transactions**
+```java
+// ❌ Trying to use @Transactional across microservices
+@Transactional  // Does NOT work across services!
+public void placeOrder(Order order) {
+    paymentService.charge(order);  // Service 1
+    inventoryService.reserve(order);  // Service 2 (different DB!)
+}
+// If inventory fails, payment already charged!
+
+// ✅ Use saga pattern (compensating transactions)
+public void placeOrder(Order order) {
+    try {
+        paymentService.charge(order);
+        inventoryService.reserve(order);
+    } catch (InventoryException e) {
+        paymentService.refund(order);  // Compensate!
+    }
+}
+```
+
+**Pitfall 3: Shared database across microservices**
+```
+// ❌ Multiple services write to same database
+OrderService → [shared DB] ← PaymentService
+// Defeats purpose of microservices!
+
+// ✅ Each service owns its data
+OrderService → [Order DB]
+PaymentService → [Payment DB]
+// Communicate via API or events
+```
+
+**Pitfall 4: Too many network calls**
+```java
+// ❌ N+1 problem across services
+for (Order order : orders) {
+    User user = userService.getUser(order.getUserId());  // 100ms per call!
+}
+// 100 orders = 100 network calls = 10 seconds!
+
+// ✅ Batch API or denormalize data
+List<User> users = userService.getUsers(orderUserIds);  // 1 call
+// Or store user name in order (denormalization)
+```
+
+**Pitfall 5: No distributed tracing**
+```
+// ❌ Request fails, no idea which of 10 services crashed
+
+// ✅ Use distributed tracing (Zipkin, Jaeger)
+Request ID: abc123
+  → OrderService (50ms)
+  → PaymentService (200ms) ← SLOW!
+  → InventoryService (30ms)
+```
+
+---
+
+## 🛑 When NOT to Use Microservices
+
+- ❌ Startup with <10 engineers (complexity not worth it)
+- ❌ QPS <10k (monolith handles easily)
+- ❌ Tight coupling between domains (can't split cleanly)
+- ❌ Team not experienced with distributed systems
+- ✅ DO use: Large teams, independent scaling, polyglot tech stack
+
+---
+
+## 🔗 Related Questions
+
+- [Q19_load_balancing.md](Q19_load_balancing.md) - Load balancing microservices
+- [Q22_message_queues.md](Q22_message_queues.md) - Inter-service communication
+- [Q21_cap_theorem.md](Q21_cap_theorem.md) - Distributed system trade-offs
+- [../API_Design/Q37_api_versioning.md](../API_Design/Q37_api_versioning.md) - Versioning microservice APIs
+
+---
+
 **Last Updated:** February 22, 2026  
 **Next: [Q21_cap_theorem.md](Q21_cap_theorem.md)**

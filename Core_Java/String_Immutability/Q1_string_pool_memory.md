@@ -53,4 +53,64 @@ String b = "hello";  // Time 1: Check if "hello" in pool → YES → reuse
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Using `new String()` unnecessarily**
+```java
+String s = new String("hello");  // ❌ Creates 2 objects (pool + heap)
+String s = "hello";              // ✅ Creates 1 object (pool only)
+```
+
+**Pitfall 2: Comparing strings with `==` instead of `.equals()`**
+```java
+String a = "hi";
+String b = new String("hi");
+if (a == b) { }  // ❌ Always false (different memory locations)
+if (a.equals(b)) { }  // ✅ Compares content
+```
+
+**Pitfall 3: String concatenation in loops**
+```java
+// ❌ Creates N new String objects on heap
+String result = "";
+for (int i = 0; i < 1000; i++) {
+    result += i;  // New String each iteration!
+}
+
+// ✅ Use StringBuilder for loops
+StringBuilder sb = new StringBuilder();
+for (int i = 0; i < 1000; i++) {
+    sb.append(i);
+}
+String result = sb.toString();
+```
+
+**Pitfall 4: Misunderstanding `.intern()` performance**
+```java
+// ❌ Overusing intern() can slow down application
+for (String s : millionsOfStrings) {
+    s.intern();  // Hash lookup + pool insertion overhead
+}
+// Use intern() only for limited set of strings (config keys, etc.)
+```
+
+---
+
+## 🛑 When NOT to Worry About String Pool
+
+- ❌ Short-lived strings in local scope
+- ❌ Strings from user input (use directly)
+- ❌ Dynamic runtime strings (API responses, DB results)
+- ✅ DO care: Configuration keys, enum-like values, repeated constants
+
+---
+
+## 🔗 Related Questions
+
+- [Q2_string_concatenation.md](Q2_string_concatenation.md) - Why `c == d` returns false
+- [Q3_string_intern_method.md](Q3_string_intern_method.md) - When to use `.intern()`
+- [Q5_immutable_class_requirements.md](Q5_immutable_class_requirements.md) - Building immutable classes
+
+---
+
 **Next:** Study Q2 to understand what happens with concatenation

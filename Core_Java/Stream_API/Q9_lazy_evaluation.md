@@ -143,6 +143,64 @@ Product cheapest = products.stream()
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Thinking intermediate operations execute immediately**
+```java
+stream = list.stream()
+    .filter(x -> { System.out.println("Filter"); return x > 5; })
+    .map(x -> { System.out.println("Map"); return x * 2; });
+// ❌ No output yet! Nothing executed until terminal operation
+stream.collect(Collectors.toList());  // ✅ NOW it executes
+```
+
+**Pitfall 2: Reusing a stream after terminal operation**
+```java
+Stream<String> stream = list.stream().filter(...);
+stream.count();  // ✅ Works
+stream.collect(Collectors.toList());  // ❌ IllegalStateException: stream already operated upon!
+```
+
+**Pitfall 3: Side effects in intermediate operations**
+```java
+List<Integer> results = new ArrayList<>();
+list.stream()
+    .filter(x -> {
+        results.add(x);  // ❌ BAD! Side effect in filter
+        return x > 5;
+    });
+// Results list may be incomplete due to lazy evaluation
+```
+
+**Pitfall 4: Using peek() for business logic**
+```java
+// ❌ peek() is for debugging, not guaranteed to execute
+list.stream()
+    .peek(x -> saveToDatabase(x))  // ❌ Might not execute!
+    .filter(...);
+
+// ✅ Use forEach() or map() for side effects
+list.stream().filter(...).forEach(x -> saveToDatabase(x));
+```
+
+**Pitfall 5: Expecting order without sorted()**
+```java
+Set<String> set = new HashSet<>();
+set.stream().forEach(System.out::println);  // ❌ Order not guaranteed!
+set.stream().sorted().forEach(System.out::println);  // ✅ Ordered
+```
+
+---
+
+## 🛑 When Lazy Evaluation Hurts
+
+- ❌ Short streams (< 10 elements) - overhead not worth it
+- ❌ Need all elements processed (eager collection better)
+- ❌ Debugging intermediate steps (hard to trace)
+- ✅ DO use: Large datasets, short-circuit operations (findFirst, anyMatch), chained transformations
+
+---
+
 ## ➡️ Bonus Follow-ups
 
 1. **"What's the difference between lazy and eager evaluation?"** → Lazy: execute on-demand. Eager: execute immediately.

@@ -145,6 +145,98 @@ public Payment processOrder(Order order) {  // No throws!
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Catching Exception instead of specific exceptions**
+```java
+try {
+    processPayment();
+} catch (Exception e) {  // ❌ Too broad - catches everything!
+    log.error("Error");  // Which error? NPE? DB timeout? Network?
+}
+
+// ✅ Catch specific exceptions
+try {
+    processPayment();
+} catch (PaymentFailedException e) {
+    // Handle payment failure
+} catch (NetworkException e) {
+    // Handle network issue
+}
+```
+
+**Pitfall 2: Swallowing exceptions**
+```java
+try {
+    database.connect();
+} catch (SQLException e) {
+    // ❌ Silent failure - no one knows it failed!
+}
+
+// ✅ At minimum, log it
+try {
+    database.connect();
+} catch (SQLException e) {
+    log.error("DB connection failed", e);
+    throw new RuntimeException("Cannot connect to DB", e);
+}
+```
+
+**Pitfall 3: Using exceptions for control flow**
+```java
+// ❌ Exceptions are expensive!
+try {
+    return map.get(key);
+} catch (NullPointerException e) {
+    return defaultValue;  // Bad pattern!
+}
+
+// ✅ Use proper null checks
+return map.getOrDefault(key, defaultValue);
+```
+
+**Pitfall 4: Losing original exception**
+```java
+try {
+    processData();
+} catch (IOException e) {
+    throw new RuntimeException("Failed");  // ❌ Lost cause!
+}
+
+// ✅ Wrap with cause
+try {
+    processData();
+} catch (IOException e) {
+    throw new RuntimeException("Failed", e);  // Preserves stack trace
+}
+```
+
+**Pitfall 5: Declaring too many checked exceptions**
+```java
+public void process() throws IOException, SQLException, TimeoutException,
+    ValidationException, ParseException { }  // ❌ Brittle API!
+
+// ✅ Wrap as unchecked
+public void process() {  // Clean API
+    try {
+        // operations
+    } catch (Exception e) {
+        throw new ProcessingException("Failed to process", e);
+    }
+}
+```
+
+---
+
+## 🛑 When NOT to Use Checked Exceptions
+
+- ❌ Programming errors (null pointer, illegal argument)
+- ❌ Runtime configuration errors (missing file, wrong format)
+- ❌ Most modern APIs (prefer unchecked)
+- ✅ DO use checked: Only for truly recoverable conditions caller MUST handle (rare)
+
+---
+
 ## ➡️ Bonus Follow-ups
 
 1. **"Should you create custom checked exceptions?"** → Rarely. Most APIs use unchecked now (Spring, Kafka, etc.)

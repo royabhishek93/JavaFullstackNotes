@@ -221,6 +221,104 @@ try (CacheConnection cache = new CacheConnection()) {
 
 ---
 
+## ⚠️ Common Pitfalls
+
+**Pitfall 1: Forgetting resources are closed in reverse order**
+```java
+// ❌ Wrong assumption about order
+try (FileOutputStream out = new FileOutputStream("log.txt");
+     BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out))) {
+    writer.write("test");
+}
+// Close order: writer first, then out (reverse of declaration)
+// If you assume out closes first, buffered data might be lost!
+
+// ✅ Always flush before relying on close order
+writer.flush();  // Ensure data written before close
+```
+
+**Pitfall 2: Ignoring suppressed exceptions**
+```java
+// ❌ Missing suppressed exception information
+try (MyResource r = new MyResource()) {
+    throw new IOException("Main exception");
+} catch (IOException e) {
+    log(e.getMessage());  // Only logs "Main exception"
+    // Lost: close() exception if it also threw!
+}
+
+// ✅ Check suppressed exceptions
+catch (IOException e) {
+    log(e.getMessage());
+    for (Throwable suppressed : e.getSuppressed()) {
+        log("Suppressed: " + suppressed.getMessage());
+    }
+}
+```
+
+**Pitfall 3: Null resources in try-with-resources**
+```java
+// ❌ NullPointerException if getResource() returns null!
+try (Resource r = getResource()) {
+    r.use();
+}
+
+// ✅ Null check before try-with-resources
+Resource r = getResource();
+if (r == null) throw new IllegalStateException("Resource unavailable");
+try (r) {
+    r.use();
+}
+```
+
+**Pitfall 4: Using try-with-resources for non-AutoCloseable**
+```java
+// ❌ Won't compile - Thread doesn't implement AutoCloseable
+try (Thread t = new Thread(() -> { })) {
+    t.start();
+}
+
+// ✅ Manual cleanup for non-AutoCloseable
+Thread t = new Thread(() -> { });
+try {
+    t.start();
+} finally {
+    t.interrupt();  // Manual cleanup
+}
+```
+
+**Pitfall 5: Expensive operations in close()**
+```java
+// ❌ Slow close() blocks exception handling
+class DatabaseConnection implements AutoCloseable {
+    public void close() {
+        database.flushAll();  // 5-second operation!
+    }
+}
+
+// ✅ Keep close() fast, do expensive cleanup explicitly
+class DatabaseConnection implements AutoCloseable {
+    public void flush() { database.flushAll(); }  // Explicit
+    public void close() { database.disconnect(); }  // Fast
+}
+
+try (DatabaseConnection conn = ...) {
+    conn.doWork();
+    conn.flush();  // Explicit expensive operation BEFORE close
+}
+```
+
+---
+
+## 🛑 When NOT to Use Try-with-Resources
+
+- ❌ When resource must stay open across methods (e.g., connection pools)
+- ❌ For resources shared across threads (close on wrong thread!)
+- ❌ When you need custom cleanup beyond close() (use finally)
+- ✅ DO use: Short-lived resources, file/network operations, JDBC queries
+
+---
+
 ## 🔗 Related Questions
 
 - **Q13:** Checked vs Unchecked (IOException handling)
