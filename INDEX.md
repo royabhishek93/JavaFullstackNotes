@@ -13,6 +13,7 @@
 - [**Core_Java/Exception_Handling/**](Core_Java/Exception_Handling/)
 - [**Core_Java/Database_SQL/**](Core_Java/Database_SQL/)
 - [**Core_Java/Design_Patterns/**](Core_Java/Design_Patterns/)
+- [**Core_Java/Garbage_Collection/**](Core_Java/Garbage_Collection/README.md) ⭐ NEW
 - [**Core_Java/Performance_JVM/**](Core_Java/Performance_JVM/)
 - [**Core_Java/Testing/**](Core_Java/Testing/)
 - [**Core_Java/Security/**](Core_Java/Security/)
@@ -35,13 +36,22 @@
 
 | Priority | Q | Question | Frequency | File |
 |----------|---|----------|-----------|------|
-| 🔥 CRITICAL | Q1 | String Pool | 75% | [Q1_string_pool_memory.md](Core_Java/String_Immutability/Q1_string_pool_memory.md) |
-| 🔥 CRITICAL | Q2 | String concatenation equality | 70% | [Q2_string_concatenation.md](Core_Java/String_Immutability/Q2_string_concatenation.md) |
-| 🔥 CRITICAL | Q5 | Immutable class requirements | 65% | [Q5_immutable_class_requirements.md](Core_Java/String_Immutability/Q5_immutable_class_requirements.md) |
-| ✅ IMPORTANT | Q3 | `intern()` usage | 50% | [Q3_string_intern_method.md](Core_Java/String_Immutability/Q3_string_intern_method.md) |
-| ✅ IMPORTANT | Q7 | Return mutable collections safely | 50% | [Q7_return_mutable_collections.md](Core_Java/String_Immutability/Q7_return_mutable_collections.md) |
-| ✅ IMPORTANT | Q6 | Defensive copying vs clone | 45% | [Q6_defensive_copying_vs_clone.md](Core_Java/String_Immutability/Q6_defensive_copying_vs_clone.md) |
-| 👍 GOOD TO KNOW | Q4 | String pool GC | 35% | [Q4_string_garbage_collection.md](Core_Java/String_Immutability/Q4_string_garbage_collection.md) |
+| 🔥 CRITICAL | Q1 | String Pool | 75% | [string-pool-vs-heap.md](Core_Java/String_Immutability/string-pool-vs-heap.md) |
+| 🔥 CRITICAL | Q2 | String concatenation equality | 70% | [string-concatenation.md](Core_Java/String_Immutability/string-concatenation.md) |
+| 🔥 CRITICAL | Q5 | Immutable class requirements | 65% | [immutable-class-requirements.md](Core_Java/String_Immutability/immutable-class-requirements.md) |
+| ✅ IMPORTANT | Q3 | `intern()` usage | 50% | [string-intern-method.md](Core_Java/String_Immutability/string-intern-method.md) |
+| ✅ IMPORTANT | Q7 | Return mutable collections safely | 50% | [return-mutable-collections.md](Core_Java/String_Immutability/return-mutable-collections.md) |
+| ✅ IMPORTANT | Q6 | Defensive copying vs clone | 45% | [defensive-copying-vs-clone.md](Core_Java/String_Immutability/defensive-copying-vs-clone.md) |
+| 👍 GOOD TO KNOW | Q4 | String pool GC | 35% | [string-garbage-collection.md](Core_Java/String_Immutability/string-garbage-collection.md) |
+
+#### Additional String & Immutability Topics
+
+| Priority | Topic | Frequency | File |
+|----------|-------|-----------|------|
+| ✅ IMPORTANT | StringBuilder vs StringBuffer | 60% | [stringbuilder-vs-stringbuffer.md](Core_Java/String_Immutability/stringbuilder-vs-stringbuffer.md) |
+| 👍 GOOD TO KNOW | Multiple variable declaration pitfall | 45% | [multiple-variable-declaration.md](Core_Java/String_Immutability/multiple-variable-declaration.md) |
+| 👍 GOOD TO KNOW | String concatenation + assignment | 40% | [string-concatenation-assignment.md](Core_Java/String_Immutability/string-concatenation-assignment.md) |
+| 👍 GOOD TO KNOW | Concat + assignment + substring | 38% | [string-concat-assignment-substring.md](Core_Java/String_Immutability/string-concat-assignment-substring.md) |
 
 ---
 
@@ -64,10 +74,17 @@
 
 | Priority | Q | Question | Frequency | File |
 |----------|---|----------|-----------|------|
-| 🔥 CRITICAL | Q13 | Checked vs unchecked exceptions | 85% | [Q13_checked_vs_unchecked.md](Core_Java/Exception_Handling/Q13_checked_vs_unchecked.md) |
-| 🔥 CRITICAL | Q14 | Custom exceptions | 82% | [Q14_custom_exceptions.md](Core_Java/Exception_Handling/Q14_custom_exceptions.md) |
-| ✅ IMPORTANT | Q15 | Try-with-resources vs try-catch-finally | 70% | [Q15_try_with_resources.md](Core_Java/Exception_Handling/Q15_try_with_resources.md) |
-| ✅ IMPORTANT | Q16 | Exception handling in async code | 65% | [Q16_exception_async.md](Core_Java/Exception_Handling/Q16_exception_async.md) |
+| 🔥 CRITICAL | Q13 | Checked vs unchecked exceptions | 85% | [checked-vs-unchecked-exceptions.md](Core_Java/Exception_Handling/checked-vs-unchecked-exceptions.md) |
+| 🔥 CRITICAL | Q14 | Custom exceptions | 82% | [custom-exceptions.md](Core_Java/Exception_Handling/custom-exceptions.md) |
+| ✅ IMPORTANT | Q15 | Try-with-resources vs try-catch-finally | 70% | [try-with-resources.md](Core_Java/Exception_Handling/try-with-resources.md) |
+| ✅ IMPORTANT | Q16 | Exception handling in async code | 65% | [exception-handling-async.md](Core_Java/Exception_Handling/exception-handling-async.md) |
+
+#### Additional Exception Handling Topics
+
+| Priority | Topic | Frequency | File |
+|----------|-------|-----------|------|
+| ✅ IMPORTANT | Try-catch-finally execution order | 62% | [try-catch-finally-execution-order.md](Core_Java/Exception_Handling/try-catch-finally-execution-order.md) |
+| 👍 GOOD TO KNOW | Exception propagation in method overriding | 50% | [exception-propagation-method-overriding.md](Core_Java/Exception_Handling/exception-propagation-method-overriding.md) |
 
 ---
 
@@ -75,13 +92,16 @@
 
 | Priority | Q | Question | Frequency | File |
 |----------|---|----------|-----------|------|
-| 🔥 CRITICAL | Q17 | Database scaling | 80% | [Q17_database_scaling.md](System_Design/Q17_database_scaling.md) |
-| 🔥 CRITICAL | Q18 | Caching strategies | 78% | [Q18_caching_strategies.md](System_Design/Q18_caching_strategies.md) |
-| 🔥 CRITICAL | Q19 | Load balancing | 76% | [Q19_load_balancing.md](System_Design/Q19_load_balancing.md) |
-| ✅ IMPORTANT | Q20 | Microservices vs monolith | 72% | [Q20_microservices_monolith.md](System_Design/Q20_microservices_monolith.md) |
-| ✅ IMPORTANT | Q23 | Saga pattern: Distributed transactions | 72% | [Q23_saga_pattern_distributed_transactions.md](System_Design/Q23_saga_pattern_distributed_transactions.md) |
-| 👍 GOOD TO KNOW | Q21 | CAP theorem | 55% | [Q21_cap_theorem.md](System_Design/Q21_cap_theorem.md) |
-| 👍 GOOD TO KNOW | Q22 | Message queues | 52% | [Q22_message_queues.md](System_Design/Q22_message_queues.md) |
+| 🔥 CRITICAL | Q17 | Database scaling | 80% | [database-scaling.md](System_Design/database-scaling.md) |
+| 🔥 CRITICAL | Q18 | Caching strategies | 78% | [caching-strategies.md](System_Design/caching-strategies.md) |
+| 🔥 CRITICAL | Q19 | Load balancing | 76% | [load-balancing-algorithms.md](System_Design/load-balancing-algorithms.md) |
+| ✅ IMPORTANT | Q20 | Microservices vs monolith | 72% | [microservices-vs-monolith.md](System_Design/microservices-vs-monolith.md) |
+| ✅ IMPORTANT | Q23 | Saga pattern: Distributed transactions | 72% | [distributed-transactions-saga-vs-2pc.md](System_Design/distributed-transactions-saga-vs-2pc.md) |
+| 👍 GOOD TO KNOW | Q21 | CAP theorem | 55% | [cap-theorem-trade-offs.md](System_Design/cap-theorem-trade-offs.md) |
+| 👍 GOOD TO KNOW | Q22 | Message queues | 52% | [message-queues.md](System_Design/message-queues.md) |
+| 🔥 CRITICAL | — | Cache invalidation patterns | 80% | [cache-invalidation-patterns.md](System_Design/cache-invalidation-patterns.md) |
+| ✅ IMPORTANT | — | Database sharding strategies | 70% | [database-sharding-strategies.md](System_Design/database-sharding-strategies.md) |
+| ✅ IMPORTANT | — | Multi-region geo distribution | 65% | [multi-region-geo-distribution.md](System_Design/multi-region-geo-distribution.md) |
 
 ---
 
@@ -89,12 +109,18 @@
 
 | Priority | Q | Question | Frequency | File |
 |----------|---|----------|-----------|------|
-| ✅ IMPORTANT | Q23 | ACID properties | 75% | [Q23_acid_properties.md](Core_Java/Database_SQL/Q23_acid_properties.md) |
-| ✅ IMPORTANT | Q24 | N+1 query problem | 73% | [Q24_n_plus_one_problem.md](Core_Java/Database_SQL/Q24_n_plus_one_problem.md) |
-| ✅ IMPORTANT | Q25 | Isolation levels | 68% | [Q25_isolation_levels.md](Core_Java/Database_SQL/Q25_isolation_levels.md) |
-| 👍 GOOD TO KNOW | Q26 | Deadlock handling | 58% | [Q26_deadlock_handling.md](Core_Java/Database_SQL/Q26_deadlock_handling.md) |
-| 👍 GOOD TO KNOW | Q27 | Optimistic vs pessimistic locking | 55% | [Q27_optimistic_locking.md](Core_Java/Database_SQL/Q27_optimistic_locking.md) |
-| 👍 GOOD TO KNOW | Q28 | Connection pooling | 48% | [Q28_connection_pooling.md](Core_Java/Database_SQL/Q28_connection_pooling.md) |
+| ✅ IMPORTANT | Q23 | ACID properties | 75% | [acid-properties.md](Core_Java/Database_SQL/acid-properties.md) |
+| ✅ IMPORTANT | Q24 | N+1 query problem | 73% | [n-plus-one-problem.md](Core_Java/Database_SQL/n-plus-one-problem.md) |
+| ✅ IMPORTANT | Q25 | Isolation levels | 68% | [isolation-levels.md](Core_Java/Database_SQL/isolation-levels.md) |
+| 👍 GOOD TO KNOW | Q26 | Deadlock handling | 58% | [deadlock-handling.md](Core_Java/Database_SQL/deadlock-handling.md) |
+| 👍 GOOD TO KNOW | Q27 | Optimistic vs pessimistic locking | 55% | [optimistic-locking.md](Core_Java/Database_SQL/optimistic-locking.md) |
+| 👍 GOOD TO KNOW | Q28 | Connection pooling | 48% | [connection-pooling.md](Core_Java/Database_SQL/connection-pooling.md) |
+
+#### Additional Database & SQL Topics
+
+| Priority | Topic | Frequency | File |
+|----------|-------|-----------|------|
+| 👍 GOOD TO KNOW | SQL query: Top 3 best-selling categories | 55% | [top-3-best-selling-categories.md](Core_Java/Database_SQL/top-3-best-selling-categories.md) |
 
 ---
 
@@ -133,6 +159,14 @@
 | 🔵 ADVANCED | Q44 | JVM tuning | 45% | [Q44_jvm_tuning.md](Core_Java/Performance_JVM/Q44_jvm_tuning.md) |
 | 🔵 ADVANCED | Q43 | Memory leak detection | 42% | [Q43_memory_leak_detection.md](Core_Java/Performance_JVM/Q43_memory_leak_detection.md) |
 | 🔵 ADVANCED | Q45 | Profiling tools | 40% | [Q45_profiling_tools.md](Core_Java/Performance_JVM/Q45_profiling_tools.md) |
+
+#### Additional Performance & JVM Topics
+
+| Priority | Topic | Frequency | File |
+|----------|-------|-----------|------|
+| 🔵 ADVANCED | Q46 | Production debugging OOM | 48% | [Q46_production_debugging_oom.md](Core_Java/Performance_JVM/Q46_production_debugging_oom.md) |
+| 🔵 ADVANCED | Q47 | Memory leak vs load diagnosis | 45% | [Q47_memory_leak_vs_load_diagnosis.md](Core_Java/Performance_JVM/Q47_memory_leak_vs_load_diagnosis.md) |
+| 🔵 ADVANCED | Q48 | Native exceptions JNI | 35% | [Q48_native_exceptions_jni.md](Core_Java/Performance_JVM/Q48_native_exceptions_jni.md) |
 
 ---
 
@@ -180,7 +214,13 @@
 
 | Priority | Q | Question | Frequency | File |
 |----------|---|----------|-----------|------|
-| 🔥 CRITICAL | Q11 | Runtime polymorphism: Reference vs object type | 78% | [Q11_runtime_polymorphism.md](Core_Java/OOP/Q11_runtime_polymorphism.md) |
+| 🔥 CRITICAL | Q11 | Runtime polymorphism: Reference vs object type | 78% | [runtime-polymorphism-reference-vs-object.md](Core_Java/OOP/runtime-polymorphism-reference-vs-object.md) |
+
+#### Additional OOP Topics
+
+| Priority | Topic | Frequency | File |
+|----------|-------|-----------|------|
+| 👍 GOOD TO KNOW | Abstract private method compilation error | 50% | [abstract-private-method-illegal.md](Core_Java/OOP/abstract-private-method-illegal.md) |
 
 ---
 
@@ -189,8 +229,25 @@
 | Priority | Topic | Frequency | File |
 |----------|-------|-----------|------|
 | 🔥 CRITICAL | Full concurrency guide | 60% | [_Guides/java-multithreading-concurrency-guide.md](Core_Java/Multithreading_Concurrency/_Guides/java-multithreading-concurrency-guide.md) |
-| ✅ IMPORTANT | Race condition (counter) | 55% | [Q1_race_condition_counter.md](Core_Java/Multithreading_Concurrency/Q1_race_condition_counter.md) |
+| ✅ IMPORTANT | Race conditions and visibility | 55% | [race-conditions-thread-problems.md](Core_Java/Multithreading_Concurrency/race-conditions-thread-problems.md) |
 | ✅ IMPORTANT | Volatile vs atomic | 50% | [_Guides/java-volatile-atomic-interview.md](Core_Java/Multithreading_Concurrency/_Guides/java-volatile-atomic-interview.md) |
+
+### Multithreading & Concurrency (Focused Notes)
+
+| Priority | Topic | Frequency | File |
+|----------|-------|-----------|------|
+| 🔥 CRITICAL | Virtual threads | 80% | [virtual-threads-basics.md](Core_Java/Multithreading_Concurrency/virtual-threads-basics.md) |
+| 🔥 CRITICAL | Executors and thread pools | 80% | [executors-thread-pools.md](Core_Java/Multithreading_Concurrency/executors-thread-pools.md) |
+| 🔥 CRITICAL | CompletableFuture basics | 75% | [asynchronous-programming-futures.md](Core_Java/Multithreading_Concurrency/asynchronous-programming-futures.md) |
+| ✅ IMPORTANT | Fork/Join and work stealing | 70% | [fork-join-framework.md](Core_Java/Multithreading_Concurrency/fork-join-framework.md) |
+| ✅ IMPORTANT | Concurrent collections | 65% | [concurrent-collections.md](Core_Java/Multithreading_Concurrency/concurrent-collections.md) |
+| ✅ IMPORTANT | Race conditions and visibility | 65% | [race-conditions-thread-problems.md](Core_Java/Multithreading_Concurrency/race-conditions-thread-problems.md) |
+| ✅ IMPORTANT | Synchronization | 65% | [thread-synchronization.md](Core_Java/Multithreading_Concurrency/thread-synchronization.md) |
+| 👍 GOOD TO KNOW | Producer-consumer pattern | 60% | [producer-consumer-pattern.md](Core_Java/Multithreading_Concurrency/producer-consumer-pattern.md) |
+| 👍 GOOD TO KNOW | Deadlock scenarios and prevention | 58% | [deadlock-scenarios-prevention.md](Core_Java/Multithreading_Concurrency/deadlock-scenarios-prevention.md) |
+| 👍 GOOD TO KNOW | ThreadLocal usage patterns | 55% | [threadlocal-usage-patterns.md](Core_Java/Multithreading_Concurrency/threadlocal-usage-patterns.md) |
+| 👍 GOOD TO KNOW | Synchronized methods thread blocking | 52% | [synchronized-methods-thread-blocking.md](Core_Java/Multithreading_Concurrency/synchronized-methods-thread-blocking.md) |
+| 🔵 ADVANCED | Project Loom overview | 70% | [project-loom-overview.md](Core_Java/Multithreading_Concurrency/project-loom-overview.md) |
 
 ---
 
@@ -203,6 +260,12 @@
 | ✅ IMPORTANT | Interceptor implementation | 70% | [Q1_interceptor_implementation.md](Spring/Q1_interceptor_implementation.md) |
 | ✅ IMPORTANT | AOP execution time logging | 65% | [Q4_aop_log_execution_time.md](Spring/Q4_aop_log_execution_time.md) |
 
+#### Additional Spring Topics
+
+| Priority | Topic | Frequency | File |
+|----------|-------|-----------|------|
+| 🔵 ADVANCED | WebFlux senior interview questions | 65% | [webflux-senior-interview-questions.md](Spring/webflux-senior-interview-questions.md) |
+
 ---
 
 ### Algorithms (LeetCode)
@@ -213,6 +276,8 @@
 | ✅ IMPORTANT | Count subarrays with K odd (1248) | — | [Q2_count_subarrays_k_odd.md](Algorithms_LeetCode/Q2_count_subarrays_k_odd.md) |
 | ✅ IMPORTANT | Move zeroes (283) | — | [Q3_move_zeroes.md](Algorithms_LeetCode/Q3_move_zeroes.md) |
 | ✅ IMPORTANT | Max vowels in substring (sliding window) | 65% | [Q4_max_vowels_in_substring_k.md](Algorithms_LeetCode/Q4_max_vowels_in_substring_k.md) |
+| ✅ IMPORTANT | Subset sum (1D DP) | 70% | [Q14_subset_sum_dp.md](Algorithms_LeetCode/Q14_subset_sum_dp.md) |
+| ✅ IMPORTANT | Partition equal subset sum (416) | 75% | [Q15_partition_equal_subset_sum.md](Algorithms_LeetCode/Q15_partition_equal_subset_sum.md) |
 
 ---
 
@@ -239,5 +304,5 @@
 
 ---
 
-**Last Updated:** February 28, 2026  
+**Last Updated:** March 5, 2026  
 **Interview Readiness:** Senior/Staff Engineer Level

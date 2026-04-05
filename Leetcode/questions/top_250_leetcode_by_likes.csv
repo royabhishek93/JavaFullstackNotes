@@ -1,0 +1,252 @@
+Q. No.,Name / Link,"Likes
+(L)",Difficulty
+1.0,Two Sum,67457.0,Easy
+3.0,Longest Substring Without Repeating Characters,44387.0,Medium
+53.0,Maximum Subarray,37477.0,Medium
+2.0,Add Two Numbers,36203.0,Medium
+42.0,Trapping Rain Water,36001.0,Hard
+15.0,3Sum,35098.0,Medium
+11.0,Container With Most Water,33756.0,Medium
+5.0,Longest Palindromic Substring,32300.0,Medium
+4.0,Median of Two Sorted Arrays,31766.0,Hard
+33.0,Search in Rotated Sorted Array,29666.0,Medium
+20.0,Valid Parentheses,27498.0,Easy
+21.0,Merge Two Sorted Lists,24692.0,Easy
+56.0,Merge Intervals,24415.0,Medium
+70.0,Climbing Stairs,24256.0,Easy
+22.0,Generate Parentheses,23085.0,Medium
+34.0,Find First and Last Position of Element in Sorted Array,23052.0,Medium
+49.0,Group Anagrams,21807.0,Medium
+55.0,Jump Game,21566.0,Medium
+75.0,Sort Colors,21350.0,Medium
+31.0,Next Permutation,21152.0,Medium
+23.0,Merge k Sorted Lists,21147.0,Hard
+19.0,Remove Nth Node From End of List,21057.0,Medium
+14.0,Longest Common Prefix,21008.0,Easy
+39.0,Combination Sum,20790.0,Medium
+17.0,Letter Combinations of a Phone Number,20747.0,Medium
+46.0,Permutations,20706.0,Medium
+76.0,Minimum Window Substring,19958.0,Hard
+48.0,Rotate Image,19690.0,Medium
+84.0,Largest Rectangle in Histogram,19402.0,Hard
+78.0,Subsets,19045.0,Medium
+26.0,Remove Duplicates from Sorted Array,18692.0,Easy
+88.0,Merge Sorted Array,18647.0,Easy
+35.0,Search Insert Position,18584.0,Easy
+98.0,Validate Binary Search Tree,18244.0,Medium
+41.0,First Missing Positive,18241.0,Hard
+62.0,Unique Paths,18227.0,Medium
+74.0,Search a 2D Matrix,17724.0,Medium
+79.0,Word Search,17524.0,Medium
+13.0,Roman to Integer,17434.0,Easy
+54.0,Spiral Matrix,17235.0,Medium
+73.0,Set Matrix Zeroes,16941.0,Medium
+45.0,Jump Game II,16339.0,Medium
+72.0,Edit Distance,16295.0,Medium
+9.0,Palindrome Number,15602.0,Easy
+25.0,Reverse Nodes in k-Group,15501.0,Hard
+7.0,Reverse Integer,15281.0,Medium
+994.0,Rotting Oranges,14939.0,Medium
+94.0,Binary Tree Inorder Traversal,14789.0,Easy
+51.0,N-Queens,14155.0,Hard
+416.0,Partition Equal Subset Sum,13745.0,Medium
+64.0,Minimum Path Sum,13584.0,Medium
+10.0,Regular Expression Matching,13224.0,Hard
+32.0,Longest Valid Parentheses,13218.0,Hard
+438.0,Find All Anagrams in a String,13123.0,Medium
+24.0,Swap Nodes in Pairs,13035.0,Medium
+92.0,Reverse Linked List II,12826.0,Medium
+424.0,Longest Repeating Character Replacement,12821.0,Medium
+91.0,Decode Ways,12804.0,Medium
+100.0,Same Tree,12774.0,Easy
+18.0,4Sum,12742.0,Medium
+36.0,Valid Sudoku,12366.0,Medium
+494.0,Target Sum,12292.0,Medium
+40.0,Combination Sum II,12143.0,Medium
+85.0,Maximal Rectangle,11994.0,Hard
+437.0,Path Sum III,11854.0,Medium
+57.0,Insert Interval,11725.0,Medium
+66.0,Plus One,11658.0,Easy
+50.0,"Pow(x, n)",11534.0,Medium
+16.0,3Sum Closest,11532.0,Medium
+410.0,Split Array Largest Sum,11209.0,Hard
+61.0,Rotate List,11130.0,Medium
+442.0,Find All Duplicates in an Array,11089.0,Medium
+37.0,Sudoku Solver,10985.0,Hard
+96.0,Unique Binary Search Trees,10965.0,Medium
+90.0,Subsets II,10836.0,Medium
+402.0,Remove K Digits,10502.0,Medium
+67.0,Add Binary,10416.0,Easy
+450.0,Delete Node in a BST,10325.0,Medium
+448.0,Find All Numbers Disappeared in an Array,10270.0,Easy
+977.0,Squares of a Sorted Array,10139.0,Easy
+83.0,Remove Duplicates from Sorted List,9760.0,Easy
+496.0,Next Greater Element I,9688.0,Easy
+63.0,Unique Paths II,9617.0,Medium
+82.0,Remove Duplicates from Sorted List II,9602.0,Medium
+69.0,Sqrt(x),9557.0,Easy
+81.0,Search in Rotated Sorted Array II,9539.0,Medium
+6.0,Zigzag Conversion,9213.0,Medium
+451.0,Sort Characters By Frequency,9153.0,Medium
+907.0,Sum of Subarray Minimums,9125.0,Medium
+47.0,Permutations II,9093.0,Medium
+44.0,Wildcard Matching,9063.0,Hard
+435.0,Non-overlapping Intervals,9053.0,Medium
+973.0,K Closest Points to Origin,9018.0,Medium
+77.0,Combinations,8862.0,Medium
+97.0,Interleaving String,8802.0,Medium
+983.0,Minimum Cost For Tickets,8776.0,Medium
+417.0,Pacific Atlantic Water Flow,8643.0,Medium
+987.0,Vertical Order Traversal of a Binary Tree,8569.0,Hard
+99.0,Recover Binary Search Tree,8546.0,Medium
+12.0,Integer to Roman,8445.0,Medium
+80.0,Remove Duplicates from Sorted Array II,8158.0,Medium
+452.0,Minimum Number of Arrows to Burst Balloons,8035.0,Medium
+86.0,Partition List,7984.0,Medium
+95.0,Unique Binary Search Trees II,7929.0,Medium
+974.0,Subarray Sums Divisible by K,7805.0,Medium
+43.0,Multiply Strings,7683.0,Medium
+456.0,132 Pattern,7589.0,Medium
+28.0,Find the Index of the First Occurrence in a String,7476.0,Easy
+918.0,Maximum Sum Circular Subarray,7270.0,Medium
+463.0,Island Perimeter,7268.0,Easy
+406.0,Queue Reconstruction by Height,7236.0,Medium
+938.0,Range Sum of BST,7232.0,Easy
+60.0,Permutation Sequence,7200.0,Hard
+901.0,Online Stock Span,7173.0,Medium
+912.0,Sort an Array,7162.0,Medium
+931.0,Minimum Falling Path Sum,6962.0,Medium
+493.0,Reverse Pairs,6945.0,Hard
+997.0,Find the Town Judge,6936.0,Easy
+59.0,Spiral Matrix II,6879.0,Medium
+992.0,Subarrays with K Different Integers,6869.0,Hard
+459.0,Repeated Substring Pattern,6829.0,Easy
+485.0,Max Consecutive Ones,6753.0,Easy
+71.0,Simplify Path,6476.0,Medium
+947.0,Most Stones Removed with Same Row or Column,6407.0,Medium
+409.0,Longest Palindrome,6331.0,Easy
+58.0,Length of Last Word,6316.0,Easy
+460.0,LFU Cache,6285.0,Hard
+445.0,Add Two Numbers II,6149.0,Medium
+486.0,Predict the Winner,6149.0,Medium
+443.0,String Compression,6118.0,Medium
+946.0,Validate Stack Sequences,6095.0,Medium
+904.0,Fruit Into Baskets,6092.0,Medium
+8.0,String to Integer (atoi),6067.0,Medium
+474.0,Ones and Zeroes,6057.0,Medium
+979.0,Distribute Coins in Binary Tree,6054.0,Medium
+29.0,Divide Two Integers,6039.0,Medium
+1365.0,How Many Numbers Are Smaller Than the Current Number,5972.0,Easy
+403.0,Frog Jump,5962.0,Hard
+421.0,Maximum XOR of Two Numbers in an Array,5897.0,Medium
+986.0,Interval List Intersections,5894.0,Medium
+404.0,Sum of Left Leaves,5772.0,Easy
+934.0,Shortest Bridge,5758.0,Medium
+1838.0,Frequency of the Most Frequent Element,5682.0,Medium
+905.0,Sort Array By Parity,5665.0,Easy
+968.0,Binary Tree Cameras,5633.0,Hard
+413.0,Arithmetic Slices,5620.0,Medium
+93.0,Restore IP Addresses,5615.0,Medium
+1319.0,Number of Operations to Make Network Connected,5559.0,Medium
+1312.0,Minimum Insertion Steps to Make a String Palindrome,5552.0,Hard
+1351.0,Count Negative Numbers in a Sorted Matrix,5469.0,Easy
+980.0,Unique Paths III,5468.0,Hard
+430.0,Flatten a Multilevel Doubly Linked List,5428.0,Medium
+415.0,Add Strings,5428.0,Easy
+981.0,Time Based Key-Value Store,5231.0,Medium
+953.0,Verifying an Alien Dictionary,5068.0,Easy
+454.0,4Sum II,5067.0,Medium
+38.0,Count and Say,5055.0,Medium
+407.0,Trapping Rain Water II,4985.0,Hard
+921.0,Minimum Add to Make Parentheses Valid,4924.0,Medium
+455.0,Assign Cookies,4919.0,Easy
+27.0,Remove Element,4908.0,Easy
+1302.0,Deepest Leaves Sum,4823.0,Medium
+930.0,Binary Subarrays With Sum,4769.0,Medium
+926.0,Flip String to Monotone Increasing,4579.0,Medium
+958.0,Check Completeness of a Binary Tree,4527.0,Medium
+68.0,Text Justification,4498.0,Hard
+1358.0,Number of Substrings Containing All Three Characters,4383.0,Medium
+1337.0,The K Weakest Rows in a Matrix,4330.0,Easy
+1306.0,Jump Game III,4327.0,Medium
+993.0,Cousins in Binary Tree,4307.0,Easy
+441.0,Arranging Coins,4304.0,Easy
+498.0,Diagonal Traverse,4300.0,Medium
+1342.0,Number of Steps to Reduce a Number to Zero,4251.0,Easy
+52.0,N-Queens II,4249.0,Hard
+1376.0,Time Needed to Inform All Employees,4247.0,Medium
+1382.0,Balance a Binary Search Tree,4144.0,Medium
+1823.0,Find the Winner of the Circular Game,4082.0,Medium
+472.0,Concatenated Words,4059.0,Hard
+461.0,Hamming Distance,4019.0,Easy
+473.0,Matchsticks to Square,4011.0,Medium
+990.0,Satisfiability of Equality Equations,4004.0,Medium
+959.0,Regions Cut By Slashes,3981.0,Medium
+1353.0,Maximum Number of Events That Can Be Attended,3970.0,Medium
+1345.0,Jump Game IV,3861.0,Hard
+491.0,Non-decreasing Subsequences,3804.0,Medium
+429.0,N-ary Tree Level Order Traversal,3740.0,Medium
+1372.0,Longest ZigZag Path in a Binary Tree,3738.0,Medium
+950.0,Reveal Cards In Increasing Order,3682.0,Medium
+989.0,Add to Array-Form of Integer,3667.0,Easy
+909.0,Snakes and Ladders,3632.0,Medium
+1326.0,Minimum Number of Taps to Open to Water a Garden,3615.0,Hard
+87.0,Scramble String,3609.0,Hard
+449.0,Serialize and Deserialize BST,3589.0,Medium
+1335.0,Minimum Difficulty of a Job Schedule,3583.0,Hard
+1396.0,Design Underground System,3582.0,Medium
+1334.0,Find the City With the Smallest Number of Neighbors at a Threshold Distance,3580.0,Medium
+1339.0,Maximum Product of Splitted Binary Tree,3566.0,Medium
+1329.0,Sort the Matrix Diagonally,3565.0,Medium
+480.0,Sliding Window Median,3555.0,Hard
+916.0,Word Subsets,3530.0,Medium
+462.0,Minimum Moves to Equal Array Elements II,3512.0,Medium
+446.0,Arithmetic Slices II - Subsequence,3493.0,Hard
+414.0,Third Maximum Number,3489.0,Easy
+1834.0,Single-Threaded CPU,3470.0,Medium
+948.0,Bag of Tokens,3450.0,Medium
+1395.0,Count Number of Teams,3444.0,Medium
+976.0,Largest Perimeter Triangle,3393.0,Easy
+1338.0,Reduce Array Size to The Half,3359.0,Medium
+412.0,Fizz Buzz,3315.0,Easy
+1323.0,Maximum 69 Number,3302.0,Easy
+433.0,Minimum Genetic Mutation,3291.0,Medium
+476.0,Number Complement,3201.0,Easy
+1383.0,Maximum Performance of a Team,3199.0,Hard
+935.0,Knight Dialer,3194.0,Medium
+2300.0,Successful Pairs of Spells and Potions,3189.0,Medium
+1305.0,All Elements in Two Binary Search Trees,3182.0,Medium
+941.0,Valid Mountain Array,3122.0,Easy
+1359.0,Count All Valid Pickup and Delivery Options,3089.0,Hard
+1367.0,Linked List in Binary Tree,3020.0,Medium
+1832.0,Check if the Sentence Is Pangram,3009.0,Easy
+1373.0,Maximum Sum BST in Binary Tree,2950.0,Hard
+489.0,Robot Room Cleaner,2889.0,Hard
+1325.0,Delete Leaves With a Given Value,2886.0,Medium
+951.0,Flip Equivalent Binary Trees,2880.0,Medium
+967.0,Numbers With Same Consecutive Differences,2877.0,Medium
+2244.0,Minimum Rounds to Complete All Tasks,2848.0,Medium
+991.0,Broken Calculator,2835.0,Medium
+962.0,Maximum Width Ramp,2835.0,Medium
+1315.0,Sum of Nodes with Even-Valued Grandparent,2823.0,Medium
+464.0,Can I Win,2822.0,Medium
+1347.0,Minimum Number of Steps to Make Two Strings Anagram,2815.0,Medium
+453.0,Minimum Moves to Equal Array Elements,2809.0,Medium
+929.0,Unique Email Addresses,2803.0,Easy
+922.0,Sort Array By Parity II,2800.0,Easy
+945.0,Minimum Increment to Make Array Unique,2771.0,Medium
+426.0,Convert Binary Search Tree to Sorted Doubly Linked List,2728.0,Medium
+1802.0,Maximum Value at a Given Index in a Bounded Array,2711.0,Medium
+923.0,3Sum With Multiplicity,2680.0,Medium
+1863.0,Sum of All Subset XOR Totals,2675.0,Easy
+2707.0,Extra Characters in a String,2624.0,Medium
+1000.0,Minimum Cost to Merge Stones,2624.0,Hard
+1857.0,Largest Color Value in a Directed Graph,2610.0,Hard
+2215.0,Find the Difference of Two Arrays,2600.0,Easy
+942.0,DI String Match,2599.0,Easy
+1356.0,Sort Integers by The Number of 1 Bits,2593.0,Easy
+1368.0,Minimum Cost to Make at Least One Valid Path in a Grid,2583.0,Hard
+925.0,Long Pressed Name,2581.0,Easy
+30.0,Substring with Concatenation of All Words,2581.0,Hard
+1371.0,Find the Longest Substring Containing Vowels in Even Counts,2556.0,Medium
+2246.0,Longest Path With Different Adjacent Characters,2531.0,Hard

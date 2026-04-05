@@ -1,0 +1,252 @@
+Template,Variation Rank (Most asked first),Name / Link,Difficulty,"Likes
+(L)"
+Binary Search,1.0,Search in Rotated Sorted Array,Medium,29666.0
+Binary Search,2.0,Search Insert Position,Easy,18584.0
+Binary Search,3.0,Validate Binary Search Tree,Medium,18244.0
+Binary Search,4.0,Search a 2D Matrix,Medium,17724.0
+Binary Search,5.0,Word Search,Medium,17524.0
+Binary Search,6.0,Unique Binary Search Trees,Medium,10965.0
+Binary Search,7.0,Search in Rotated Sorted Array II,Medium,9539.0
+Binary Search,8.0,Recover Binary Search Tree,Medium,8546.0
+Binary Search,9.0,Unique Binary Search Trees II,Medium,7929.0
+Binary Search,10.0,Balance a Binary Search Tree,Medium,4144.0
+Binary Search,11.0,Convert Binary Search Tree to Sorted Doubly Linked List,Medium,2728.0
+DFS/BFS,1.0,Binary Tree Inorder Traversal,Easy,14789.0
+DFS/BFS,2.0,Same Tree,Easy,12774.0
+DFS/BFS,3.0,Vertical Order Traversal of a Binary Tree,Hard,8569.0
+DFS/BFS,4.0,Island Perimeter,Easy,7268.0
+DFS/BFS,5.0,Distribute Coins in Binary Tree,Medium,6054.0
+DFS/BFS,6.0,Binary Tree Cameras,Hard,5633.0
+DFS/BFS,7.0,Check Completeness of a Binary Tree,Medium,4527.0
+DFS/BFS,8.0,Cousins in Binary Tree,Easy,4307.0
+DFS/BFS,9.0,Regions Cut By Slashes,Medium,3981.0
+DFS/BFS,10.0,N-ary Tree Level Order Traversal,Medium,3740.0
+DFS/BFS,11.0,Longest ZigZag Path in a Binary Tree,Medium,3738.0
+DFS/BFS,12.0,Maximum Product of Splitted Binary Tree,Medium,3566.0
+DFS/BFS,13.0,Linked List in Binary Tree,Medium,3020.0
+DFS/BFS,14.0,Flip Equivalent Binary Trees,Medium,2880.0
+DFS/BFS,15.0,Largest Color Value in a Directed Graph,Hard,2610.0
+Dynamic Programming,1.0,Climbing Stairs,Easy,24256.0
+Dynamic Programming,2.0,Jump Game,Medium,21566.0
+Dynamic Programming,3.0,Unique Paths,Medium,18227.0
+Dynamic Programming,4.0,Jump Game II,Medium,16339.0
+Dynamic Programming,5.0,Unique Paths II,Medium,9617.0
+Dynamic Programming,6.0,Simplify Path,Medium,6476.0
+Dynamic Programming,7.0,Frog Jump,Hard,5962.0
+Dynamic Programming,8.0,Unique Paths III,Hard,5468.0
+Dynamic Programming,9.0,Jump Game III,Medium,4327.0
+Dynamic Programming,10.0,Arranging Coins,Easy,4304.0
+Dynamic Programming,11.0,Jump Game IV,Hard,3861.0
+Dynamic Programming,12.0,Longest Path With Different Adjacent Characters,Hard,2531.0
+HashMap/Frequency,1.0,Reverse Nodes in k-Group,Hard,15501.0
+HashMap/Frequency,2.0,Sort Characters By Frequency,Medium,9153.0
+HashMap/Frequency,3.0,Frequency of the Most Frequent Element,Medium,5682.0
+Intervals,1.0,Merge Intervals,Medium,24415.0
+Intervals,2.0,Insert Interval,Medium,11725.0
+Intervals,3.0,Non-overlapping Intervals,Medium,9053.0
+Intervals,4.0,Interval List Intersections,Medium,5894.0
+Matrix Traversal,1.0,Spiral Matrix,Medium,17235.0
+Matrix Traversal,2.0,Set Matrix Zeroes,Medium,16941.0
+Matrix Traversal,3.0,Spiral Matrix II,Medium,6879.0
+Matrix Traversal,4.0,Count Negative Numbers in a Sorted Matrix,Easy,5469.0
+Matrix Traversal,5.0,The K Weakest Rows in a Matrix,Easy,4330.0
+Matrix Traversal,6.0,Sort the Matrix Diagonally,Medium,3565.0
+Matrix Traversal,7.0,Minimum Cost to Make at Least One Valid Path in a Grid,Hard,2583.0
+Other,1.0,Trapping Rain Water,Hard,36001.0
+Other,2.0,Find First and Last Position of Element in Sorted Array,Medium,23052.0
+Other,3.0,Sort Colors,Medium,21350.0
+Other,4.0,Next Permutation,Medium,21152.0
+Other,5.0,Merge k Sorted Lists,Hard,21147.0
+Other,6.0,Remove Nth Node From End of List,Medium,21057.0
+Other,7.0,Longest Common Prefix,Easy,21008.0
+Other,8.0,Letter Combinations of a Phone Number,Medium,20747.0
+Other,9.0,Permutations,Medium,20706.0
+Other,10.0,Rotate Image,Medium,19690.0
+Other,11.0,Largest Rectangle in Histogram,Hard,19402.0
+Other,12.0,Subsets,Medium,19045.0
+Other,13.0,Remove Duplicates from Sorted Array,Easy,18692.0
+Other,14.0,Merge Sorted Array,Easy,18647.0
+Other,15.0,First Missing Positive,Hard,18241.0
+Other,16.0,Roman to Integer,Easy,17434.0
+Other,17.0,Edit Distance,Medium,16295.0
+Other,18.0,Reverse Integer,Medium,15281.0
+Other,19.0,Rotting Oranges,Medium,14939.0
+Other,20.0,N-Queens,Hard,14155.0
+Other,21.0,Regular Expression Matching,Hard,13224.0
+Other,22.0,Reverse Linked List II,Medium,12826.0
+Other,23.0,Longest Repeating Character Replacement,Medium,12821.0
+Other,24.0,Decode Ways,Medium,12804.0
+Other,25.0,Valid Sudoku,Medium,12366.0
+Other,26.0,Maximal Rectangle,Hard,11994.0
+Other,27.0,Plus One,Easy,11658.0
+Other,28.0,"Pow(x, n)",Medium,11534.0
+Other,29.0,Rotate List,Medium,11130.0
+Other,30.0,Find All Duplicates in an Array,Medium,11089.0
+Other,31.0,Sudoku Solver,Hard,10985.0
+Other,32.0,Subsets II,Medium,10836.0
+Other,33.0,Remove K Digits,Medium,10502.0
+Other,34.0,Add Binary,Easy,10416.0
+Other,35.0,Delete Node in a BST,Medium,10325.0
+Other,36.0,Find All Numbers Disappeared in an Array,Easy,10270.0
+Other,37.0,Squares of a Sorted Array,Easy,10139.0
+Other,38.0,Remove Duplicates from Sorted List,Easy,9760.0
+Other,39.0,Next Greater Element I,Easy,9688.0
+Other,40.0,Remove Duplicates from Sorted List II,Medium,9602.0
+Other,41.0,Sqrt(x),Easy,9557.0
+Other,42.0,Zigzag Conversion,Medium,9213.0
+Other,43.0,Permutations II,Medium,9093.0
+Other,44.0,Wildcard Matching,Hard,9063.0
+Other,45.0,K Closest Points to Origin,Medium,9018.0
+Other,46.0,Combinations,Medium,8862.0
+Other,47.0,Interleaving String,Medium,8802.0
+Other,48.0,Minimum Cost For Tickets,Medium,8776.0
+Other,49.0,Pacific Atlantic Water Flow,Medium,8643.0
+Other,50.0,Integer to Roman,Medium,8445.0
+Other,51.0,Remove Duplicates from Sorted Array II,Medium,8158.0
+Other,52.0,Minimum Number of Arrows to Burst Balloons,Medium,8035.0
+Other,53.0,Partition List,Medium,7984.0
+Other,54.0,Multiply Strings,Medium,7683.0
+Other,55.0,132 Pattern,Medium,7589.0
+Other,56.0,Find the Index of the First Occurrence in a String,Easy,7476.0
+Other,57.0,Queue Reconstruction by Height,Medium,7236.0
+Other,58.0,Permutation Sequence,Hard,7200.0
+Other,59.0,Online Stock Span,Medium,7173.0
+Other,60.0,Sort an Array,Medium,7162.0
+Other,61.0,Find the Town Judge,Easy,6936.0
+Other,62.0,Max Consecutive Ones,Easy,6753.0
+Other,63.0,Most Stones Removed with Same Row or Column,Medium,6407.0
+Other,64.0,Length of Last Word,Easy,6316.0
+Other,65.0,LFU Cache,Hard,6285.0
+Other,66.0,Predict the Winner,Medium,6149.0
+Other,67.0,String Compression,Medium,6118.0
+Other,68.0,Fruit Into Baskets,Medium,6092.0
+Other,69.0,String to Integer (atoi),Medium,6067.0
+Other,70.0,Ones and Zeroes,Medium,6057.0
+Other,71.0,How Many Numbers Are Smaller Than the Current Number,Easy,5972.0
+Other,72.0,Shortest Bridge,Medium,5758.0
+Other,73.0,Sort Array By Parity,Easy,5665.0
+Other,74.0,Arithmetic Slices,Medium,5620.0
+Other,75.0,Restore IP Addresses,Medium,5615.0
+Other,76.0,Flatten a Multilevel Doubly Linked List,Medium,5428.0
+Other,77.0,Add Strings,Easy,5428.0
+Other,78.0,Time Based Key-Value Store,Medium,5231.0
+Other,79.0,Verifying an Alien Dictionary,Easy,5068.0
+Other,80.0,Count and Say,Medium,5055.0
+Other,81.0,Trapping Rain Water II,Hard,4985.0
+Other,82.0,Assign Cookies,Easy,4919.0
+Other,83.0,Remove Element,Easy,4908.0
+Other,84.0,Flip String to Monotone Increasing,Medium,4579.0
+Other,85.0,Text Justification,Hard,4498.0
+Other,86.0,Diagonal Traverse,Medium,4300.0
+Other,87.0,Number of Steps to Reduce a Number to Zero,Easy,4251.0
+Other,88.0,N-Queens II,Hard,4249.0
+Other,89.0,Time Needed to Inform All Employees,Medium,4247.0
+Other,90.0,Find the Winner of the Circular Game,Medium,4082.0
+Other,91.0,Concatenated Words,Hard,4059.0
+Other,92.0,Hamming Distance,Easy,4019.0
+Other,93.0,Matchsticks to Square,Medium,4011.0
+Other,94.0,Satisfiability of Equality Equations,Medium,4004.0
+Other,95.0,Maximum Number of Events That Can Be Attended,Medium,3970.0
+Other,96.0,Non-decreasing Subsequences,Medium,3804.0
+Other,97.0,Reveal Cards In Increasing Order,Medium,3682.0
+Other,98.0,Add to Array-Form of Integer,Easy,3667.0
+Other,99.0,Snakes and Ladders,Medium,3632.0
+Other,100.0,Minimum Number of Taps to Open to Water a Garden,Hard,3615.0
+Other,101.0,Scramble String,Hard,3609.0
+Other,102.0,Serialize and Deserialize BST,Medium,3589.0
+Other,103.0,Minimum Difficulty of a Job Schedule,Hard,3583.0
+Other,104.0,Design Underground System,Medium,3582.0
+Other,105.0,Find the City With the Smallest Number of Neighbors at a Threshold Distance,Medium,3580.0
+Other,106.0,Word Subsets,Medium,3530.0
+Other,107.0,Minimum Moves to Equal Array Elements II,Medium,3512.0
+Other,108.0,Arithmetic Slices II - Subsequence,Hard,3493.0
+Other,109.0,Third Maximum Number,Easy,3489.0
+Other,110.0,Single-Threaded CPU,Medium,3470.0
+Other,111.0,Bag of Tokens,Medium,3450.0
+Other,112.0,Count Number of Teams,Medium,3444.0
+Other,113.0,Largest Perimeter Triangle,Easy,3393.0
+Other,114.0,Reduce Array Size to The Half,Medium,3359.0
+Other,115.0,Fizz Buzz,Easy,3315.0
+Other,116.0,Maximum 69 Number,Easy,3302.0
+Other,117.0,Minimum Genetic Mutation,Medium,3291.0
+Other,118.0,Number Complement,Easy,3201.0
+Other,119.0,Maximum Performance of a Team,Hard,3199.0
+Other,120.0,Knight Dialer,Medium,3194.0
+Other,121.0,Valid Mountain Array,Easy,3122.0
+Other,122.0,Count All Valid Pickup and Delivery Options,Hard,3089.0
+Other,123.0,Check if the Sentence Is Pangram,Easy,3009.0
+Other,124.0,Robot Room Cleaner,Hard,2889.0
+Other,125.0,Delete Leaves With a Given Value,Medium,2886.0
+Other,126.0,Numbers With Same Consecutive Differences,Medium,2877.0
+Other,127.0,Minimum Rounds to Complete All Tasks,Medium,2848.0
+Other,128.0,Broken Calculator,Medium,2835.0
+Other,129.0,Maximum Width Ramp,Medium,2835.0
+Other,130.0,Can I Win,Medium,2822.0
+Other,131.0,Minimum Moves to Equal Array Elements,Medium,2809.0
+Other,132.0,Unique Email Addresses,Easy,2803.0
+Other,133.0,Sort Array By Parity II,Easy,2800.0
+Other,134.0,Minimum Increment to Make Array Unique,Medium,2771.0
+Other,135.0,Maximum Value at a Given Index in a Bounded Array,Medium,2711.0
+Other,136.0,Extra Characters in a String,Medium,2624.0
+Other,137.0,Minimum Cost to Merge Stones,Hard,2624.0
+Other,138.0,DI String Match,Easy,2599.0
+Other,139.0,Sort Integers by The Number of 1 Bits,Easy,2593.0
+Other,140.0,Long Pressed Name,Easy,2581.0
+Sliding Window,1.0,Longest Substring Without Repeating Characters,Medium,44387.0
+Sliding Window,2.0,Maximum Subarray,Medium,37477.0
+Sliding Window,3.0,Longest Palindromic Substring,Medium,32300.0
+Sliding Window,4.0,Group Anagrams,Medium,21807.0
+Sliding Window,5.0,Minimum Window Substring,Hard,19958.0
+Sliding Window,6.0,Find All Anagrams in a String,Medium,13123.0
+Sliding Window,7.0,Sum of Subarray Minimums,Medium,9125.0
+Sliding Window,8.0,Subarray Sums Divisible by K,Medium,7805.0
+Sliding Window,9.0,Maximum Sum Circular Subarray,Medium,7270.0
+Sliding Window,10.0,Subarrays with K Different Integers,Hard,6869.0
+Sliding Window,11.0,Repeated Substring Pattern,Easy,6829.0
+Sliding Window,12.0,Binary Subarrays With Sum,Medium,4769.0
+Sliding Window,13.0,Number of Substrings Containing All Three Characters,Medium,4383.0
+Sliding Window,14.0,Sliding Window Median,Hard,3555.0
+Sliding Window,15.0,Minimum Number of Steps to Make Two Strings Anagram,Medium,2815.0
+Sliding Window,16.0,Substring with Concatenation of All Words,Hard,2581.0
+Sliding Window,17.0,Find the Longest Substring Containing Vowels in Even Counts,Medium,2556.0
+Stack,1.0,Valid Parentheses,Easy,27498.0
+Stack,2.0,Generate Parentheses,Medium,23085.0
+Stack,3.0,Longest Valid Parentheses,Hard,13218.0
+Stack,4.0,Validate Stack Sequences,Medium,6095.0
+Stack,5.0,Minimum Add to Make Parentheses Valid,Medium,4924.0
+Two Pointers,1.0,Two Sum,Easy,67457.0
+Two Pointers,2.0,Add Two Numbers,Medium,36203.0
+Two Pointers,3.0,3Sum,Medium,35098.0
+Two Pointers,4.0,Container With Most Water,Medium,33756.0
+Two Pointers,5.0,Median of Two Sorted Arrays,Hard,31766.0
+Two Pointers,6.0,Merge Two Sorted Lists,Easy,24692.0
+Two Pointers,7.0,Combination Sum,Medium,20790.0
+Two Pointers,8.0,Palindrome Number,Easy,15602.0
+Two Pointers,9.0,Partition Equal Subset Sum,Medium,13745.0
+Two Pointers,10.0,Minimum Path Sum,Medium,13584.0
+Two Pointers,11.0,Swap Nodes in Pairs,Medium,13035.0
+Two Pointers,12.0,4Sum,Medium,12742.0
+Two Pointers,13.0,Target Sum,Medium,12292.0
+Two Pointers,14.0,Combination Sum II,Medium,12143.0
+Two Pointers,15.0,Path Sum III,Medium,11854.0
+Two Pointers,16.0,3Sum Closest,Medium,11532.0
+Two Pointers,17.0,Split Array Largest Sum,Hard,11209.0
+Two Pointers,18.0,Range Sum of BST,Easy,7232.0
+Two Pointers,19.0,Minimum Falling Path Sum,Medium,6962.0
+Two Pointers,20.0,Reverse Pairs,Hard,6945.0
+Two Pointers,21.0,Longest Palindrome,Easy,6331.0
+Two Pointers,22.0,Add Two Numbers II,Medium,6149.0
+Two Pointers,23.0,Divide Two Integers,Medium,6039.0
+Two Pointers,24.0,Maximum XOR of Two Numbers in an Array,Medium,5897.0
+Two Pointers,25.0,Sum of Left Leaves,Easy,5772.0
+Two Pointers,26.0,Number of Operations to Make Network Connected,Medium,5559.0
+Two Pointers,27.0,Minimum Insertion Steps to Make a String Palindrome,Hard,5552.0
+Two Pointers,28.0,4Sum II,Medium,5067.0
+Two Pointers,29.0,Deepest Leaves Sum,Medium,4823.0
+Two Pointers,30.0,Successful Pairs of Spells and Potions,Medium,3189.0
+Two Pointers,31.0,All Elements in Two Binary Search Trees,Medium,3182.0
+Two Pointers,32.0,Maximum Sum BST in Binary Tree,Hard,2950.0
+Two Pointers,33.0,Sum of Nodes with Even-Valued Grandparent,Medium,2823.0
+Two Pointers,34.0,3Sum With Multiplicity,Medium,2680.0
+Two Pointers,35.0,Sum of All Subset XOR Totals,Easy,2675.0
+Two Pointers,36.0,Find the Difference of Two Arrays,Easy,2600.0

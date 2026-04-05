@@ -6,10 +6,10 @@ Interview preparation for Java exception handling strategies and best practices.
 
 | Q# | Question | Study Time |
 |----|----------|-----------|
-| [Q13](Q13_checked_vs_unchecked.md) | Checked vs unchecked exceptions - Design trade-offs? | 3m |
-| [Q14](Q14_custom_exceptions.md) | Custom exceptions - When and how to create? | 3m |
-| [Q15](Q15_try_with_resources.md) | Try-with-resources vs try-catch-finally? | 3m |
-| [Q16](Q16_exception_async.md) | Exception handling in async code (CompletableFuture, threads)? | 4m |
+| [Q13](checked-vs-unchecked-exceptions.md) | Checked vs unchecked exceptions - Design trade-offs? | 3m |
+| [Q14](custom-exceptions.md) | Custom exceptions - When and how to create? | 3m |
+| [Q15](try-with-resources.md) | Try-with-resources vs try-catch-finally? | 3m |
+| [Q16](exception-handling-async.md) | Exception handling in async code (CompletableFuture, threads)? | 4m |
 
 ## Interview Prep Strategy
 

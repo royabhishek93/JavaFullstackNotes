@@ -13,7 +13,7 @@ Core OOP concepts: method overloading, method overriding, polymorphism, and enca
 
 | Q # | Topic | Frequency | File |
 |-----|-------|-----------|------|
-| Q11 | Reference type vs Object type in polymorphism | 78% | [Q11_runtime_polymorphism.md](Q11_runtime_polymorphism.md) |
+| Q11 | Reference type vs Object type in polymorphism | 78% | [runtime-polymorphism-reference-vs-object.md](runtime-polymorphism-reference-vs-object.md) |
 
 ---
 

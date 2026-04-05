@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wc -l *.md)",
+      "Bash(ls -1 LOW_*.md)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(mkdir:*)"
+    ]
+  }
+}

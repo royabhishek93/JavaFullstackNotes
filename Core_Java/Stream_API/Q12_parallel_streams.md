@@ -247,4 +247,4 @@ list.parallelStream().forEach(item -> {
 ---
 
 **Last Updated:** February 22, 2026  
-**Previous: [Q11_collectors_custom.md](Q11_collectors_custom.md) | Next: [../../System_Design/Q17_database_scaling.md](../../System_Design/Q17_database_scaling.md)**
+**Previous: [Q11_collectors_custom.md](Q11_collectors_custom.md) | Next: [../../System_Design/database-scaling.md](../../System_Design/database-scaling.md)**

@@ -15,6 +15,23 @@ Advanced Java concurrency, thread safety, and synchronization patterns.
 |------|----------|-----------|
 | [advanced-multithreading-interview.md](_InterviewGuides/advanced-multithreading-interview.md) | 27 questions ranked by importance | 60-90 min |
 
+## Focused Interview Notes (10-15 minutes each)
+
+| File | Coverage |
+|------|----------|
+| [virtual-threads-basics.md](virtual-threads-basics.md) | Virtual threads, creation patterns, performance notes |
+| [project-loom-overview.md](project-loom-overview.md) | Why Loom exists, platform vs virtual threads |
+| [executors-thread-pools.md](executors-thread-pools.md) | ExecutorService, thread pools, scheduling |
+| [asynchronous-programming-futures.md](asynchronous-programming-futures.md) | Future vs CompletableFuture |
+| [fork-join-framework.md](fork-join-framework.md) | Work stealing and ForkJoinPool |
+| [concurrent-collections.md](concurrent-collections.md) | Concurrent collections and pitfalls |
+| [thread-synchronization.md](thread-synchronization.md) | `synchronized`, atomicity, visibility |
+| [race-conditions-thread-problems.md](race-conditions-thread-problems.md) | Race conditions and visibility bugs |
+| [deadlock-scenarios-prevention.md](deadlock-scenarios-prevention.md) | Deadlock causes and prevention |
+| [producer-consumer-pattern.md](producer-consumer-pattern.md) | Wait/notify and BlockingQueue |
+| [synchronized-methods-thread-blocking.md](synchronized-methods-thread-blocking.md) | Object-level locks and blocking |
+| [threadlocal-usage-patterns.md](threadlocal-usage-patterns.md) | ThreadLocal usage and memory leaks |
+
 ## Topics Covered
 
 ### Core Concepts

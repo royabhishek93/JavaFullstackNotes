@@ -1,0 +1,63 @@
+Template,Variation Rank (Most asked first),Problem,Difficulty,"Likes
+(L)","Acceptance
+Rate"
+Two Pointers,2,3Sum,Medium,35098.0,38.51%
+Two Pointers,3,Container With Most Water,Medium,33756.0,59.45%
+Two Pointers,5,Remove Duplicates from Sorted Array,Easy,18692.0,62.18%
+Two Pointers,6,Sort Colors,Medium,21350.0,69.09%
+Two Pointers,7,Merge Two Sorted Lists,Easy,24692.0,67.87%
+Two Pointers,9,Reverse Only Letters,Easy,2427.0,68.09%
+Two Pointers,10,Minimize Maximum Pair Sum in Array,Medium,2362.0,83.31%
+Sliding Window,1,Longest Substring Without Repeating Characters,Medium,44387.0,38.42%
+Sliding Window,6,Find All Anagrams in a String,Medium,13123.0,53.22%
+Sliding Window,7,Longest Repeating Character Replacement,Medium,12821.0,58.97%
+Sliding Window,9,Binary Subarrays With Sum,Medium,4769.0,68.12%
+Binary Search,2,Search in Rotated Sorted Array,Medium,29666.0,44.05%
+Binary Search,6,Minimum Speed to Arrive on Time,Medium,2441.0,47.65%
+Binary Search,8,Search Insert Position,Easy,18584.0,50.62%
+Fast & Slow Pointer,10,Circular Array Loop,Medium,817.0,36.91%
+DFS Recursion,2,Same Tree,Easy,12774.0,66.56%
+DFS Recursion,9,Smallest String Starting From Leaf,Medium,2407.0,61.11%
+DFS Recursion,10,Count Nodes Equal to Average of Subtree,Medium,2350.0,86.74%
+BFS,4,Rotting Oranges,Medium,14939.0,58.06%
+Backtracking,1,Generate Parentheses,Medium,23085.0,78.22%
+Backtracking,2,Permutations,Medium,20706.0,81.59%
+Backtracking,3,Permutations II,Medium,9093.0,62.91%
+Backtracking,4,Combination Sum,Medium,20790.0,76.03%
+Backtracking,5,Combination Sum II,Medium,12143.0,58.92%
+Backtracking,6,Subsets,Medium,19045.0,82%
+Backtracking,7,Subsets II,Medium,10836.0,60.82%
+Backtracking,8,Word Search,Medium,17524.0,46.78%
+Dynamic Programming,1,Climbing Stairs,Easy,24256.0,53.89%
+Dynamic Programming,2,Maximum Subarray,Medium,37477.0,52.93%
+Dynamic Programming,4,Longest Palindromic Substring,Medium,32300.0,37.24%
+Dynamic Programming,5,Jump Game,Medium,21566.0,40.43%
+Dynamic Programming,8,Edit Distance,Medium,16295.0,60.08%
+Dynamic Programming,9,Partition Equal Subset Sum,Medium,13745.0,49.19%
+HashMap Frequency,1,Two Sum,Easy,67457.0,57.01%
+HashMap Frequency,2,Group Anagrams,Medium,21807.0,72.13%
+HashMap Frequency,3,Valid Parentheses,Easy,27498.0,43.64%
+HashMap Frequency,10,Sorting the Sentence,Easy,2384.0,84.06%
+Stack,1,Valid Parentheses,Easy,27498.0,43.64%
+Stack,8,Remove K Digits,Medium,10502.0,36.31%
+Greedy,1,Jump Game,Medium,21566.0,40.43%
+Greedy,2,Jump Game II,Medium,16339.0,42.42%
+Greedy,3,Break a Palindrome,Medium,2433.0,51.59%
+Greedy,5,Assign Cookies,Easy,4919.0,54.63%
+Greedy,6,Non-overlapping Intervals,Medium,9053.0,56.65%
+Greedy,9,Minimum Number of Arrows to Burst Balloons,Medium,8035.0,61.14%
+Intervals,1,Merge Intervals,Medium,24415.0,51.09%
+Intervals,2,Insert Interval,Medium,11725.0,44.7%
+Intervals,3,Non-overlapping Intervals,Medium,9053.0,56.65%
+Intervals,7,Find Right Interval,Medium,2350.0,55.32%
+Intervals,8,Minimum Number of Arrows to Burst Balloons,Medium,8035.0,61.14%
+Intervals,9,Interval List Intersections,Medium,5894.0,72.92%
+Matrix Traversal,1,Matrix Block Sum,Medium,2501.0,76.34%
+Matrix Traversal,5,Set Matrix Zeroes,Medium,16941.0,62.36%
+Matrix Traversal,6,Spiral Matrix,Medium,17235.0,56.04%
+Matrix Traversal,7,Spiral Matrix II,Medium,6879.0,74.59%
+Matrix Traversal,8,Rotate Image,Medium,19690.0,79.27%
+Matrix Traversal,9,Word Search,Medium,17524.0,46.78%
+Math Bit Manipulation,1,Gray Code,Medium,2509.0,63.99%
+Math Bit Manipulation,9,Add Binary,Easy,10416.0,56.84%
+Math Bit Manipulation,10,Find N Unique Integers Sum up to Zero,Easy,2480.0,78.47%

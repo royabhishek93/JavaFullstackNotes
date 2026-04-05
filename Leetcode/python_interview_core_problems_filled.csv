@@ -1,0 +1,40 @@
+Template Pattern,Variation Rank (Most Asked First),Problem Name,Difficulty,LeetCode Link,Likes,Acceptance Rate
+HashMap / Dictionary,1,Two Sum,Easy,https://leetcode.com/problems/two-sum/,67457.0,NA
+HashMap / Dictionary,2,Valid Anagram,Easy,https://leetcode.com/problems/valid-anagram/,,NA
+HashMap / Dictionary,3,Contains Duplicate,Easy,https://leetcode.com/problems/contains-duplicate/,,NA
+HashMap / Dictionary,4,Group Anagrams,Medium,https://leetcode.com/problems/group-anagrams/,21807.0,NA
+Stack,1,Valid Parentheses,Easy,https://leetcode.com/problems/valid-parentheses/,27498.0,NA
+Sliding Window,1,Longest Substring Without Repeating Characters,Medium,https://leetcode.com/problems/longest-substring-without-repeating-characters/,44387.0,NA
+Sliding Window,2,Minimum Window Substring,Hard,https://leetcode.com/problems/minimum-window-substring/,19958.0,NA
+Sliding Window,3,Permutation in String,Medium,https://leetcode.com/problems/permutation-in-string/,,NA
+Sliding Window,4,Find All Anagrams in a String,Medium,https://leetcode.com/problems/find-all-anagrams-in-a-string/,13123.0,NA
+Array / Greedy,1,Best Time to Buy and Sell Stock,Easy,https://leetcode.com/problems/best-time-to-buy-and-sell-stock/,,NA
+Array / Greedy,2,Maximum Subarray,Medium,https://leetcode.com/problems/maximum-subarray/,37477.0,NA
+Array / Prefix Suffix,1,Product of Array Except Self,Medium,https://leetcode.com/problems/product-of-array-except-self/,,NA
+Array Manipulation,1,Move Zeroes,Easy,https://leetcode.com/problems/move-zeroes/,,NA
+Two Pointers,1,Two Sum II Input Array Sorted,Medium,https://leetcode.com/problems/two-sum-ii-input-array-is-sorted/,,NA
+Two Pointers,2,Container With Most Water,Medium,https://leetcode.com/problems/container-with-most-water/,33756.0,NA
+Two Pointers,3,3Sum,Medium,https://leetcode.com/problems/3sum/,35098.0,NA
+Two Pointers,4,Remove Duplicates from Sorted Array,Easy,https://leetcode.com/problems/remove-duplicates-from-sorted-array/,18692.0,NA
+Binary Search,1,Binary Search,Easy,https://leetcode.com/problems/binary-search/,,NA
+Binary Search,2,Search in Rotated Sorted Array,Medium,https://leetcode.com/problems/search-in-rotated-sorted-array/,29666.0,NA
+Binary Search,3,Find Peak Element,Medium,https://leetcode.com/problems/find-peak-element/,,NA
+Binary Search,4,First Bad Version,Easy,https://leetcode.com/problems/first-bad-version/,,NA
+Tree DFS,1,Maximum Depth of Binary Tree,Easy,https://leetcode.com/problems/maximum-depth-of-binary-tree/,,NA
+Tree DFS,2,Same Tree,Easy,https://leetcode.com/problems/same-tree/,12774.0,NA
+Tree DFS,3,Invert Binary Tree,Easy,https://leetcode.com/problems/invert-binary-tree/,,NA
+Tree DFS,4,Validate Binary Search Tree,Medium,https://leetcode.com/problems/validate-binary-search-tree/,18244.0,NA
+Tree DFS,5,Lowest Common Ancestor of Binary Tree,Medium,https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/,,NA
+Tree DFS,6,Path Sum,Easy,https://leetcode.com/problems/path-sum/,,NA
+Linked List,1,Reverse Linked List,Easy,https://leetcode.com/problems/reverse-linked-list/,,NA
+Linked List,2,Merge Two Sorted Lists,Easy,https://leetcode.com/problems/merge-two-sorted-lists/,24692.0,NA
+Linked List,3,Linked List Cycle,Easy,https://leetcode.com/problems/linked-list-cycle/,,NA
+Linked List,4,Remove Nth Node From End,Medium,https://leetcode.com/problems/remove-nth-node-from-end-of-list/,,NA
+Graph BFS DFS,1,Number of Islands,Medium,https://leetcode.com/problems/number-of-islands/,,NA
+Graph BFS DFS,2,Clone Graph,Medium,https://leetcode.com/problems/clone-graph/,,NA
+Graph BFS DFS,3,Course Schedule,Medium,https://leetcode.com/problems/course-schedule/,,NA
+Graph DFS,4,Word Search,Medium,https://leetcode.com/problems/word-search/,17524.0,NA
+Heap / Design,1,LRU Cache,Medium,https://leetcode.com/problems/lru-cache/,,NA
+Heap / Priority Queue,2,Merge K Sorted Lists,Hard,https://leetcode.com/problems/merge-k-sorted-lists/,,NA
+Heap / Priority Queue,3,Median of Two Sorted Arrays,Hard,https://leetcode.com/problems/median-of-two-sorted-arrays/,31766.0,NA
+Advanced Array,1,Trapping Rain Water,Hard,https://leetcode.com/problems/trapping-rain-water/,36001.0,NA

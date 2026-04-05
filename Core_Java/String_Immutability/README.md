@@ -6,13 +6,13 @@ Interview preparation for Java String memory management and immutable object des
 
 | Q# | Question | Study Time |
 |----|----------|-----------|
-| [Q1](Q1_string_pool_memory.md) | Where does `"hello"` go in memory? | 2m |
-| [Q2](Q2_string_concatenation.md) | Why does `c == d` return false when both are `"hi"`? | 2m |
-| [Q3](Q3_string_intern_method.md) | What does `.intern()` do and when to use it? | 2m |
-| [Q4](Q4_string_garbage_collection.md) | How does garbage collection work with String Pool? | 2m |
-| [Q5](Q5_immutable_class_requirements.md) | What makes a class immutable? | 2m |
-| [Q6](Q6_defensive_copying_vs_clone.md) | Difference between `new ArrayList<>(list)` and `.clone()`? | 3m |
-| [Q7](Q7_return_mutable_collections.md) | How do you return mutable collections safely? | 3m |
+| [Q1](string-pool-vs-heap.md) | Where does `"hello"` go in memory? | 2m |
+| [Q2](string-concatenation.md) | Why does `c == d` return false when both are `"hi"`? | 2m |
+| [Q3](string-intern-method.md) | What does `.intern()` do and when to use it? | 2m |
+| [Q4](string-garbage-collection.md) | How does garbage collection work with String Pool? | 2m |
+| [Q5](immutable-class-requirements.md) | What makes a class immutable? | 2m |
+| [Q6](defensive-copying-vs-clone.md) | Difference between `new ArrayList<>(list)` and `.clone()`? | 3m |
+| [Q7](return-mutable-collections.md) | How do you return mutable collections safely? | 3m |
 
 ## Deep-Dive Guides (_Guides/ - 45-90 minutes)
 

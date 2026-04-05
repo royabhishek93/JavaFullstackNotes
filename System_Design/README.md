@@ -6,13 +6,27 @@ Interview preparation for distributed systems, scalability, and architectural pa
 
 | Q# | Question | Study Time |
 |----|----------|-----------|
-| [Q17](Q17_database_scaling.md) | Database scaling for 100k concurrent users? | 5m |
-| [Q18](Q18_caching_strategies.md) | Caching strategies (Redis, cache patterns)? | 4m |
-| [Q19](Q19_load_balancing.md) | Load balancing - Algorithms and strategies? | 4m |
-| [Q20](Q20_microservices_monolith.md) | Microservices vs monolith trade-offs? | 5m |
-| [Q21](Q21_cap_theorem.md) | CAP theorem - Consistency vs Availability? | 4m |
-| [Q22](Q22_message_queues.md) | Message queues (Kafka, RabbitMQ) - Use cases? | 4m |
-| [Q23](Q23_saga_pattern_distributed_transactions.md) | Saga pattern for distributed transactions? | 6m |
+| [Q17](database-scaling.md) | Database scaling for 100k concurrent users? | 5m |
+| [Q18](caching-strategies.md) | Caching strategies (Redis, cache patterns)? | 4m |
+| [Q19](load-balancing-algorithms.md) | Load balancing - Algorithms and strategies? | 4m |
+| [Q20](microservices-vs-monolith.md) | Microservices vs monolith trade-offs? | 5m |
+| [Q21](cap-theorem-trade-offs.md) | CAP theorem - Consistency vs Availability? | 4m |
+| [Q22](message-queues.md) | Message queues (Kafka, RabbitMQ) - Use cases? | 4m |
+| [Q23](distributed-transactions-saga-vs-2pc.md) | Saga pattern for distributed transactions? | 6m |
+| [Q24](distributed-systems-concurrency-design-interviews.md) | Distributed systems + concurrency design framework (ordered writes)? | 8m |
+| [Q25](distributed systems + concurrency design/README.md) | No-Kafka alternatives: option-by-option solutions | 10m |
+| [Q26](distributed systems + concurrency design/kafka-vs-no-kafka-ordered-writes.md) | Same write-ordering problem: with Kafka and without Kafka | 10m |
+
+## Deep Dive Notes (10-15 minutes each)
+
+| Topic | Study Time |
+|-------|------------|
+| [Cache invalidation patterns](cache-invalidation-patterns.md) | 12-15m |
+| [Database sharding strategies](database-sharding-strategies.md) | 12-15m |
+| [Multi-region geo distribution](multi-region-geo-distribution.md) | 10-12m |
+| [Distributed transactions: Saga vs 2PC](distributed-transactions-saga-vs-2pc.md) | 12-15m |
+| [Load balancing algorithms](load-balancing-algorithms.md) | 12-15m |
+| [CAP theorem trade-offs](cap-theorem-trade-offs.md) | 15m |
 
 ## Interview Prep Strategy
 
@@ -44,6 +58,7 @@ Interview preparation for distributed systems, scalability, and architectural pa
 - Saga pattern (Choreography vs Orchestration)
 - Distributed transaction compensation logic
 - Event-driven architecture with compensation
+- Ordered writes under concurrency (per-machine vs global sequencing)
 
 ---
 

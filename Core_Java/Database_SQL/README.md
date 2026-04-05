@@ -6,12 +6,12 @@ Interview preparation for database concepts, JPA, transactions, and SQL optimiza
 
 | Q# | Question | Study Time |
 |----|----------|-----------|
-| [Q23](Q23_acid_properties.md) | ACID properties - What are they? | 3m |
-| [Q24](Q24_n_plus_one_problem.md) | N+1 query problem and solutions? | 3m |
-| [Q25](Q25_isolation_levels.md) | Transaction isolation levels? | 4m |
-| [Q26](Q26_deadlock_handling.md) | Deadlock handling strategies? | 3m |
-| [Q27](Q27_optimistic_locking.md) | Optimistic vs pessimistic locking? | 3m |
-| [Q28](Q28_connection_pooling.md) | Connection pooling - Configuration and tuning? | 3m |
+| [Q23](acid-properties.md) | ACID properties - What are they? | 3m |
+| [Q24](n-plus-one-problem.md) | N+1 query problem and solutions? | 3m |
+| [Q25](isolation-levels.md) | Transaction isolation levels? | 4m |
+| [Q26](deadlock-handling.md) | Deadlock handling strategies? | 3m |
+| [Q27](optimistic-locking.md) | Optimistic vs pessimistic locking? | 3m |
+| [Q28](connection-pooling.md) | Connection pooling - Configuration and tuning? | 3m |
 
 ## Interview Prep Strategy
 
