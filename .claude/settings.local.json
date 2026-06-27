@@ -62,7 +62,10 @@
       "Bash(mv parking-lot.md HIGH_parkinglot/)",
       "Bash(mv pub-sub-system.md HIGH_pubsubsystem/)",
       "Bash(mv restaurant-management-system.md MID_restaurantmanagementsystem/)",
-      "Bash(mv ride-sharing-service.md MID_ridesharingservice/)"
+      "Bash(mv ride-sharing-service.md MID_ridesharingservice/)",
+      "Bash(mkdir -p legacy_basic_implementation)",
+      "Bash(mv *.java legacy_basic_implementation/)",
+      "Bash(awk -F/ '{ *)"
     ]
   }
 }

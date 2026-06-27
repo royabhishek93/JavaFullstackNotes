@@ -1,0 +1,72 @@
+Movie Ticket Booking ERD (Interview Ready ASCII)
+
++----------------------------------+      1..N      +----------------------------------+      1..N      +----------------------------------+
+| City [PostgreSQL]                |--------------->| Theater [PostgreSQL]             |--------------->| Screen [PostgreSQL]              |
+| PK city_id                       |                | PK theater_id                    |                | PK screen_id                     |
+|    name                          |                | FK city_id                       |                | FK theater_id                    |
+|    state                         |                |    name                          |                |    screen_number                 |
++----------------------------------+                |    address                       |                |    screen_type                   |
+                                                    +----------------------------------+                +----------------------------------+
+                                                                                                                   | 1..N
+                                                                                                                   v
++----------------------------------+      1..N      +----------------------------------+      1..N      +----------------------------------+
+| Movie [PostgreSQL]               |--------------->| Show [PostgreSQL]                |--------------->| SeatAvailability [PG+Redis]     |
+| PK movie_id                      |                | PK show_id                       |                | PK (show_id, seat_id)            |
+|    title                         |                | FK movie_id                      |                | FK show_id                       |
+|    language                      |                | FK screen_id                     |                | FK seat_id                       |
+|    duration_minutes              |                |    show_date                     |                |    status                        |
++----------------------------------+                |    start_time                    |                |    reserved_until                |
+                                                    |    base_price                    |                +----------------------------------+
+                                                    +----------------------------------+                           ^ 1..N
+                                                                                                                  |
++----------------------------------+      1..N      +----------------------------------+                           |
+| Seat [PostgreSQL]                |--------------->| BookingSeat [PostgreSQL]         |---------------------------+
+| PK seat_id                       |                | PK booking_seat_id               |
+| FK screen_id                     |                | FK booking_id                    |
+|    row_number                    |                | FK seat_id                       |
+|    seat_number                   |                |    price                         |
+|    seat_type                     |                +----------------------------------+
++----------------------------------+
+
++----------------------------------+      1..N      +----------------------------------+      1..1      +----------------------------------+
+| User [PostgreSQL]                |--------------->| Booking [PostgreSQL]             |--------------->| Payment [PostgreSQL]             |
+| PK user_id                       |                | PK booking_id                    |                | PK payment_id                    |
+|    email                         |                | FK user_id                       |                | FK booking_id UNIQUE             |
+|    phone                         |                | FK show_id                       |                |    status                        |
+|    full_name                     |                |    booking_status                |                |    amount                        |
++----------------------------------+                |    total_price                   |                |    transaction_id                |
+                                                    |    expires_at                    |                +----------------------------------+
+                                                    +----------------------------------+
+                                                              |
+                                                              | N..1
+                                                              v
+                                                    +----------------------------------+
+                                                    | Show [PostgreSQL]                |
+                                                    +----------------------------------+
+
+Interview Notes
+- Theater hierarchy is City -> Theater -> Screen -> Seat.
+- Movie scheduling is Movie -> Show, and each Show runs on exactly one Screen.
+- SeatAvailability is the critical concurrency table for per-show seat state.
+- BookingSeat is required because one booking can contain multiple seats.
+- Payment is 1:1 with Booking in the happy path, but booking remains the business root.
+
+Relationship Summary
+- City 1..N Theater
+- Theater 1..N Screen
+- Screen 1..N Seat
+- Movie 1..N Show
+- Screen 1..N Show
+- Show 1..N SeatAvailability
+- Seat 1..N SeatAvailability
+- User 1..N Booking
+- Show 1..N Booking
+- Booking 1..N BookingSeat
+- Seat 1..N BookingSeat
+- Booking 1..1 Payment
+
+DB Type Mapping
+- PostgreSQL: City, Theater, Screen, Seat, Movie, Show, Booking, BookingSeat, Payment
+- PostgreSQL + Redis: SeatAvailability
+- Redis role: temporary seat reservation/lock acceleration and fast expiry handling
+- Source of truth: PostgreSQL remains authoritative for final booking/payment state

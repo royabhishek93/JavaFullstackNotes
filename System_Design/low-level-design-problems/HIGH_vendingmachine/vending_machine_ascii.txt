@@ -1,0 +1,50 @@
+Vending Machine LLD (Interview Ready ASCII)
+
++----------------------------------+      1..1      +----------------------------------+      1..N      +----------------------------------+
+| VendingMachine [Singleton]       |--------------->| Inventory [In-Memory]            |--------------->| Item [Entity]                    |
+|    currentState                  |                | itemCode -> Item                 |                | PK code                          |
+|    selectedItemCode              |                | itemCode -> quantity             |                |    name                          |
+|    balance                       |                +----------------------------------+                |    price                         |
++----------------------------------+                                                                  +----------------------------------+
+         | 1..1
+         +-----------------------> +----------------------------------+ <---------------------- implemented by ---------------------- +----------------------------------+
+         |                         | VendingMachineState [Interface]  |                                                    | ConcreteStates                   |
+         |                         |    selectItem(code)              |                                                    | IdleState                        |
+         |                         |    insertCoin(coin)              |                                                    | ReadyState                       |
+         |                         |    insertNote(note)              |                                                    | DispenseState                    |
+         |                         |    dispense()                    |                                                    | ReturnChangeState                |
+         |                         |    returnChange()                |                                                    +----------------------------------+
+         |                         +----------------------------------+
+         |
+         | accepts
+         +-----------------------> +----------------------------------+
+                                   | Coin / Note [Enum]              |
+                                   |    accepted denominations        |
+                                   +----------------------------------+
+
+Interview Notes
+- VendingMachine is the orchestrator: it tracks selected item, current state, and inserted balance.
+- Inventory is the source of truth for product stock in the current in-memory design.
+- Item is the product entity; Inventory maps item code to item and available quantity.
+- VendingMachine delegates all user actions to the current VendingMachineState.
+- Concrete states control which operations are allowed in each phase of the vending flow.
+
+Relationship Summary
+- VendingMachine 1..1 Inventory
+- Inventory 1..N Item
+- VendingMachine 1..1 current VendingMachineState
+- VendingMachine accepts Coin / Note denominations
+- ConcreteStates implement VendingMachineState
+- VendingMachine selects 0..1 Item at a time via selectedItemCode
+
+Implementation Mapping
+- Singleton runtime object: VendingMachine
+- In-memory stock store: Inventory
+- Domain entity: Item
+- Enum-based payment inputs: Coin / Note
+- Design pattern: State Pattern for behavior transitions
+
+Architect Notes
+- Current design is an in-memory LLD model, not a persistent production schema.
+- If productionized, inventory, transaction history, and refund/audit records should move to durable storage.
+- Concurrency-sensitive operations are stock decrement, balance update, and dispense/refund sequencing.

@@ -19,4 +19,7 @@ This folder contains LeetCode problems and interview-style variants with solutio
 - [Q13_course_schedule_cycle_detection.md](Q13_course_schedule_cycle_detection.md) - LeetCode 207 (Topological Sort, Cycle Detection)
 - [Q14_subset_sum_dp.md](Q14_subset_sum_dp.md) - Subset Sum using 1D DP
 - [Q15_partition_equal_subset_sum.md](Q15_partition_equal_subset_sum.md) - LeetCode 416 (subset sum reduction)
+- [Q16_shortest_word_distance_i.md](Q16_shortest_word_distance_i.md) - LeetCode 243
+- [Q17_shortest_word_distance_ii.md](Q17_shortest_word_distance_ii.md) - LeetCode 244
+- [Q18_shortest_word_distance_iii.md](Q18_shortest_word_distance_iii.md) - LeetCode 245
 

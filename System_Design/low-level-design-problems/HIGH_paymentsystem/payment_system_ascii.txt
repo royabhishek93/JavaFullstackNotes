@@ -1,0 +1,91 @@
+Payment System ERD (Interview Ready ASCII)
+
++----------------------------------+      1..N      +----------------------------------+
+| Merchant [PostgreSQL]            |--------------->| PaymentOrder [PostgreSQL]        |
+| PK merchant_id                   |                | PK order_id                      |
+|    name                          |                | FK merchant_id                   |
+|    status                        |                |    customer_id                   |
+|    created_at                    |                |    amount                        |
++----------------------------------+                |    currency                      |
+                                                    |    status                        |
+                                                    |    idempotency_key               |
+                                                    |    version                       |
+                                                    +----------------------------------+
+                                                              | 1..N
+                                                              +-----------------------> +----------------------------------+
+                                                              |                         | PaymentAttempt [PostgreSQL]     |
+                                                              |                         | PK attempt_id                   |
+                                                              |                         | FK order_id                     |
+                                                              |                         |    gateway                      |
+                                                              |                         |    gateway_txn_id               |
+                                                              |                         |    status                       |
+                                                              |                         |    attempt_no                   |
+                                                              |                         | FK reconciled_webhook_event_id? |
+                                                              |                         +----------------------------------+
+                                                              |
+                                                              | 1..N
+                                                              +-----------------------> +----------------------------------+
+                                                              |                         | Refund [PostgreSQL]             |
+                                                              |                         | PK refund_id                    |
+                                                              |                         | FK order_id                     |
+                                                              |                         |    amount                       |
+                                                              |                         |    reason                       |
+                                                              |                         |    status                       |
+                                                              |                         |    gateway_refund_id            |
+                                                              |                         +----------------------------------+
+                                                              |
+                                                              | posts / books
+                                                              v
+                                                    +----------------------------------+
+                                                    | LedgerEntry [PostgreSQL]         |
+                                                    | PK ledger_entry_id               |
+                                                    |    txn_group_id                  |
+                                                    | FK account_id (ledger account)   |
+                                                    |    side (DEBIT/CREDIT)           |
+                                                    |    amount                        |    
+                                                    |    currency                      |
+                                                    |    created_at                    |
+                                                    |    reference_type (ORDER/ATTEMPT/REFUND) |
+                                                    |    reference_id                  |
+                                                    +----------------------------------+
+
++----------------------------------+      reconciles / dedupes      +----------------------------------+
+| WebhookEvent [PostgreSQL]        |<--------------------------------| PaymentAttempt [PostgreSQL]     |
+| PK webhook_event_id              |                                 +----------------------------------+
+|    gateway                       |
+|    gateway_event_id              |
+|    event_type                    |
+|    related_attempt_id?           |
+|    payload_hash                  |
+|    processed_at                  |
++----------------------------------+
+
+Interview Notes
+- Merchant owns payment orders; idempotency is enforced at the payment-order boundary.
+- PaymentOrder is the business root for create, confirm, capture, failure, and refund workflows.
+- PaymentAttempt isolates gateway retries, timeout handling, and unknown outcomes.
+- WebhookEvent is required for signature-verified reconciliation and event deduplication.
+- LedgerEntry is immutable and supports financial auditability through debit/credit postings.
+- LedgerEntry uses polymorphic references (`reference_type`, `reference_id`) to link to PaymentOrder, PaymentAttempt, or Refund.
+- Refund is modeled independently because one order can have full or partial refunds.
+
+Relationship Summary
+- Merchant 1..N PaymentOrder
+- PaymentOrder 1..N PaymentAttempt
+- PaymentOrder 1..N Refund
+- PaymentOrder 1..N LedgerEntry (via reference posting / transaction groups)
+- PaymentAttempt 1..N WebhookEvent reconciliation flow (multiple callbacks possible)
+- Refund 1..N LedgerEntry postings
+
+DB Type Mapping
+- PostgreSQL: Merchant, PaymentOrder, PaymentAttempt, Refund, WebhookEvent, LedgerEntry
+- Redis: idempotency response cache / short-lived orchestration cache
+- Source of truth: PostgreSQL remains authoritative for order, attempt, refund, and ledger state
+
+Architect Notes
+- Enforce UNIQUE(merchant_id, idempotency_key) on PaymentOrder.
+- Enforce UNIQUE(order_id, attempt_no) on PaymentAttempt.
+- Enforce UNIQUE(gateway, gateway_event_id) on WebhookEvent.
+- PaymentAttempt should allow UNKNOWN status for gateway timeout + later webhook reconciliation.
+- LedgerEntry must be append-only; corrections should be compensating entries, not updates.
+- For each `txn_group_id`, total DEBIT amount must equal total CREDIT amount.

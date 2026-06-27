@@ -28,6 +28,12 @@ Interview preparation for distributed systems, scalability, and architectural pa
 | [Load balancing algorithms](load-balancing-algorithms.md) | 12-15m |
 | [CAP theorem trade-offs](cap-theorem-trade-offs.md) | 15m |
 
+## System Design Case Studies (15-20 minutes each)
+
+| System | Study Time | Interview Frequency |
+|--------|-----------|-------------------|
+| [Payment Gateway System Design](payment-gateway-system-design.md) | 15-20m | 65-70% |
+
 ## Interview Prep Strategy
 
 1. **Start here:** Q17-Q19 (scalability fundamentals - 13 minutes)

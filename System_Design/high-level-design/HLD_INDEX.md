@@ -1,20 +1,24 @@
 # High-Level Design - Complete Index
 
-## 📋 All HLD Documents (33 Total)
+## 📋 All HLD Documents (34 Total)
 
-### ✅ Completed (2)
+### ✅ Completed (3)
 1. **Parking Lot System** - [parking-lot-system-hld.md](parking-lot-system-hld.md) ⭐⭐⭐⭐⭐
 2. **Distributed Cache System** - [distributed-cache-system-hld.md](distributed-cache-system-hld.md) ⭐⭐⭐⭐⭐
+3. **URL Shortener** - [url-shortener-hld.md](url-shortener-hld.md) ⭐⭐⭐⭐⭐
 
 ---
 
 ### 🔄 In Progress (31)
 
+#### Web Services & APIs
+3. **URL Shortener** - url-shortener-hld.md ⭐⭐⭐⭐⭐
+
 #### Transportation & Logistics
-3. **Airline Management System** - airline-management-system-hld.md
-4. **Car Rental System** - car-rental-system-hld.md
-5. **Ride Sharing Service (Uber)** - ride-sharing-service-hld.md ⭐⭐⭐⭐⭐
-6. **Traffic Signal System** - traffic-signal-hld.md
+4. **Airline Management System** - airline-management-system-hld.md
+5. **Car Rental System** - car-rental-system-hld.md
+6. **Ride Sharing Service (Uber)** - ride-sharing-service-hld.md ⭐⭐⭐⭐⭐
+7. **Traffic Signal System** - traffic-signal-hld.md
 
 #### Booking & Reservation
 7. **Concert Ticket Booking** - concert-ticket-booking-hld.md
