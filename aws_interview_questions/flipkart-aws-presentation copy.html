@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flipkart AWS Architecture - Interactive Presentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 1600px;
+            width: 100%;
+            min-height: 800px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        .title {
+            text-align: center;
+            color: #1e3c72;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #ff9800;
+            font-size: 1.3em;
+            margin-bottom: 40px;
+            font-weight: 600;
+        }
+
+        .component-title {
+            color: #2a5298;
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e3ebff 100%);
+            border-radius: 10px;
+            border-left: 6px solid #ff9800;
+        }
+
+        .description {
+            color: #555;
+            font-size: 1.15em;
+            margin-bottom: 30px;
+            line-height: 1.8;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .diagram-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .diagram-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .ascii-diagram {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: #2d3436;
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            overflow-x: auto;
+            white-space: pre;
+            border: 2px solid #dfe6e9;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .explanation-section {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 25px;
+        }
+
+        .explanation-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .explanation-title {
+            color: #e67e22;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .explanation-title::before {
+            content: "💡";
+            margin-right: 10px;
+        }
+
+        .explanation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .explanation-item {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #ff9800;
+            transition: all 0.3s ease;
+        }
+
+        .explanation-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
+        }
+
+        .explanation-header {
+            color: #e67e22;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 10px;
+        }
+
+        .explanation-text {
+            color: #555;
+            font-size: 1em;
+            line-height: 1.6;
+        }
+
+        .key-points {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 25px;
+        }
+
+        .key-points.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .key-points-title {
+            color: #27ae60;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .key-points-title::before {
+            content: "✓";
+            margin-right: 10px;
+            background: #27ae60;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .key-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .key-list li {
+            background: #e8f5e9;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            font-size: 1.05em;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .key-list li:hover {
+            background: #c8e6c9;
+            transform: translateX(5px);
+        }
+
+        .key-list li::before {
+            content: "→";
+            color: #27ae60;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 152, 0, 0.95);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.4);
+        }
+
+        .hint {
+            text-align: center;
+            color: #b2bec3;
+            font-size: 1.1em;
+            margin-top: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .slide {
+            display: none;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.65em;
+            margin-left: 15px;
+            font-weight: normal;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px;
+            }
+            .ascii-diagram {
+                font-size: 0.7em;
+            }
+            .explanation-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="progress" id="progress">1 / 10</div>
+
+        <!-- Slide 1: Overview -->
+        <div class="slide active" data-slide="1">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">Architecture Overview <span class="badge">BIG PICTURE</span></div>
+            <div class="description">High-level view of all components working together</div>
+
+            <div class="diagram-section" id="diagram-1">
+                <div class="ascii-diagram">
+                    ┌──────────────────────────────────────┐
+                    │         USERS WORLDWIDE              │
+                    └────────────┬─────────────────────────┘
+                                 │
+                    ┌────────────▼─────────────────────────┐
+                    │      CLOUDFRONT (CDN Layer)          │
+                    │  - Caches static content globally    │
+                    │  - DDoS protection via AWS Shield    │
+                    └────────────┬─────────────────────────┘
+                                 │
+                    ┌────────────▼─────────────────────────┐
+                    │   APPLICATION LOAD BALANCER (ALB)    │
+                    │  - Routes API requests               │
+                    │  - SSL/TLS termination               │
+                    └────────────┬─────────────────────────┘
+                                 │
+        ┌────────────────────────┼────────────────────────┐
+        │                        │                        │
+   ┌────▼─────┐           ┌─────▼────┐           ┌──────▼─────┐
+   │  User    │           │ Product  │           │   Order    │
+   │ Service  │           │ Service  │           │  Service   │
+   └────┬─────┘           └────┬─────┘           └──────┬─────┘
+        │                      │                        │
+        └──────────────────────┼────────────────────────┘
+                               │
+                    ┌──────────▼────────────┐
+                    │    DATABASE LAYER     │
+                    │  - RDS (PostgreSQL)   │
+                    │  - DynamoDB           │
+                    │  - ElastiCache Redis  │
+                    └───────────────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-1">
+                <div class="explanation-title">Three Main Layers</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Frontend/CDN Layer</div>
+                        <div class="explanation-text">CloudFront serves React/Angular apps globally from edge locations. Users in Mumbai get content from Mumbai edge, not US servers.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Application Layer</div>
+                        <div class="explanation-text">Microservices running on EKS/EC2 behind ALB. Each service handles specific business logic - users, products, orders, payments.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Database Layer</div>
+                        <div class="explanation-text">Polyglot persistence: RDS for transactions, DynamoDB for high-speed ops, Redis for caching. Right database for each use case.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-1">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 2: VPC Network Design -->
+        <div class="slide" data-slide="2">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">VPC Network Design <span class="badge">FOUNDATION</span></div>
+            <div class="description">Three-tier subnet architecture for security and isolation</div>
+
+            <div class="diagram-section" id="diagram-2">
+                <div class="ascii-diagram">
+                    VPC: 10.0.0.0/16
+                          │
+        ┌─────────────────┼─────────────────┐
+        │                 │                 │
+   ┌────▼────┐       ┌────▼────┐       ┌───▼─────┐
+   │  AZ-1   │       │  AZ-2   │       │  AZ-3   │
+   └────┬────┘       └────┬────┘       └────┬────┘
+        │                 │                 │
+   ┌────▼─────────────────┼─────────────────▼────┐
+   │        PUBLIC SUBNETS (10.0.1.0/24...)      │
+   │  - ALB                                       │
+   │  - NAT Gateway                               │
+   │  - Bastion Hosts                             │
+   └────┬─────────────────┼─────────────────┬────┘
+        │                 │                 │
+   ┌────▼─────────────────┼─────────────────▼────┐
+   │      PRIVATE SUBNETS (10.0.11.0/24...)      │
+   │  - EKS Worker Nodes                         │
+   │  - Microservices (Pods)                     │
+   │  - No direct internet access                │
+   └────┬─────────────────┼─────────────────┬────┘
+        │                 │                 │
+   ┌────▼─────────────────┼─────────────────▼────┐
+   │     DATABASE SUBNETS (10.0.21.0/24...)      │
+   │  - RDS Instances                            │
+   │  - ElastiCache Clusters                     │
+   │  - OpenSearch Domain                        │
+   └─────────────────────────────────────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-2">
+                <div class="explanation-title">Why Three Tiers?</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Public Subnets</div>
+                        <div class="explanation-text">Only load balancers and NAT gateways here. These need internet access. Application servers stay hidden in private subnets.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Private Subnets</div>
+                        <div class="explanation-text">Your Spring Boot apps run here. Can't be accessed from internet directly. Only load balancer can reach them. Secure by design.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Database Subnets</div>
+                        <div class="explanation-text">Most isolated layer. Only application layer can reach databases. Even if attacker bypasses ALB, they can't reach databases.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-2">
+                <div class="key-points-title">Security Benefits</div>
+                <ul class="key-list">
+                    <li>Defense in depth - multiple layers of protection</li>
+                    <li>Spread across 3 Availability Zones for high availability</li>
+                    <li>NAT Gateway for outbound internet from private subnets</li>
+                    <li>Security groups control traffic between layers</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-2">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 3: Database Strategy -->
+        <div class="slide" data-slide="3">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">Database Strategy <span class="badge">POLYGLOT PERSISTENCE</span></div>
+            <div class="description">Right database for each use case</div>
+
+            <div class="diagram-section" id="diagram-3">
+                <div class="ascii-diagram">
+                         DATABASE STRATEGY
+                                │
+                ┌───────────────┼───────────────┐
+                │               │               │
+        ┌───────▼──────┐  ┌────▼─────┐  ┌─────▼────────┐
+        │    RDS       │  │ DynamoDB │  │   ElastiCache│
+        │ (PostgreSQL) │  │          │  │    (Redis)   │
+        └──────────────┘  └──────────┘  └──────────────┘
+             │                  │               │
+      ┌──────┴─────┐    ┌──────┴──────┐   ┌────┴────┐
+      │Transactional│    │High-Throughput│ │Caching  │
+      │- Orders     │    │- Shopping Cart│ │- Sessions│
+      │- Payments   │    │- User Sessions│ │- API     │
+      │- Users      │    │- Product Catalog│ │Results │
+      └────────────┘    └──────────────┘   └─────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-3">
+                <div class="explanation-title">Why Multiple Databases?</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">RDS PostgreSQL</div>
+                        <div class="explanation-text">For orders, payments - needs ACID transactions. When money is involved, you need reliability. Strong consistency across complex relationships.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">DynamoDB</div>
+                        <div class="explanation-text">Shopping cart updates happen constantly. Need single-digit millisecond latency. Simple key-value lookups, massive throughput. Perfect for cart.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">ElastiCache Redis</div>
+                        <div class="explanation-text">Cache product details, user sessions. Reduces database load by 70-80%. Sub-millisecond latency. Essential for scale.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-3">
+                <div class="key-points-title">Performance Impact</div>
+                <ul class="key-list">
+                    <li>RDS handles 50-100ms queries for complex transactions</li>
+                    <li>DynamoDB delivers <5ms for simple lookups</li>
+                    <li>Redis cache hits return in <2ms</li>
+                    <li>Combined strategy serves millions of requests/minute</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-3">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 4: Kubernetes on EKS -->
+        <div class="slide" data-slide="4">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">Kubernetes on EKS <span class="badge">CONTAINER ORCHESTRATION</span></div>
+            <div class="description">Running Spring Boot microservices at scale</div>
+
+            <div class="diagram-section" id="diagram-4">
+                <div class="ascii-diagram">
+                      ┌─────────────────────────┐
+                      │    EKS CONTROL PLANE    │
+                      │  (Managed by AWS)       │
+                      │  - API Server           │
+                      │  - Scheduler            │
+                      │  - Controller Manager   │
+                      └───────────┬─────────────┘
+                                  │
+        ┌─────────────────────────┼─────────────────────────┐
+        │                         │                         │
+   ┌────▼────┐              ┌─────▼────┐              ┌────▼────┐
+   │  AZ-1   │              │   AZ-2   │              │  AZ-3   │
+   │ Workers │              │ Workers  │              │ Workers │
+   └────┬────┘              └────┬─────┘              └────┬────┘
+        │                        │                         │
+   ┌────▼─────────┐         ┌────▼─────────┐         ┌────▼─────────┐
+   │ Product Svc  │         │ Product Svc  │         │ Product Svc  │
+   │ Order Svc    │         │ Order Svc    │         │ Order Svc    │
+   │ User Svc     │         │ User Svc     │         │ User Svc     │
+   └──────────────┘         └──────────────┘         └──────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-4">
+                <div class="explanation-title">Why Kubernetes?</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Auto-Scaling</div>
+                        <div class="explanation-text">Horizontal Pod Autoscaler scales based on CPU/memory. During flash sale, goes from 3 pods to 20 automatically. Scales down when traffic drops.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Self-Healing</div>
+                        <div class="explanation-text">If a pod crashes, Kubernetes restarts it automatically. If a node fails, pods move to healthy nodes. Zero manual intervention needed.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Zero-Downtime Deployments</div>
+                        <div class="explanation-text">Rolling updates deploy new version gradually. Health checks ensure traffic only goes to healthy pods. Rollback in seconds if issues.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-4">
+                <div class="key-points-title">Spring Boot Integration</div>
+                <ul class="key-list">
+                    <li>Each microservice packaged as Docker image</li>
+                    <li>Health checks via /actuator/health endpoint</li>
+                    <li>Minimum 3 replicas per service across 3 AZs</li>
+                    <li>Config and secrets from Kubernetes ConfigMaps/Secrets</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-4">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 5: Caching Strategy -->
+        <div class="slide" data-slide="5">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">Multi-Layer Caching <span class="badge">PERFORMANCE</span></div>
+            <div class="description">Three tiers of caching for maximum speed</div>
+
+            <div class="diagram-section" id="diagram-5">
+                <div class="ascii-diagram">
+                    USER REQUEST
+                          │
+                     ┌────▼────┐
+                     │CloudFront│ ─── Cache 1: Edge Cache
+                     │  (CDN)   │     (Static Assets)
+                     └────┬────┘     TTL: 24 hours
+                          │
+                     Hit? Yes → Return (10ms)
+                          │
+                          No
+                          │
+                     ┌────▼────┐
+                     │  Redis  │ ─── Cache 2: Application Cache
+                     │(ElastiCache)│  (API Responses)
+                     └────┬────┘     TTL: 5-10 minutes
+                          │
+                     Hit? Yes → Return (2ms)
+                          │
+                          No
+                          │
+                     ┌────▼────┐
+                     │   RDS   │ ─── Cache 3: Database Query Cache
+                     │  (Read  │     (Query Results)
+                     │ Replica)│
+                     └─────────┘     Response: 50-100ms
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-5">
+                <div class="explanation-title">Three-Tier Caching Strategy</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">CloudFront (Tier 1)</div>
+                        <div class="explanation-text">Images, JavaScript, CSS cached at edge locations globally. 90% cache hit rate. Users get assets in 10-20ms from nearest edge.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Redis (Tier 2)</div>
+                        <div class="explanation-text">Product details, user profiles cached. Cache-aside pattern. On miss, query database and cache result. Reduces DB load by 80%.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Read Replicas (Tier 3)</div>
+                        <div class="explanation-text">Route SELECT queries to read replicas, writes to primary. Distributes database load. Primary handles 20%, replicas handle 80%.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-5">
+                <div class="key-points-title">Cache Invalidation Strategy</div>
+                <ul class="key-list">
+                    <li>Product descriptions: 1 hour TTL (rarely change)</li>
+                    <li>Product prices: 5 minute TTL (change during sales)</li>
+                    <li>Inventory: 30 second TTL (changes frequently)</li>
+                    <li>On update: Delete from cache, next read refreshes</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-5">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 6: Async Processing with SQS/SNS -->
+        <div class="slide" data-slide="6">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">Asynchronous Processing <span class="badge">SCALABILITY</span></div>
+            <div class="description">Decoupling services with message queues</div>
+
+            <div class="diagram-section" id="diagram-6">
+                <div class="ascii-diagram">
+              EVENT-DRIVEN ARCHITECTURE
+                        │
+                   ┌────▼────┐
+                   │   SNS   │
+                   │  Topic  │
+                   └────┬────┘
+                        │
+        ┌───────┬───────┼───────┬───────┐
+        │       │       │       │       │
+   ┌────▼──┐ ┌─▼───┐ ┌─▼───┐ ┌─▼───┐ ┌─▼───┐
+   │SQS Q1│ │SQS Q2│ │SQS Q3│ │SQS Q4│ │SQS Q5│
+   └───┬──┘ └──┬──┘ └──┬──┘ └──┬──┘ └──┬──┘
+       │       │       │       │       │
+   ┌───▼──┐ ┌─▼───┐ ┌─▼───┐ ┌─▼───┐ ┌─▼───┐
+   │Payment│ │Email│ │Inven-│ │SMS │ │Analy-│
+   │Service│ │Svc  │ │tory  │ │Svc │ │tics  │
+   └──────┘ └─────┘ └─────┘ └────┘ └─────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-6">
+                <div class="explanation-title">Why Asynchronous?</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Fast Response to User</div>
+                        <div class="explanation-text">Order placed, return success in 300ms. Don't make user wait for payment, email, inventory. Queue those tasks, process in background.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Service Decoupling</div>
+                        <div class="explanation-text">If email service is down, order still succeeds. Services consume at their own pace. No cascading failures across services.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Scalability</div>
+                        <div class="explanation-text">During flash sale, 10,000 orders/sec. Each service scales independently based on its queue depth. Add more consumers as needed.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-6">
+                <div class="key-points-title">Order Processing Flow</div>
+                <ul class="key-list">
+                    <li>User clicks "Place Order" → Order Service validates and saves</li>
+                    <li>Publishes event to SNS → Fans out to 5 SQS queues</li>
+                    <li>Each service processes independently: payment, email, inventory</li>
+                    <li>Failed messages go to Dead Letter Queue for manual review</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-6">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 7: Load Balancing -->
+        <div class="slide" data-slide="7">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">Application Load Balancer <span class="badge">TRAFFIC ROUTING</span></div>
+            <div class="description">Distributing requests across microservices</div>
+
+            <div class="diagram-section" id="diagram-7">
+                <div class="ascii-diagram">
+                           USER REQUESTS
+                                │
+                    ┌───────────▼──────────┐
+                    │ Application Load     │
+                    │ Balancer (ALB)       │
+                    │ - SSL Termination    │
+                    │ - Health Checks      │
+                    └───────┬──────────────┘
+                            │
+        ┌───────────────────┼───────────────────┐
+        │                   │                   │
+        │ /api/users/*      │ /api/products/*   │ /api/orders/*
+        │                   │                   │
+   ┌────▼────────┐    ┌────▼────────┐    ┌────▼────────┐
+   │ User Service│    │Product Svc  │    │Order Service│
+   │ Target Group│    │Target Group │    │Target Group │
+   └─────────────┘    └─────────────┘    └─────────────┘
+        │                   │                   │
+   ┌────▼────┐         ┌────▼────┐         ┌───▼─────┐
+   │Instance1│         │Instance1│         │Instance1│
+   │Instance2│         │Instance2│         │Instance2│
+   │Instance3│         │Instance3│         │Instance3│
+   └─────────┘         └─────────┘         └─────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-7">
+                <div class="explanation-title">ALB Features</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Path-Based Routing</div>
+                        <div class="explanation-text">Requests to /api/products/* go to Product Service. /api/orders/* go to Order Service. One load balancer, multiple services.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Health Checks</div>
+                        <div class="explanation-text">ALB checks /actuator/health every 30 seconds. If 2 consecutive checks fail, instance marked unhealthy. No traffic sent to unhealthy instances.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">SSL Termination</div>
+                        <div class="explanation-text">ALB handles HTTPS encryption/decryption. Backend services use HTTP. Certificate from AWS Certificate Manager (free). Reduces load on apps.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-7">
+                <div class="key-points-title">High Availability Setup</div>
+                <ul class="key-list">
+                    <li>ALB spans all 3 Availability Zones</li>
+                    <li>Each service has min 3 instances across 3 AZs</li>
+                    <li>If one AZ fails, other two handle 100% traffic</li>
+                    <li>Connection draining: 30 sec wait before terminating instance</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-7">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 8: Monitoring & Observability -->
+        <div class="slide" data-slide="8">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">CloudWatch Monitoring <span class="badge">OBSERVABILITY</span></div>
+            <div class="description">Visibility into production systems</div>
+
+            <div class="diagram-section" id="diagram-8">
+                <div class="ascii-diagram">
+              APPLICATION METRICS FLOW
+                        │
+        ┌───────────────┼───────────────┐
+        │               │               │
+   ┌────▼────┐     ┌────▼────┐    ┌────▼────┐
+   │Microserv│     │   RDS   │    │   ALB   │
+   │  Logs   │     │  Metrics│    │ Metrics │
+   └────┬────┘     └────┬────┘    └────┬────┘
+        │               │               │
+        └───────────────┼───────────────┘
+                        │
+                   ┌────▼────┐
+                   │CloudWatch│
+                   │  Logs & │
+                   │ Metrics  │
+                   └────┬────┘
+                        │
+        ┌───────────────┼───────────────┐
+        │               │               │
+   ┌────▼────┐     ┌────▼────┐    ┌────▼────┐
+   │Dashboard│     │  Alarms │    │ X-Ray   │
+   │         │     │         │    │ Tracing │
+   └─────────┘     └─────────┘    └─────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-8">
+                <div class="explanation-title">Three Pillars of Observability</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Logs (CloudWatch Logs)</div>
+                        <div class="explanation-text">All Spring Boot logs sent to CloudWatch. Structured JSON logging. Query with Logs Insights: "Show all errors for user X in last hour".</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Metrics (CloudWatch Metrics)</div>
+                        <div class="explanation-text">CPU, memory, request count, error rate, latency. Custom business metrics: orders/min, revenue/hour. Dashboards for real-time visibility.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Tracing (X-Ray)</div>
+                        <div class="explanation-text">Follow request across services. See: Order Service 50ms → Payment Service 2000ms (bottleneck!) → Inventory 20ms. Find slow services instantly.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-8">
+                <div class="key-points-title">Alerting Strategy</div>
+                <ul class="key-list">
+                    <li>Critical alerts (page on-call): Error rate >5%, database CPU >90%</li>
+                    <li>Warning alerts (Slack): Error rate >1%, latency >500ms</li>
+                    <li>Include runbook link in every alert</li>
+                    <li>Monitor alert fatigue - adjust thresholds based on actual incidents</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-8">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 9: Security Layers -->
+        <div class="slide" data-slide="9">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">Security - Defense in Depth <span class="badge">SECURITY</span></div>
+            <div class="description">Multiple layers protecting your application</div>
+
+            <div class="diagram-section" id="diagram-9">
+                <div class="ascii-diagram">
+              SECURITY LAYERS (Outside → Inside)
+                        │
+        ┌───────────────▼────────────────┐
+        │  Layer 1: AWS WAF              │
+        │  - SQL Injection Protection    │
+        │  - XSS Protection              │
+        │  - Rate Limiting               │
+        └───────────────┬────────────────┘
+                        │
+        ┌───────────────▼────────────────┐
+        │  Layer 2: AWS Shield           │
+        │  - DDoS Protection             │
+        └───────────────┬────────────────┘
+                        │
+        ┌───────────────▼────────────────┐
+        │  Layer 3: Security Groups      │
+        │  - Network Firewall Rules      │
+        └───────────────┬────────────────┘
+                        │
+        ┌───────────────▼────────────────┐
+        │  Layer 4: Application Layer    │
+        │  - JWT Authentication          │
+        │  - API Authorization           │
+        └───────────────┬────────────────┘
+                        │
+        ┌───────────────▼────────────────┐
+        │  Layer 5: Data Layer           │
+        │  - Encryption at Rest (KMS)    │
+        │  - Encryption in Transit (TLS) │
+        └────────────────────────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-9">
+                <div class="explanation-title">Defense in Depth Strategy</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Perimeter Security</div>
+                        <div class="explanation-text">WAF blocks SQL injection, XSS attacks. Shield protects against DDoS. Rate limiting prevents abuse. Attackers stopped at the edge.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Network Security</div>
+                        <div class="explanation-text">Security groups are stateful firewalls. ALB allows 443 from anywhere. Apps allow 8080 from ALB only. DB allows 5432 from apps only.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Data Security</div>
+                        <div class="explanation-text">All data encrypted: RDS with KMS, S3 with SSE, DynamoDB encryption enabled. TLS 1.2+ for all traffic. Secrets in AWS Secrets Manager.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-9">
+                <div class="key-points-title">IAM Best Practices</div>
+                <ul class="key-list">
+                    <li>Never hardcode credentials - use IAM roles for EC2/Lambda</li>
+                    <li>Principle of least privilege - minimum permissions needed</li>
+                    <li>MFA enabled for all human users</li>
+                    <li>CloudTrail logging all API calls for audit trail</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-9">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 10: Complete Order Flow -->
+        <div class="slide" data-slide="10">
+            <div class="title">Flipkart-like E-commerce on AWS</div>
+            <div class="subtitle">Complete Architecture - Visual Walkthrough</div>
+            <div class="component-title">End-to-End Order Flow <span class="badge">BRINGING IT ALL TOGETHER</span></div>
+            <div class="description">How all components work together when user places order</div>
+
+            <div class="diagram-section" id="diagram-10">
+                <div class="ascii-diagram">
+USER: Clicks "Place Order"
+   │
+   │ 10ms
+   ▼
+CloudFront (Edge Location)
+   │
+   │ 20ms
+   ▼
+ALB (Load Balancer)
+   │
+   │ 50ms
+   ▼
+Order Service (Validates & Saves Order)
+   │
+   ├──────────────┐ 300ms total - USER SEES SUCCESS!
+   │              │
+   │ Async Flows  │ (User doesn't wait for these)
+   ▼              ▼
+SNS Topic      Returns to User
+   │
+   ├──────┬──────┬──────┬──────┐
+   │      │      │      │      │
+   ▼      ▼      ▼      ▼      ▼
+Payment Email Inventory SMS Analytics
+Queue   Queue  Queue   Queue Queue
+   │      │      │      │      │
+   ▼      ▼      ▼      ▼      ▼
+2-3sec  500ms  100ms  500ms  N/A
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-10">
+                <div class="explanation-title">The Complete Journey</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">User Experience</div>
+                        <div class="explanation-text">Click "Place Order" → Success in 300ms. Behind scenes: validate order, check inventory, save to RDS, publish event. User happy with fast response.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Background Processing</div>
+                        <div class="explanation-text">Payment gateway called (2-3 sec), email sent (500ms), inventory updated (100ms), SMS sent (500ms). User doesn't wait for any of this.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Resilience</div>
+                        <div class="explanation-text">If payment fails, order still saved. User can retry. If email service down, order succeeds. Message stays in queue until service recovers.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-10">
+                <div class="key-points-title">Why This Architecture Works</div>
+                <ul class="key-list">
+                    <li>Caching: Product details served from Redis in 2ms</li>
+                    <li>Async: User doesn't wait for payment, emails</li>
+                    <li>Multi-AZ: If one AZ fails, others handle traffic</li>
+                    <li>Auto-scaling: Flash sale? Scale from 3 to 20 pods automatically</li>
+                    <li>Monitoring: Know within 1 minute if something breaks</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-10">🎉 Architecture Complete! Press R to restart</div>
+        </div>
+
+        <div class="navigation">SPACE / Click = Next • Arrow Keys = Navigate • R = Restart</div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        let currentStep = 0;
+        const totalSlides = 10;
+
+        function updateProgress() {
+            document.getElementById('progress').textContent = `${currentSlide} / ${totalSlides}`;
+        }
+
+        function showStep() {
+            const diagram = document.getElementById(`diagram-${currentSlide}`);
+            const explanation = document.getElementById(`explanation-${currentSlide}`);
+            const keys = document.getElementById(`keys-${currentSlide}`);
+            const hint = document.getElementById(`hint-${currentSlide}`);
+
+            if (currentStep === 1 && diagram) {
+                diagram.classList.add('visible');
+                if (hint) hint.textContent = '👆 Click for explanation';
+            } else if (currentStep === 2 && explanation) {
+                explanation.classList.add('visible');
+                if (hint) hint.textContent = '👆 Click for key points';
+            } else if (currentStep === 3 && keys) {
+                keys.classList.add('visible');
+                if (hint) hint.style.display = 'none';
+            }
+        }
+
+        function nextSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide++;
+            if (currentSlide > totalSlides) currentSlide = 1;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function prevSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide--;
+            if (currentSlide < 1) currentSlide = totalSlides;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function handleAdvance() {
+            if (currentStep < 3) {
+                currentStep++;
+                showStep();
+            } else {
+                nextSlide();
+            }
+        }
+
+        document.addEventListener('click', handleAdvance);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleAdvance();
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.code === 'KeyR') {
+                location.reload();
+            }
+        });
+
+        document.addEventListener('selectstart', function(e) {
+            if (e.target.closest('.container')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
