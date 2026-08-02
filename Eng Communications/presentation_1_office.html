@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural English - Part 1 (Office & Professional)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 1400px;
+            width: 100%;
+            min-height: 700px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .title {
+            text-align: center;
+            color: #667eea;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #999;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .conversation-number {
+            color: #764ba2;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .situation {
+            color: #555;
+            font-size: 1.15em;
+            margin-bottom: 25px;
+            font-style: italic;
+            background: #f0f0f0;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+
+        .hindi-section {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border-left: 6px solid #fdcb6e;
+            box-shadow: 0 4px 15px rgba(253, 203, 110, 0.3);
+        }
+
+        .hindi-label {
+            color: #d63031;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .hindi-label::before {
+            content: "🇮🇳";
+            margin-right: 8px;
+        }
+
+        .hindi-text {
+            font-size: 1.7em;
+            line-height: 1.7;
+            color: #2d3436;
+            font-weight: 500;
+        }
+
+        .english-section {
+            background: linear-gradient(135deg, #dfe6e9 0%, #b2bec3 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border-left: 6px solid #0984e3;
+            box-shadow: 0 4px 15px rgba(9, 132, 227, 0.3);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .english-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .english-label {
+            color: #0984e3;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .english-label::before {
+            content: "🇬🇧";
+            margin-right: 8px;
+        }
+
+        .english-text {
+            font-size: 1.7em;
+            line-height: 1.8;
+            color: #2d3436;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .word-meaning {
+            display: inline-block;
+            position: relative;
+            color: #0984e3;
+            font-weight: 600;
+            cursor: help;
+            border-bottom: 2px dotted #0984e3;
+            padding: 2px 4px;
+            transition: all 0.3s ease;
+        }
+
+        .word-meaning:hover {
+            background: #0984e3;
+            color: white;
+            border-radius: 4px;
+            border-bottom: 2px solid #0984e3;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3436;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.5em;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            margin-bottom: 8px;
+            font-weight: normal;
+            z-index: 100;
+        }
+
+        .word-meaning:hover .tooltip {
+            opacity: 1;
+        }
+
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #2d3436;
+        }
+
+        .key-expressions {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 25px;
+        }
+
+        .key-expressions.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .key-title {
+            color: #6c5ce7;
+            font-size: 1.35em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .key-title::before {
+            content: "💡";
+            margin-right: 10px;
+        }
+
+        .expression-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .expression-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 18px;
+            border-radius: 10px;
+            border-left: 5px solid #6c5ce7;
+            transition: all 0.3s ease;
+        }
+
+        .expression-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(108, 92, 231, 0.2);
+        }
+
+        .expression-phrase {
+            color: #6c5ce7;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 8px;
+        }
+
+        .expression-meaning {
+            color: #636e72;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .category-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.75em;
+            margin-left: 10px;
+            font-weight: normal;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 0.85em;
+            backdrop-filter: blur(10px);
+        }
+
+        .progress {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(108, 92, 231, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1em;
+            backdrop-filter: blur(10px);
+        }
+
+        .hint {
+            text-align: center;
+            color: #b2bec3;
+            font-size: 1em;
+            margin-top: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .slide {
+            display: none;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px;
+            }
+            .hindi-text, .english-text {
+                font-size: 1.3em;
+            }
+            .expression-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="progress" id="progress">1 / 10</div>
+
+        <!-- Slide 1 -->
+        <div class="slide active" data-slide="1">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">1. Project Deadline Pressure <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Team discussion about tight deadline</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Yaar deadline bohot tight hai is baar. Agar hum thoda extra effort nahin karenge<br>
+                    to project fail ho jayega aur sab kuch waste ho jayega."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-1">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "Look, we're <span class="word-meaning">up against the wall<span class="tooltip">in difficult situation, no time left</span></span> with this deadline.<br>
+                    If we don't <span class="word-meaning">pull out all the stops<span class="tooltip">make maximum effort possible</span></span>, this whole thing's gonna <span class="word-meaning">go sideways<span class="tooltip">fail badly, go wrong</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-1">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">up against the wall</div>
+                        <div class="expression-meaning">in very difficult situation with limited options</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">pull out all the stops</div>
+                        <div class="expression-meaning">make maximum effort, use all resources</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">go sideways</div>
+                        <div class="expression-meaning">fail, go wrong unexpectedly</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-1">👆 Click anywhere or press SPACE to reveal</div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="slide" data-slide="2">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">2. Delegating Critical Task <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Manager assigning important responsibility</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Ye kaam bahut important hai aur ismein koi galti nahin honi chahiye.<br>
+                    Main tumpe bharosa kar raha hoon ki tum ye sambhal loge."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-2">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "This is <span class="word-meaning">mission-critical<span class="tooltip">extremely important for success</span></span>, so there's <span class="word-meaning">zero margin for error<span class="tooltip">no room for any mistakes</span></span>.<br>
+                    I'm <span class="word-meaning">counting on you<span class="tooltip">trusting you completely, depending on you</span></span> to <span class="word-meaning">handle this<span class="tooltip">take care of it successfully</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-2">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">mission-critical</div>
+                        <div class="expression-meaning">extremely important, essential for success</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">zero margin for error</div>
+                        <div class="expression-meaning">no room for any mistakes</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">counting on you</div>
+                        <div class="expression-meaning">depending on you, trusting you</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-2">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="slide" data-slide="3">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">3. Budget Constraints <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Dealing with sudden budget cuts</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Budget cut ho gaya hai to ab hume bahut dikkat hogi.<br>
+                    Kam resources ke saath hi kaam khatam karna padega."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-3">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "With the budget getting <span class="word-meaning">slashed<span class="tooltip">cut severely and suddenly</span></span>, we're gonna have to <span class="word-meaning">make do<span class="tooltip">manage with what we have</span></span> with less.<br>
+                    Time to get <span class="word-meaning">creative<span class="tooltip">find innovative solutions</span></span> and <span class="word-meaning">stretch every dollar<span class="tooltip">use money very efficiently</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-3">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">slashed (budget)</div>
+                        <div class="expression-meaning">cut severely, reduced drastically</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">make do</div>
+                        <div class="expression-meaning">manage with what you have</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">stretch every dollar</div>
+                        <div class="expression-meaning">use money very efficiently</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-3">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="slide" data-slide="4">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">4. Taking Initiative <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Proposing solution to team problem</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Maine ek idea socha hai jo kaam kar sakta hai.<br>
+                    Agar aap mujhe chance denge to main prove kar dunga."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-4">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "I've got an idea that might <span class="word-meaning">move the needle<span class="tooltip">make significant measurable impact</span></span> on this.<br>
+                    Give me a <span class="word-meaning">shot at it<span class="tooltip">chance to try it</span></span>, and I'll show you what I can <span class="word-meaning">bring to the table<span class="tooltip">contribute, offer as value</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-4">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">move the needle</div>
+                        <div class="expression-meaning">make measurable progress or impact</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">give me a shot</div>
+                        <div class="expression-meaning">give me a chance/opportunity</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">bring to the table</div>
+                        <div class="expression-meaning">contribute, offer skills/value</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-4">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 5 -->
+        <div class="slide" data-slide="5">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">5. Crisis Management <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: System crash with angry clients</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "System crash ho gaya hai aur clients bohot gussa hain!<br>
+                    Sabko abhi fix karna padega varna company ka reputation kharab hoga."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-5">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "The system's <span class="word-meaning">gone down<span class="tooltip">stopped working, crashed</span></span> and clients are <span class="word-meaning">up in arms<span class="tooltip">very angry, protesting strongly</span></span>!<br>
+                    We need <span class="word-meaning">all hands on deck<span class="tooltip">everyone working together urgently</span></span> before this <span class="word-meaning">blows up in our faces<span class="tooltip">becomes major disaster</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-5">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">gone down</div>
+                        <div class="expression-meaning">stopped working, crashed (system/server)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">up in arms</div>
+                        <div class="expression-meaning">very angry, protesting strongly</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">all hands on deck</div>
+                        <div class="expression-meaning">everyone needed, full team effort</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">blows up in faces</div>
+                        <div class="expression-meaning">backfires badly, creates disaster</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-5">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 6 -->
+        <div class="slide" data-slide="6">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">6. Pushing Back Diplomatically <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Disagreeing with unrealistic timeline</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Maine samjha aapki baat, par ye timeline realistic nahin lag raha.<br>
+                    Agar proper time nahin milega to quality compromise ho jayegi."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-6">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "I <span class="word-meaning">hear you<span class="tooltip">understand your point</span></span>, but I've got to <span class="word-meaning">push back<span class="tooltip">disagree, challenge the idea</span></span> on this timeline—it's just not <span class="word-meaning">realistic<span class="tooltip">achievable, practical</span></span>.<br>
+                    If we <span class="word-meaning">rush it<span class="tooltip">do it too quickly</span></span>, we're gonna <span class="word-meaning">cut corners<span class="tooltip">compromise on quality</span></span> and that'll <span class="word-meaning">come back to haunt us<span class="tooltip">cause problems later</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-6">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">I hear you</div>
+                        <div class="expression-meaning">I understand your point (before disagreeing)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">push back</div>
+                        <div class="expression-meaning">disagree, challenge the idea diplomatically</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">cut corners</div>
+                        <div class="expression-meaning">compromise on quality to save time/money</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">come back to haunt us</div>
+                        <div class="expression-meaning">cause problems in the future</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-6">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 7 -->
+        <div class="slide" data-slide="7">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">7. Performance Review <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Manager giving constructive feedback</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Tumhara kaam achha hai par improvement ki zaroorat hai.<br>
+                    Team ke saath zyada collaborate karo aur ownership lo."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-7">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "You're doing solid work, but there's <span class="word-meaning">room for growth<span class="tooltip">opportunity to improve</span></span> here.<br>
+                    I'd like to see you <span class="word-meaning">step up<span class="tooltip">take more responsibility</span></span> your collaboration with the team and really <span class="word-meaning">own<span class="tooltip">take full responsibility for</span></span> your projects."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-7">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">room for growth</div>
+                        <div class="expression-meaning">opportunity to improve (polite feedback)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">step up</div>
+                        <div class="expression-meaning">take more responsibility, improve effort</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">own (projects)</div>
+                        <div class="expression-meaning">take full responsibility and accountability</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-7">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 8 -->
+        <div class="slide" data-slide="8">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">8. Client Presentation <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Pitching solution to potential client</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Humara solution aapki sabhi problems solve kar sakta hai.<br>
+                    Implementation bhi fast hoga aur ROI bhi achha milega."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-8">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "Our solution is <span class="word-meaning">tailor-made<span class="tooltip">specifically designed for</span></span> for your pain points and can <span class="word-meaning">hit the ground running<span class="tooltip">start working immediately</span></span>.<br>
+                    You'll see <span class="word-meaning">tangible results<span class="tooltip">real, measurable outcomes</span></span> within the first quarter and a strong <span class="word-meaning">ROI<span class="tooltip">Return On Investment</span></span> moving forward."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-8">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">tailor-made</div>
+                        <div class="expression-meaning">specifically designed/customized for needs</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">hit the ground running</div>
+                        <div class="expression-meaning">start immediately with full effectiveness</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">tangible results</div>
+                        <div class="expression-meaning">real, measurable outcomes you can see</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">ROI</div>
+                        <div class="expression-meaning">Return On Investment (profit from investment)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-8">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 9 -->
+        <div class="slide" data-slide="9">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">9. Negotiating Terms <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Business negotiation with vendor</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Aapka offer achha hai par price thoda kam kar sakte hain kya?<br>
+                    Long-term partnership ki baat kar rahe hain hum."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-9">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "I like what you're offering, but is there any <span class="word-meaning">wiggle room<span class="tooltip">flexibility for negotiation</span></span> on the price?<br>
+                    We're looking at a <span class="word-meaning">long-term partnership<span class="tooltip">ongoing business relationship</span></span> here, so I'm hoping we can <span class="word-meaning">meet in the middle<span class="tooltip">find compromise between positions</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-9">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">wiggle room</div>
+                        <div class="expression-meaning">flexibility for negotiation or adjustment</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">long-term partnership</div>
+                        <div class="expression-meaning">ongoing business relationship (not one-time)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">meet in the middle</div>
+                        <div class="expression-meaning">find compromise between two positions</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-9">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 10 -->
+        <div class="slide" data-slide="10">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 1: Office & Professional Communication</div>
+            <div class="conversation-number">10. Team Conflict Resolution <span class="category-badge">OFFICE</span></div>
+            <div class="situation">Situation: Addressing team disagreement</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Dekho, hum sab ek team hain. Differences toh honge hi par<br>
+                    ek doosre ki baat sunna zaroori hai. Milkar solution nikalte hain."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-10">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "Look, we're all <span class="word-meaning">on the same team<span class="tooltip">working toward same goal</span></span> here. It's natural to <span class="word-meaning">butt heads<span class="tooltip">disagree, have conflict</span></span> sometimes,<br>
+                    but let's <span class="word-meaning">hear each other out<span class="tooltip">listen to everyone's views</span></span> and find some <span class="word-meaning">common ground<span class="tooltip">area of agreement</span></span>. We can <span class="word-meaning">work through this<span class="tooltip">solve problem together</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-10">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">on the same team</div>
+                        <div class="expression-meaning">working toward the same goal together</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">butt heads</div>
+                        <div class="expression-meaning">disagree, have conflict with someone</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">hear each other out</div>
+                        <div class="expression-meaning">listen to everyone's complete views</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">common ground</div>
+                        <div class="expression-meaning">area of shared agreement or understanding</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-10">🎉 Part 1 Complete! Press R to restart</div>
+        </div>
+
+        <div class="navigation">SPACE / Click = Next • Arrow Keys = Navigate • R = Restart</div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        let currentStep = 0;
+        const totalSlides = 10;
+
+        function updateProgress() {
+            document.getElementById('progress').textContent = `${currentSlide} / ${totalSlides}`;
+        }
+
+        function showStep() {
+            const englishSection = document.getElementById(`english-${currentSlide}`);
+            const keysSection = document.getElementById(`keys-${currentSlide}`);
+            const hint = document.getElementById(`hint-${currentSlide}`);
+
+            if (currentStep === 1 && englishSection) {
+                englishSection.classList.add('visible');
+                if (hint) hint.textContent = '👆 Click for key expressions';
+            } else if (currentStep === 2 && keysSection) {
+                keysSection.classList.add('visible');
+                if (hint) hint.style.display = 'none';
+            }
+        }
+
+        function nextSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide++;
+            if (currentSlide > totalSlides) currentSlide = 1;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function prevSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide--;
+            if (currentSlide < 1) currentSlide = totalSlides;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function handleAdvance() {
+            if (currentStep < 2) {
+                currentStep++;
+                showStep();
+            } else {
+                nextSlide();
+            }
+        }
+
+        document.addEventListener('click', handleAdvance);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleAdvance();
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.code === 'KeyR') {
+                location.reload();
+            }
+        });
+
+        document.addEventListener('selectstart', function(e) {
+            if (e.target.closest('.container')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

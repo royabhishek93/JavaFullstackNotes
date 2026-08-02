@@ -1,4 +1,4 @@
-# Deployment & Infrastructure Architecture
+# Deployment & Infrastructure Architecture (Interview Focus)
 
 ## 1. Multi-Region Deployment Architecture
 
@@ -36,6 +36,13 @@ RPO (Recovery Point Objective): 0 (no data loss)
 RTO (Recovery Time Objective): 30 seconds
 ```
 
+**Interview Discussion Points**:
+- **Why 2 regions?** Disaster recovery, compliance (data localization)
+- **Why synchronous replication?** Zero data loss (financial transactions)
+- **Cost of DR?** ~50% of primary (standby servers, data replication)
+
+---
+
 ## 2. Single Region (Availability Zone) Architecture
 
 ```
@@ -55,7 +62,6 @@ RTO (Recovery Time Objective): 30 seconds
                 └────────┬────────┘       └───────┬────────┘
                          │                        │
         ┌────────────────┼────────────────┬───────┘
-        │                │                │
         │                │                │
 ┌───────▼────────┐ ┌─────▼──────┐ ┌─────▼──────┐
 │   AZ-1a        │ │   AZ-1b    │ │   AZ-1c    │
@@ -91,12 +97,19 @@ Health Checks: Every 10 seconds
 Unhealthy Threshold: 2 consecutive failures
 ```
 
-## 3. Kubernetes (EKS) Deployment
+**Interview Discussion Points**:
+- **Why 3 AZs?** Even if 1 AZ fails, 2 remain (99.99% availability)
+- **Why separate ALB and NLB?** ALB for HTTP (Layer 7), NLB for high-performance TCP (Layer 4)
+- **Master-Replica split?** 20% writes → Master, 80% reads → Replicas
+
+---
+
+## 3. Kubernetes (EKS) Deployment - Key Components
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
+┌────────────────────────────────────────────────────────────────────────────┐
 │                  KUBERNETES CLUSTER ARCHITECTURE                            │
-└─────────────────────────────────────────────────────────────────────────────┘
+└────────────────────────────────────────────────────────────────────────────┘
 
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                          INGRESS LAYER                                     │
@@ -110,156 +123,70 @@ Unhealthy Threshold: 2 consecutive failures
 
 ┌────────────────────────────────────────────────────────────────────────────┐
 │                       APPLICATION LAYER                                    │
-│                                                                            │
 │  Namespace: upi-payment-prod                                               │
 │                                                                            │
 │  ┌─────────────────────┐  ┌─────────────────────┐  ┌──────────────────┐  │
 │  │ Payment Service     │  │ User Service        │  │ VPA Resolution   │  │
-│  │                     │  │                     │  │ Service          │  │
-│  │ Deployment:         │  │ Deployment:         │  │                  │  │
-│  │ - Replicas: 20      │  │ - Replicas: 5       │  │ Deployment:      │  │
-│  │ - CPU: 2 cores      │  │ - CPU: 1 core       │  │ - Replicas: 10   │  │
-│  │ - Memory: 4GB       │  │ - Memory: 2GB       │  │ - CPU: 1 core    │  │
-│  │ - HPA: 10-50        │  │ - HPA: 3-20         │  │ - Memory: 2GB    │  │
-│  │                     │  │                     │  │ - HPA: 5-30      │  │
-│  │ Service Type:       │  │ Service Type:       │  │                  │  │
-│  │ ClusterIP           │  │ ClusterIP           │  │ Service Type:    │  │
-│  │ Port: 8080          │  │ Port: 8081          │  │ ClusterIP        │  │
-│  └─────────────────────┘  └─────────────────────┘  │ Port: 8082       │  │
-│                                                     └──────────────────┘  │
+│  │ - Replicas: 20      │  │ - Replicas: 5       │  │ - Replicas: 10   │  │
+│  │ - CPU: 2 cores      │  │ - CPU: 1 core       │  │ - CPU: 1 core    │  │
+│  │ - Memory: 4GB       │  │ - Memory: 2GB       │  │ - Memory: 2GB    │  │
+│  │ - HPA: 10-50        │  │ - HPA: 3-20         │  │ - HPA: 5-30      │  │
+│  └─────────────────────┘  └─────────────────────┘  └──────────────────┘  │
 │                                                                            │
 │  ┌─────────────────────┐  ┌─────────────────────┐  ┌──────────────────┐  │
 │  │ Auth Service        │  │ Fraud Detection     │  │ Notification     │  │
-│  │                     │  │ Service             │  │ Service          │  │
-│  │ Deployment:         │  │                     │  │                  │  │
-│  │ - Replicas: 10      │  │ Deployment:         │  │ Deployment:      │  │
-│  │ - CPU: 1 core       │  │ - Replicas: 5       │  │ - Replicas: 5    │  │
-│  │ - Memory: 2GB       │  │ - CPU: 2 cores      │  │ - CPU: 1 core    │  │
-│  │ - HPA: 5-30         │  │ - Memory: 4GB       │  │ - Memory: 2GB    │  │
-│  │                     │  │ - HPA: 3-15         │  │ - HPA: 3-20      │  │
-│  │ Service Type:       │  │ - GPU: Optional     │  │                  │  │
-│  │ ClusterIP           │  │                     │  │ Service Type:    │  │
-│  │ Port: 8083          │  │ Service Type:       │  │ ClusterIP        │  │
-│  └─────────────────────┘  │ ClusterIP           │  │ Port: 8085       │  │
-│                           │ Port: 8084          │  └──────────────────┘  │
-│                           └─────────────────────┘                         │
+│  │ - Replicas: 10      │  │ - Replicas: 5       │  │ - Replicas: 5    │  │
+│  │ - CPU: 1 core       │  │ - CPU: 2 cores      │  │ - CPU: 1 core    │  │
+│  │ - Memory: 2GB       │  │ - Memory: 4GB       │  │ - Memory: 2GB    │  │
+│  │ - HPA: 5-30         │  │ - HPA: 3-15         │  │ - HPA: 3-20      │  │
+│  └─────────────────────┘  └─────────────────────┘  └──────────────────┘  │
 └────────────────────────────────────────────────────────────────────────────┘
 
-┌────────────────────────────────────────────────────────────────────────────┐
-│                       CONFIGURATION LAYER                                  │
-│  ┌──────────────────────────────────────────────────────────────────────┐ │
-│  │  ConfigMaps: Database URLs, Feature Flags                           │ │
-│  │  Secrets: API Keys, Certificates, Encryption Keys                    │ │
-│  └──────────────────────────────────────────────────────────────────────┘ │
-└────────────────────────────────────────────────────────────────────────────┘
-
-HPA = Horizontal Pod Autoscaler
-Resource Limits Enforced: Yes
-OOMKilled Prevention: Memory buffer 20%
+HPA = Horizontal Pod Autoscaler (adds/removes pods based on CPU/Memory)
 ```
 
-## 4. Container Specifications
+**Interview Discussion Points**:
+- **Why Payment Service has most replicas (20)?** Handles 80% of traffic
+- **HPA range (10-50)?** Min 10 for redundancy, Max 50 to prevent runaway scaling
+- **Why separate services?** Microservices → Independent scaling, deployment, failure isolation
 
-```yaml
-# Example: Payment Service Deployment
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: payment-service
-  namespace: upi-payment-prod
-spec:
-  replicas: 20
-  selector:
-    matchLabels:
-      app: payment-service
-  template:
-    metadata:
-      labels:
-        app: payment-service
-        version: v1.2.5
-    spec:
-      containers:
-      - name: payment-service
-        image: upi-registry/payment-service:v1.2.5
-        ports:
-        - containerPort: 8080
-          name: http
-        resources:
-          requests:
-            memory: "4Gi"
-            cpu: "2000m"
-          limits:
-            memory: "8Gi"
-            cpu: "4000m"
-        env:
-        - name: DB_HOST
-          valueFrom:
-            configMapKeyRef:
-              name: db-config
-              key: host
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: db-secret
-              key: password
-        livenessProbe:
-          httpGet:
-            path: /health/live
-            port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-          initialDelaySeconds: 15
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 2
 ---
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: payment-service-hpa
-  namespace: upi-payment-prod
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: payment-service
-  minReplicas: 10
-  maxReplicas: 50
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-  - type: Resource
-    resource:
-      name: memory
-      target:
-        type: Utilization
-        averageUtilization: 80
-  behavior:
-    scaleDown:
-      stabilizationWindowSeconds: 300
-      policies:
-      - type: Percent
-        value: 50
-        periodSeconds: 60
-    scaleUp:
-      stabilizationWindowSeconds: 0
-      policies:
-      - type: Percent
-        value: 100
-        periodSeconds: 30
+
+## 4. Container Resource Limits (Key Concept)
+
+**Payment Service Deployment** (Simplified for Interview):
+```yaml
+Payment Service Pod:
+  Resources:
+    Requests:  # Minimum guaranteed
+      CPU: 2 cores
+      Memory: 4GB
+    Limits:    # Maximum allowed
+      CPU: 4 cores
+      Memory: 8GB
+      
+  Health Checks:
+    Liveness:  /health/live  (Is pod alive?)
+      - Initial delay: 30s
+      - Check every: 10s
+      - Fail after: 3 attempts → Kill & Restart
+      
+    Readiness: /health/ready (Is pod ready for traffic?)
+      - Initial delay: 15s
+      - Check every: 5s
+      - Fail after: 2 attempts → Remove from load balancer
 ```
 
-## 5. Database Deployment
+**Interview Discussion Points**:
+- **Liveness vs Readiness?** 
+  - Liveness: Pod crashed → Restart it
+  - Readiness: Pod booting/overloaded → Stop sending traffic
+- **Why Limits > Requests?** Burst capacity (sudden spike handling)
+- **What if pod exceeds memory limit?** OOMKilled (Out of Memory) → Restart
+
+---
+
+## 5. Database Deployment - PostgreSQL
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -277,11 +204,9 @@ spec:
 │                                                                  │
 │  ┌────────────────────┐         ┌─────────────────────┐         │
 │  │  Master (Write)    │────────▶│  Standby (AZ-1b)   │         │
-│  │  AZ-1a             │         │  (Sync Replication) │         │
+│  │  AZ-1a             │ Sync    │  (Auto Failover)    │         │
 │  └─────────┬──────────┘         └─────────────────────┘         │
-│            │                                                    │
-│            │ Async Replication                                  │
-│            │                                                    │
+│            │ Async                                               │
 │     ┌──────┴──────┬───────────────────────┐                    │
 │     │             │                       │                    │
 │  ┌──▼───────┐  ┌──▼───────┐  ┌──────────▼──┐                  │
@@ -291,251 +216,377 @@ spec:
 │  └──────────┘  └──────────┘  └─────────────┘                  │
 │                                                                  │
 │  Connection Pooling: PgBouncer (max 1000 connections/instance)  │
-│  Monitoring: CloudWatch, Enhanced Monitoring (1-sec interval)    │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+**Interview Discussion Points**:
+- **Multi-AZ = High Availability**: If Master fails, Standby promoted in 30 seconds
+- **Sync vs Async replication?**
+  - Sync (Master → Standby): Zero data loss, slower writes
+  - Async (Master → Read Replicas): Fast writes, may lag by 1-2 seconds
+- **Why PgBouncer?** Reuse connections (opening new connection takes 50ms)
+- **IOPS = Input/Output Operations Per Second**: 40K IOPS = 40,000 disk reads/writes per second
+
+---
 
 ## 6. Redis (ElastiCache) Deployment
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      REDIS CLUSTER DEPLOYMENT                               │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-Redis Cluster Mode Enabled: 16 Shards (1 primary + 2 replicas each)
-
-Shard 1:                 Shard 2:                 Shard 16:
-┌────────────┐          ┌────────────┐          ┌────────────┐
-│ Primary    │          │ Primary    │    ...   │ Primary    │
-│ (AZ-1a)    │          │ (AZ-1b)    │          │ (AZ-1a)    │
-└─────┬──────┘          └─────┬──────┘          └─────┬──────┘
-      │                       │                       │
-   ┌──┴───┐               ┌──┴───┐               ┌──┴───┐
-   │      │               │      │               │      │
-┌──▼──┐┌──▼──┐         ┌──▼──┐┌──▼──┐         ┌──▼──┐┌──▼──┐
-│Repl1││Repl2│         │Repl1││Repl2│         │Repl1││Repl2│
-│AZ-1b││AZ-1c│         │AZ-1c││AZ-1a│         │AZ-1b││AZ-1c│
-└─────┘└─────┘         └─────┘└─────┘         └─────┘└─────┘
-
-Instance Type: cache.r6g.2xlarge (8 vCPU, 52GB RAM per node)
-Total Capacity: 16 shards × 52GB = 832GB RAM
-Replication: Async (sub-millisecond lag)
-Failover: Automatic (<30 seconds)
+┌──────────────────────────────────────────────────────────────────┐
+│  Redis Cluster (16 Shards)                                       │
+│                                                                  │
+│  Instance Type: cache.r6g.2xlarge (8 vCPU, 52GB RAM)           │
+│  Total Memory: 16 shards × 52GB = 832GB                         │
+│                                                                  │
+│  Shard 1:  [Master] ──▶ [Replica-1] ──▶ [Replica-2]            │
+│  Shard 2:  [Master] ──▶ [Replica-1] ──▶ [Replica-2]            │
+│  ...                                                             │
+│  Shard 16: [Master] ──▶ [Replica-1] ──▶ [Replica-2]            │
+│                                                                  │
+│  Eviction Policy: allkeys-lru (Least Recently Used)             │
+│  Persistence: Disabled (cache only, not primary storage)         │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+**Interview Discussion Points**:
+- **Why 16 shards?** Horizontal scaling (each shard independent)
+- **allkeys-lru?** When memory full, delete least recently used key
+- **Why no persistence?** Cache data can be rebuilt from database (performance > durability)
+- **What's cached?**
+  - VPA → Account mapping (1 hour TTL)
+  - User sessions (30 min TTL)
+  - Rate limit counters (1 min TTL)
+  - Idempotency keys (24 hour TTL)
+
+---
 
 ## 7. Kafka (MSK) Deployment
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      KAFKA CLUSTER (MSK)                                    │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-Kafka Brokers: 9 nodes (3 per AZ)
-
-AZ-1a:              AZ-1b:              AZ-1c:
-┌─────────┐        ┌─────────┐        ┌─────────┐
-│Broker-1 │        │Broker-4 │        │Broker-7 │
-│kafka.m5 │        │kafka.m5 │        │kafka.m5 │
-│.2xlarge │        │.2xlarge │        │.2xlarge │
-└─────────┘        └─────────┘        └─────────┘
-┌─────────┐        ┌─────────┐        ┌─────────┐
-│Broker-2 │        │Broker-5 │        │Broker-8 │
-└─────────┘        └─────────┘        └─────────┘
-┌─────────┐        ┌─────────┐        ┌─────────┐
-│Broker-3 │        │Broker-6 │        │Broker-9 │
-└─────────┘        └─────────┘        └─────────┘
-
-Topics Configuration:
-- transaction.initiated: 32 partitions, RF=3
-- transaction.completed: 32 partitions, RF=3
-- notification.send: 16 partitions, RF=3
-- fraud.detected: 8 partitions, RF=3
-
-Retention: 7 days
-Storage: 5TB EBS per broker
+┌──────────────────────────────────────────────────────────────────┐
+│  Kafka Cluster (3 Brokers across 3 AZs)                          │
+│                                                                  │
+│  Broker Type: kafka.m5.4xlarge (16 vCPU, 64GB RAM)             │
+│  Storage per Broker: 10TB                                        │
+│                                                                  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐                      │
+│  │ Broker 1 │  │ Broker 2 │  │ Broker 3 │                      │
+│  │  (AZ-1a) │  │  (AZ-1b) │  │  (AZ-1c) │                      │
+│  └──────────┘  └──────────┘  └──────────┘                      │
+│                                                                  │
+│  Key Topics:                                                     │
+│  - txn-initiated      (32 partitions, 3 replicas, 7-day TTL)   │
+│  - txn-success        (32 partitions, 3 replicas, 7-day TTL)   │
+│  - txn-failed         (32 partitions, 3 replicas, 7-day TTL)   │
+│  - fraud-alerts       (16 partitions, 3 replicas, 30-day TTL)  │
+│  - settlement-events  (8 partitions, 3 replicas, 90-day TTL)   │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
-## 8. CI/CD Pipeline
+**Interview Discussion Points**:
+- **Why 3 brokers?** Minimum for fault tolerance (quorum = 2)
+- **Why 32 partitions?** Parallel processing (32 consumers can read simultaneously)
+- **Why 3 replicas?** Even if 2 brokers fail, 1 copy survives
+- **7-day retention?** Balance between replay capability and storage cost
+
+---
+
+## 8. Monitoring & Observability Stack
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                         CI/CD WORKFLOW                                      │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                  MONITORING ARCHITECTURE                         │
+└─────────────────────────────────────────────────────────────────┘
 
-Developer Push      Jenkins Pipeline         Deployment
-     │                     │                       │
-     │  git push           │                       │
-     ├────────────────────►│                       │
-     │                     │                       │
-     │                     │ 1. Build & Test       │
-     │                     │    (Unit Tests)       │
-     │                     │ 2. Static Analysis    │
-     │                     │    (SonarQube)        │
-     │                     │ 3. Security Scan      │
-     │                     │    (Trivy)            │
-     │                     │ 4. Build Docker Image │
-     │                     │ 5. Push to ECR        │
-     │                     │                       │
-     │                     │ 6. Deploy to Staging  │
-     │                     ├──────────────────────►│
-     │                     │                       │ Staging Tests
-     │                     │                       │ - Integration
-     │                     │                       │ - E2E
-     │                     │                       │ - Load Tests
-     │                     │                       │
-     │                     │◄──────────────────────┤
-     │                     │   Tests Passed        │
-     │                     │                       │
-     │  Approve Deploy?    │                       │
-     │◄────────────────────┤                       │
-     │                     │                       │
-     │  Approved ✓         │                       │
-     ├────────────────────►│                       │
-     │                     │                       │
-     │                     │ 7. Blue-Green Deploy  │
-     │                     ├──────────────────────►│
-     │                     │    to Production      │
-     │                     │                       │ New Version
-     │                     │                       │ (Green)
-     │                     │                       │
-     │                     │ 8. Smoke Tests        │
-     │                     │◄──────────────────────┤
-     │                     │                       │
-     │                     │ 9. Switch Traffic     │
-     │                     │    (Green → Blue)     │
-     │                     ├──────────────────────►│
-     │                     │                       │
-     │                     │ 10. Monitor           │
-     │                     │     (15 min)          │
-     │                     │                       │
-     │                     │ 11. Rollback if       │
-     │                     │     errors            │
-
-Deployment Strategy: Blue-Green
-Rollback Time: <2 minutes (switch traffic back)
-Deployment Frequency: 10-15 times/day
+Application Logs → Fluentd → S3 + OpenSearch
+                      ↓
+Metrics → Prometheus → Grafana Dashboards
+                      ↓
+Traces → Jaeger → Distributed Tracing
+                      ↓
+Alerts → AlertManager → PagerDuty → Oncall Engineer
 ```
 
-## 9. Monitoring & Observability Stack
-
+**Key Metrics Monitored**:
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                   OBSERVABILITY ARCHITECTURE                                │
-└─────────────────────────────────────────────────────────────────────────────┘
+Golden Signals (Google SRE):
+1. Latency:   p50, p95, p99 transaction time
+2. Traffic:   Requests per second (TPS)
+3. Errors:    Error rate, failed transactions
+4. Saturation: CPU, Memory, Disk, Network usage
 
-Application Services
-        │
-        ├─── Metrics ──────────► Prometheus ──► Grafana Dashboards
-        │                        (2-min scrape)
-        │
-        ├─── Logs ────────────► Fluentd ──► Elasticsearch ──► Kibana
-        │                       (Buffer)     (7-day hot)
-        │
-        ├─── Traces ──────────► Jaeger ──► Jaeger UI
-        │                       (Sampling)
-        │
-        └─── Alerts ──────────► AlertManager ──► PagerDuty / Slack
-
-Key Metrics Collected:
-- Transaction latency (p50, p95, p99)
-- Error rate (4xx, 5xx)
-- Request throughput (RPS)
+Business Metrics:
+- Transaction success rate (>99.5%)
+- Reversal rate (<0.1%)
+- NPCI response time (<1s)
 - Database connection pool usage
-- Cache hit rate
-- Queue depth (Kafka lag)
+- Cache hit rate (>90%)
 
-Log Aggregation:
-- All application logs → Fluentd
-- Structured JSON format
-- Correlation ID for tracing
-- Retention: 7 days hot, 30 days warm, 365 days cold (S3)
-
-Distributed Tracing:
-- OpenTelemetry instrumentation
-- Jaeger for visualization
-- Sampling rate: 1% (production), 100% (staging)
+Critical Alerts (PagerDuty):
+- Success rate < 98%       → Page immediately
+- p95 latency > 5 seconds  → Page immediately
+- Circuit breaker open     → Page immediately
+- Database master down     → Page immediately
 ```
 
-## 10. Disaster Recovery Plan
+**Interview Discussion Points**:
+- **Why OpenSearch (not CloudWatch)?** Better search, long-term retention, cheaper
+- **What's distributed tracing?** Track 1 request across multiple services (see entire flow)
+- **Why p95, not average?** Average hides outliers (1% users get 10s latency = bad UX)
+
+---
+
+## 9. Security Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      DISASTER RECOVERY STRATEGY                             │
-└─────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    SECURITY LAYERS                               │
+└─────────────────────────────────────────────────────────────────┘
 
-Scenario 1: Single AZ Failure
-├─ Detection: <10 seconds (health checks fail)
-├─ Action: Auto-failover to other AZs
-├─ Impact: No downtime (handled by LB)
-└─ RTO: 0, RPO: 0
+Layer 1: Network Security
+┌──────────────────────────────────────┐
+│ CloudFlare WAF                       │ → Block DDoS, SQL injection
+│ - Rate limiting: 1000 req/min       │
+│ - Bot detection                      │
+│ - Geo-blocking (India only)         │
+└──────────────────────────────────────┘
 
-Scenario 2: Region Failure
-├─ Detection: <30 seconds (region health checks)
-├─ Action: DNS failover to DR region
-├─ Impact: 30-60 seconds downtime
-├─ RTO: 30 seconds
-└─ RPO: 0 (synchronous replication)
+Layer 2: API Gateway
+┌──────────────────────────────────────┐
+│ Kong API Gateway                     │ → Authentication, rate limiting
+│ - JWT validation                     │
+│ - API key verification               │
+│ - Request/response logging           │
+└──────────────────────────────────────┘
 
-Scenario 3: Database Corruption
-├─ Detection: Automated data integrity checks
-├─ Action: Restore from point-in-time backup
-├─ Impact: Service degraded (read-only mode)
-├─ RTO: 2 hours
-└─ RPO: 5 minutes (backup frequency)
+Layer 3: Service Mesh
+┌──────────────────────────────────────┐
+│ Istio Service Mesh                   │ → Mutual TLS, traffic control
+│ - mTLS between all services          │
+│ - Circuit breaker                    │
+│ - Retry policies                     │
+└──────────────────────────────────────┘
 
-Scenario 4: Complete Data Center Loss
-├─ Detection: Manual verification
-├─ Action: Activate DR site
-├─ Impact: Service outage
-├─ RTO: 4 hours
-└─ RPO: 15 minutes
+Layer 4: Application Security
+┌──────────────────────────────────────┐
+│ Service Code                         │ → Input validation, auth checks
+│ - MPIN encryption (AES-256)          │
+│ - SQL injection prevention           │
+│ - OWASP Top 10 compliance            │
+└──────────────────────────────────────┘
 
-Backup Strategy:
-- Automated daily snapshots (7-day retention)
-- Continuous WAL archiving (PostgreSQL)
-- Cross-region backup replication
-- Monthly DR drills
+Layer 5: Data Security
+┌──────────────────────────────────────┐
+│ Database + Storage                   │ → Encryption at rest
+│ - TDE (Transparent Data Encryption)  │
+│ - Field-level encryption (PII)       │
+│ - Backup encryption                  │
+└──────────────────────────────────────┘
 ```
 
-## 11. Cost Optimization
+**Interview Discussion Points**:
+- **DDoS Risk Example**:
+  ```
+  Attack: 10,000 bots send 1M requests/sec
+  Impact: NPCI overwhelmed, real users blocked
+  Solution: Rate limit (1000 req/min per IP), CAPTCHA
+  ```
+- **mTLS = Mutual TLS**: Both client and server verify each other (not just client verifies server)
+- **Why encrypt MPIN client-side?** Never send plain MPIN over network (man-in-the-middle attack)
+
+---
+
+## 10. CI/CD Pipeline (Blue-Green Deployment)
 
 ```
-Monthly Infrastructure Cost Estimate (USD):
+┌─────────────────────────────────────────────────────────────────┐
+│                    CI/CD PIPELINE                                │
+└─────────────────────────────────────────────────────────────────┘
 
-EKS Cluster:
-- Control Plane: $73/month
-- Worker Nodes (30 × m5.4xlarge): $18,432/month
-- Reserved Instances (1-year): Save 40% → $11,059/month
+Developer Push → GitHub → Jenkins
+                            ↓
+                    ┌───────┴────────┐
+                    │ Build & Test   │
+                    │ - Unit tests   │
+                    │ - Integration  │
+                    └───────┬────────┘
+                            ↓
+                    ┌───────┴────────┐
+                    │ Docker Build   │
+                    │ - Create image │
+                    │ - Push to ECR  │
+                    └───────┬────────┘
+                            ↓
+                ┌───────────┴────────────┐
+                │                        │
+        ┌───────▼────────┐    ┌─────────▼────────┐
+        │  Blue Env      │    │  Green Env       │
+        │  (Current v1)  │    │  (New v2)        │
+        │  100% traffic  │    │  0% traffic      │
+        └───────┬────────┘    └─────────┬────────┘
+                │                        │
+                │  Run smoke tests       │
+                │  on Green env          │
+                │                        │
+                │  ✓ Tests pass          │
+                │  Switch traffic:       │
+                │  Blue 0% → Green 100%  │
+                └────────────────────────┘
+```
 
-RDS PostgreSQL:
-- Master (db.r6g.8xlarge): $4,896/month
-- Read Replicas (3x): $14,688/month
-- Storage (10TB io2): $6,400/month
-- Reserved Instances: Save 50% → $12,992/month
+**Interview Discussion Points**:
+- **Blue-Green = Zero Downtime**: Run 2 identical environments, switch instantly
+- **Why not Rolling Update?** Financial system needs all-or-nothing (not gradual rollout)
+- **What if Green fails?** Instant rollback to Blue (flip load balancer back)
+- **Smoke tests?** Quick tests on production-like environment (10 min max)
 
-ElastiCache Redis:
-- 16 shards × cache.r6g.2xlarge: $13,824/month
-- Reserved: Save 40% → $8,294/month
+---
 
-MSK (Kafka):
-- 9 brokers (kafka.m5.2xlarge): $11,664/month
-- Storage (45TB): $4,500/month
+## 11. Cost Estimation (Monthly)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                  INFRASTRUCTURE COST BREAKDOWN                    │
+└──────────────────────────────────────────────────────────────────┘
+
+Compute (EKS):
+- 30 worker nodes × m5.4xlarge × $0.768/hr × 730hr = $16,800
+
+Database (RDS):
+- 1 Master db.r6g.8xlarge × $2.50/hr × 730hr = $1,825
+- 3 Read Replicas × $2.50/hr × 730hr = $5,475
+- Storage: 10TB × $0.125/GB = $1,250
+Total Database: $8,550
+
+Cache (ElastiCache Redis):
+- 16 shards × 3 replicas × cache.r6g.2xlarge × $0.504/hr × 730hr = $14,500
+
+Kafka (MSK):
+- 3 brokers × kafka.m5.4xlarge × $0.70/hr × 730hr = $1,533
+
+Load Balancers:
+- 2 ALB + 1 NLB × $25/month = $75
 
 Data Transfer:
-- Inter-AZ: ~$2,000/month
-- CloudFront: ~$1,500/month
+- 50TB/month × $0.09/GB = $4,500
 
-S3 Storage:
-- Backups, Logs: ~$500/month
+Monitoring (CloudWatch + Prometheus):
+- $500/month
 
-Total: ~$45,000/month (~$540K/year)
-
-Optimization Tips:
-- Use Spot Instances for non-critical workloads (60-70% savings)
-- Right-size instances based on actual usage
-- Enable RDS/ElastiCache reserved instances
-- Compress logs before S3 storage
-- Use S3 Lifecycle policies (move to Glacier)
+Total: ~$46,000/month (~₹38 lakhs/month)
 ```
 
-This deployment architecture provides high availability, disaster recovery, and scalability for a production-grade UPI payment system!
+**Interview Discussion Points**:
+- **Most expensive?** Compute (EKS nodes) + Redis cache = 68% of cost
+- **How to reduce cost?**
+  - Use Spot instances for non-critical services (50% discount)
+  - Reserved instances (1-year commit = 40% discount)
+  - Optimize Redis (reduce shards if cache hit rate low)
+- **Why so expensive?** High availability (multi-AZ, replicas) = 3x resources
+
+---
+
+## 12. Disaster Recovery (DR) Strategy
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│              DISASTER RECOVERY SCENARIOS                          │
+└──────────────────────────────────────────────────────────────────┘
+
+Scenario 1: Single AZ Failure
+├─ Impact: 1/3 capacity lost
+├─ Action: Load balancer redirects to other 2 AZs
+└─ RTO: 0 seconds (automatic), RPO: 0 (no data loss)
+
+Scenario 2: Database Master Failure
+├─ Impact: Write operations fail
+├─ Action: RDS auto-promotes Standby to Master
+└─ RTO: 30 seconds, RPO: 0
+
+Scenario 3: Entire Region Failure (Mumbai datacenter fire)
+├─ Impact: All services down in Mumbai
+├─ Action: 
+│   1. DNS failover to Delhi region (Route 53)
+│   2. Promote Delhi database replica to master
+│   3. Scale up Delhi EKS nodes (10 → 30)
+└─ RTO: 5 minutes, RPO: <10 seconds (async replication lag)
+
+Scenario 4: NPCI Switch Failure
+├─ Impact: No transactions can proceed
+├─ Action:
+│   1. Circuit breaker opens (stop calling NPCI)
+│   2. Show maintenance message to users
+│   3. Fallback to IMPS (alternate payment method)
+└─ RTO: Depends on NPCI recovery
+```
+
+**Interview Discussion Points**:
+- **RTO = Recovery Time Objective**: How long can we be down?
+- **RPO = Recovery Point Objective**: How much data can we lose?
+- **Why can't we prevent NPCI failure?** External dependency (single point of failure)
+- **What if both regions fail?** Unlikely (AWS has 99.99% SLA), but backup to tape + offline storage
+
+---
+
+## 13. Interview Cheat Sheet - Key Discussion Points
+
+### When Asked: "How do you deploy this system?"
+
+**Answer Flow**:
+1. **Multi-Region** → Mumbai (primary) + Delhi (DR)
+2. **Multi-AZ** → 3 availability zones per region (99.99% SLA)
+3. **Kubernetes** → Microservices on EKS, auto-scaling
+4. **Database** → PostgreSQL master + 3 read replicas
+5. **Cache** → Redis cluster (16 shards)
+6. **Messaging** → Kafka (3 brokers, 32 partitions)
+7. **Blue-Green Deploy** → Zero downtime releases
+
+### When Asked: "What if database goes down?"
+
+**Answer**:
+- **Master down?** Standby promoted in 30 seconds (Multi-AZ)
+- **Read replica down?** Traffic routed to other replicas
+- **Connection pool full?** Queue requests, increase pool size
+- **Disk full?** Auto-scale storage (AWS RDS feature)
+
+### When Asked: "How do you monitor?"
+
+**Answer**:
+- **Logs** → Fluentd → S3 + OpenSearch (searchable)
+- **Metrics** → Prometheus → Grafana dashboards
+- **Traces** → Jaeger (distributed tracing)
+- **Alerts** → PagerDuty (page oncall engineer)
+
+**Golden Signals**: Latency, Traffic, Errors, Saturation
+
+### When Asked: "Security concerns?"
+
+**Answer**:
+**5 Layers**:
+1. **Network** → WAF (block DDoS, SQL injection)
+2. **API Gateway** → JWT validation, rate limiting
+3. **Service Mesh** → mTLS (encrypted service-to-service)
+4. **Application** → Input validation, MPIN encryption
+5. **Data** → TDE (database encryption at rest)
+
+**DDoS Example**: 10K bots spam API → Rate limit blocks them → Real users unaffected
+
+---
+
+## Interview Red Flags to Avoid
+
+❌ **Don't Say**:
+- "We'll run everything on 1 server" → Single point of failure
+- "We don't need monitoring" → How to detect issues?
+- "We'll use only 1 database" → No read scaling, single point of failure
+- "Blue-Green is overkill" → Financial system needs zero downtime
+
+✅ **Say Instead**:
+- "Multi-AZ for high availability"
+- "Comprehensive monitoring with alerts"
+- "Master-replica split for read scaling"
+- "Blue-Green deployment to prevent downtime"
+
+---
+
+**Total Infrastructure**: ~₹38 lakhs/month for 50K TPS, 99.99% availability 🚀

@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced English - Part 1 (Complex Conditionals)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 1400px;
+            width: 100%;
+            min-height: 700px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .title {
+            text-align: center;
+            color: #1e3c72;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #999;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .conversation-number {
+            color: #2a5298;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .situation {
+            color: #555;
+            font-size: 1.15em;
+            margin-bottom: 25px;
+            font-style: italic;
+            background: #f0f0f0;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+
+        .hindi-section {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border-left: 6px solid #fdcb6e;
+            box-shadow: 0 4px 15px rgba(253, 203, 110, 0.3);
+        }
+
+        .hindi-label {
+            color: #d63031;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .hindi-label::before {
+            content: "🇮🇳";
+            margin-right: 8px;
+        }
+
+        .hindi-text {
+            font-size: 1.7em;
+            line-height: 1.7;
+            color: #2d3436;
+            font-weight: 500;
+        }
+
+        .english-section {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border-left: 6px solid #1e3c72;
+            box-shadow: 0 4px 15px rgba(30, 60, 114, 0.5);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .english-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .english-label {
+            color: #fff;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .english-label::before {
+            content: "🎓";
+            margin-right: 8px;
+        }
+
+        .english-text {
+            font-size: 1.7em;
+            line-height: 1.8;
+            color: #fff;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .word-meaning {
+            display: inline-block;
+            position: relative;
+            color: #ffeaa7;
+            font-weight: 700;
+            cursor: help;
+            border-bottom: 2px dotted #ffeaa7;
+            padding: 2px 4px;
+            transition: all 0.3s ease;
+        }
+
+        .word-meaning:hover {
+            background: #ffeaa7;
+            color: #1e3c72;
+            border-radius: 4px;
+            border-bottom: 2px solid #ffeaa7;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3436;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.5em;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            margin-bottom: 8px;
+            font-weight: normal;
+            z-index: 100;
+        }
+
+        .word-meaning:hover .tooltip {
+            opacity: 1;
+        }
+
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #2d3436;
+        }
+
+        .grammar-note {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border-left: 4px solid #2196f3;
+        }
+
+        .grammar-title {
+            color: #1976d2;
+            font-weight: bold;
+            font-size: 1em;
+            margin-bottom: 8px;
+        }
+
+        .grammar-text {
+            color: #555;
+            font-size: 0.95em;
+            line-height: 1.5;
+        }
+
+        .key-expressions {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 25px;
+        }
+
+        .key-expressions.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .key-title {
+            color: #1e3c72;
+            font-size: 1.35em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .key-title::before {
+            content: "📚";
+            margin-right: 10px;
+        }
+
+        .expression-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .expression-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 18px;
+            border-radius: 10px;
+            border-left: 5px solid #2a5298;
+            transition: all 0.3s ease;
+        }
+
+        .expression-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(42, 82, 152, 0.2);
+        }
+
+        .expression-phrase {
+            color: #1e3c72;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 8px;
+        }
+
+        .expression-meaning {
+            color: #636e72;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .category-badge {
+            display: inline-block;
+            background: #e74c3c;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.75em;
+            margin-left: 10px;
+            font-weight: normal;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 0.85em;
+            backdrop-filter: blur(10px);
+        }
+
+        .progress {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 60, 114, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1em;
+            backdrop-filter: blur(10px);
+        }
+
+        .hint {
+            text-align: center;
+            color: #b2bec3;
+            font-size: 1em;
+            margin-top: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .slide {
+            display: none;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px;
+            }
+            .hindi-text, .english-text {
+                font-size: 1.3em;
+            }
+            .expression-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="progress" id="progress">1 / 10</div>
+
+        <!-- Slide 1 -->
+        <div class="slide active" data-slide="1">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">1. Third Conditional - Regret <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Expressing regret about past decision</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Agar maine us waqt achhe se soch liya hota to aaj ye problem hi nahi hoti.<br>
+                    Par maine jaldi mein decision le liya aur ab pareshani ho gayi."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-1">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "<span class="word-meaning">Had I thought it through<span class="tooltip">if I had considered carefully (inverted)</span></span> more carefully back then, we <span class="word-meaning">wouldn't be dealing with<span class="tooltip">would not be facing</span></span> this mess now.<br>
+                    But I <span class="word-meaning">jumped the gun<span class="tooltip">acted too quickly, made hasty decision</span></span> and now we're <span class="word-meaning">paying the price<span class="tooltip">suffering consequences</span></span>."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Mixed Conditional (Type 3 + Type 2)</div>
+                    <div class="grammar-text">
+                        "Had I thought" = Inverted third conditional (formal)<br>
+                        "wouldn't be dealing" = Present result of past action<br>
+                        This combines past condition with present consequence.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-1">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">Had I thought it through</div>
+                        <div class="expression-meaning">Formal inverted conditional = "If I had thought"</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">jumped the gun</div>
+                        <div class="expression-meaning">acted too quickly without proper consideration</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">paying the price</div>
+                        <div class="expression-meaning">suffering negative consequences of actions</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-1">👆 Click anywhere or press SPACE to reveal</div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="slide" data-slide="2">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">2. Future Perfect Continuous <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Discussing long-term commitment</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Agle saal tak main is company mein dus saal se kaam kar raha hounga.<br>
+                    Itne saal baad bhi promotion nahi mila to main seriously sochna parega."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-2">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "By next year, I <span class="word-meaning">will have been working<span class="tooltip">future perfect continuous tense</span></span> here for a decade.<br>
+                    <span class="word-meaning">Should I still not have received<span class="tooltip">formal conditional - if I haven't</span></span> a promotion by then, I'll <span class="word-meaning">have no choice but to<span class="tooltip">must, be forced to</span></span> <span class="word-meaning">reassess my options<span class="tooltip">reconsider my choices</span></span>."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Future Perfect Continuous + Should (Formal Conditional)</div>
+                    <div class="grammar-text">
+                        "will have been working" = action continuing up to future point<br>
+                        "Should I still not have received" = formal "if" (inverted conditional)<br>
+                        Emphasizes duration and formal tone.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-2">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">will have been working</div>
+                        <div class="expression-meaning">Future Perfect Continuous - ongoing action until future point</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">Should I still not have</div>
+                        <div class="expression-meaning">Formal conditional = "If I still haven't"</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">reassess my options</div>
+                        <div class="expression-meaning">reconsider available choices professionally</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-2">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="slide" data-slide="3">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">3. Subjunctive Mood <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Making formal recommendation</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Zaroori hai ki management is issue ko seriously le aur<br>
+                    jaldi action le. Warna situation aur kharab ho jayegi."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-3">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "It's <span class="word-meaning">imperative<span class="tooltip">absolutely necessary, crucial</span></span> that management <span class="word-meaning">take<span class="tooltip">subjunctive form (not 'takes')</span></span> this seriously and <span class="word-meaning">act<span class="tooltip">subjunctive form (not 'acts')</span></span> swiftly.<br>
+                    <span class="word-meaning">Were they to delay<span class="tooltip">formal conditional - if they delay</span></span> any further, the situation <span class="word-meaning">could escalate<span class="tooltip">might become much worse</span></span> beyond our control."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Subjunctive Mood + Formal Conditional</div>
+                    <div class="grammar-text">
+                        "It's imperative that management take" = subjunctive (not "takes")<br>
+                        "Were they to delay" = formal inverted conditional<br>
+                        Used for formal recommendations and hypotheticals.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-3">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">It's imperative that... take</div>
+                        <div class="expression-meaning">Subjunctive mood - formal necessity (not "takes")</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">Were they to delay</div>
+                        <div class="expression-meaning">Formal inverted conditional = "If they were to delay"</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">escalate beyond control</div>
+                        <div class="expression-meaning">worsen to unmanageable degree</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-3">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="slide" data-slide="4">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">4. Past Perfect Continuous <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Explaining exhaustion from prolonged effort</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Main pichle teen mahine se lagatar is project pe kaam kar raha tha<br>
+                    jab suddenly client ne saari requirements hi badal di."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-4">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "I <span class="word-meaning">had been slaving away<span class="tooltip">working extremely hard continuously</span></span> on this project for three months straight when,<br>
+                    <span class="word-meaning">out of the blue<span class="tooltip">unexpectedly, suddenly</span></span>, the client <span class="word-meaning">threw us a curveball<span class="tooltip">surprised us with difficult change</span></span> and <span class="word-meaning">overhauled<span class="tooltip">completely changed</span></span> all the requirements."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Past Perfect Continuous for Duration Before Interruption</div>
+                    <div class="grammar-text">
+                        "had been slaving away" = continuous action before past event<br>
+                        Emphasizes duration and effort before sudden change<br>
+                        Shows cause-and-effect relationship in past.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-4">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">had been slaving away</div>
+                        <div class="expression-meaning">Past Perfect Continuous - working extremely hard for period</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">out of the blue</div>
+                        <div class="expression-meaning">completely unexpectedly, without warning</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">threw us a curveball</div>
+                        <div class="expression-meaning">surprised with unexpected difficult challenge</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">overhauled</div>
+                        <div class="expression-meaning">completely changed or restructured</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-4">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 5 -->
+        <div class="slide" data-slide="5">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">5. Zero Conditional + Advanced Cause-Effect <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Explaining inevitable business consequence</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Jab bhi market mein competition badhti hai to<br>
+                    humare profit margins automatically kam hone lagte hain aur cost cutting karni padti hai."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-5">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "<span class="word-meaning">Whenever<span class="tooltip">every time (zero conditional)</span></span> market competition <span class="word-meaning">intensifies<span class="tooltip">becomes more severe</span></span>, our profit margins <span class="word-meaning">invariably<span class="tooltip">always, without exception</span></span> <span class="word-meaning">erode<span class="tooltip">gradually decrease</span></span>,<br>
+                    <span class="word-meaning">necessitating<span class="tooltip">making necessary (formal)</span></span> aggressive cost-cutting measures and <span class="word-meaning">operational streamlining<span class="tooltip">making processes more efficient</span></span>."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Zero Conditional + Present Participle (Formal)</div>
+                    <div class="grammar-text">
+                        "Whenever... intensifies" = zero conditional (always true)<br>
+                        "necessitating" = present participle showing consequence<br>
+                        Used for universal truths and inevitable outcomes.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-5">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">invariably erode</div>
+                        <div class="expression-meaning">always gradually decrease (formal business term)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">necessitating</div>
+                        <div class="expression-meaning">making necessary (formal cause-effect)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">operational streamlining</div>
+                        <div class="expression-meaning">making business processes more efficient</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-5">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 6 -->
+        <div class="slide" data-slide="6">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">6. Unreal Conditional Present <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Hypothetical business scenario</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Agar mujhe zyada authority hoti to main bahut saari cheezein<br>
+                    bilkul alag tareeke se handle karta. Par unfortunately mere paas wo power nahi hai."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-6">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "<span class="word-meaning">Were I to have<span class="tooltip">formal conditional - if I had</span></span> more autonomy, I'd <span class="word-meaning">handle things radically differently<span class="tooltip">manage completely another way</span></span>.<br>
+                    <span class="word-meaning">As it stands<span class="tooltip">in current situation</span></span>, however, my hands are <span class="word-meaning">tied<span class="tooltip">restricted, unable to act</span></span> and I'm <span class="word-meaning">constrained by<span class="tooltip">limited by, restricted by</span></span> the existing <span class="word-meaning">hierarchy<span class="tooltip">organizational structure</span></span>."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Unreal Present Conditional (Type 2 Formal)</div>
+                    <div class="grammar-text">
+                        "Were I to have" = formal inverted conditional (present unreal)<br>
+                        "I'd handle" = would + verb (hypothetical result)<br>
+                        Shows imaginary present situation contrary to reality.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-6">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">Were I to have</div>
+                        <div class="expression-meaning">Formal conditional = "If I had" (present unreal)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">As it stands</div>
+                        <div class="expression-meaning">in the current situation, as things are now</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">hands are tied</div>
+                        <div class="expression-meaning">unable to act due to restrictions</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">constrained by hierarchy</div>
+                        <div class="expression-meaning">limited by organizational power structure</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-6">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 7 -->
+        <div class="slide" data-slide="7">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">7. Passive Voice + Perfect Infinitive <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Discussing completed investigation</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Investigation complete ho chuki hai aur pata chala ki<br>
+                    ye problem pehle hi identify ho sakti thi agar proper audit hua hota."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-7">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "The investigation <span class="word-meaning">has been concluded<span class="tooltip">passive - completed formally</span></span>, and it's <span class="word-meaning">come to light<span class="tooltip">been discovered, revealed</span></span> that<br>
+                    this issue <span class="word-meaning">could have been identified<span class="tooltip">passive + perfect infinitive</span></span> earlier <span class="word-meaning">had a thorough audit been conducted<span class="tooltip">passive inverted conditional</span></span>."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Passive + Perfect Modal + Inverted Conditional</div>
+                    <div class="grammar-text">
+                        "has been concluded" = present perfect passive<br>
+                        "could have been identified" = modal perfect passive<br>
+                        "had... been conducted" = past perfect passive inverted<br>
+                        Formal style avoiding active subjects.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-7">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">has been concluded</div>
+                        <div class="expression-meaning">Present Perfect Passive - formally completed</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">come to light</div>
+                        <div class="expression-meaning">been discovered or revealed</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">could have been identified</div>
+                        <div class="expression-meaning">Modal Perfect Passive - past possibility</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">had... been conducted</div>
+                        <div class="expression-meaning">Past Perfect Passive Conditional</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-7">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 8 -->
+        <div class="slide" data-slide="8">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">8. Cleft Sentences for Emphasis <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Emphasizing specific point in argument</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Main ye nahi keh raha ki unka approach galat hai.<br>
+                    Jo main keh raha hoon wo ye hai ki timing bilkul galat hai aur isse nuksan hoga."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-8">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "It's not <span class="word-meaning">that<span class="tooltip">cleft sentence - emphasis structure</span></span> their approach is <span class="word-meaning">fundamentally flawed<span class="tooltip">basically wrong</span></span>.<br>
+                    <span class="word-meaning">What I'm getting at<span class="tooltip">what I mean to say</span></span> is that the timing is <span class="word-meaning">catastrophically wrong<span class="tooltip">extremely badly wrong</span></span> and this <span class="word-meaning">will inevitably backfire<span class="tooltip">will definitely cause problems</span></span>."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Cleft Sentences (It's... that / What... is)</div>
+                    <div class="grammar-text">
+                        "It's not that..." = cleft sentence for emphasis<br>
+                        "What I'm getting at is..." = wh-cleft for focus<br>
+                        These structures emphasize specific information.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-8">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">It's not that...</div>
+                        <div class="expression-meaning">Cleft sentence structure for emphasis</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">What I'm getting at</div>
+                        <div class="expression-meaning">Wh-cleft = what I mean to say</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">fundamentally flawed</div>
+                        <div class="expression-meaning">basically or essentially wrong</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">will inevitably backfire</div>
+                        <div class="expression-meaning">will definitely cause negative consequences</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-8">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 9 -->
+        <div class="slide" data-slide="9">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">9. Complex Relative Clauses <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Describing complicated situation</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Jo proposal humne submit kiya tha jisko board ne reject kar diya tha,<br>
+                    wo ab achanak se reconsider ho raha hai kyunki market conditions badal gaye hain."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-9">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "The proposal <span class="word-meaning">which we submitted<span class="tooltip">defining relative clause</span></span> last quarter, <span class="word-meaning">which the board summarily rejected<span class="tooltip">non-defining clause adding info</span></span>,<br>
+                    is now being <span class="word-meaning">reconsidered<span class="tooltip">thought about again</span></span> <span class="word-meaning">in light of<span class="tooltip">because of, considering</span></span> the <span class="word-meaning">shifting<span class="tooltip">changing</span></span> market <span class="word-meaning">landscape<span class="tooltip">situation, environment</span></span>."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Defining & Non-Defining Relative Clauses</div>
+                    <div class="grammar-text">
+                        "which we submitted" = defines which proposal<br>
+                        ", which the board rejected," = adds extra info (commas)<br>
+                        Layered relative clauses add complex detail.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-9">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">summarily rejected</div>
+                        <div class="expression-meaning">rejected quickly without much consideration</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">in light of</div>
+                        <div class="expression-meaning">because of, considering (formal)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">shifting landscape</div>
+                        <div class="expression-meaning">changing business/market environment</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-9">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 10 -->
+        <div class="slide" data-slide="10">
+            <div class="title">Advanced English Conversations</div>
+            <div class="subtitle">Part 1: Complex Conditionals & Advanced Structures</div>
+            <div class="conversation-number">10. Inversion for Emphasis <span class="category-badge">ADVANCED</span></div>
+            <div class="situation">Situation: Expressing strong opinion formally</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Maine kabhi nahi socha tha ki hum itni badi problem face karenge.<br>
+                    Agar main pehle se jaanta to main bilkul alag strategy banata."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-10">
+                <div class="english-label">Advanced English:</div>
+                <div class="english-text">
+                    "<span class="word-meaning">Never did I anticipate<span class="tooltip">inversion - I never anticipated</span></span> that we'd be <span class="word-meaning">confronted with<span class="tooltip">facing, dealing with</span></span> such a <span class="word-meaning">formidable<span class="tooltip">very difficult, challenging</span></span> challenge.<br>
+                    <span class="word-meaning">Had I known<span class="tooltip">inverted conditional - if I had known</span></span> beforehand, I would have <span class="word-meaning">devised<span class="tooltip">created, developed</span></span> an <span class="word-meaning">altogether different<span class="tooltip">completely different</span></span> strategy."
+                </div>
+                <div class="grammar-note">
+                    <div class="grammar-title">🎯 Grammar: Negative Inversion + Past Perfect Conditional</div>
+                    <div class="grammar-text">
+                        "Never did I" = inversion for emphasis (not "I never")<br>
+                        "Had I known" = inverted third conditional<br>
+                        Very formal style used in written/academic English.
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-10">
+                <div class="key-title">Key Expressions & Grammar:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">Never did I anticipate</div>
+                        <div class="expression-meaning">Negative inversion for emphasis - very formal</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">confronted with</div>
+                        <div class="expression-meaning">facing, having to deal with (formal)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">formidable challenge</div>
+                        <div class="expression-meaning">very difficult, intimidating problem</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">devised</div>
+                        <div class="expression-meaning">created, developed (formal)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-10">🎉 Part 1 Complete! Press R to restart</div>
+        </div>
+
+        <div class="navigation">SPACE / Click = Next • Arrow Keys = Navigate • R = Restart</div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        let currentStep = 0;
+        const totalSlides = 10;
+
+        function updateProgress() {
+            document.getElementById('progress').textContent = `${currentSlide} / ${totalSlides}`;
+        }
+
+        function showStep() {
+            const englishSection = document.getElementById(`english-${currentSlide}`);
+            const keysSection = document.getElementById(`keys-${currentSlide}`);
+            const hint = document.getElementById(`hint-${currentSlide}`);
+
+            if (currentStep === 1 && englishSection) {
+                englishSection.classList.add('visible');
+                if (hint) hint.textContent = '👆 Click for key expressions';
+            } else if (currentStep === 2 && keysSection) {
+                keysSection.classList.add('visible');
+                if (hint) hint.style.display = 'none';
+            }
+        }
+
+        function nextSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide++;
+            if (currentSlide > totalSlides) currentSlide = 1;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function prevSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide--;
+            if (currentSlide < 1) currentSlide = totalSlides;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function handleAdvance() {
+            if (currentStep < 2) {
+                currentStep++;
+                showStep();
+            } else {
+                nextSlide();
+            }
+        }
+
+        document.addEventListener('click', handleAdvance);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleAdvance();
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.code === 'KeyR') {
+                location.reload();
+            }
+        });
+
+        document.addEventListener('selectstart', function(e) {
+            if (e.target.closest('.container')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

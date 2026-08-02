@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Natural English - Part 2 (Everyday & Casual)</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 1400px;
+            width: 100%;
+            min-height: 700px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            position: relative;
+        }
+
+        .title {
+            text-align: center;
+            color: #f5576c;
+            font-size: 2.2em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #999;
+            font-size: 1.1em;
+            margin-bottom: 30px;
+        }
+
+        .conversation-number {
+            color: #f093fb;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .situation {
+            color: #555;
+            font-size: 1.15em;
+            margin-bottom: 25px;
+            font-style: italic;
+            background: #f0f0f0;
+            padding: 10px 15px;
+            border-radius: 8px;
+        }
+
+        .hindi-section {
+            background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border-left: 6px solid #fdcb6e;
+            box-shadow: 0 4px 15px rgba(253, 203, 110, 0.3);
+        }
+
+        .hindi-label {
+            color: #d63031;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .hindi-label::before {
+            content: "🇮🇳";
+            margin-right: 8px;
+        }
+
+        .hindi-text {
+            font-size: 1.7em;
+            line-height: 1.7;
+            color: #2d3436;
+            font-weight: 500;
+        }
+
+        .english-section {
+            background: linear-gradient(135deg, #dfe6e9 0%, #b2bec3 100%);
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border-left: 6px solid #f5576c;
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .english-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .english-label {
+            color: #f5576c;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+
+        .english-label::before {
+            content: "🇬🇧";
+            margin-right: 8px;
+        }
+
+        .english-text {
+            font-size: 1.7em;
+            line-height: 1.8;
+            color: #2d3436;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .word-meaning {
+            display: inline-block;
+            position: relative;
+            color: #f5576c;
+            font-weight: 600;
+            cursor: help;
+            border-bottom: 2px dotted #f5576c;
+            padding: 2px 4px;
+            transition: all 0.3s ease;
+        }
+
+        .word-meaning:hover {
+            background: #f5576c;
+            color: white;
+            border-radius: 4px;
+            border-bottom: 2px solid #f5576c;
+        }
+
+        .tooltip {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2d3436;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.5em;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            margin-bottom: 8px;
+            font-weight: normal;
+            z-index: 100;
+        }
+
+        .word-meaning:hover .tooltip {
+            opacity: 1;
+        }
+
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: #2d3436;
+        }
+
+        .key-expressions {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 25px;
+        }
+
+        .key-expressions.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .key-title {
+            color: #f093fb;
+            font-size: 1.35em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .key-title::before {
+            content: "💡";
+            margin-right: 10px;
+        }
+
+        .expression-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .expression-item {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 18px;
+            border-radius: 10px;
+            border-left: 5px solid #f093fb;
+            transition: all 0.3s ease;
+        }
+
+        .expression-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 12px rgba(240, 147, 251, 0.2);
+        }
+
+        .expression-phrase {
+            color: #f093fb;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 8px;
+        }
+
+        .expression-meaning {
+            color: #636e72;
+            font-size: 1em;
+            line-height: 1.5;
+        }
+
+        .category-badge {
+            display: inline-block;
+            background: #00b894;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.75em;
+            margin-left: 10px;
+            font-weight: normal;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 0.85em;
+            backdrop-filter: blur(10px);
+        }
+
+        .progress {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(245, 87, 108, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1em;
+            backdrop-filter: blur(10px);
+        }
+
+        .hint {
+            text-align: center;
+            color: #b2bec3;
+            font-size: 1em;
+            margin-top: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .slide {
+            display: none;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px;
+            }
+            .hindi-text, .english-text {
+                font-size: 1.3em;
+            }
+            .expression-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="progress" id="progress">1 / 10</div>
+
+        <!-- Slide 1 -->
+        <div class="slide active" data-slide="1">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">11. Asking for Help <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Need friend's help with heavy items</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Agar tu free ho to zara mere saath chalna padega market.<br>
+                    Ek bahut bhaari saman uthana hai."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-1">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "If you're <span class="word-meaning">not doing anything<span class="tooltip">free, available</span></span>, <span class="word-meaning">mind giving me a hand<span class="tooltip">would you help me?</span></span> at the market?<br>
+                    I need to <span class="word-meaning">lug<span class="tooltip">carry something very heavy</span></span> some heavy stuff back home."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-1">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">not doing anything</div>
+                        <div class="expression-meaning">free, available, not busy</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">mind giving me a hand</div>
+                        <div class="expression-meaning">would you help me? (casual request)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">lug</div>
+                        <div class="expression-meaning">carry something heavy with effort</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-1">👆 Click anywhere or press SPACE to reveal</div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="slide" data-slide="2">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">12. Declining Politely <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Can't make it to friend's party</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Yaar sach mein aana tha par ab nahi ho payega.<br>
+                    Kuch urgent kaam aa gaya ghar pe."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-2">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "I was really <span class="word-meaning">looking forward to it<span class="tooltip">excited about it, wanted to go</span></span>, but <span class="word-meaning">something's come up<span class="tooltip">unexpected situation arose</span></span> at home.<br>
+                    I'm gonna have to <span class="word-meaning">take a rain check<span class="tooltip">postpone, do it another time</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-2">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">looking forward to it</div>
+                        <div class="expression-meaning">excited about it, really wanted to</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">something's come up</div>
+                        <div class="expression-meaning">unexpected situation arose</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">take a rain check</div>
+                        <div class="expression-meaning">postpone, do it another time</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-2">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="slide" data-slide="3">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">13. Giving Advice <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Encouraging friend to take a chance</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Mere hisaab se tu zyada sochna mat, bas kar de.<br>
+                    Agar kuch galat hua to hum dekh lenge."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-3">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "Look, <span class="word-meaning">if you ask me<span class="tooltip">in my opinion (casual)</span></span>, just <span class="word-meaning">go for it<span class="tooltip">do it, take the chance</span></span> and don't <span class="word-meaning">overthink<span class="tooltip">think too much, analyze excessively</span></span>.<br>
+                    If things <span class="word-meaning">go south<span class="tooltip">go wrong, fail</span></span>, we'll <span class="word-meaning">figure it out<span class="tooltip">find a solution together</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-3">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">if you ask me</div>
+                        <div class="expression-meaning">in my opinion (casual way)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">go for it</div>
+                        <div class="expression-meaning">just do it, take the chance</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">overthink</div>
+                        <div class="expression-meaning">think too much, analyze excessively</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">go south</div>
+                        <div class="expression-meaning">go wrong, fail</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-3">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="slide" data-slide="4">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">14. Complaining About Weather <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Bad weather and power outage</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Aaj ka din to dekho! Subah se baarish ho rahi hai<br>
+                    aur upar se bijli bhi chali gayi."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-4">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "<span class="word-meaning">What a day!<span class="tooltip">expression of frustration</span></span> It's been <span class="word-meaning">pouring<span class="tooltip">raining very heavily</span></span> since morning,<br>
+                    and <span class="word-meaning">to top it off<span class="tooltip">and as if that wasn't enough</span></span>, the <span class="word-meaning">power went out<span class="tooltip">electricity stopped</span></span>."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-4">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">What a day!</div>
+                        <div class="expression-meaning">expression of frustration about bad day</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">it's been pouring</div>
+                        <div class="expression-meaning">raining very heavily</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">to top it off</div>
+                        <div class="expression-meaning">and as if that wasn't enough (bad things)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">power went out</div>
+                        <div class="expression-meaning">electricity stopped working</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-4">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 5 -->
+        <div class="slide" data-slide="5">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">15. Ordering at Restaurant <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Ordering food with special request</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Bhaiya main ye wala lena chahta hoon.<br>
+                    Aur haan, isme mirch kam daal dena please."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-5">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "<span class="word-meaning">I'll have<span class="tooltip">I want to order (restaurant)</span></span> this one, please.<br>
+                    Oh, and could you <span class="word-meaning">go easy on<span class="tooltip">use less of something</span></span> the spice?"
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-5">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">I'll have...</div>
+                        <div class="expression-meaning">I want to order... (restaurant phrase)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">go easy on</div>
+                        <div class="expression-meaning">use less of something</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">could you...?</div>
+                        <div class="expression-meaning">polite way to make request</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-5">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 6 -->
+        <div class="slide" data-slide="6">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">16. Asking for Directions <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: New to area, need help finding metro</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Bhai sahab, mujhe yahan naya hoon,<br>
+                    zara batao nearest metro station kahan hai?"
+                </div>
+            </div>
+
+            <div class="english-section" id="english-6">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "Hey, I'm <span class="word-meaning">new around here<span class="tooltip">new to this area</span></span>.<br>
+                    <span class="word-meaning">Any chance you could<span class="tooltip">polite way to ask</span></span> <span class="word-meaning">point me toward<span class="tooltip">show direction to</span></span> the nearest metro station?"
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-6">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">new around here</div>
+                        <div class="expression-meaning">new to this area, unfamiliar with place</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">any chance you could</div>
+                        <div class="expression-meaning">polite way to ask for help</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">point me toward</div>
+                        <div class="expression-meaning">show me the direction to</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-6">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 7 -->
+        <div class="slide" data-slide="7">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">17. Expressing Surprise <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Just learned surprising news</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Arre waah! Ye to mujhe pata hi nahi tha!<br>
+                    Pehle bata deta to main bhi aa jata."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-7">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "<span class="word-meaning">No way!<span class="tooltip">expression of surprise/disbelief</span></span> I <span class="word-meaning">had no clue<span class="tooltip">didn't know at all</span></span> about this!<br>
+                    If you'd <span class="word-meaning">given me a heads up<span class="tooltip">told me in advance</span></span>, I <span class="word-meaning">would've totally<span class="tooltip">definitely would have</span></span> joined."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-7">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">No way!</div>
+                        <div class="expression-meaning">expression of surprise or disbelief</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">had no clue</div>
+                        <div class="expression-meaning">didn't know at all</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">heads up</div>
+                        <div class="expression-meaning">advance notice, warning</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">would've totally</div>
+                        <div class="expression-meaning">definitely would have</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-7">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 8 -->
+        <div class="slide" data-slide="8">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">18. Making an Excuse <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Explaining why you stopped gym</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Yaar office mein bahut kaam hai aaj kal.<br>
+                    Isliye gym jaana ruk gaya hai temporarily."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-8">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "Work's been <span class="word-meaning">crazy<span class="tooltip">very busy, hectic</span></span> <span class="word-meaning">lately<span class="tooltip">recently</span></span>.<br>
+                    That's why I've been <span class="word-meaning">slacking on<span class="tooltip">not doing something you should</span></span> the gym."
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-8">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">been crazy</div>
+                        <div class="expression-meaning">been very busy, hectic</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">lately</div>
+                        <div class="expression-meaning">recently, in recent times</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">slacking on</div>
+                        <div class="expression-meaning">not doing something you should be doing</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-8">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 9 -->
+        <div class="slide" data-slide="9">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">19. Casual Greeting <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Asking friend about their day</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Kya haal hai? Aaj ka din kaisa gaya?<br>
+                    Office mein sab theek chal raha hai na?"
+                </div>
+            </div>
+
+            <div class="english-section" id="english-9">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "Hey, <span class="word-meaning">how's it going?<span class="tooltip">how are you? (casual)</span></span> <span class="word-meaning">How was your day?<span class="tooltip">asking about someone's day</span></span><br>
+                    <span class="word-meaning">Everything cool<span class="tooltip">everything okay? (casual)</span></span> at the office?"
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-9">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">How's it going?</div>
+                        <div class="expression-meaning">How are you? (casual greeting)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">How was your day?</div>
+                        <div class="expression-meaning">asking about someone's day</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">Everything cool?</div>
+                        <div class="expression-meaning">Is everything okay? (very casual)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-9">👆 Click anywhere or press SPACE to continue</div>
+        </div>
+
+        <!-- Slide 10 -->
+        <div class="slide" data-slide="10">
+            <div class="title">Natural English Conversations</div>
+            <div class="subtitle">Part 2: Everyday & Casual Communication</div>
+            <div class="conversation-number">20. Strong Recommendation <span class="category-badge">CASUAL</span></div>
+            <div class="situation">Situation: Recommending restaurant to friend</div>
+
+            <div class="hindi-section">
+                <div class="hindi-label">हिंदी:</div>
+                <div class="hindi-text">
+                    "Tu ek baar zaroor try kar ye restaurant.<br>
+                    Maza aa jayega! Main guarantee deta hoon."
+                </div>
+            </div>
+
+            <div class="english-section" id="english-10">
+                <div class="english-label">Natural English:</div>
+                <div class="english-text">
+                    "<span class="word-meaning">You've gotta<span class="tooltip">you must (strong recommendation)</span></span> <span class="word-meaning">check out<span class="tooltip">try, visit, experience</span></span> this restaurant.<br>
+                    <span class="word-meaning">You'll love it<span class="tooltip">you will really like it</span></span>, I promise!"
+                </div>
+            </div>
+
+            <div class="key-expressions" id="keys-10">
+                <div class="key-title">Key Expressions:</div>
+                <div class="expression-grid">
+                    <div class="expression-item">
+                        <div class="expression-phrase">You've gotta</div>
+                        <div class="expression-meaning">You must, you have to (strong recommendation)</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">check out</div>
+                        <div class="expression-meaning">try, visit, experience</div>
+                    </div>
+                    <div class="expression-item">
+                        <div class="expression-phrase">You'll love it</div>
+                        <div class="expression-meaning">You will really like it (confident prediction)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="hint" id="hint-10">🎉 Part 2 Complete! Press R to restart</div>
+        </div>
+
+        <div class="navigation">SPACE / Click = Next • Arrow Keys = Navigate • R = Restart</div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        let currentStep = 0;
+        const totalSlides = 10;
+
+        function updateProgress() {
+            document.getElementById('progress').textContent = `${currentSlide} / ${totalSlides}`;
+        }
+
+        function showStep() {
+            const englishSection = document.getElementById(`english-${currentSlide}`);
+            const keysSection = document.getElementById(`keys-${currentSlide}`);
+            const hint = document.getElementById(`hint-${currentSlide}`);
+
+            if (currentStep === 1 && englishSection) {
+                englishSection.classList.add('visible');
+                if (hint) hint.textContent = '👆 Click for key expressions';
+            } else if (currentStep === 2 && keysSection) {
+                keysSection.classList.add('visible');
+                if (hint) hint.style.display = 'none';
+            }
+        }
+
+        function nextSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide++;
+            if (currentSlide > totalSlides) currentSlide = 1;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function prevSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide--;
+            if (currentSlide < 1) currentSlide = totalSlides;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function handleAdvance() {
+            if (currentStep < 2) {
+                currentStep++;
+                showStep();
+            } else {
+                nextSlide();
+            }
+        }
+
+        document.addEventListener('click', handleAdvance);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleAdvance();
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.code === 'KeyR') {
+                location.reload();
+            }
+        });
+
+        document.addEventListener('selectstart', function(e) {
+            if (e.target.closest('.container')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
