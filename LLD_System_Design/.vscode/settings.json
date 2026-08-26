@@ -1,0 +1,14 @@
+{
+  "markdown-pdf.highlightStyle": "",
+  "markdown-pdf.highlight": false,
+  "markdown-pdf.breaks": false,
+  "markdown-pdf.emoji": false,
+  "markdown-pdf.format": "A4",
+  "markdown-pdf.displayHeaderFooter": false,
+  "markdown-pdf.printBackground": false,
+  "markdown-pdf.scale": 0.85,
+  "markdown-pdf.margin.top": "1.5cm",
+  "markdown-pdf.margin.bottom": "1.5cm",
+  "markdown-pdf.margin.right": "1cm",
+  "markdown-pdf.margin.left": "1cm"
+}

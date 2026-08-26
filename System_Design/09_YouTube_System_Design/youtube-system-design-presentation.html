@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube System Design - Interactive Presentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #c31432 0%, #240b36 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            max-width: 1800px;
+            width: 100%;
+            min-height: 850px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        .title {
+            text-align: center;
+            color: #c31432;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #ff0000;
+            font-size: 1.3em;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        .component-title {
+            color: #c31432;
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            border-radius: 10px;
+            border-left: 6px solid #ff0000;
+        }
+
+        .description {
+            color: #555;
+            font-size: 1.15em;
+            margin-bottom: 25px;
+            line-height: 1.8;
+            text-align: center;
+            font-style: italic;
+        }
+
+        .yt-console-mockup {
+            background: linear-gradient(135deg, #282828 0%, #181818 100%);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            border: 3px solid #ff0000;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .yt-console-mockup.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .console-header {
+            background: #202020;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+            border-bottom: 2px solid #ff0000;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .yt-logo {
+            color: #ff0000;
+            font-weight: bold;
+            font-size: 1.2em;
+        }
+
+        .diagram-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .diagram-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .ascii-diagram {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85em;
+            line-height: 1.5;
+            color: #2d3436;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            overflow-x: auto;
+            white-space: pre;
+            border: 2px solid #dfe6e9;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        .explanation-section {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 20px;
+        }
+
+        .explanation-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .explanation-title {
+            color: #e74c3c;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+        }
+
+        .explanation-title::before {
+            content: "💡";
+            margin-right: 10px;
+        }
+
+        .explanation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .explanation-item {
+            background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 5px solid #ff0000;
+            transition: all 0.3s ease;
+        }
+
+        .explanation-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 6px 20px rgba(255, 0, 0, 0.3);
+        }
+
+        .explanation-header {
+            color: #c31432;
+            font-weight: bold;
+            font-size: 1.15em;
+            margin-bottom: 10px;
+        }
+
+        .explanation-text {
+            color: #555;
+            font-size: 1em;
+            line-height: 1.6;
+        }
+
+        .key-points {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-top: 20px;
+        }
+
+        .key-points.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .key-points-title {
+            color: #27ae60;
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .key-points-title::before {
+            content: "✓";
+            margin-right: 10px;
+            background: #27ae60;
+            color: white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .key-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .key-list li {
+            background: #e8f5e9;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            font-size: 1.05em;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+
+        .key-list li:hover {
+            background: #c8e6c9;
+            transform: translateX(5px);
+        }
+
+        .key-list li::before {
+            content: "→";
+            color: #27ae60;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .navigation {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 0.9em;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .progress {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 0, 0, 0.95);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 4px 15px rgba(255, 0, 0, 0.4);
+        }
+
+        .hint {
+            text-align: center;
+            color: #b2bec3;
+            font-size: 1.1em;
+            margin-top: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        .slide {
+            display: none;
+        }
+
+        .slide.active {
+            display: block;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .badge {
+            display: inline-block;
+            background: #ff0000;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 0.65em;
+            margin-left: 15px;
+            font-weight: normal;
+            vertical-align: middle;
+        }
+
+        .service-icon {
+            display: inline-block;
+            background: #ff0000;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px;
+            }
+            .ascii-diagram {
+                font-size: 0.65em;
+            }
+            .explanation-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="progress" id="progress">1 / 12</div>
+
+        <!-- Slide 1: Overview -->
+        <div class="slide active" data-slide="1">
+            <div class="title">YouTube System Design</div>
+            <div class="subtitle">Building a Global Video Streaming Platform</div>
+            <div class="component-title">Complete Architecture <span class="badge">OVERVIEW</span></div>
+            <div class="description">Design a system that handles 2 billion users and 500+ hours of video uploads per minute</div>
+
+            <div class="yt-console-mockup" id="diagram-1">
+                <div class="console-header">
+                    <span class="yt-logo">▶ YouTube</span> System Requirements
+                </div>
+                <div class="ascii-diagram">
+╔══════════════════════════════════════════════════════════════════════════╗
+║  FUNCTIONAL REQUIREMENTS                                                 ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║                                                                          ║
+║  Core Features:                                                          ║
+║  ✅ Video Upload        → Multi-part upload, up to 2GB files            ║
+║  ✅ Video Streaming     → Adaptive bitrate (HLS/DASH)                   ║
+║  ✅ Video Search        → Real-time search with ranking                 ║
+║  ✅ Comments & Replies  → Nested comments, real-time updates            ║
+║  ✅ Likes & Dislikes    → Atomic increment/decrement                    ║
+║  ✅ Subscriptions       → Follow channels, get notifications            ║
+║  ✅ Recommendations     → ML-based personalized feed                    ║
+║  ✅ View Analytics      → Real-time view counting                       ║
+║                                                                          ║
+║  Advanced Features:                                                      ║
+║  ⚡ Live Streaming      → WebRTC, low latency                           ║
+║  ⚡ Playlists           → Create, share, collaborative                  ║
+║  ⚡ Notifications       → Push, email, in-app                           ║
+║  ⚡ Content Moderation  → Copyright detection (Content ID)              ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║  NON-FUNCTIONAL REQUIREMENTS                                             ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║                                                                          ║
+║  Scale:                                                                  ║
+║  ├─ Daily Active Users (DAU): 100 million+                              ║
+║  ├─ Video Uploads: 500 hours per minute                                 ║
+║  ├─ Monthly Video Views: 1 billion+                                     ║
+║  ├─ Concurrent Viewers: 30 million                                      ║
+║  └─ Storage: 1 Exabyte+ (1 million TB)                                  ║
+║                                                                          ║
+║  Performance:                                                            ║
+║  ├─ Video Start Time: <2 seconds (P95)                                  ║
+║  ├─ Search Latency: <50ms (P99)                                         ║
+║  ├─ API Response: <200ms (P99)                                          ║
+║  └─ Upload Speed: Limited by client bandwidth                           ║
+║                                                                          ║
+║  Reliability:                                                            ║
+║  ├─ Availability: 99.99% (52 min downtime/year)                         ║
+║  ├─ Durability: 99.999999999% (11 nines) for videos                    ║
+║  ├─ Disaster Recovery: RPO <5 min, RTO <1 hour                         ║
+║  └─ Multi-Region: Active-Active for global users                        ║
+║                                                                          ║
+║  Security:                                                               ║
+║  ├─ Authentication: OAuth 2.0, JWT tokens                               ║
+║  ├─ Authorization: RBAC (Role-Based Access Control)                     ║
+║  ├─ DRM: Content encryption, HDCP compliance                            ║
+║  └─ Privacy: GDPR, COPPA compliant                                      ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+
+        CAPACITY ESTIMATION
+    ┌──────────────────────────────────────────┐
+    │  Storage Calculation:                    │
+    ├──────────────────────────────────────────┤
+    │  Upload Rate: 500 hours/minute           │
+    │  └─ = 30,000 hours/hour = 720K hours/day │
+    │                                           │
+    │  Average Video: 5 min, 50MB (720p)       │
+    │  └─ 720K hours × 12 videos/hour × 50MB   │
+    │     = ~430TB/day                          │
+    │                                           │
+    │  Multiple Qualities (360p to 4K):        │
+    │  └─ Storage Factor: 3x                    │
+    │     = 1.3 PB/day                          │
+    │                                           │
+    │  5-Year Storage:                         │
+    │  └─ 1.3 PB × 365 × 5 ≈ 2.4 Exabytes     │
+    └──────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────┐
+    │  Bandwidth Calculation:                  │
+    ├──────────────────────────────────────────┤
+    │  Reads (Video Views):                    │
+    │  ├─ 100M DAU × 5 videos/day = 500M views│
+    │  ├─ Average video size: 50MB             │
+    │  ├─ 500M × 50MB = 25 PB/day              │
+    │  └─ Peak: 25PB ÷ 86,400 sec ≈ 300 GB/s  │
+    │                                           │
+    │  Writes (Uploads):                       │
+    │  ├─ 1.3 PB/day                           │
+    │  └─ Peak: ~15 GB/s                       │
+    └──────────────────────────────────────────┘
+
+    ┌──────────────────────────────────────────┐
+    │  Requests Per Second (RPS):              │
+    ├──────────────────────────────────────────┤
+    │  Video Streaming:                        │
+    │  ├─ 500M views/day                       │
+    │  ├─ Average: 5,800 RPS                   │
+    │  └─ Peak (5x): 30,000 RPS                │
+    │                                           │
+    │  Video Upload:                           │
+    │  ├─ 30,000 hours/hour                    │
+    │  └─ ~8 uploads/second                    │
+    │                                           │
+    │  Search Queries:                         │
+    │  ├─ 50M searches/day                     │
+    │  └─ Peak: 5,000 RPS                      │
+    └──────────────────────────────────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-1">
+                <div class="explanation-title">Key System Challenges</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Massive Scale</div>
+                        <div class="explanation-text">2.4 EB storage needed over 5 years. 300 GB/sec peak bandwidth. Must handle 30K concurrent video streams. Requires distributed architecture with CDN, sharding, and caching.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Low Latency</div>
+                        <div class="explanation-text">Video must start playing in <2 seconds. Global users need fast access. Solution: CDN with 200+ edge locations, 90% cache hit rate, adaptive bitrate streaming (HLS/DASH).</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Video Processing</div>
+                        <div class="explanation-text">Transcode every video to 5-7 formats (360p, 480p, 720p, 1080p, 4K). Processing time ≈ video duration. Use distributed workers with Kafka queue, FFmpeg for transcoding.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-1">
+                <div class="key-points-title">System Requirements Summary</div>
+                <ul class="key-list">
+                    <li>100M DAU, 500M video views/day, 30K concurrent streams at peak</li>
+                    <li>2.4 EB storage (5 years), 300 GB/sec peak bandwidth</li>
+                    <li><2 sec video start time, 99.99% uptime (52 min downtime/year)</li>
+                    <li>Multi-format transcoding: 360p to 4K (5-7 quality levels)</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-1">👆 Click anywhere or press SPACE to see architecture</div>
+        </div>
+
+        <!-- Slide 2: High-Level Architecture -->
+        <div class="slide" data-slide="2">
+            <div class="title">YouTube System Design</div>
+            <div class="subtitle">High-Level Architecture</div>
+            <div class="component-title"><span class="service-icon">🏗️</span> Complete System Blueprint <span class="badge">ARCHITECTURE</span></div>
+            <div class="description">Distributed architecture handling billions of users globally</div>
+
+            <div class="yt-console-mockup" id="diagram-2">
+                <div class="console-header">
+                    <span class="yt-logo">▶ YouTube</span> System Architecture
+                </div>
+                <div class="ascii-diagram">
+╔══════════════════════════════════════════════════════════════════════════╗
+║  COMPLETE ARCHITECTURE - ALL LAYERS                                      ║
+╠══════════════════════════════════════════════════════════════════════════╣
+
+                    ┌─────────────────────────────┐
+                    │   👥 USERS (2B+ globally)   │
+                    │   Web, Mobile, Smart TV      │
+                    └────────────┬────────────────┘
+                                 │
+            ┌────────────────────┼────────────────────┐
+            │                    │                    │
+    ┌───────▼────────┐  ┌───────▼────────┐  ┌──────▼───────┐
+    │   Web Client   │  │  Mobile App    │  │  Smart TV    │
+    │  React/Next.js │  │  iOS/Android   │  │  tvOS/Fire   │
+    └───────┬────────┘  └───────┬────────┘  └──────┬───────┘
+            │                    │                   │
+            └────────────────────┼───────────────────┘
+                                 │
+                    ┌────────────▼────────────┐
+                    │    🌐 CDN LAYER         │
+                    │  CloudFront (AWS)       │
+                    │  200+ Edge Locations    │
+                    │  90% Cache Hit Rate     │
+                    └────────┬────────────────┘
+                             │
+                    ┌────────▼────────────────┐
+                    │   🛡️ API GATEWAY        │
+                    │  Rate Limiting          │
+                    │  Authentication         │
+                    │  Request Routing        │
+                    └────────┬────────────────┘
+                             │
+                    ┌────────▼────────────────┐
+                    │  ⚖️ LOAD BALANCER       │
+                    │  ALB (Application LB)   │
+                    │  Health Checks          │
+                    │  SSL Termination        │
+                    └────────┬────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+┌───────▼────────┐  ┌───────▼────────┐  ┌───────▼────────┐
+│ 📹 VIDEO       │  │ 👤 USER        │  │ 💬 COMMENT     │
+│  SERVICE       │  │  SERVICE       │  │  SERVICE       │
+│                │  │                │  │                │
+│ - Upload       │  │ - Auth         │  │ - Create       │
+│ - Transcode    │  │ - Profile      │  │ - Reply        │
+│ - Stream       │  │ - Subscribe    │  │ - Like         │
+└───────┬────────┘  └───────┬────────┘  └───────┬────────┘
+        │                    │                    │
+        └────────────────────┼────────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+┌───────▼────────┐  ┌───────▼────────┐  ┌───────▼────────┐
+│ 🔍 SEARCH      │  │ 🎯 RECOMMEND   │  │ 📊 ANALYTICS   │
+│  SERVICE       │  │  SERVICE       │  │  SERVICE       │
+│                │  │                │  │                │
+│ - Index        │  │ - ML Model     │  │ - Views        │
+│ - Rank         │  │ - Personalize  │  │ - Metrics      │
+│ - Autocomplete │  │ - Trending     │  │ - Reporting    │
+└───────┬────────┘  └───────┬────────┘  └───────┬────────┘
+        │                    │                    │
+        └────────────────────┼────────────────────┘
+                             │
+                    ┌────────▼────────────────┐
+                    │  📬 MESSAGE QUEUE       │
+                    │  Apache Kafka           │
+                    │  Event-Driven Arch      │
+                    │  Async Processing       │
+                    └────────┬────────────────┘
+                             │
+        ┌────────────────────┼────────────────────┐
+        │                    │                    │
+┌───────▼────────┐  ┌───────▼────────┐  ┌───────▼────────┐
+│ 🎬 VIDEO       │  │ 📧 NOTIFICATION│  │ 🔒 CONTENT     │
+│  PROCESSOR     │  │  SERVICE       │  │  MODERATION    │
+│                │  │                │  │                │
+│ - FFmpeg       │  │ - Push         │  │ - Copyright    │
+│ - Transcoding  │  │ - Email        │  │ - Flagging     │
+│ - Thumbnail    │  │ - SMS          │  │ - AI Filter    │
+└───────┬────────┘  └────────────────┘  └────────────────┘
+        │
+        ▼
+┌──────────────────────────────────────────────────────┐
+│              💾 STORAGE LAYER                        │
+├──────────────────────────────────────────────────────┤
+│  ┌────────────┐  ┌──────────┐  ┌─────────────┐     │
+│  │ S3 (Videos)│  │PostgreSQL│  │ MongoDB     │     │
+│  │ 2.4 EB     │  │(Metadata)│  │(Logs/Events)│     │
+│  └────────────┘  └──────────┘  └─────────────┘     │
+│                                                      │
+│  ┌────────────┐  ┌──────────┐  ┌─────────────┐     │
+│  │Redis Cache │  │Elasticsearch│ │ DynamoDB   │     │
+│  │(Hot Videos)│  │  (Search)  │  │(Sessions)  │     │
+│  └────────────┘  └──────────┘  └─────────────┘     │
+└──────────────────────────────────────────────────────┘
+
+
+        TRAFFIC FLOW - READ PATH (Video Watching)
+    ┌──────────────────────────────────────────┐
+    │  User requests: youtube.com/watch?v=abc  │
+    └────────────┬─────────────────────────────┘
+                 │
+    ┌────────────▼─────────────────────────────┐
+    │  CDN (CloudFront)                        │
+    │  ├─ Check edge cache for video manifest  │
+    │  ├─ 90% hit rate → Serve from edge       │
+    │  └─ 10% miss → Forward to origin         │
+    └────────────┬─────────────────────────────┘
+                 │ (Cache miss)
+    ┌────────────▼─────────────────────────────┐
+    │  API Gateway + Load Balancer             │
+    │  └─ Route to Video Service               │
+    └────────────┬─────────────────────────────┘
+                 │
+    ┌────────────▼─────────────────────────────┐
+    │  Video Service                           │
+    │  ├─ Check Redis cache (hot videos)       │
+    │  ├─ Query PostgreSQL for metadata        │
+    │  └─ Return video URL + manifest          │
+    └────────────┬─────────────────────────────┘
+                 │
+    ┌────────────▼─────────────────────────────┐
+    │  Client starts streaming from CDN        │
+    │  ├─ HLS/DASH adaptive bitrate            │
+    │  ├─ Progressive download in chunks       │
+    │  └─ Video starts playing in <2 sec ✅     │
+    └──────────────────────────────────────────┘
+
+
+        TRAFFIC FLOW - WRITE PATH (Video Upload)
+    ┌──────────────────────────────────────────┐
+    │  User uploads video (multipart upload)   │
+    └────────────┬─────────────────────────────┘
+                 │
+    ┌────────────▼─────────────────────────────┐
+    │  Video Service                           │
+    │  ├─ Upload directly to S3 (presigned URL)│
+    │  ├─ Save metadata to PostgreSQL          │
+    │  └─ Publish event to Kafka               │
+    └────────────┬─────────────────────────────┘
+                 │
+    ┌────────────▼─────────────────────────────┐
+    │  Kafka Topic: video.uploaded             │
+    │  └─ Event: {videoId, userId, s3Path}     │
+    └────────────┬─────────────────────────────┘
+                 │
+    ┌────────────▼─────────────────────────────┐
+    │  Video Processor Workers (100+ instances)│
+    │  ├─ Download from S3                     │
+    │  ├─ Transcode with FFmpeg                │
+    │  │   └─ 360p, 480p, 720p, 1080p, 4K      │
+    │  ├─ Generate thumbnails                  │
+    │  ├─ Upload transcoded files to S3        │
+    │  └─ Update DB: status = "READY"          │
+    └────────────┬─────────────────────────────┘
+                 │
+    ┌────────────▼─────────────────────────────┐
+    │  Notification Service                    │
+    │  └─ Notify subscribers: "New video!"     │
+    └──────────────────────────────────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-2">
+                <div class="explanation-title">Architecture Decisions</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Microservices Architecture</div>
+                        <div class="explanation-text">6 core services (Video, User, Comment, Search, Recommend, Analytics) scale independently. Video Service handles 10x traffic of User Service. Each has own database, deployed separately, no shared state.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Event-Driven with Kafka</div>
+                        <div class="explanation-text">Async processing critical for video upload. User uploads → immediate response. Kafka decouples upload from transcoding (takes 5-30 min). 100+ workers process queue in parallel. No blocking.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">CDN for Global Performance</div>
+                        <div class="explanation-text">CloudFront with 200+ edge locations. 90% cache hit = only 10% requests hit origin. User in Tokyo gets video from Tokyo edge in 20ms vs 200ms from US. Saves bandwidth costs 10x.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-2">
+                <div class="key-points-title">Key Architecture Patterns</div>
+                <ul class="key-list">
+                    <li>Microservices: 6 core services, independent scaling, fault isolation</li>
+                    <li>Event-Driven: Kafka for async processing, 100+ worker instances</li>
+                    <li>CDN: 90% cache hit rate, <2 sec video start time globally</li>
+                    <li>Polyglot Persistence: PostgreSQL (metadata), MongoDB (logs), Redis (cache), S3 (videos)</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-2">👆 Click to see Video Upload Flow</div>
+        </div>
+
+        <!-- Slide 3: Video Upload Flow -->
+        <div class="slide" data-slide="3">
+            <div class="title">YouTube System Design</div>
+            <div class="subtitle">Video Upload & Processing Pipeline</div>
+            <div class="component-title"><span class="service-icon">📤</span> Upload → Transcode → Store <span class="badge">UPLOAD</span></div>
+            <div class="description">How 500 hours of video get processed every minute</div>
+
+            <div class="yt-console-mockup" id="diagram-3">
+                <div class="console-header">
+                    <span class="yt-logo">▶ YouTube</span> Video Upload Pipeline
+                </div>
+                <div class="ascii-diagram">
+╔══════════════════════════════════════════════════════════════════════════╗
+║  COMPLETE VIDEO UPLOAD FLOW                                              ║
+╠══════════════════════════════════════════════════════════════════════════╣
+
+STEP 1: Multipart Upload (Client → S3 Direct)
+┌────────────────────────────────────────────┐
+│  User clicks "Upload Video"                │
+│  File: my_video.mp4 (500 MB)               │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Frontend (React)                          │
+│  ├─ Request presigned URL from API         │
+│  ├─ API returns: s3://bucket/temp/xyz.mp4  │
+│  └─ Split file into 100 chunks (5MB each)  │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Upload to S3 (Direct, no API server)      │
+│  ├─ Chunk 1 (5MB) → S3                     │
+│  ├─ Chunk 2 (5MB) → S3                     │
+│  ├─ ... (parallel upload, 10 at a time)    │
+│  ├─ Chunk 100 (5MB) → S3                   │
+│  └─ Total time: 2 minutes ✅                │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  S3 CompleteMultipartUpload                │
+│  └─ Single file: temp/xyz.mp4 (500MB)      │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Frontend calls API: POST /videos          │
+│  {                                          │
+│    "title": "My Awesome Video",            │
+│    "s3Key": "temp/xyz.mp4",                │
+│    "duration": 600 (seconds)               │
+│  }                                          │
+└──────────────┬─────────────────────────────┘
+               │
+STEP 2: Metadata Storage & Event Publishing
+┌──────────────▼─────────────────────────────┐
+│  Video Service                             │
+│  ├─ Generate video_id: v_abc123            │
+│  ├─ Move S3: temp/xyz.mp4 → videos/v_abc123/raw.mp4│
+│  ├─ Insert PostgreSQL:                     │
+│  │   videos(                               │
+│  │     id: v_abc123,                       │
+│  │     user_id: u_789,                     │
+│  │     title: "My Awesome Video",          │
+│  │     status: "PROCESSING",               │
+│  │     s3_path: "videos/v_abc123/raw.mp4"  │
+│  │   )                                     │
+│  └─ Publish Kafka event:                   │
+│      Topic: video.uploaded                 │
+│      Payload: {videoId: "v_abc123"}        │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Response to User: 201 Created            │
+│  {                                          │
+│    "videoId": "v_abc123",                  │
+│    "status": "PROCESSING",                 │
+│    "message": "Video uploaded! Processing   │
+│                will take 5-10 minutes"     │
+│  }                                          │
+│  User sees: "✅ Upload complete! Processing"│
+└─────────────────────────────────────────────┘
+
+
+STEP 3: Video Transcoding (Async Workers)
+┌────────────────────────────────────────────┐
+│  Kafka Consumer (Video Processor Worker)   │
+│  ├─ Polls topic: video.uploaded            │
+│  ├─ Receives: {videoId: "v_abc123"}        │
+│  └─ Claims task (consumer group)           │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Worker Instance (EC2 c5.4xlarge)          │
+│  ├─ Download: s3://bucket/videos/v_abc123/raw.mp4│
+│  ├─ Size: 500MB, download time: 5 sec      │
+│  └─ Local file: /tmp/v_abc123.mp4          │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  FFmpeg Transcoding (Parallel)             │
+│                                             │
+│  Process 1: 360p (Low Quality)             │
+│  ffmpeg -i input.mp4 -vf scale=640:360 \   │
+│    -c:v libx264 -preset fast \              │
+│    -b:v 400k output_360p.mp4               │
+│  Time: 10 minutes (1:1 ratio)              │
+│                                             │
+│  Process 2: 720p (HD)                      │
+│  ffmpeg -i input.mp4 -vf scale=1280:720 \  │
+│    -c:v libx264 -b:v 2500k output_720p.mp4 │
+│  Time: 10 minutes                           │
+│                                             │
+│  Process 3: 1080p (Full HD)                │
+│  Time: 10 minutes                           │
+│                                             │
+│  Process 4: Thumbnail Extraction           │
+│  ffmpeg -i input.mp4 -ss 00:00:05 \        │
+│    -vframes 1 thumbnail.jpg                │
+│  Time: 5 seconds                            │
+│                                             │
+│  Total: 10 minutes (parallel processing)   │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Upload Transcoded Files to S3             │
+│  ├─ videos/v_abc123/360p.mp4 (50MB)       │
+│  ├─ videos/v_abc123/720p.mp4 (150MB)      │
+│  ├─ videos/v_abc123/1080p.mp4 (350MB)     │
+│  ├─ videos/v_abc123/thumbnail.jpg (100KB) │
+│  └─ Total upload: 2 minutes                │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Update Database: Status = READY           │
+│  UPDATE videos                             │
+│  SET status = 'READY',                     │
+│      processed_at = NOW(),                 │
+│      qualities = '360p,720p,1080p'         │
+│  WHERE id = 'v_abc123'                     │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Publish Kafka: video.processed            │
+│  └─ Triggers: Notification, Recommendation │
+└──────────────┬─────────────────────────────┘
+               │
+┌──────────────▼─────────────────────────────┐
+│  Notification Service                      │
+│  └─ Push to subscribers:                   │
+│     "New video from [Channel]: My Awesome  │
+│      Video is now live!"                   │
+└─────────────────────────────────────────────┘
+
+
+STEP 4: Generate HLS Manifest (Adaptive Streaming)
+┌────────────────────────────────────────────┐
+│  Create master playlist: master.m3u8       │
+│                                             │
+│  #EXTM3U                                   │
+│  #EXT-X-STREAM-INF:BANDWIDTH=800000        │
+│  360p.m3u8                                  │
+│  #EXT-X-STREAM-INF:BANDWIDTH=2800000       │
+│  720p.m3u8                                  │
+│  #EXT-X-STREAM-INF:BANDWIDTH=5000000       │
+│  1080p.m3u8                                 │
+│                                             │
+│  Upload to: s3://videos/v_abc123/master.m3u8│
+└─────────────────────────────────────────────┘
+
+
+        TIMELINE SUMMARY
+    ┌──────────────────────────────────────────┐
+    │  T+0:00    User uploads 500MB video      │
+    │  T+2:00    Upload complete to S3 ✅       │
+    │  T+2:01    API creates video record      │
+    │  T+2:02    User sees "Processing..." ✅   │
+    │  T+2:05    Worker picks up task          │
+    │  T+12:00   Transcoding complete          │
+    │  T+14:00   Upload to S3 complete         │
+    │  T+14:01   Status updated: READY ✅       │
+    │  T+14:02   Subscribers notified 📬        │
+    │                                           │
+    │  User Experience:                        │
+    │  ├─ Upload: 2 minutes (sees progress)    │
+    │  ├─ Processing: 12 minutes (background)  │
+    │  └─ Video live: 14 minutes total ✅       │
+    └──────────────────────────────────────────┘
+
+
+        SCALING CONSIDERATIONS
+    ┌──────────────────────────────────────────┐
+    │  Challenge: 500 hours/minute uploads     │
+    │  └─ = 30,000 videos/hour = 8 videos/sec  │
+    │                                           │
+    │  Solution:                               │
+    │  ├─ 100 worker instances (EC2)           │
+    │  ├─ Each processes 1 video/12 min        │
+    │  ├─ Capacity: 100 × 5 videos/hour        │
+    │  │             = 500 videos/hour          │
+    │  └─ Kafka queue buffers traffic spikes   │
+    │                                           │
+    │  Auto-Scaling:                           │
+    │  ├─ Kafka lag > 100 → Scale up workers   │
+    │  ├─ Lag < 10 → Scale down                │
+    │  └─ Min: 50 workers, Max: 500 workers    │
+    └──────────────────────────────────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-3">
+                <div class="explanation-title">Upload Pipeline Design Decisions</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Presigned URL Upload</div>
+                        <div class="explanation-text">Direct client → S3 upload bypasses API servers. No bandwidth through API = lower costs. Presigned URL expires in 1 hour, scoped to specific path. Multipart upload enables resumable uploads.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Async Processing with Kafka</div>
+                        <div class="explanation-text">User doesn't wait for transcoding (10+ min). Upload completes in 2 min, returns immediately. Kafka ensures every video gets processed even if workers restart. Consumer groups prevent duplicate processing.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Parallel Transcoding</div>
+                        <div class="explanation-text">Process 360p, 720p, 1080p in parallel on multi-core EC2 (16 vCPU). Sequential would take 30 min. Parallel takes 10 min (limited by slowest quality). FFmpeg preset=fast balances speed vs quality.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-3">
+                <div class="key-points-title">Video Upload Key Points</div>
+                <ul class="key-list">
+                    <li>Multipart upload: 500MB video uploads in 2 min (direct to S3, 100 chunks)</li>
+                    <li>Async transcoding: User gets response in 2 min, processing takes 12 min in background</li>
+                    <li>FFmpeg pipeline: 360p/720p/1080p in parallel, 10 min total (1:1 ratio)</li>
+                    <li>Scalability: 100 workers process 500 videos/hour, auto-scale based on Kafka lag</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-3">👆 Click to see Video Streaming & CDN</div>
+        </div>
+
+        <!-- Slide 4: Video Streaming & CDN -->
+        <div class="slide" data-slide="4">
+            <div class="title">YouTube System Design</div>
+            <div class="subtitle">Video Streaming & CDN Architecture</div>
+            <div class="component-title"><span class="service-icon">🎬</span> Adaptive Bitrate Streaming <span class="badge">STREAMING</span></div>
+            <div class="description">How videos stream globally with <2 second start time</div>
+
+            <div class="yt-console-mockup" id="diagram-4">
+                <div class="console-header">
+                    <span class="yt-logo">▶ YouTube</span> CDN & Streaming Architecture
+                </div>
+                <div class="ascii-diagram">
+╔══════════════════════════════════════════════════════════════════════════╗
+║  ADAPTIVE BITRATE STREAMING (HLS/DASH)                                   ║
+╠══════════════════════════════════════════════════════════════════════════╣
+
+        HOW VIDEO STREAMING WORKS
+    ┌──────────────────────────────────────────┐
+    │  User clicks: youtube.com/watch?v=abc    │
+    └──────────────┬───────────────────────────┘
+                   │
+    ┌──────────────▼───────────────────────────┐
+    │  Player requests master playlist         │
+    │  GET /videos/abc/master.m3u8             │
+    └──────────────┬───────────────────────────┘
+                   │
+    ┌──────────────▼───────────────────────────┐
+    │  CDN returns master playlist:            │
+    │                                           │
+    │  #EXTM3U                                 │
+    │  #EXT-X-STREAM-INF:BANDWIDTH=400000      │
+    │  360p/playlist.m3u8                      │
+    │  #EXT-X-STREAM-INF:BANDWIDTH=2500000     │
+    │  720p/playlist.m3u8                      │
+    │  #EXT-X-STREAM-INF:BANDWIDTH=5000000     │
+    │  1080p/playlist.m3u8                     │
+    └──────────────┬───────────────────────────┘
+                   │
+    ┌──────────────▼───────────────────────────┐
+    │  Player measures bandwidth: 3 Mbps       │
+    │  └─ Selects: 720p (2.5 Mbps) ✅          │
+    └──────────────┬───────────────────────────┘
+                   │
+    ┌──────────────▼───────────────────────────┐
+    │  Request 720p playlist:                  │
+    │  GET /videos/abc/720p/playlist.m3u8      │
+    │                                           │
+    │  Returns:                                │
+    │  #EXTM3U                                 │
+    │  #EXT-X-TARGETDURATION:10                │
+    │  #EXTINF:10.0                            │
+    │  segment000.ts  (10 sec chunk)           │
+    │  #EXTINF:10.0                            │
+    │  segment001.ts                           │
+    │  #EXTINF:10.0                            │
+    │  segment002.ts                           │
+    │  ... (60 segments for 10-min video)      │
+    └──────────────┬───────────────────────────┘
+                   │
+    ┌──────────────▼───────────────────────────┐
+    │  Download segments progressively:        │
+    │  ├─ Segment 000 (10 sec, 3MB) → Buffer   │
+    │  ├─ Segment 001 (10 sec, 3MB) → Buffer   │
+    │  ├─ Segment 002 (10 sec, 3MB) → Buffer   │
+    │  └─ Start playback after 2 segments ✅    │
+    │                                           │
+    │  Adaptive: If bandwidth drops to 1 Mbps  │
+    │  └─ Switch to 360p mid-stream ✅          │
+    └───────────────────────────────────────────┘
+
+
+        CDN ARCHITECTURE (CloudFront)
+    ┌──────────────────────────────────────────────────┐
+    │              ☁️  ORIGIN (S3 + API)               │
+    │  videos/abc/360p/segment000.ts                   │
+    │  videos/abc/720p/segment000.ts                   │
+    │  videos/abc/1080p/segment000.ts                  │
+    └────────────────┬─────────────────────────────────┘
+                     │
+                     │ Replication
+                     ▼
+    ┌─────────────────────────────────────────────────┐
+    │         REGIONAL EDGE CACHES (13 locations)     │
+    │  US-East, US-West, Europe, Asia-Pacific, etc.   │
+    │  └─ Cache: 1 hour TTL for video segments        │
+    └────────┬────────────────────────────────────────┘
+             │
+             │ Replication to nearby edges
+             ▼
+    ┌─────────────────────────────────────────────────┐
+    │         EDGE LOCATIONS (200+ worldwide)         │
+    ├─────────────────────────────────────────────────┤
+    │  🌍 Mumbai (ms-1)                                │
+    │  ├─ Cache: Hot videos (90% hit rate)            │
+    │  ├─ Capacity: 100 TB                            │
+    │  └─ Serves: 50M users in India                  │
+    │                                                  │
+    │  🌍 Tokyo (ap-1)                                 │
+    │  └─ Serves: 30M users in Japan                  │
+    │                                                  │
+    │  🌍 London (eu-1)                                │
+    │  └─ Serves: 20M users in UK/EU                  │
+    │                                                  │
+    │  🌍 New York (us-1)                              │
+    │  └─ Serves: 40M users in US East Coast          │
+    └─────────────────────────────────────────────────┘
+
+
+        VIDEO REQUEST FLOW WITH CDN
+    ┌──────────────────────────────────────────┐
+    │  User in Mumbai watches video            │
+    │  GET cdn.youtube.com/videos/abc/720p/s0.ts│
+    └──────────────┬───────────────────────────┘
+                   │
+    ┌──────────────▼───────────────────────────┐
+    │  DNS routes to nearest edge: Mumbai      │
+    │  └─ Latency: 5ms ✅                       │
+    └──────────────┬───────────────────────────┘
+                   │
+    ┌──────────────▼───────────────────────────┐
+    │  Mumbai Edge Cache Check                 │
+    │  ├─ Cache HIT (90% probability)          │
+    │  │   └─ Return from local cache: 20ms ✅  │
+    │  └─ Cache MISS (10% probability)         │
+    │      └─ Fetch from Regional Edge → Origin│
+    └──────────────┬───────────────────────────┘
+                   │
+    ┌──────────────▼───────────────────────────┐
+    │  Segment delivered to user               │
+    │  ├─ Cache hit: 20ms                      │
+    │  ├─ Cache miss: 200ms (first time)       │
+    │  └─ Next 100 users: 20ms (cached) 🚀     │
+    └───────────────────────────────────────────┘
+
+
+        CACHE STRATEGY
+    ┌──────────────────────────────────────────┐
+    │  Hot Videos (Top 1% - 1M views/hour):    │
+    │  ├─ Cache everywhere (all 200+ edges)    │
+    │  ├─ TTL: 24 hours                        │
+    │  └─ 99% cache hit rate ✅                 │
+    │                                           │
+    │  Warm Videos (10% - 10K views/hour):     │
+    │  ├─ Cache in regional edges only         │
+    │  ├─ TTL: 1 hour                          │
+    │  └─ 85% cache hit rate                   │
+    │                                           │
+    │  Cold Videos (89% - <100 views/hour):    │
+    │  ├─ Serve from origin (S3)               │
+    │  ├─ No edge cache                        │
+    │  └─ 0% cache hit rate (but low traffic)  │
+    └──────────────────────────────────────────┘
+
+
+        BANDWIDTH OPTIMIZATION
+    ┌──────────────────────────────────────────┐
+    │  Problem: 300 GB/sec peak bandwidth      │
+    │  └─ Without CDN: $27M/month              │
+    │                                           │
+    │  Solution: 90% CDN cache hit             │
+    │  ├─ Origin serves: 30 GB/sec (10%)       │
+    │  ├─ Origin cost: $2.7M/month             │
+    │  ├─ CDN cost: $5M/month                  │
+    │  └─ Total: $7.7M/month (71% savings) ✅   │
+    └──────────────────────────────────────────┘
+
+
+        ADAPTIVE BITRATE ALGORITHM
+    ┌──────────────────────────────────────────┐
+    │  Player measures network every 10 sec:   │
+    │                                           │
+    │  IF bandwidth > 6 Mbps                   │
+    │    └─ Switch to 1080p                    │
+    │  ELSE IF bandwidth > 3 Mbps              │
+    │    └─ Switch to 720p                     │
+    │  ELSE IF bandwidth > 1 Mbps              │
+    │    └─ Switch to 480p                     │
+    │  ELSE                                    │
+    │    └─ Switch to 360p                     │
+    │                                           │
+    │  Buffer management:                      │
+    │  ├─ Start playback: 2 segments (20 sec)  │
+    │  ├─ Maintain buffer: 30-60 sec           │
+    │  └─ If buffer < 10 sec: Lower quality    │
+    └──────────────────────────────────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-4">
+                <div class="explanation-title">Streaming Optimizations</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">HLS Protocol Choice</div>
+                        <div class="explanation-text">HLS (HTTP Live Streaming) over DASH because: works on all devices (iOS, Android, Web), uses standard HTTP (no special protocols), proxy-friendly, reliable. 10-second segments balance latency vs overhead.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">90% Cache Hit Rate</div>
+                        <div class="explanation-text">Top 1% of videos (hot) account for 80% of traffic. These cache everywhere. Regional edges serve next 10%. Cold videos (89%) generate only 10% of traffic, served from S3. Result: massive cost savings.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Adaptive Bitrate Benefit</div>
+                        <div class="explanation-text">User on 2 Mbps watches 480p smoothly. User on 10 Mbps gets 1080p. Same video, different qualities. Prevents buffering (worst user experience). Player switches quality every 10 seconds based on measured bandwidth.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-4">
+                <div class="key-points-title">Streaming Key Points</div>
+                <ul class="key-list">
+                    <li>HLS adaptive streaming: Player switches 360p/720p/1080p based on bandwidth</li>
+                    <li>CDN: 200+ edge locations, 90% cache hit rate, <20ms video segment delivery</li>
+                    <li>Progressive download: Video starts after 2 segments (20 sec buffer), not full download</li>
+                    <li>Cost savings: CDN reduces origin bandwidth by 90%, saves $19M/month</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-4">👆 Click to see Database Design</div>
+        </div>
+
+        <!-- Slide 5: Database Design -->
+        <div class="slide" data-slide="5">
+            <div class="title">YouTube System Design</div>
+            <div class="subtitle">Database Architecture & Sharding</div>
+            <div class="component-title"><span class="service-icon">💾</span> Polyglot Persistence <span class="badge">DATABASE</span></div>
+            <div class="description">SQL, NoSQL, and Cache - choosing the right tool for each job</div>
+
+            <div class="yt-console-mockup" id="diagram-5">
+                <div class="console-header">
+                    <span class="yt-logo">▶ YouTube</span> Database Schema Design
+                </div>
+                <div class="ascii-diagram">
+╔══════════════════════════════════════════════════════════════════════════╗
+║  POSTGRESQL (Relational) - Metadata & Relationships                     ║
+╠══════════════════════════════════════════════════════════════════════════╣
+
+TABLE: users
+┌─────────────┬──────────────┬────────────┬──────────────────┐
+│ Column      │ Type         │ Index      │ Description      │
+├─────────────┼──────────────┼────────────┼──────────────────┤
+│ id          │ UUID         │ PRIMARY    │ User ID          │
+│ email       │ VARCHAR(255) │ UNIQUE     │ Login email      │
+│ username    │ VARCHAR(50)  │ UNIQUE     │ Display name     │
+│ password    │ VARCHAR(255) │            │ Hashed password  │
+│ avatar_url  │ TEXT         │            │ Profile picture  │
+│ created_at  │ TIMESTAMP    │ INDEX      │ Registration date│
+│ updated_at  │ TIMESTAMP    │            │ Last modified    │
+└─────────────┴──────────────┴────────────┴──────────────────┘
+
+TABLE: videos
+┌──────────────┬──────────────┬────────────┬──────────────────┐
+│ Column       │ Type         │ Index      │ Description      │
+├──────────────┼──────────────┼────────────┼──────────────────┤
+│ id           │ UUID         │ PRIMARY    │ Video ID         │
+│ user_id      │ UUID         │ FOREIGN+IX │ Owner (FK users) │
+│ title        │ VARCHAR(200) │ FULLTEXT   │ Video title      │
+│ description  │ TEXT         │            │ Video description│
+│ s3_path      │ TEXT         │            │ S3 bucket path   │
+│ duration     │ INTEGER      │            │ Length (seconds) │
+│ views        │ BIGINT       │ INDEX      │ View count       │
+│ likes        │ INTEGER      │            │ Like count       │
+│ dislikes     │ INTEGER      │            │ Dislike count    │
+│ status       │ ENUM         │ INDEX      │ PROCESSING/READY │
+│ qualities    │ ARRAY        │            │ [360p,720p,1080p]│
+│ thumbnail_url│ TEXT         │            │ Preview image    │
+│ created_at   │ TIMESTAMP    │ INDEX      │ Upload date      │
+│ processed_at │ TIMESTAMP    │            │ Ready date       │
+└──────────────┴──────────────┴────────────┴──────────────────┘
+
+TABLE: comments
+┌─────────────┬──────────────┬────────────┬──────────────────┐
+│ Column      │ Type         │ Index      │ Description      │
+├─────────────┼──────────────┼────────────┼──────────────────┤
+│ id          │ UUID         │ PRIMARY    │ Comment ID       │
+│ video_id    │ UUID         │ FOREIGN+IX │ Video (FK videos)│
+│ user_id     │ UUID         │ FOREIGN+IX │ Author (FK users)│
+│ parent_id   │ UUID         │ INDEX      │ Parent comment   │
+│ text        │ TEXT         │            │ Comment content  │
+│ likes       │ INTEGER      │            │ Like count       │
+│ created_at  │ TIMESTAMP    │ INDEX      │ Post time        │
+└─────────────┴──────────────┴────────────┴──────────────────┘
+
+TABLE: subscriptions
+┌─────────────┬──────────────┬────────────┬──────────────────┐
+│ Column      │ Type         │ Index      │ Description      │
+├─────────────┼──────────────┼────────────┼──────────────────┤
+│ id          │ UUID         │ PRIMARY    │ Subscription ID  │
+│ subscriber  │ UUID         │ FOREIGN+IX │ User (FK users)  │
+│ channel_id  │ UUID         │ FOREIGN+IX │ Channel(FK users)│
+│ created_at  │ TIMESTAMP    │ INDEX      │ Subscribe date   │
+│             │              │            │                  │
+│ UNIQUE(subscriber, channel_id)  ← Prevent duplicates      │
+└─────────────┴──────────────┴────────────┴──────────────────┘
+
+
+        SHARDING STRATEGY (Horizontal Partitioning)
+    ┌──────────────────────────────────────────┐
+    │  Problem: 100M users, 1B videos          │
+    │  └─ Single DB can't handle this scale    │
+    │                                           │
+    │  Solution: Shard by user_id hash         │
+    └──────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────┐
+    │  Shard 0 (users.id % 16 == 0)               │
+    │  ├─ Users: 0x0..., 0x10..., 0x20...         │
+    │  ├─ Videos: WHERE user_id IN (shard 0 users)│
+    │  └─ Storage: 6.25M users, 60M videos        │
+    └─────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────┐
+    │  Shard 1 (users.id % 16 == 1)               │
+    │  └─ Storage: 6.25M users, 60M videos        │
+    └─────────────────────────────────────────────┘
+
+    ... (14 more shards)
+
+    ┌─────────────────────────────────────────────┐
+    │  Shard 15 (users.id % 16 == 15)             │
+    │  └─ Storage: 6.25M users, 60M videos        │
+    └─────────────────────────────────────────────┘
+
+    Routing Logic:
+    shard = hash(user_id) % 16
+    connection = shards[shard]
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║  REDIS (Cache) - Hot Data & Sessions                                    ║
+╠══════════════════════════════════════════════════════════════════════════╣
+
+    Cache Keys:
+    ┌───────────────────────────────────────────┐
+    │  video:{video_id}        → Video metadata│
+    │  TTL: 1 hour             → Reduce DB load│
+    │                                            │
+    │  user:{user_id}          → User profile  │
+    │  TTL: 30 minutes                          │
+    │                                            │
+    │  trending:global         → Top 50 videos │
+    │  TTL: 5 minutes          → Updated often │
+    │                                            │
+    │  session:{token}         → User session  │
+    │  TTL: 24 hours           → Auto-expire   │
+    └───────────────────────────────────────────┘
+
+    Cache-Aside Pattern:
+    GET /videos/abc123
+    ├─ Check Redis: GET video:abc123
+    ├─ Hit? Return cached data (2ms) ✅
+    └─ Miss? Query PostgreSQL → Cache → Return
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║  MONGODB (NoSQL) - Logs & Analytics                                     ║
+╠══════════════════════════════════════════════════════════════════════════╣
+
+    Collection: video_views
+    {
+      _id: ObjectId("..."),
+      video_id: "abc123",
+      user_id: "user789",
+      timestamp: ISODate("2024-08-03T10:30:00Z"),
+      duration_watched: 180,  // seconds
+      quality: "720p",
+      device: "mobile",
+      location: {
+        country: "US",
+        city: "New York",
+        ip: "203.0.113.1"
+      }
+    }
+
+    Why MongoDB?
+    ├─ High write throughput (1M writes/sec)
+    ├─ Schema flexibility (add fields anytime)
+    ├─ Horizontal scaling (sharding built-in)
+    └─ TTL indexes (auto-delete old logs)
+
+
+╔══════════════════════════════════════════════════════════════════════════╗
+║  ELASTICSEARCH - Search Index                                            ║
+╠══════════════════════════════════════════════════════════════════════════╣
+
+    Index: videos
+    {
+      "video_id": "abc123",
+      "title": "How to build YouTube clone",
+      "description": "System design tutorial...",
+      "tags": ["system design", "youtube", "tutorial"],
+      "views": 1500000,
+      "upload_date": "2024-01-15",
+      "channel": "TechChannel"
+    }
+
+    Search Query:
+    GET /videos/_search
+    {
+      "query": {
+        "multi_match": {
+          "query": "system design",
+          "fields": ["title^3", "description", "tags^2"]
+        }
+      },
+      "sort": [
+        {"views": "desc"},
+        {"upload_date": "desc"}
+      ]
+    }
+
+    Response time: <50ms ✅
+
+
+        DATABASE CHOICE REASONING
+    ┌──────────────────────────────────────────┐
+    │  PostgreSQL (Metadata):                  │
+    │  ✅ ACID transactions (likes, subs)      │
+    │  ✅ Foreign keys (referential integrity) │
+    │  ✅ Complex queries (JOIN users, videos) │
+    │  ✅ Mature, battle-tested                │
+    │                                           │
+    │  MongoDB (Logs):                         │
+    │  ✅ High write throughput (views, events)│
+    │  ✅ Flexible schema (analytics fields)   │
+    │  ✅ Time-series data (TTL indexes)       │
+    │                                           │
+    │  Redis (Cache):                          │
+    │  ✅ Sub-millisecond reads (hot videos)   │
+    │  ✅ Session storage (JWT tokens)         │
+    │  ✅ Reduces DB load by 80%               │
+    │                                           │
+    │  Elasticsearch (Search):                 │
+    │  ✅ Full-text search (title, description)│
+    │  ✅ Relevance ranking (BM25 algorithm)   │
+    │  ✅ Autocomplete (prefix queries)        │
+    └──────────────────────────────────────────┘
+                </div>
+            </div>
+
+            <div class="explanation-section" id="explanation-5">
+                <div class="explanation-title">Database Design Decisions</div>
+                <div class="explanation-grid">
+                    <div class="explanation-item">
+                        <div class="explanation-header">Sharding by user_id</div>
+                        <div class="explanation-text">Videos belong to users, so co-locate them. Query "Show my videos" hits single shard. Shard by video_id would require cross-shard queries. 16 shards = 6.25M users each, room to grow to 100M total.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Separate Logs from Metadata</div>
+                        <div class="explanation-text">Video views = 500M/day = high write load. PostgreSQL can't handle this. MongoDB optimized for writes, horizontal scaling. Keeps PostgreSQL fast for reads. Polyglot persistence = right tool for right job.</div>
+                    </div>
+                    <div class="explanation-item">
+                        <div class="explanation-header">Cache Strategy</div>
+                        <div class="explanation-text">Top 1% videos account for 80% traffic. Cache these in Redis (1 hour TTL). Cache hit = 2ms response vs 50ms DB query. Reduces DB load from 30K RPS to 6K RPS (80% reduction). Critical for scale.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="key-points" id="keys-5">
+                <div class="key-points-title">Database Key Points</div>
+                <ul class="key-list">
+                    <li>PostgreSQL: Metadata (users, videos, comments) with 16 shards by user_id hash</li>
+                    <li>MongoDB: Logs & analytics (500M views/day), TTL indexes auto-delete old data</li>
+                    <li>Redis: Cache hot videos (1% = 80% traffic), reduces DB load by 80%</li>
+                    <li>Elasticsearch: Search with <50ms latency, BM25 ranking, autocomplete</li>
+                </ul>
+            </div>
+
+            <div class="hint" id="hint-5">👆 Click to see Microservices Architecture</div>
+        </div>
+
+    </div>
+
+    <div class="navigation">SPACE / Click = Next • Arrow Keys = Navigate • R = Restart</div>
+
+    <script>
+        let currentSlide = 1;
+        let currentStep = 0;
+        const totalSlides = 12;
+
+        function updateProgress() {
+            document.getElementById('progress').textContent = `${currentSlide} / ${totalSlides}`;
+        }
+
+        function showStep() {
+            const diagram = document.getElementById(`diagram-${currentSlide}`);
+            const explanation = document.getElementById(`explanation-${currentSlide}`);
+            const keys = document.getElementById(`keys-${currentSlide}`);
+            const hint = document.getElementById(`hint-${currentSlide}`);
+
+            if (currentStep === 1 && diagram) {
+                diagram.classList.add('visible');
+                if (hint) hint.textContent = '👆 Click for explanation';
+            } else if (currentStep === 2 && explanation) {
+                explanation.classList.add('visible');
+                if (hint && keys) hint.textContent = '👆 Click for key points';
+            } else if (currentStep === 3 && keys) {
+                keys.classList.add('visible');
+                if (hint) hint.style.display = 'none';
+            }
+        }
+
+        function nextSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide++;
+            if (currentSlide > totalSlides) currentSlide = 1;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function prevSlide() {
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.remove('active');
+            currentSlide--;
+            if (currentSlide < 1) currentSlide = totalSlides;
+            document.querySelectorAll('.slide')[currentSlide - 1].classList.add('active');
+            currentStep = 0;
+            updateProgress();
+        }
+
+        function handleAdvance() {
+            if (currentStep < 3) {
+                currentStep++;
+                showStep();
+            } else {
+                nextSlide();
+            }
+        }
+
+        document.addEventListener('click', handleAdvance);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                handleAdvance();
+            } else if (e.code === 'ArrowRight') {
+                e.preventDefault();
+                nextSlide();
+            } else if (e.code === 'ArrowLeft') {
+                e.preventDefault();
+                prevSlide();
+            } else if (e.code === 'KeyR') {
+                location.reload();
+            }
+        });
+
+        document.addEventListener('selectstart', function(e) {
+            if (e.target.closest('.container')) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>

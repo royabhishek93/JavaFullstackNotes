@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"/Users/I771246/Abhi Personal/JavaFullstackNotes/System_Design/OTT_Platform_System_Design/HLD\")",
+      "Bash(mkdir -p \"/Users/I771246/Abhi Personal/JavaFullstackNotes/System_Design/OTT_Platform_System_Design/LLD\")",
+      "Bash(mkdir -p \"/Users/I771246/Abhi Personal/JavaFullstackNotes/System_Design/OTT_Platform_System_Design/Flows\")",
+      "Bash(mkdir -p \"/Users/I771246/Abhi Personal/JavaFullstackNotes/System_Design/OTT_Platform_System_Design/APIs\")",
+      "Bash(mkdir -p \"/Users/I771246/Abhi Personal/JavaFullstackNotes/System_Design/OTT_Platform_System_Design/AWS_Deployment\")",
+      "Bash(curl -s \"https://www.youtube.com/api/timedtext?v=T7jbYISbGk4&ei=HvGNapGcMY7h9fwP4--6qAo&caps=asr&opi=112496729&exp=xpe&xoaf=5&xowf=1&xospf=1&hl=en&ip=0.0.0.0&ipbits=0&expire=1787712398&sparams=ip%2Cipbits%2Cexpire%2Cv%2Cei%2Ccaps%2Copi%2Cexp%2Cxoaf&signature=305F1DC99C2AA3C0973E8B9CB99E36F52CAF3277.9E2B3BC433CDD8764A1F6FAAD90D2E84F217D1A9&key=yt8&kind=asr&lang=en&potc=1&pot=MlNo6FEHwBEYgmjUIvEmiBQ1eYPinOi8RnWjpYUSjpt_yY9k5sXgzz3ajIYrF3vtYlpFauB41STVDEBOvCd3TOa3-wRwa61ijsqnP35niirNAkYJuw%3D%3D&fmt=json3&xorb=2&xobt=3&xovt=3&cbrand=apple&cbr=Chrome&cbrver=151.0.0.0&c=WEB&cver=2.20260824.10.00&cplayer=UNIPLAYER&cos=Macintosh&cosver=10_15_7&cplatform=DESKTOP\")",
+      "Bash(python3 -c ' *)"
+    ]
+  }
+}

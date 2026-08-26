@@ -1,7 +1,0 @@
-# E-commerce System Interview Questions
-
-Suggested order:
-1. MED_Q01_prevent_overselling_during_flash_sale.md
-2. MED_Q02_payment_failed_after_inventory_reservation.md
-3. MED_Q03_cart_price_changed_before_checkout.md
-4. HIGH_Q01_scale_product_catalog_and_checkout_separately.md
