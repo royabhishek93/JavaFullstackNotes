@@ -1,6 +1,12 @@
 # Distributed Rate Limiter — Complete Interview Guide
 > Control how many requests a client can make in a time window, at scale, without becoming a bottleneck.
 
+## Algorithm Animation
+
+![Rate limiter algorithm comparison animation](rate-limiter-algorithms-comparison.gif)
+
+[Open the MP4 version](rate-limiter-algorithms-comparison.mp4) | [Open the animation source](rate-limiter-algorithms-animation.html)
+
 ---
 
 # PAGE 1 — Title & Rapid Answer Script
@@ -1031,3 +1037,478 @@ A: Token buckets are lazy-initialized on first request (default = full bucket).
 ║   breaker with fail-open."                                               ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 ```
+
+---
+
+# PAGE 17 — LLD: Strategy Pattern Implementation (Code Round)
+
+> **Interview context**: After HLD discussion, interviewers at product companies ask you to write running code using OOP design patterns. For rate limiter, the answer is always **Strategy Pattern** — each algorithm is a strategy, the API Gateway picks one at runtime based on config.
+
+---
+
+## Why Strategy Pattern?
+
+```
+RateLimiterStrategy (interface)
+        ↑
+ ┌──────┴──────┬──────────────┬──────────────┬───────────────┐
+ │             │              │              │               │
+TokenBucket  LeakyBucket  FixedWindow  SlidingWindowLog  SlidingWindowCounter
+        
+RateLimiterFactory.get(config) → returns the right strategy at runtime
+APIGateway.handleRequest()     → calls strategy.isAllowed()
+```
+
+---
+
+## 1. Strategy Interface
+
+```java
+public interface RateLimiterStrategy {
+    boolean isAllowed(String clientId);
+}
+```
+
+---
+
+## 2. Config Object (loaded from Redis/Postgres)
+
+```java
+public class RateLimiterConfig {
+    public enum AlgorithmType {
+        TOKEN_BUCKET, LEAKY_BUCKET, FIXED_WINDOW, SLIDING_WINDOW_LOG, SLIDING_WINDOW_COUNTER
+    }
+
+    private final AlgorithmType algorithmType;
+    private final int maxRequests;      // e.g. 10 requests
+    private final int windowSizeSeconds; // e.g. per 60 seconds
+    private final int refillRatePerSecond; // for token bucket
+
+    public RateLimiterConfig(AlgorithmType algorithmType, int maxRequests,
+                              int windowSizeSeconds, int refillRatePerSecond) {
+        this.algorithmType = algorithmType;
+        this.maxRequests = maxRequests;
+        this.windowSizeSeconds = windowSizeSeconds;
+        this.refillRatePerSecond = refillRatePerSecond;
+    }
+
+    public AlgorithmType getAlgorithmType() { return algorithmType; }
+    public int getMaxRequests() { return maxRequests; }
+    public int getWindowSizeSeconds() { return windowSizeSeconds; }
+    public int getRefillRatePerSecond() { return refillRatePerSecond; }
+}
+```
+
+---
+
+## 3. Token Bucket ★ (most common in interviews)
+
+```java
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class TokenBucketLimiter implements RateLimiterStrategy {
+
+    private final int capacity;           // max tokens in bucket
+    private final int refillRatePerSecond;
+
+    // Per-client state stored in Redis in production; local map for demo
+    private final ConcurrentHashMap<String, double[]> clientState = new ConcurrentHashMap<>();
+    // double[0] = current tokens, double[1] = last refill timestamp (ms)
+
+    public TokenBucketLimiter(int capacity, int refillRatePerSecond) {
+        this.capacity = capacity;
+        this.refillRatePerSecond = refillRatePerSecond;
+    }
+
+    @Override
+    public synchronized boolean isAllowed(String clientId) {
+        long now = System.currentTimeMillis();
+        clientState.putIfAbsent(clientId, new double[]{capacity, now});
+        double[] state = clientState.get(clientId);
+
+        double currentTokens = state[0];
+        double lastRefill = state[1];
+
+        // Refill tokens based on elapsed time
+        double elapsedSeconds = (now - lastRefill) / 1000.0;
+        double newTokens = elapsedSeconds * refillRatePerSecond;
+        currentTokens = Math.min(capacity, currentTokens + newTokens);
+        state[1] = now;
+
+        if (currentTokens >= 1) {
+            state[0] = currentTokens - 1;   // consume one token
+            return true;
+        }
+
+        state[0] = currentTokens;
+        return false;  // bucket empty → 429
+    }
+}
+```
+
+**Key interview points:**
+- `synchronized` per clientId handles concurrency; in production use Redis Lua atomic script
+- Burst-friendly: unused tokens accumulate up to `capacity`
+- `refillRatePerSecond` controls smooth replenishment
+
+---
+
+## 4. Leaky Bucket
+
+```java
+import java.util.LinkedList;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class LeakyBucketLimiter implements RateLimiterStrategy {
+
+    private final int queueSize;          // max requests in queue
+    private final int drainRatePerSecond; // uniform processing rate
+
+    private final ConcurrentHashMap<String, Queue<Long>> clientQueues = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, Long> lastDrainTime = new ConcurrentHashMap<>();
+
+    public LeakyBucketLimiter(int queueSize, int drainRatePerSecond) {
+        this.queueSize = queueSize;
+        this.drainRatePerSecond = drainRatePerSecond;
+    }
+
+    @Override
+    public synchronized boolean isAllowed(String clientId) {
+        long now = System.currentTimeMillis();
+        clientQueues.putIfAbsent(clientId, new LinkedList<>());
+        lastDrainTime.putIfAbsent(clientId, now);
+
+        Queue<Long> queue = clientQueues.get(clientId);
+        long lastDrain = lastDrainTime.get(clientId);
+
+        // Drain queue at uniform rate
+        double elapsedSeconds = (now - lastDrain) / 1000.0;
+        int drainCount = (int) (elapsedSeconds * drainRatePerSecond);
+        for (int i = 0; i < drainCount && !queue.isEmpty(); i++) {
+            queue.poll();
+        }
+        lastDrainTime.put(clientId, now);
+
+        if (queue.size() < queueSize) {
+            queue.offer(now);
+            return true;
+        }
+
+        return false;  // queue full → 429
+    }
+}
+```
+
+**Key interview point:** Use leaky bucket when the downstream service demands uniform traffic (e.g., a fragile 3rd-party API). Introduces latency because requests wait in queue.
+
+---
+
+## 5. Fixed Window Counter
+
+```java
+import java.util.concurrent.ConcurrentHashMap;
+
+public class FixedWindowLimiter implements RateLimiterStrategy {
+
+    private final int maxRequests;
+    private final long windowSizeMs;
+
+    // double[0] = count, double[1] = window start timestamp
+    private final ConcurrentHashMap<String, long[]> clientState = new ConcurrentHashMap<>();
+
+    public FixedWindowLimiter(int maxRequests, int windowSizeSeconds) {
+        this.maxRequests = maxRequests;
+        this.windowSizeMs = windowSizeSeconds * 1000L;
+    }
+
+    @Override
+    public synchronized boolean isAllowed(String clientId) {
+        long now = System.currentTimeMillis();
+        clientState.putIfAbsent(clientId, new long[]{0, now});
+        long[] state = clientState.get(clientId);
+
+        long windowStart = state[1];
+        if (now - windowStart >= windowSizeMs) {
+            // New window: reset counter
+            state[0] = 0;
+            state[1] = now;
+        }
+
+        if (state[0] < maxRequests) {
+            state[0]++;
+            return true;
+        }
+
+        return false;  // limit exceeded → 429
+    }
+}
+```
+
+**Key interview point:** Boundary spike problem — a user can send 2× the limit at window edges (last second of window + first second of next window). Mention this weakness immediately.
+
+---
+
+## 6. Sliding Window Log
+
+```java
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.concurrent.ConcurrentHashMap;
+
+public class SlidingWindowLogLimiter implements RateLimiterStrategy {
+
+    private final int maxRequests;
+    private final long windowSizeMs;
+
+    private final ConcurrentHashMap<String, Deque<Long>> clientLogs = new ConcurrentHashMap<>();
+
+    public SlidingWindowLogLimiter(int maxRequests, int windowSizeSeconds) {
+        this.maxRequests = maxRequests;
+        this.windowSizeMs = windowSizeSeconds * 1000L;
+    }
+
+    @Override
+    public synchronized boolean isAllowed(String clientId) {
+        long now = System.currentTimeMillis();
+        clientLogs.putIfAbsent(clientId, new ArrayDeque<>());
+        Deque<Long> log = clientLogs.get(clientId);
+
+        // Evict timestamps outside the sliding window
+        while (!log.isEmpty() && now - log.peekFirst() >= windowSizeMs) {
+            log.pollFirst();
+        }
+
+        if (log.size() < maxRequests) {
+            log.addLast(now);
+            return true;
+        }
+
+        return false;  // window full → 429
+    }
+}
+```
+
+**Key interview point:** Most accurate, but memory-heavy — stores one timestamp per request. Impractical at 1M rps. Use only for low-traffic sensitive endpoints (login, password reset).
+
+---
+
+## 7. Sliding Window Counter
+
+```java
+import java.util.concurrent.ConcurrentHashMap;
+
+public class SlidingWindowCounterLimiter implements RateLimiterStrategy {
+
+    private final int maxRequests;
+    private final long windowSizeMs;
+
+    // long[0] = prev window count, long[1] = curr window count, long[2] = curr window start
+    private final ConcurrentHashMap<String, long[]> clientState = new ConcurrentHashMap<>();
+
+    public SlidingWindowCounterLimiter(int maxRequests, int windowSizeSeconds) {
+        this.maxRequests = maxRequests;
+        this.windowSizeMs = windowSizeSeconds * 1000L;
+    }
+
+    @Override
+    public synchronized boolean isAllowed(String clientId) {
+        long now = System.currentTimeMillis();
+        clientState.putIfAbsent(clientId, new long[]{0, 0, now});
+        long[] state = clientState.get(clientId);
+
+        long prevCount = state[0];
+        long currCount = state[1];
+        long windowStart = state[2];
+
+        if (now - windowStart >= windowSizeMs) {
+            // Slide: current → previous, reset current
+            prevCount = currCount;
+            currCount = 0;
+            windowStart = now;
+            state[2] = windowStart;
+        }
+
+        // Weight of previous window in current sliding window
+        double elapsedInCurrent = now - windowStart;
+        double prevWindowWeight = 1.0 - (elapsedInCurrent / windowSizeMs);
+        double estimatedCount = (prevCount * prevWindowWeight) + currCount;
+
+        if (estimatedCount < maxRequests) {
+            state[0] = prevCount;
+            state[1] = currCount + 1;
+            state[2] = windowStart;
+            return true;
+        }
+
+        state[0] = prevCount;
+        state[1] = currCount;
+        state[2] = windowStart;
+        return false;
+    }
+}
+```
+
+**Key interview point:** Uses a deterministic assumption (uniform distribution) — not 100% precise but memory-efficient. Good balance between accuracy and resource usage.
+
+---
+
+## 8. Factory (Runtime Strategy Selection)
+
+```java
+public class RateLimiterFactory {
+
+    public static RateLimiterStrategy create(RateLimiterConfig config) {
+        switch (config.getAlgorithmType()) {
+            case TOKEN_BUCKET:
+                return new TokenBucketLimiter(
+                    config.getMaxRequests(),
+                    config.getRefillRatePerSecond()
+                );
+            case LEAKY_BUCKET:
+                return new LeakyBucketLimiter(
+                    config.getMaxRequests(),
+                    config.getRefillRatePerSecond()
+                );
+            case FIXED_WINDOW:
+                return new FixedWindowLimiter(
+                    config.getMaxRequests(),
+                    config.getWindowSizeSeconds()
+                );
+            case SLIDING_WINDOW_LOG:
+                return new SlidingWindowLogLimiter(
+                    config.getMaxRequests(),
+                    config.getWindowSizeSeconds()
+                );
+            case SLIDING_WINDOW_COUNTER:
+                return new SlidingWindowCounterLimiter(
+                    config.getMaxRequests(),
+                    config.getWindowSizeSeconds()
+                );
+            default:
+                throw new IllegalArgumentException("Unknown algorithm: " + config.getAlgorithmType());
+        }
+    }
+}
+```
+
+---
+
+## 9. API Gateway (Enforcement Point)
+
+```java
+public class APIGateway {
+
+    private final RateLimiterStrategy rateLimiterStrategy;
+
+    public APIGateway(RateLimiterConfig config) {
+        this.rateLimiterStrategy = RateLimiterFactory.create(config);
+    }
+
+    public int handleRequest(String clientId, String endpoint) {
+        if (!isAuthenticated(clientId)) {
+            return 401;
+        }
+
+        if (!rateLimiterStrategy.isAllowed(clientId)) {
+            return 429;  // Too Many Requests
+        }
+
+        // Forward to downstream service
+        return forwardToBackend(clientId, endpoint);
+    }
+
+    private boolean isAuthenticated(String clientId) {
+        return clientId != null && !clientId.isEmpty();
+    }
+
+    private int forwardToBackend(String clientId, String endpoint) {
+        return 200;  // downstream call
+    }
+}
+```
+
+---
+
+## 10. Main — Wiring It Together
+
+```java
+public class Main {
+    public static void main(String[] args) {
+        // Config loaded from Redis/Postgres at runtime
+        RateLimiterConfig config = new RateLimiterConfig(
+            RateLimiterConfig.AlgorithmType.TOKEN_BUCKET,
+            10,   // max 10 requests
+            60,   // per 60 seconds
+            1     // refill 1 token/second
+        );
+
+        APIGateway gateway = new APIGateway(config);
+
+        // Simulate requests from client "user-123"
+        for (int i = 1; i <= 12; i++) {
+            int status = gateway.handleRequest("user-123", "/api/generate-image");
+            System.out.println("Request " + i + " → HTTP " + status);
+        }
+    }
+}
+
+// Output:
+// Request 1  → HTTP 200
+// ...
+// Request 10 → HTTP 200
+// Request 11 → HTTP 429
+// Request 12 → HTTP 429
+```
+
+---
+
+## 11. Interview Script for Code Round
+
+```
+"I'll implement this using the Strategy Pattern because the algorithm
+ is a runtime decision driven by config — that's the exact problem
+ the pattern solves.
+
+ The RateLimiterStrategy interface defines isAllowed(clientId).
+ Each algorithm — Token Bucket, Leaky Bucket, etc. — is a concrete strategy.
+ RateLimiterFactory reads the config from Redis and returns the right strategy.
+ APIGateway calls the strategy; it has no knowledge of which algorithm is running.
+
+ For production, the per-client state in each strategy moves into Redis,
+ and the isAllowed logic becomes an atomic Lua script to avoid race conditions.
+ The strategy objects become stateless, and Redis holds all the mutable state."
+```
+
+---
+
+## 12. Production Upgrade: Redis Lua (Token Bucket)
+
+```lua
+-- KEYS[1] = "rate_limit:{clientId}:{endpoint}"
+-- ARGV[1] = capacity, ARGV[2] = refillRatePerSecond, ARGV[3] = now (ms)
+local key       = KEYS[1]
+local capacity  = tonumber(ARGV[1])
+local refill    = tonumber(ARGV[2])
+local now       = tonumber(ARGV[3])
+
+local state     = redis.call("HMGET", key, "tokens", "last_refill")
+local tokens    = tonumber(state[1]) or capacity
+local lastRefill= tonumber(state[2]) or now
+
+local elapsed   = (now - lastRefill) / 1000.0
+tokens = math.min(capacity, tokens + elapsed * refill)
+
+if tokens >= 1 then
+    tokens = tokens - 1
+    redis.call("HMSET", key, "tokens", tokens, "last_refill", now)
+    redis.call("EXPIRE", key, 3600)
+    return 1   -- allowed
+else
+    redis.call("HMSET", key, "tokens", tokens, "last_refill", now)
+    return 0   -- denied → 429
+end
+```
+
+**Why Lua?** Redis executes Lua atomically — no race between GET and SET. This replaces `synchronized` in the Java strategy and handles all replicas correctly.
