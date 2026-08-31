@@ -1,0 +1,292 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Architecture Components" id="arch">
+    <mxGraphModel dx="2200" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2200" pageHeight="1400" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="E-COMMERCE PLATFORM — Architecture Components + Technology Choices" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="2160" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="MongoDB (Flexible Product Schema) + PostgreSQL (Inventory ACID) + Elasticsearch (Full-Text Search) + Redis (Distributed Locks) + Kafka (Event-Driven)" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="1900" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 1: CLIENT -->
+        <mxCell id="layer1-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="2120" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer1-label" value="CLIENT LAYER" style="text;html=1;strokeColor=none;fillColor=#1976d2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=15;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="150" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mobile-app" value="📱 MOBILE APP&#xa;(iOS / Android)&#xa;&#xa;React Native / Flutter&#xa;JWT auth, REST/GraphQL&#xa;Image lazy-load" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="250" y="120" width="180" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="web-app" value="🌐 WEB APP&#xa;(Browser)&#xa;&#xa;React / Next.js&#xa;SSR for product pages (SEO)&#xa;CSR for checkout flow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="460" y="120" width="180" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seller-portal" value="🏪 SELLER PORTAL&#xa;(Admin Dashboard)&#xa;&#xa;Product/inventory management&#xa;Order fulfillment&#xa;Analytics dashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1">
+          <mxGeometry x="670" y="120" width="180" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 2: API GATEWAY -->
+        <mxCell id="layer2-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="2120" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer2-label" value="API GATEWAY" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=15;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="270" width="150" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="api-gateway" value="⚡ KONG / NGINX&#xa;&#xa;• Authentication (JWT validation)&#xa;• Rate limiting (100 req/sec per user)&#xa;• Request routing to microservices&#xa;• SSL termination&#xa;• API versioning (v1, v2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc80;strokeColor=#e65100;strokeWidth=2;fontSize=11;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="250" y="280" width="600" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-client-gateway" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#1976d2;endArrow=classic;endFill=1" edge="1" parent="1" source="mobile-app" target="api-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 3: MICROSERVICES -->
+        <mxCell id="layer3-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="2120" height="300" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer3-label" value="MICROSERVICES LAYER" style="text;html=1;strokeColor=none;fillColor=#388e3c;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=15;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="410" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- User Service -->
+        <mxCell id="user-service" value="👤 User Service&#xa;&#xa;• Register / Login&#xa;• JWT issuance&#xa;• Profile CRUD&#xa;• Address management" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="60" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Product Service -->
+        <mxCell id="product-service" value="📦 Product Service&#xa;&#xa;• CRUD products&#xa;• MongoDB flexible schema&#xa;• CDC → Kafka&#xa;• S3 image upload" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="230" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Search Service -->
+        <mxCell id="search-service" value="🔍 Search Service&#xa;&#xa;• Elasticsearch queries&#xa;• Full-text + filters&#xa;• Faceted aggregations&#xa;• Redis cache (10min)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="400" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Cart Service -->
+        <mxCell id="cart-service" value="🛒 Cart Service&#xa;&#xa;• Add/remove items&#xa;• PostgreSQL + Redis&#xa;• Cross-device sync&#xa;• ON CONFLICT upsert" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="570" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Checkout Service (CRITICAL) -->
+        <mxCell id="checkout-service" value="🔥 Checkout Service&#xa;(ORCHESTRATOR)&#xa;&#xa;• Distributed lock (Redis)&#xa;• Inventory reservation&#xa;• Payment intent creation&#xa;• CRITICAL PATH" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;strokeWidth=3;fontSize=10;align=left;verticalAlign=top;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="740" y="460" width="160" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Inventory Service -->
+        <mxCell id="inventory-service" value="📊 Inventory Service&#xa;&#xa;• qty + reserved_qty&#xa;• SELECT FOR UPDATE&#xa;• PostgreSQL ACID&#xa;• Stock validation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="920" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Order Service -->
+        <mxCell id="order-service" value="📋 Order Service&#xa;&#xa;• Order lifecycle&#xa;• Status tracking&#xa;• MySQL partitioned&#xa;• Event publishing" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1090" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Payment Service -->
+        <mxCell id="payment-service" value="💳 Payment Service&#xa;&#xa;• Webhook handler&#xa;• Idempotency check&#xa;• Signature validation&#xa;• Stripe integration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1260" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Notification Service -->
+        <mxCell id="notification-service" value="📧 Notification Service&#xa;&#xa;• Kafka consumer&#xa;• Email/SMS/Push&#xa;• SendGrid/Twilio&#xa;• Async, non-blocking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1430" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Warehouse Service -->
+        <mxCell id="warehouse-service" value="📦 Warehouse Service&#xa;&#xa;• Kafka consumer&#xa;• Pick/pack/ship&#xa;• Shipping label API&#xa;• Tracking updates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1600" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Recommendation Service -->
+        <mxCell id="recommend-service" value="🎯 Recommendation&#xa;&#xa;• ML-based suggestions&#xa;• User purchase history&#xa;• Collaborative filtering&#xa;• Real-time scoring" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1780" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Analytics Service -->
+        <mxCell id="analytics-service" value="📊 Analytics Service&#xa;&#xa;• Kafka consumer&#xa;• ETL to data warehouse&#xa;• Sales trends&#xa;• User behavior tracking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1960" y="460" width="150" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- ES Indexer (background worker) -->
+        <mxCell id="es-indexer" value="⚙️ ES Indexer&#xa;(Kafka consumer)&#xa;&#xa;• Consumes product.changes&#xa;• Bulk index to ES&#xa;• Lag: 1-2 sec" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;fontSize=9;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="60" y="590" width="130" height="90" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-gateway-services" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#e65100;endArrow=classic;endFill=1" edge="1" parent="1" source="api-gateway" target="checkout-service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 4: DATA STORES -->
+        <mxCell id="layer4-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="2120" height="240" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer4-label" value="DATA LAYER" style="text;html=1;strokeColor=none;fillColor=#7b1fa2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=15;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="730" width="150" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- MongoDB -->
+        <mxCell id="mongodb" value="🍃 MongoDB&#xa;(Product Catalog)&#xa;&#xa;100M products × 5KB&#xa;Sharded by category&#xa;Flexible schema&#xa;oplog → CDC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="60" y="780" width="150" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- PostgreSQL Inventory -->
+        <mxCell id="postgres-inventory" value="🐘 PostgreSQL&#xa;(Inventory)&#xa;&#xa;qty + reserved_qty&#xa;SELECT FOR UPDATE&#xa;Row-level locks&#xa;ACID required" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="230" y="780" width="150" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- PostgreSQL Cart -->
+        <mxCell id="postgres-cart" value="🐘 PostgreSQL&#xa;(Cart)&#xa;&#xa;ON CONFLICT upsert&#xa;Cross-device sync&#xa;Source of truth&#xa;Redis cache on top" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="400" y="780" width="150" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- MySQL Orders -->
+        <mxCell id="mysql-orders" value="🐬 MySQL&#xa;(Orders)&#xa;&#xa;ACID transactions&#xa;Partitioned monthly&#xa;FK constraints&#xa;Lifecycle tracking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="570" y="780" width="150" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- MySQL Payments -->
+        <mxCell id="mysql-payments" value="🐬 MySQL&#xa;(Payments)&#xa;&#xa;UNIQUE(order_id)&#xa;Idempotency guarantee&#xa;Prevents double-charge&#xa;Audit trail" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="740" y="780" width="150" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Elasticsearch -->
+        <mxCell id="elasticsearch" value="🔍 Elasticsearch&#xa;(Search Index)&#xa;&#xa;100M products indexed&#xa;Full-text + facets&#xa;10-node cluster&#xa;Synced from MongoDB CDC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="910" y="780" width="170" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Redis -->
+        <mxCell id="redis" value="⚡ Redis&#xa;(Cache + Locks)&#xa;&#xa;SETNX distributed lock&#xa;Cart cache (HSET)&#xa;Search cache&#xa;Product cache&#xa;inventory:{pid} (5min TTL)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="1100" y="780" width="170" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Kafka -->
+        <mxCell id="kafka" value="📨 Kafka&#xa;(Event Streaming)&#xa;&#xa;Topics: product.changes,&#xa;order.created, payment.success,&#xa;order.shipped, inventory.updated&#xa;7-day retention&#xa;Consumer groups" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="1290" y="780" width="180" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- S3 -->
+        <mxCell id="s3" value="📦 S3 + CloudFront&#xa;(Product Images)&#xa;&#xa;500TB images&#xa;Edge caching&#xa;Low latency delivery&#xa;Signed URLs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="1490" y="780" width="170" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Data Warehouse -->
+        <mxCell id="data-warehouse" value="🏢 Data Warehouse&#xa;(Redshift/BigQuery)&#xa;&#xa;ETL from Kafka&#xa;Historical orders&#xa;Sales analytics&#xa;User behavior" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="1680" y="780" width="170" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrows from services to data stores -->
+        <mxCell id="arrow-product-mongo" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="product-service" target="mongodb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-search-es" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="search-service" target="elasticsearch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-cart-postgres" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="cart-service" target="postgres-cart">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-checkout-inventory" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d84315;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="checkout-service" target="postgres-inventory">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-checkout-redis" value="Lock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d84315;dashed=1;endArrow=classic;endFill=1;fontSize=9" edge="1" parent="1" source="checkout-service" target="redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-order-mysql" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="order-service" target="mysql-orders">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-payment-mysql" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="payment-service" target="mysql-payments">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-product-kafka" value="CDC" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;dashed=1;endArrow=classic;endFill=1;fontSize=9" edge="1" parent="1" source="mongodb" target="kafka">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-kafka-indexer" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#f57f17;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="kafka" target="es-indexer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-indexer-es" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#f57f17;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="es-indexer" target="elasticsearch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY BOXES -->
+        
+        <!-- WHY MongoDB -->
+        <mxCell id="why-mongo" value="💡 WHY MongoDB for Product Catalog?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="60" y="980" width="420" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-mongo-text" value="Different product categories have completely different attributes:&#xa;• Mobile phones: {RAM, storage, processor, screen_size, battery}&#xa;• Books: {author, ISBN, publisher, page_count, language}&#xa;• Clothing: {size, color, material, fit_type, care_instructions}&#xa;&#xa;PostgreSQL would require:&#xa;  1. One massive table with 200+ nullable columns (sparse, wasteful)&#xa;  2. EAV pattern (product_attributes table) requiring joins for every query&#xa;  3. ALTER TABLE for every new category added&#xa;&#xa;MongoDB: Just insert a document with new fields. No schema migration.&#xa;Flexible schema handles multi-category marketplace elegantly.&#xa;&#xa;CDC via MongoDB oplog → Kafka → ES indexer keeps search fresh.&#xa;Product writes stay fast (no dual-write to ES), indexer catches up async." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="70" y="1010" width="400" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY Elasticsearch -->
+        <mxCell id="why-es" value="💡 WHY Elasticsearch for Search?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="500" y="980" width="440" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-es-text" value="Requirements: 100K searches/sec, full-text, fuzzy matching, faceted filters.&#xa;&#xa;PostgreSQL LIKE '%laptop%': Scans every row, can't fix typos (labtop → laptop),&#xa;no relevance scoring (title match vs description mention), no faceted counts&#xa;(how many per brand/price range). Falls over at 100K QPS.&#xa;&#xa;Elasticsearch: Pre-built inverted index (like book back-index: word → pages).&#xa;• Fuzzy matching: 'labtop' → 'laptop' (Levenshtein distance)&#xa;• Relevance scoring: title^3 (boost title 3x over description)&#xa;• Faceted aggregations: Count results per brand, category, price range&#xa;• Synonyms: laptop = notebook (query expansion)&#xa;• Autocomplete: edge n-gram tokenizer ('lap' → 'laptop', 'lapdesk')&#xa;&#xa;10-node cluster handles 100K QPS. Synced from MongoDB via CDC (1-2 sec lag).&#xa;Eventual consistency acceptable — checkout validates inventory anyway." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="510" y="1010" width="420" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY PostgreSQL Inventory -->
+        <mxCell id="why-postgres-inv" value="💡 WHY PostgreSQL for Inventory?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="960" y="980" width="440" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-postgres-inv-text" value="ACID transactions with row-level locking required. Overselling is unacceptable.&#xa;&#xa;reserved_qty pattern: available = qty - reserved_qty&#xa;• qty: Total warehouse stock&#xa;• reserved_qty: In active checkouts (not yet paid)&#xa;&#xa;SELECT qty, reserved_qty FROM inventory WHERE product_id=? FOR UPDATE;&#xa;→ Pessimistic row lock. Blocks other transactions from modifying this row&#xa;  until current transaction commits. Prevents two users reserving same unit.&#xa;&#xa;UPDATE inventory SET reserved_qty = reserved_qty + cart_qty; (reserve)&#xa;[After payment webhook success]:&#xa;UPDATE inventory SET qty = qty - cart_qty, reserved_qty = reserved_qty - cart_qty;&#xa;&#xa;WHY NOT Redis as source of truth: Redis eviction under memory pressure&#xa;loses reservation state silently. Crash = all locks lost. PostgreSQL MVCC&#xa;handles concurrent checkouts without full table locks. Strong consistency." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="970" y="1010" width="420" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY Redis Distributed Lock -->
+        <mxCell id="why-redis-lock" value="💡 WHY Redis Distributed Lock (SETNX)?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1420" y="980" width="440" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-redis-lock-text" value="Thundering herd problem: Flash sale, 10K users hit checkout simultaneously.&#xa;&#xa;Without Redis lock: All 10K go to PostgreSQL, acquire FOR UPDATE lock serially.&#xa;Connection pool (200 conns) exhausted in 50ms. DB falls over.&#xa;&#xa;With Redis lock:&#xa;  SETNX lock:inventory:{product_id} {session_id} EX 30&#xa;  → Returns 1 if acquired, 0 if already locked.&#xa;  → Executes in &lt;1ms. 9999 users rejected immediately (409 Conflict).&#xa;  → Only 1 user proceeds to PostgreSQL FOR UPDATE.&#xa;&#xa;EX 30 (30-second expiry): If service crashes mid-checkout, lock auto-releases.&#xa;Prevents inventory permanently locked. Idempotent retry safe.&#xa;&#xa;Two-layer locking:&#xa;  Layer 1 (Redis): Fast rejection, prevents thundering herd&#xa;  Layer 2 (PostgreSQL): ACID guarantee during reservation&#xa;&#xa;Redis handles 100K ops/sec. Trivial at 300 lock acquisitions/sec peak load." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="1430" y="1010" width="420" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY Kafka -->
+        <mxCell id="why-kafka" value="💡 WHY Kafka Event-Driven Architecture?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="60" y="1180" width="880" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-kafka-text" value="Decouples post-checkout workflow. Payment Service publishes payment.success event to Kafka. Consumers:&#xa;• Notification Service → send email/SMS (can be slow, non-blocking)&#xa;• Warehouse Service → pick/pack/ship order (offline process, can retry)&#xa;• Analytics Service → ETL to data warehouse (batch processing)&#xa;• Inventory Service → invalidate cache (real-time)&#xa;&#xa;Without Kafka (synchronous calls): Checkout Service waits for Notification to send email, Warehouse to generate label, Analytics to log event.&#xa;One slow downstream service blocks entire checkout. If Notification fails, order processing halts.&#xa;&#xa;With Kafka: Checkout publishes event, returns 201 immediately. Each consumer scales independently, fails independently, retries independently.&#xa;7-day retention = audit trail. Can replay events to rebuild Elasticsearch index if ES cluster corrupts. Consumer groups enable horizontal scaling.&#xa;Dead-letter queue (DLQ) prevents one bad event from blocking entire consumer. Kafka handles 10M messages/sec. Our 10 orders/sec = trivial." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="70" y="1210" width="860" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY ON CONFLICT for Cart -->
+        <mxCell id="why-cart-conflict" value="💡 WHY ON CONFLICT for Cart Race Condition?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="960" y="1180" width="900" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-cart-conflict-text" value="User opens mobile app and web simultaneously. Adds same product from both. Race condition:&#xa;&#xa;WITHOUT ON CONFLICT:&#xa;  INSERT INTO cart_items (cart_id, product_id, qty) VALUES (?, ?, 2); [mobile]&#xa;  INSERT INTO cart_items (cart_id, product_id, qty) VALUES (?, ?, 1); [web]&#xa;  → Two rows for same product_id in cart → broken UX, duplicate checkout&#xa;&#xa;WITH UNIQUE constraint + ON CONFLICT:&#xa;  UNIQUE (cart_id, product_id) — composite index&#xa;  INSERT INTO cart_items (cart_id, product_id, qty) VALUES (?, ?, 2)&#xa;    ON CONFLICT (cart_id, product_id) DO UPDATE SET qty = cart_items.qty + EXCLUDED.qty;&#xa;  → First insert wins, second insert finds conflict → UPDATE qty = 2 + 1 = 3 (correct)&#xa;&#xa;Cross-device sync: Cart tied to user_id (not session). PostgreSQL source of truth. Redis HSET cart:{userId} cached for &lt;1ms reads.&#xa;Write to PostgreSQL first → invalidate Redis → next read rebuilds from DB. Cache-aside pattern. Survives cache eviction.&#xa;WHY NOT session-based: User adds item on mobile, switches to web → cart empty (different session). user_id ensures sync across all devices." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7" vertex="1" parent="1">
+          <mxGeometry x="970" y="1210" width="880" height="120" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

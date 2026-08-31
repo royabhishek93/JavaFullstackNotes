@@ -1,0 +1,125 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Vending Machine LLD" id="vending">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM (State Pattern) -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (State Design Pattern)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- State Interface -->
+        <mxCell id="state_interface" value="&lt;&lt;interface&gt;&gt;&#xa;State&#xa;&#xa;+ pressInsertCashButton(VendingMachine)&#xa;+ insertCoin(VendingMachine, Coin)&#xa;+ pressProductSelectionButton(VendingMachine)&#xa;+ chooseProduct(VendingMachine, int code)&#xa;+ getChange(VendingMachine, int returnAmount)&#xa;+ dispenseProduct(VendingMachine, int code)&#xa;+ refundFullMoney(VendingMachine)&#xa;+ updateInventory(VendingMachine, Item, int code)" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="340" height="220" as="geometry" />
+        </mxCell>
+        
+        <!-- IdleState -->
+        <mxCell id="idle_state" value="IdleState&#xa;&#xa;+ pressInsertCashButton(VendingMachine)&#xa;  // Only this allowed&#xa;  // Changes state to HasMoneyState&#xa;  // Others throw exception" style="swimlane;fontStyle=1;align=left;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="420" y="80" width="260" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- HasMoneyState -->
+        <mxCell id="hasmoney_state" value="HasMoneyState&#xa;&#xa;+ insertCoin(VendingMachine, Coin)&#xa;+ pressProductSelectionButton()&#xa;+ refundFullMoney()&#xa;  // Allows adding coins, selecting product&#xa;  // or refund" style="swimlane;fontStyle=1;align=left;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="420" y="220" width="260" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- SelectionState -->
+        <mxCell id="selection_state" value="SelectionState&#xa;&#xa;+ chooseProduct(VendingMachine, int)&#xa;+ getChange(VendingMachine, int)&#xa;+ refundFullMoney()&#xa;  // Product selection logic&#xa;  // Change calculation&#xa;  // Validates availability &amp; price" style="swimlane;fontStyle=1;align=left;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="720" y="80" width="260" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- DispensingState -->
+        <mxCell id="dispensing_state" value="DispensingState&#xa;&#xa;+ dispenseProduct(VendingMachine, int)&#xa;  // Dispenses product&#xa;  // Updates inventory&#xa;  // Changes state to Idle" style="swimlane;fontStyle=1;align=left;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="720" y="260" width="260" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- VendingMachine -->
+        <mxCell id="vending_class" value="VendingMachine&#xa;&#xa;- currentState: State&#xa;- inventory: Inventory&#xa;- coinList: List&lt;Coin&gt;&#xa;&#xa;+ setVendingMachineState(State)&#xa;+ getVendingMachineState(): State&#xa;+ getInventory(): Inventory&#xa;+ getCoinList(): List&lt;Coin&gt;&#xa;+ addCoin(Coin)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="80" width="260" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Inventory -->
+        <mxCell id="inventory_class" value="Inventory&#xa;&#xa;- itemShelves: List&lt;ItemShelf&gt;&#xa;&#xa;+ getItemShelf(int code): ItemShelf&#xa;+ addItem(Item, int code)&#xa;+ updateSoldOutItem(int code)&#xa;+ initialEmptyInventory()&#xa;+ isAvailable(int code): boolean" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="80" width="260" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- ItemShelf -->
+        <mxCell id="shelf_class" value="ItemShelf&#xa;&#xa;- code: int&#xa;- item: Item&#xa;- isSoldOut: boolean&#xa;&#xa;+ getItem(): Item&#xa;+ setItem(Item)&#xa;+ setSoldOut(boolean)" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1620" y="80" width="200" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Item -->
+        <mxCell id="item_class" value="Item&#xa;&#xa;- itemType: ItemType&#xa;- price: int&#xa;&#xa;+ getPrice(): int&#xa;+ getItemType(): ItemType" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="300" width="180" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- ItemType Enum -->
+        <mxCell id="itemtype_enum" value="&lt;&lt;enum&gt;&gt;&#xa;ItemType&#xa;&#xa;COKE&#xa;PEPSI&#xa;JUICE&#xa;SODA&#xa;WATER" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1540" y="300" width="120" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Coin Enum -->
+        <mxCell id="coin_enum" value="&lt;&lt;enum&gt;&gt;&#xa;Coin&#xa;&#xa;PENNY(1)&#xa;NICKEL(5)&#xa;DIME(10)&#xa;QUARTER(25)&#xa;&#xa;- value: int&#xa;+ getValue(): int" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="300" width="140" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- State Transition Diagram -->
+        <mxCell id="transition_title" value="STATE TRANSITION FLOW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="340" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="transition_box" value="IDLE ──[pressInsertCashButton]──&gt; HAS_MONEY&#xa;&#xa;HAS_MONEY ──[insertCoin(s)]──&gt; HAS_MONEY (add coins)&#xa;&#xa;HAS_MONEY ──[pressProductSelectionButton]──&gt; SELECTION&#xa;&#xa;SELECTION ──[chooseProduct]──&gt; DISPENSING&#xa;&#xa;DISPENSING ──[dispenseProduct]──&gt; IDLE&#xa;&#xa;HAS_MONEY ──[refund]──&gt; IDLE (return all coins)&#xa;&#xa;SELECTION ──[refund]──&gt; IDLE (return all coins)&#xa;&#xa;SELECTION ──[getChange]──&gt; SELECTION (return excess)" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="380" width="500" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="660" width="800" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- VendingMachine Table -->
+        <mxCell id="er_machine" value="VendingMachine&#xa;&#xa;PK  machineId: INT&#xa;    location: VARCHAR(200)&#xa;    currentState: VARCHAR(50)&#xa;    totalCashCollected: DECIMAL(10,2)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="240" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Inventory Table -->
+        <mxCell id="er_inventory" value="Inventory&#xa;&#xa;PK  inventoryId: INT&#xa;FK  machineId: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="320" y="720" width="200" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- ItemShelf Table -->
+        <mxCell id="er_shelf" value="ItemShelf&#xa;&#xa;PK  shelfId: INT&#xa;FK  inventoryId: INT&#xa;    code: INT&#xa;FK  itemId: INT&#xa;    isSoldOut: BOOLEAN" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="720" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Item Table -->
+        <mxCell id="er_item" value="Item&#xa;&#xa;PK  itemId: INT&#xa;    itemType: ENUM&#xa;    price: DECIMAL(5,2)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="800" y="720" width="180" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Transaction Table -->
+        <mxCell id="er_transaction" value="Transaction&#xa;&#xa;PK  transactionId: INT&#xa;FK  machineId: INT&#xa;    productCode: INT&#xa;    amountPaid: DECIMAL(5,2)&#xa;    changeReturned: DECIMAL(5,2)&#xa;    timestamp: DATETIME&#xa;    status: ENUM" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="880" width="240" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="580" y="380" width="1300" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: User in IDLE state tries to select product directly. What happens?&#xa;A1: IdleState only implements pressInsertCashButton(). All other operations throw exception or show error. User must first press 'Insert Cash' button (→ HasMoneyState), then can proceed. State Pattern ensures invalid operations cannot execute.&#xa;&#xa;Q2: User inserted coins totaling $1.50, selected product costing $1.25. How to handle change?&#xa;A2: SelectionState.chooseProduct() validates: (1) Product available? (2) Sufficient money? ($1.50 &gt;= $1.25 ✓). Call getChange($0.25). Return QUARTER coin. Transition to DispensingState. Dispense product. Back to IdleState. If exact change not available, show 'Insert exact amount' or keep change (user choice).&#xa;&#xa;Q3: Why State Pattern instead of if-else for vending machine states?&#xa;A3: State Pattern: (1) Each state knows only its operations (2) Prevents invalid state transitions (3) Easy to add new states (e.g., MaintenanceState, OutOfStockState) (4) Follows Single Responsibility Principle (5) Open-Closed Principle. If-else: Complex nested conditions, hard to maintain, error-prone, violates SRP.&#xa;&#xa;Q4: User selected product but it's sold out. What happens?&#xa;A4: SelectionState.chooseProduct() checks ItemShelf.isSoldOut. If true: (1) Show 'Product sold out, select another' (2) Stay in SelectionState (3) User can select different product or refund. If all products sold out: (1) Automatic refund (2) Change state to IdleState (3) Notify admin to restock.&#xa;&#xa;Q5: Multiple users trying to buy last item simultaneously. How to prevent conflicts?&#xa;A5: Options: (1) Optimistic locking with version on ItemShelf (2) Pessimistic lock when product selected (lock shelf for 30 sec) (3) Queue-based: First to reach SelectionState gets item (4) For LLD: Simple approach - check isSoldOut at dispense time, if sold (another machine/transaction), refund and notify. Physical vending machines are single-user by nature." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="580" y="440" width="1300" height="420" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS:&#xa;&#xa;1. State Design Pattern - Different machine states with state-specific operations&#xa;&#xa;STATE RESPONSIBILITIES:&#xa;- IdleState: Only pressInsertCashButton() allowed&#xa;- HasMoneyState: insertCoin(), pressProductSelectionButton(), refund() allowed&#xa;- SelectionState: chooseProduct(), getChange(), refund() allowed&#xa;- DispensingState: Only dispenseProduct() allowed&#xa;&#xa;DESIGN PRINCIPLES:&#xa;- Single Responsibility: Each state handles only its operations&#xa;- Open-Closed: Easy to add new states without modifying existing&#xa;- Encapsulation: State-specific logic encapsulated in state classes&#xa;&#xa;COMPARISON WITH ATM:&#xa;Both use State Pattern, but:&#xa;- ATM: More complex (card validation, PIN, balance check, multiple operations)&#xa;- Vending Machine: Simpler (just cash + product selection)&#xa;Similar structure, different complexity" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="580" y="900" width="1300" height="260" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

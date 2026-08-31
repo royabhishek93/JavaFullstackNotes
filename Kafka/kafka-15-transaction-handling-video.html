@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Transaction Handling — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Transaction Handling — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 20</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:7.14%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🔒</div>
+  <h1 class="gradient-text">Kafka Transaction Handling — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Transactional Producer</span><span class="badge">Transaction Coordinator</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: transactional.id, Transaction Coordinator, __transaction_state, Producer ID, Epoch, Zombie Fencing, Begin/Commit/Abort, Two-Phase Commit, EOS</p>
+</div>
+<div class="slide" id="s3" data-title="Three Problems That Transactions Solve">
+<h2>Three Problems That Transactions Solve</h2>
+<p>Transactions exist to fix three specific failure scenarios in Kafka producers.</p>
+<div class="dia">PROBLEM 1 — Duplicate on producer restart (idempotency gap)
+─────────────────────────────────────────────────────────────
+  Producer crashes → restarts → gets NEW producer ID
+  Old PID lost → sequence numbers reset → duplicates possible
+
+PROBLEM 2 — Partial write (atomicity gap)
+─────────────────────────────────────────────────────────────
+  Goal: publish order-event AND payment-event AND inventory-event together
+
+  order-event     ──► broker  ✓  written
+  payment-event   ──► broker  ✓  written
+  inventory-event ──► broker  ✗  FAILED
+
+  Result: order placed, payment taken, but stock NOT reserved  ← inconsistent!
+
+PROBLEM 3 — Read-process-write duplicate (consumer-side)
+─────────────────────────────────────────────────────────────
+  Consumer reads offset 50 → processes → publishes new event → tries to commit offset
+                                                                       │
+                                                                  offset commit LOST
+                                                                       │
+  Consumer polls again → gets offset 50 again → processes AGAIN → publishes AGAIN
+  ✗ duplicate event published to downstream topic</div>
+</div>
+<div class="slide" id="s4" data-title="Transaction ID (transactional.id)">
+<h2>Transaction ID (transactional.id)</h2>
+<p>A transaction ID is a stable, human-assigned string that uniquely identifies a producer instance across restarts.</p>
+<div class="dia">application.properties:
+  spring.kafka.producer.transaction-id-prefix=order-svc-
+
+Spring Boot appends "0" automatically → final ID = "order-svc-0"
+
+                     ┌─────────────────────────────────────────┐
+                     │  Rules for transaction-id-prefix        │
+                     │                                         │
+                     │  ✓  Must be STABLE across restarts      │
+                     │  ✓  Must be UNIQUE per producer instance │
+                     │  ✗  Never use random UUID  ← breaks EOS │
+                     └─────────────────────────────────────────┘
+
+Multiple instances of the same app:
+  Instance 1 → order-svc-pod-abc  (use Kubernetes hostname)
+  Instance 2 → order-svc-pod-def
+  Instance 3 → order-svc-pod-ghi
+
+  Each instance MUST have a different transaction ID
+  (reason: zombie fencing — explained in section 5)</div>
+</div>
+<div class="slide" id="s5" data-title="Finding the Transaction Coordinator">
+<h2>Finding the Transaction Coordinator</h2>
+<p>The transaction coordinator is the single broker responsible for managing all transactions for a given producer. It is found via a hash of the transaction ID, exactly like how consumer group coordinators are found.</p>
+<div class="dia">KAFKA CLUSTER
+┌─────────────────────────────────────────────────────────────────┐
+│                                                                 │
+│  __transaction_state  (internal topic, 50 partitions)           │
+│  ┌──────┬──────┬──────┬──────┬──────────────────────┐           │
+│  │ P-0  │ P-1  │ P-2  │ ... │ P-49                 │           │
+│  └──┬───┴──┬───┴──┬───┴──────┴──────────────────────┘           │
+│     │      │      │                                             │
+│   Broker1 Broker2 Broker3   ← each broker leads some partitions │
+└─────────────────────────────────────────────────────────────────┘
+
+Producer with transactional.id = "order-svc-0"
+
+Step 1: send FindCoordinator request to ANY broker, pass transaction ID
+Step 2: that broker computes:
+          partition = hash("order-svc-0") mod 50  →  e.g. partition 23
+Step 3: broker looks up who is leader of __transaction_state partition 23
+          → Broker 2 is the leader
+Step 4: broker replies: "your transaction coordinator is Broker 2"
+Step 5: producer connects directly to Broker 2 for all future transaction calls
+
+  Producer ──FindCoordinator──► any broker ──► "use Broker 2"
+  Producer ◄─────────────────────────────────────────────────
+  Producer ──all transaction requests──────────► Broker 2</div>
+</div>
+<div class="slide" id="s6" data-title="The __transaction_state Topic — What Gets Stored">
+<h2>The __transaction_state Topic — What Gets Stored</h2>
+<p>For each producer with a transaction ID, the transaction coordinator stores a record in <code>__transaction_state</code>. This is the brain of the transaction system.</p>
+<div class="dia">Row stored in __transaction_state (partition 23 for "order-svc-0"):
+
+  ┌───────────────────┬────────────┬───────┬───────────────────────────────────┬─────────────┐
+  │  transaction_id   │  pid (PID) │ epoch │  state                            │  partitions │
+  ├───────────────────┼────────────┼───────┼───────────────────────────────────┼─────────────┤
+  │  "order-svc-0"    │  5         │  0    │  EMPTY → ONGOING → PREPARE_COMMIT │  [topic-A/0,│
+  │                   │            │       │                  → COMMITTED       │   topic-B/2]│
+  │                   │            │       │  EMPTY → ONGOING → PREPARE_ABORT   │             │
+  │                   │            │       │                  → ABORTED         │             │
+  └───────────────────┴────────────┴───────┴───────────────────────────────────┴─────────────┘
+
+  field           meaning
+  ──────────────  ──────────────────────────────────────────────────────────────
+  transaction_id  the stable string you set in application.properties
+  pid             producer ID — a number assigned by the broker (like idempotency)
+  epoch           version counter — increments each time producer (re)initialises
+  state           current phase of the transaction lifecycle
+  partitions      which topic-partitions are touched by the active transaction
+  timeout         max time a transaction can stay ONGOING before auto-abort
+
+State flow:
+  EMPTY ──begin──► ONGOING ──commit request──► PREPARE_COMMIT ──► COMMITTED
+                         └──abort  request──► PREPARE_ABORT  ──► ABORTED
+
+  Once PREPARE_COMMIT or PREPARE_ABORT is written → point of no return
+  Even if broker crashes, on recovery it must finish in that direction</div>
+</div>
+<div class="slide" id="s7" data-title="Producer ID, Epoch, and Zombie Fencing">
+<h2>Producer ID, Epoch, and Zombie Fencing</h2>
+<p>When a producer first connects, it calls <code>initTransactions()</code> to get a producer ID. The epoch (version number) is the key to blocking "zombie" producers — old instances that come back after being replaced.</p>
+<div class="dia">INIT PRODUCER ID REQUEST (happens once at startup):
+
+  Producer ──InitProducerID(txn-id="order-svc-0")──► Transaction Coordinator
+                                                              │
+                                              check __transaction_state
+                                                              │
+                        ┌─────────────────────────────────────┤
+                        │  First time ever?                   │
+                        │  → generate PID=5, epoch=0          │
+                        │  → write to __transaction_state     │
+                        │  → return PID=5, epoch=0            │
+                        │                                     │
+                        │  Seen this txn-id before?           │
+                        │  → abort any ONGOING transaction    │
+                        │  → INCREMENT epoch (0 → 1)          │
+                        │  → return same PID=5, epoch=1       │
+                        └─────────────────────────────────────┘
+
+ZOMBIE FENCING — why epoch matters:
+
+  Time 0:  Producer-1 starts → PID=5, epoch=0 → begins transaction
+           (network pause — Producer-1 appears dead to orchestrator)
+
+  Time 1:  Kubernetes spawns Producer-2 (same txn-id "order-svc-0")
+           → calls initTransactions
+           → Coordinator aborts Producer-1's open transaction
+           → epoch 0 → 1
+           → Producer-2 gets PID=5, epoch=1
+
+  Time 2:  Old Producer-1 revives and tries to commit (PID=5, epoch=0)
+           → Coordinator checks: current epoch is 1, request says 0
+           → REJECT with ProducerFencedException  ✗  ← zombie blocked!
+
+  epoch acts like a fencing token — only the holder of the latest epoch is valid</div>
+</div>
+<div class="slide" id="s8" data-title="Transaction State Machine">
+<h2>Transaction State Machine</h2>
+<p>The states a transaction moves through, and what triggers each transition.</p>
+<div class="dia">                        ┌──────────┐
+                        │  EMPTY   │  ← initial state / after last commit or abort
+                        └────┬─────┘
+                             │  beginTransaction()
+                             ▼
+                        ┌──────────┐
+                        │ ONGOING  │  ← events are being sent
+                        └────┬─────┘
+               commit()      │        abort()
+              ┌──────────────┘──────────────────┐
+              ▼                                 ▼
+  ┌──────────────────┐               ┌─────────────────┐
+  │  PREPARE_COMMIT  │               │  PREPARE_ABORT  │
+  └────────┬─────────┘               └────────┬────────┘
+           │  send COMMIT control              │  send ABORT control
+           │  records to all brokers           │  records to all brokers
+           ▼                                 ▼
+  ┌──────────────────┐               ┌─────────────────┐
+  │    COMMITTED     │               │     ABORTED     │
+  └──────────────────┘               └─────────────────┘
+           │                                  │
+           └──────────────┬───────────────────┘
+                          ▼
+                       EMPTY  (ready for next transaction)
+
+  KEY RULE: transaction is single-threaded per producer.
+  While a transaction is ONGOING, you cannot begin another one.</div>
+</div>
+<div class="slide" id="s9" data-title="Begin Transaction — Sending Events">
+<h2>Begin Transaction — Sending Events</h2>
+<p>Before each send, an interceptor notifies the transaction coordinator which partition will be touched, so it can update the "partitions involved" list.</p>
+<div class="dia">Producer                 Transaction Coordinator         Partition Leader (Broker)
+   │                            │                               │
+   │──beginTransaction()──────► │                               │
+   │                            │ state: EMPTY → ONGOING        │
+   │                            │                               │
+   │──(interceptor) AddPartitionToTxn(order-events/P2)──────► │ │
+   │                            │ partitions: [order-events/P2] │
+   │                            │ state: still ONGOING          │
+   │◄──OK──────────────────────┘│                               │
+   │                            │                               │
+   │──send(order-event, key, value).join()─────────────────────►│
+   │                            │                               │ appends to log:
+   │                            │                               │ PID=5, epoch=0,
+   │                            │                               │ is_transactional=true
+   │                            │                               │ [record data]
+   │◄──ACK─────────────────────────────────────────────────────┘│
+   │                            │                               │
+   │──(interceptor) AddPartitionToTxn(payment-events/P1)──────►│
+   │                            │ partitions: [order-events/P2, │
+   │                            │              payment-events/P1]│
+   │◄──OK──────────────────────┘│                               │
+   │                            │                               │
+   │──send(payment-event, ...).join()──────────────────────────►│ (payment broker)
+   │◄──ACK─────────────────────────────────────────────────────┘│
+
+IMPORTANT: always call .join() (or .get()) on each send Future when inside
+a transaction — this makes your thread wait for the broker ACK. Without it,
+a failure is detected too late to abort the transaction correctly.</div>
+</div>
+<div class="slide" id="s10" data-title="Commit Flow — Two-Phase Commit">
+<h2>Commit Flow — Two-Phase Commit</h2>
+<p>Committing a transaction is a two-phase process. The coordinator writes "prepare commit" first (point of no return), then sends commit control records to every affected partition.</p>
+<div class="dia">Producer               Transaction Coordinator          Brokers holding
+                                                        touched partitions
+   │                           │
+   │──commitTransaction()─────►│
+   │                           │ 1. write PREPARE_COMMIT to __transaction_state
+   │                           │    ← point of no return
+   │                           │
+   │                           │──commit control record──► order-events/P2 leader
+   │                           │                                │ append to log:
+   │                           │                                │ PID=5, epoch=0,
+   │                           │                                │ is_control=true, COMMIT
+   │                           │◄──done──────────────────────┘│
+   │                           │
+   │                           │──commit control record──► payment-events/P1 leader
+   │                           │                                │ append to log:
+   │                           │                                │ PID=5, epoch=0,
+   │                           │                                │ is_control=true, COMMIT
+   │                           │◄──done──────────────────────┘│
+   │                           │
+   │                           │ 2. write COMMITTED to __transaction_state
+   │◄──success────────────────┘│
+
+Partition log (order-events P2) after commit:
+
+  offset 0: PID=5, epoch=0, is_transactional=true, is_control=false  [order record]
+  offset 1: PID=5, epoch=0, is_transactional=true, is_control=true   COMMIT  ← control record</div>
+</div>
+<div class="slide" id="s11" data-title="Abort Flow">
+<h2>Abort Flow</h2>
+<p>Abort is identical to commit, just with ABORT control records instead of COMMIT. No data is deleted — Kafka is append-only. The abort marker tells consumers to skip those records.</p>
+<div class="dia">Producer               Transaction Coordinator          Brokers
+   │                           │
+   │──abortTransaction()──────►│  (triggered by exception inside execute-in-transaction)
+   │                           │ 1. write PREPARE_ABORT to __transaction_state
+   │                           │
+   │                           │──abort control record──► order-events/P2 leader
+   │                           │                               │ append: PID=5, epoch=0,
+   │                           │                               │ is_control=true, ABORT
+   │                           │◄──done──────────────────────┘│
+   │                           │ 2. write ABORTED to __transaction_state
+   │◄──success────────────────┘│
+
+Partition log (order-events P2) after abort:
+
+  offset 0: PID=5, epoch=0, is_transactional=true, is_control=false  [order record]
+  offset 1: PID=5, epoch=0, is_transactional=true, is_control=true   ABORT   ← control record
+
+NOTE: the original data record at offset 0 is still physically in the log.
+The ABORT control record at offset 1 is what tells consumers to ignore offset 0.</div>
+</div>
+<div class="slide" id="s12" data-title="Full Transaction Lifecycle (Complete Picture)">
+<h2>Full Transaction Lifecycle (Complete Picture)</h2>
+<div class="dia"> PRODUCER APP                  TRANSACTION COORDINATOR         BROKER(S)
+ ────────────                  ───────────────────────         ─────────
+  startup
+    │
+    ├─1─ find coordinator ────────────────────────────────────────────────►
+    │◄──────────────────────────────────────────── "your coordinator is B2"
+    │
+    ├─2─ initTransactions() ─────────────────────► write to __txn_state:
+    │                                              {txn-id, PID=5, epoch=0, EMPTY}
+    │◄────────────────────────────────────────────── return PID=5, epoch=0
+    │
+  per transaction (repeats):
+    │
+    ├─3─ beginTransaction()     (local only, no network call)
+    │
+    ├─4─ AddPartitionToTxn ─────►  update partitions in __txn_state
+    │    send(event-A).join() ──────────────────────────────────────────► Broker
+    │                                                                      append log
+    │◄──────────────────────────────────────────────────────────────────── ACK
+    │
+    ├─5─ AddPartitionToTxn ─────►  update partitions in __txn_state
+    │    send(event-B).join() ──────────────────────────────────────────► Broker
+    │◄──────────────────────────────────────────────────────────────────── ACK
+    │
+    ├─6─ commitTransaction() ───►  write PREPARE_COMMIT
+    │                          ──────────────────────────────────────────► send COMMIT control records
+    │                              write COMMITTED
+    │◄──────────────────────────── success
+    │
+    └─ (loop back to step 3 for next transaction)</div>
+</div>
+<div class="slide" id="s13" data-title="Spring Boot — Key Configuration">
+<h2>Spring Boot — Key Configuration</h2>
+<div class="dia"># application.properties (producer)
+
+# Required: assign a stable transaction ID
+spring.kafka.producer.transaction-id-prefix=order-svc-
+
+# Optional: override the default 60-second timeout
+spring.kafka.producer.properties.transaction.timeout.ms=60000
+
+# In code — wrap sends inside execute-in-transaction:
+kafkaTemplate.executeInTransaction(ops -&gt; {
+    ops.send("order-events",   key, orderEvent).join();
+    ops.send("payment-events", key, paymentEvent).join();
+    return true;   // commit
+    // any RuntimeException thrown here triggers abort automatically
+});</div>
+</div>
+<div class="slide" id="s14" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                  What it is                                    Key point
+───────────────────────  ────────────────────────────────────────────  ──────────────────────────────────────
+transactional.id         Stable string ID assigned to a producer       Must NOT change on restart (no UUID)
+Transaction Coordinator  Broker that manages transaction lifecycle      Determined by hash(txn-id) mod 50
+__transaction_state      Internal Kafka topic, 50 partitions           Stores PID, epoch, state, partitions
+PID (Producer ID)        Number that identifies a producer to broker   Same PID returned for same txn-id
+Epoch                    Version counter for a producer's PID          Increments on each initTransactions()
+Zombie fencing           Blocking a revived old producer               Old epoch rejected with ProducerFencedException
+EMPTY                    Transaction not started yet                   Initial and post-commit/abort state
+ONGOING                  Transaction in progress                       Events are being sent
+PREPARE_COMMIT           Point of no return toward commit              Written before sending COMMIT control records
+PREPARE_ABORT            Point of no return toward abort               Written before sending ABORT control records
+Control record           Special log entry marking COMMIT or ABORT     is_control=true; broker never sends to consumer
+executeInTransaction()   Spring helper wrapping begin/commit/abort     Provide a lambda; .join() each send inside it
+Two-phase commit         Write PREPARE first, then send control recs   Survives broker crashes mid-commit
+
+Problems solved by transactions:
+  Partial write          → group all sends in one transaction; all succeed or all abort
+  PID loss on restart    → PID stored in __transaction_state against txn-id; same PID returned after restart
+  Read-process-write dup → tie publish + offset commit into one atomic transaction (covered in consumer side)</div>
+</div>
+<div class="slide" id="s15" data-title="Architecture — Transactional Publish for Multi-Topic Outbox Events">
+<h2>Architecture — Transactions Wrapping the CDC Publisher</h2>
+<p>"Here's the real scenario that justifies transactions for the Notification System: one outbox row that must fan out to a primary topic AND an audit topic atomically."</p>
+<div class="dia">  CDC Publisher (transactional.id="cdc-publisher-1", stable across restarts)
+        │
+        ▼ initTransactions() → fenced any zombie old instance via epoch bump
+        ▼ beginTransaction()
+        │   send(notifications.standard.email, event)
+        │   send(notifications.audit.trail, auditEvent)
+        ▼ commitTransaction() → Coordinator writes COMMIT marker to BOTH partitions
+        │
+        ▼ read_committed consumers see BOTH records together, or neither</div>
+<p><strong>Scenario-first:</strong> "Without the transaction, a crash between the two sends leaves the audit topic silently missing an entry that the main topic has — an inconsistency invisible until someone reconciles the two topics manually. The transaction makes that inconsistency structurally impossible."</p>
+</div>
+<div class="slide" id="s16" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why must transactional.id be STABLE across restarts, not a random UUID?
+A: Fencing works by the coordinator recognizing "this transactional.id now
+   has a newer epoch" — a random id per restart means Kafka can't tell the
+   old (possibly still-alive) instance apart from a totally new producer,
+   defeating the whole zombie-fencing mechanism.
+
+Q: What's the actual difference between transactions here and the
+   idempotent producer we covered earlier?
+A: Idempotence is session-scoped — it only protects against in-flight
+   retries within one producer's lifetime. Transactions add cross-topic
+   atomicity AND survive producer restarts via the coordinator-tracked PID/epoch.
+
+Q: Why hash(txn-id) mod 50 to find the coordinator, same pattern as
+   consumer group coordinators?
+A: Consistent hashing spreads transaction-state load across 50 partitions
+   of __transaction_state, and guarantees the SAME producer always talks
+   to the SAME coordinator broker for its transaction lifecycle.</div>
+</div>
+<div class="slide" id="s17" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision                Choice            Alternative           Why ours                           When to flip
+──────────────────────────  ────────────────  ────────────────────  ─────────────────────────────────  ─────────────────────
+Multi-topic atomicity        Kafka transactions Best-effort multi-send  Guarantees BOTH topics see the      Single-topic-only
+                                                  (hope for the best)     event or neither, ever               producers
+Producer identity             Stable                 Random UUID per     Enables correct zombie fencing       Never — random IDs
+                              transactional.id        restart              across restarts                      break the guarantee entirely</div>
+</div>
+<div class="slide" id="s18" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "A colleague migrates from a fixed transactional.id to a random
+  UUID per pod restart 'to avoid ID collisions.' Two weeks later exactly-once
+  semantics silently broke. Why?"
+  Answer: "Random transactional.id per restart means Kafka can no longer
+  fence out the PREVIOUS instance of the same logical producer — fencing
+  depends on recognizing 'this id has a newer epoch now, reject the old
+  one.' With a fresh random id every restart, the old (possibly still
+  partially alive during a slow shutdown) and new instances look like two
+  completely unrelated producers, both able to write — reintroducing the
+  exact duplicate-write risk transactions exist to prevent."
+
+Trap 2 — "Your transaction has been stuck in PREPARE_COMMIT for 10 minutes
+  — the producer that started it appears to have crashed. What resolves it,
+  and why does this matter for consumers?"
+  Answer: "transaction.timeout.ms (broker-side) eventually forces an abort
+  of a stuck transaction — this exists specifically so one dead producer
+  can't permanently block progress. Until that timeout fires, any
+  read_committed consumer is stuck behind the Last Stable Offset on that
+  partition, unable to read ANYTHING past the stuck transaction, even
+  unrelated committed data written after it started."</div>
+</div>
+<div class="slide" id="s19" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why transactions on top of idempotence: idempotence alone doesn't survive
+  a producer restart or provide multi-topic atomicity — transactions add both.
+- Why transactional.id must be stable per logical producer: it's the only
+  way Kafka's fencing mechanism can distinguish a restarted instance from a
+  brand-new, unrelated producer.
+- Why hash-based coordinator assignment: spreads transaction-state load
+  while guaranteeing consistent coordinator routing per producer.
+- Why transaction.timeout.ms exists: bounds how long a stuck/crashed
+  producer can block read_committed consumers via the LSO.</div>
+</div>
+<div class="slide" id="s20" data-title="Top 2 Technologies — Cross-Topic Atomicity">
+<h2>Top 2 Technologies — Multi-Topic Write Atomicity</h2>
+<div class="dia">Kafka Transactions  vs  Best-Effort Multi-Send (no transaction)
+
+Why pick Transactions (our choice): guarantees a multi-topic publish is
+  atomic — all topics see the event, or none do, even across producer crashes.
+Why pick best-effort: simpler code, acceptable when eventual consistency
+  between the two writes is tolerable or reconciled by a separate process.
+
+Example 1 (Transactions): Notification System's CDC Publisher fanning out
+  a single outbox event to both the main topic and an audit trail topic.
+Example 2 (Best-effort, acceptable): A low-stakes "also log this to a
+  metrics topic" secondary write where losing an occasional metric on
+  crash has zero real business impact.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 20;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Transaction Handling — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

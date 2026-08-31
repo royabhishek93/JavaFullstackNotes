@@ -1,0 +1,1859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notification System Design — Architect Level</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#060b14;color:#e2e8f0;height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 20px;background:#0d1826;border-bottom:1px solid #1e2d45;min-height:44px}
+#slide-title{font-size:13px;font-weight:600;color:#60a5fa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+#counter{color:#475569;font-size:12px;white-space:nowrap}
+#progress-bar{height:3px;background:#1e2d45}
+#progress-fill{height:100%;background:linear-gradient(90deg,#3b82f6,#06b6d4,#8b5cf6);transition:width .35s ease}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:20px 28px 10px;animation:fadeIn .3s ease}
+.slide.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:#0d1826;border-top:1px solid #1e2d45}
+.btn{background:#1e2d45;border:1px solid #2d4a6e;color:#cbd5e1;padding:6px 18px;border-radius:5px;cursor:pointer;font-size:13px;transition:all .2s}
+.btn:hover{background:#2d4a6e;color:#fff}
+.btn:disabled{opacity:.25;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:6px 22px}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:4px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:7px;height:7px;border-radius:50%;background:#1e2d45;cursor:pointer;transition:all .2s;border:1px solid #2d4a6e}
+.dot.active{background:#3b82f6;border-color:#60a5fa}
+.dot:hover{background:#2d4a6e}
+/* Typography */
+h1{font-size:1.9rem;font-weight:800;line-height:1.2}
+h2{font-size:1.2rem;font-weight:700;color:#60a5fa;margin-bottom:14px}
+h3{font-size:.95rem;font-weight:700;color:#34d399;margin-bottom:6px}
+p,li{font-size:.9rem;line-height:1.65;color:#94a3b8}
+ul{padding-left:18px}
+li{margin-bottom:4px}
+strong{color:#e2e8f0}
+.hl{color:#fbbf24;font-weight:600}
+.gr{color:#4ade80}
+.rd{color:#f87171}
+.bl{color:#60a5fa}
+.pu{color:#a78bfa}
+.cy{color:#22d3ee}
+.or{color:#fb923c}
+/* Layout helpers */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.card{background:#0d1826;border:1px solid #1e2d45;border-radius:7px;padding:12px 16px}
+.card.blue{border-left:3px solid #3b82f6}
+.card.green{border-left:3px solid #4ade80}
+.card.yellow{border-left:3px solid #fbbf24}
+.card.red{border-left:3px solid #f87171}
+.card.purple{border-left:3px solid #a78bfa}
+.card.cyan{border-left:3px solid #22d3ee}
+.card.orange{border-left:3px solid #fb923c}
+/* Diagrams */
+.dia{background:#020810;border:1px solid #1e2d45;border-radius:6px;padding:14px 16px;font-family:'Cascadia Code','Fira Code','Consolas',monospace;font-size:11.5px;line-height:1.75;white-space:pre;overflow-x:auto;color:#94a3b8;margin:10px 0}
+.dia .kw{color:#60a5fa}
+.dia .str{color:#4ade80}
+.dia .num{color:#fbbf24}
+.dia .cm{color:#374151}
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:11.5px;margin:8px 0}
+.tbl th{background:#0d1826;color:#60a5fa;padding:6px 10px;text-align:left;border-bottom:1px solid #1e2d45;font-weight:600}
+.tbl td{padding:5px 10px;border-bottom:1px solid #0d1826;color:#94a3b8;vertical-align:top}
+.tbl tr:hover td{background:#0d1826}
+/* Badge */
+.badge{display:inline-block;background:#1e2d45;border:1px solid #2d4a6e;border-radius:12px;padding:2px 10px;font-size:11px;color:#94a3b8;margin:2px}
+/* Pill */
+.pill{display:inline-block;border-radius:4px;padding:1px 8px;font-size:11px;font-weight:700}
+.pill.red{background:#7f1d1d;color:#fca5a5}
+.pill.yellow{background:#78350f;color:#fde68a}
+.pill.green{background:#14532d;color:#86efac}
+.pill.blue{background:#1e3a5f;color:#93c5fd}
+.pill.purple{background:#3b0764;color:#d8b4fe}
+/* Title slide */
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,#3b82f6,#06b6d4,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+/* Step badge */
+.step{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#1d4ed8;border-radius:50%;font-size:11px;font-weight:800;color:#fff;margin-right:8px;flex-shrink:0}
+.step-row{display:flex;align-items:flex-start;margin:6px 0}
+/* Tip box */
+.tip{background:#1c1506;border:1px solid #78350f;border-radius:6px;padding:10px 14px;font-size:12px;color:#fde68a;margin:8px 0}
+.warn{background:#1a0a0a;border:1px solid #7f1d1d;border-radius:6px;padding:10px 14px;font-size:12px;color:#fca5a5;margin:8px 0}
+.info{background:#0a1628;border:1px solid #1e3a5f;border-radius:6px;padding:10px 14px;font-size:12px;color:#93c5fd;margin:8px 0}
+/* Tag row */
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Notification System Design — Architect Level</span>
+    <span id="counter">1 / 30</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:3.33%"></div></div>
+
+  <div id="slide-area">
+
+<!-- ═══════════════════════════════════════════════════ S1 TITLE -->
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🔔</div>
+  <h1 class="gradient-text">Notification System Design</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Complete Architect-Level Guide — HLD · LLD · ER · DB Schema · Scaling · Interview Q&amp;A</p>
+  <div class="tags" style="justify-content:center;margin-top:20px">
+    <span class="badge">📧 Email / SendGrid / AmazonSES</span>
+    <span class="badge">📱 SMS / Twilio / MSG91</span>
+    <span class="badge">🔔 Push / FCM / APNS</span>
+    <span class="badge">🔐 OTP / Redis TTL</span>
+    <span class="badge">⚡ 1M+ notifications/min</span>
+    <span class="badge">📨 Kafka Priority Queues</span>
+    <span class="badge">🔁 Outbox Pattern</span>
+  </div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S2 FUNCTIONAL REQS -->
+<div class="slide" id="s2" data-title="Functional Requirements">
+<h2>1. Functional Requirements</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Core Features</h3>
+      <ul>
+        <li><strong>F1</strong> — Multi-channel delivery: <span class="cy">Email, SMS, Push, In-App</span></li>
+        <li><strong>F2</strong> — Template management with <span class="hl">{{variable}}</span> placeholders, versioning</li>
+        <li><strong>F3</strong> — User preferences per channel + type (promotional / transactional / alerts)</li>
+        <li><strong>F4</strong> — Immediate &amp; <span class="gr">scheduled</span> delivery (scheduledAt field)</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Reliability &amp; Operations</h3>
+      <ul>
+        <li><strong>F5</strong> — Status tracking: <span class="pu">PENDING → SCHEDULED → SENT → DELIVERED → FAILED → CANCELLED</span></li>
+        <li><strong>F6</strong> — Bulk notifications (campaigns, 100K+ recipients) with rate limiting</li>
+        <li><strong>F7</strong> — Reporting &amp; analytics (delivery/open/click rates)</li>
+        <li><strong>F8</strong> — Retry with exponential backoff for failed deliveries</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Real-World Triggers</h3>
+      <ul>
+        <li>🛍️ Amazon — Order confirmed (transactional)</li>
+        <li>🏦 Bank — OTP for login (critical)</li>
+        <li>🍕 Swiggy — Rider 2 mins away (transactional)</li>
+        <li>📢 YouTube — New video from creator (promotional)</li>
+        <li>🔐 Google — Suspicious login alert (alert)</li>
+        <li>📢 App — Black Friday sale (bulk campaign)</li>
+      </ul>
+    </div>
+    <div class="card purple" style="margin-top:10px">
+      <h3>API Summary</h3>
+<div class="dia" style="margin:4px 0;font-size:10.5px">POST /api/v1/notifications
+GET  /api/v1/notifications/{id}/status
+POST /api/v1/templates
+PUT  /api/v1/preferences</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S3 NON-FUNCTIONAL -->
+<div class="slide" id="s3" data-title="Non-Functional Requirements + CAP">
+<h2>2. Non-Functional Requirements &amp; CAP Theorem</h2>
+<div class="cols2">
+  <div>
+    <div class="card red">
+      <h3>Scale</h3>
+      <ul>
+        <li>Peak: <span class="hl">1M+ notifications/minute</span> (Black Friday, breaking news)</li>
+        <li>1B+ users (Amazon, Meta scale)</li>
+        <li>Multiple channels simultaneously</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>CAP Theorem Choice</h3>
+      <p><strong class="hl">Availability &gt;&gt; Consistency</strong></p>
+      <ul style="margin-top:6px">
+        <li>Eventual consistency for delivery status <span class="gr">acceptable</span></li>
+        <li>OTP delivered even if status DB is slightly stale</li>
+        <li>User sees "SENT" before "DELIVERED" — that's fine</li>
+        <li>Never sacrifice availability: <span class="rd">dropped notification = lost revenue</span></li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card cyan">
+      <h3>Latency SLAs</h3>
+      <table class="tbl">
+        <tr><th>Type</th><th>Target</th><th>Why</th></tr>
+        <tr><td><span class="pill red">OTP / Critical</span></td><td class="gr">&lt;10 seconds</td><td>User waiting at login</td></tr>
+        <tr><td><span class="pill yellow">Transactional</span></td><td class="hl">5–10 seconds</td><td>Order confirmations</td></tr>
+        <tr><td><span class="pill blue">Standard</span></td><td class="bl">5 minutes</td><td>Shipping updates</td></tr>
+        <tr><td><span class="pill purple">Promotional</span></td><td class="pu">30 minutes</td><td>Marketing OK to wait</td></tr>
+        <tr><td><span class="pill green">Bulk</span></td><td>Hours</td><td>Campaigns, newsletters</td></tr>
+      </table>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>Reliability</h3>
+      <ul>
+        <li><span class="gr">At-least-once delivery</span> — no notification lost</li>
+        <li>Idempotent consumers — no duplicate sends</li>
+        <li>Multi-provider failover (SendGrid → AmazonSES)</li>
+        <li>DLQ for manually reviewing persistent failures</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S4 CORE ENTITIES -->
+<div class="slide" id="s4" data-title="Core Entities Overview">
+<h2>3. Core Entities — 7 Data Models</h2>
+<div class="cols2">
+  <div>
+<div class="dia">Entity 1: <span class="kw">User + Client</span>
+  user_id, email, phone
+  device_tokens[]   <span class="cm">← FCM token, APNS token per device</span>
+  preferences {channels, types, do_not_disturb}
+
+Entity 2: <span class="kw">NotificationPreferences</span>
+  user_id
+  channels  {email:true, sms:false, push:true, inapp:true}
+  types     {promotional:false, transactional:true, alerts:true}
+  do_not_disturb: false
+
+Entity 3: <span class="kw">NotificationContent</span>  (main job record)
+  notification_id, user_id, external_user_id
+  template_id, channel (EMAIL/SMS/PUSH/INAPP)
+  payload {variables}, status, priority
+  scheduled_at, created_at, metadata
+
+Entity 4: <span class="kw">Template</span>
+  template_id, version  <span class="cm">← composite PK (immutable)</span>
+  subject "Order {{order_id}} confirmed"
+  body    "Hi {{name}}, your order..."
+  variables[] ['name','order_id']
+  is_active</div>
+  </div>
+  <div>
+<div class="dia">Entity 5: <span class="kw">DeliveryStatus</span>  (per-channel tracking)
+  delivery_id, notification_id
+  channel, provider (Twilio/SendGrid/FCM/APNS)
+  provider_message_id  <span class="cm">← Twilio SID, SendGrid msg ID</span>
+  status (SENT/DELIVERED/FAILED/BOUNCED/OPENED/CLICKED)
+  sent_at, delivered_at, error_message, retry_count
+
+Entity 6: <span class="kw">Notifications_outbox</span>  (Outbox Pattern)
+  outbox_id, notification_id
+  event_type  'notification.created'
+  payload     {notification_id, channel, priority}
+  published   boolean DEFAULT false  <span class="cm">← CDC polls this</span>
+  published_at, created_at
+
+Entity 7: <span class="kw">Notifications</span>  (main table — same as Entity 3)
+  notification_id, user_id, external_user_id
+  template_id, channel, payload, status
+  priority (critical/high/normal/low)
+  scheduled_at, metadata</div>
+    <div class="info" style="font-size:11px">Entity 6 (outbox) + Entity 7 (notifications) are written <strong>atomically in one transaction</strong> — the core of reliability.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S5 ER DIAGRAM -->
+<div class="slide" id="s5" data-title="ER Diagram — Full Schema">
+<h2>ER Diagram — Full 7-Entity Schema</h2>
+<div class="dia" style="font-size:10.5px">
+┌─────────────────────────┐         ┌────────────────────────────────┐
+│ <span class="kw">User</span> (users)             │         │ <span class="kw">NotificationPreferences</span>         │
+│─────────────────────────│         │────────────────────────────────│
+│ PK user_id      uuid    │─────────│ PK,FK client_id   varchar(100) │
+│    email        varchar │  1:1    │ PK,FK ext_user_id varchar(255) │
+│    phone        varchar │         │    channels       jsonb        │
+│    device_tokens jsonb  │         │    types          jsonb        │
+│    external_user_id     │         │    do_not_disturb boolean      │
+└─────────────────────────┘         │    updated_at     timestamptz │
+           │ 1                      └────────────────────────────────┘
+           │
+           │ N
+┌──────────────────────────────────────┐
+│ <span class="kw">Notifications</span> (main table)           │
+│──────────────────────────────────────│
+│ PK notification_id  uuid            │
+│ FK user_id          uuid            │
+│    external_user_id varchar(255)    │
+│ FK template_id      uuid            │
+│    channel          enum            │  ← EMAIL/SMS/PUSH/INAPP
+│    payload          jsonb           │  ← rendered subject, body, to
+│    status           enum            │  ← PENDING/SCHEDULED/SENT/DELIVERED/FAILED
+│    priority         enum            │  ← critical/high/normal/low
+│    scheduled_at     timestamptz?    │  ← null = send now
+│    created_at       timestamptz     │
+│    metadata         jsonb           │
+│ IDX (user_id, created_at)           │
+│ IDX (status, scheduled_at)          │
+│ IDX (template_id)                   │
+└──────────────┬───────────────────────┘
+               │ 1:1                        │ 1:N
+               ▼                            ▼
+┌───────────────────────────┐   ┌────────────────────────────────────┐
+│ <span class="kw">Notifications_outbox</span>       │   │ <span class="kw">DeliveryStatus</span>                    │
+│───────────────────────────│   │────────────────────────────────────│
+│ PK outbox_id  uuid        │   │ PK delivery_id      uuid           │
+│ FK notification_id uuid   │   │ FK notification_id  uuid  INDEXED  │
+│    event_type varchar(50) │   │    channel          enum           │
+│    payload    jsonb       │   │    provider         varchar(50)    │
+│    published  bool=false  │   │    provider_msg_id  varchar(255)   │
+│    published_at timestamptz│  │    provider_response jsonb        │
+│    created_at timestamptz │   │    status  SENT/DELIVERED/FAILED   │
+└───────────────────────────┘   │    sent_at, delivered_at           │
+                                │    error_message, retry_count      │
+┌───────────────────────────┐   │ IDX (notification_id)              │
+│ <span class="kw">Templates</span>                  │   │ IDX (provider_msg_id) ← webhooks   │
+│───────────────────────────│   └────────────────────────────────────┘
+│ PK template_id  uuid      │
+│ PK version      int       │  ← composite PK (immutable versioning)
+│    name         varchar   │
+│    channel      enum      │
+│    subject      text      │  ← "Order {{order_id}} confirmed"
+│    body         text      │  ← "Hi {{name}}, ..."
+│    variables    jsonb     │  ← ['name','order_id']
+│    is_active    boolean   │
+│    created_at   timestamptz│
+└───────────────────────────┘</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S6 API DESIGN -->
+<div class="slide" id="s6" data-title="API Design — All Endpoints">
+<h2>4. API Design — All Endpoints</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>Notification Operations</h3>
+<div class="dia" style="font-size:10.5px"><span class="kw">POST</span> /api/v1/notifications
+Body: {
+  templateId:  "order_confirmation",
+  recipientId: "user123",
+  variables:   {name:"Alice", order_id:"ORD456"},
+  channels:    ["email", "push"],
+  priority:    "high",         <span class="cm">← optional</span>
+  scheduledAt: "2026-01-01T09:00:00Z" <span class="cm">← optional</span>
+}
+Response 200: {
+  notificationId: "NOTIF789",
+  status: "PENDING"
+}
+
+<span class="kw">GET</span> /api/v1/notifications/{id}/status
+Response: {
+  status:      "DELIVERED",
+  sentAt:      "2026-08-30T10:32:01Z",
+  deliveredAt: "2026-08-30T10:32:05Z"
+}</div>
+    </div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Template Management</h3>
+<div class="dia" style="font-size:10.5px"><span class="kw">POST</span>   /api/v1/templates
+<span class="kw">GET</span>    /api/v1/templates          <span class="cm">← paginated</span>
+<span class="kw">GET</span>    /api/v1/templates/{id}/{v} <span class="cm">← specific version</span>
+<span class="kw">PUT</span>    /api/v1/templates/{id}
+  <span class="cm">→ creates NEW version (never edits existing)</span>
+  <span class="cm">→ enables audit trail + A/B testing + rollback</span>
+<span class="kw">DELETE</span> /api/v1/templates/{id}
+  <span class="cm">→ sets is_active=false (soft delete)</span></div>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>User Preferences</h3>
+<div class="dia" style="font-size:10.5px"><span class="kw">PUT</span> /api/v1/preferences
+Body: {
+  externalUserId: "1234",
+  clientId: "uber",
+  preferences: {
+    email: true,
+    sms:   false,
+    inapp: true
+  }
+}
+<span class="cm">→ updates DB + invalidates Redis cache</span>
+<span class="cm">→ publishes to user.preference Kafka topic</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S7 HLD OVERVIEW -->
+<div class="slide" id="s7" data-title="HLD — High Level Design Overview">
+<h2>5. High Level Design (HLD) — Full Architecture</h2>
+<div class="dia" style="font-size:10.5px">
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      NOTIFICATION SYSTEM — HLD                              │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  clients (Amazon/Uber/Swiggy)                                               │
+│  ┌──┐ ┌──┐ ┌──┐ ┌──┐                                                       │
+│  └──┘ └──┘ └──┘ └──┘                                                       │
+│       │                                                                     │
+│       ▼                                                                     │
+│  ┌─────────────────────────────────────────────────────┐                   │
+│  │         API Gateway &amp; Load Balancer                  │                   │
+│  │  Auth · Rate Limiting · Routing · Round-Robin Algo  │                   │
+│  └──────────┬──────────────┬──────────────┬────────────┘                   │
+│             │              │              │                                 │
+│      ┌──────▼──────┐ ┌─────▼──────┐ ┌────▼──────────┐                     │
+│      │ Template    │ │User Pref   │ │ Notification  │                     │
+│      │ Svc         │ │Svc         │ │ Svc           │                     │
+│      └──────┬──────┘ └─────┬──────┘ └────┬──────────┘                     │
+│             │              │              │                                 │
+│      ┌──────▼──────┐ ┌─────▼──────┐      │  ← validates template + prefs  │
+│      │ Template DB │ │ UserPref DB│      │  ← atomic: notifications +      │
+│      │ (Postgres)  │ │ (Postgres) │      │    notifications_outbox          │
+│      └─────────────┘ └────────────┘      │                                 │
+│                           │              ▼                                  │
+│                       ┌───▼───┐   ┌─────────────────┐                      │
+│                       │ Redis │   │  Notification   │                      │
+│                       │ Cache │   │  Provider       │ ← CDC polls outbox   │
+│                       └───────┘   │  (Outbox + CDC) │                      │
+│                                   └────────┬────────┘                      │
+│                                            │                                │
+│                                   ┌────────▼──────────────┐                │
+│                                   │  Notification Queue   │                │
+│                                   │  (Kafka)              │                │
+│                                   │  .critical.{channel}  │                │
+│                                   │  .standard.{channel}  │                │
+│                                   │  .promotional.{ch}    │                │
+│                                   │  .bulk.{channel}      │                │
+│                                   │  .retry · .dlq        │                │
+│                                   └──┬──────┬──────┬──────┘                │
+│                                      │      │      │                        │
+│              ┌───────────────────────┘      │      └────────────────┐      │
+│              ▼                              ▼                        ▼      │
+│        ┌──────────┐    ┌──────────────┐   ┌────────────┐   ┌──────────┐   │
+│        │ SMS Svc  │    │ Email Svc    │   │ inAPP Svc  │   │ OTP Svc  │   │
+│        │ Provider │    │ Provider     │   │ Provider   │   │(critical)│   │
+│        └────┬─────┘    └─────┬────────┘   └─────┬──────┘   └────┬─────┘   │
+│             │                │                   │               │         │
+│      Twilio/MSG91     SendGrid/AmazonSES    FCM / APNS      Twilio(fast)   │
+│             │                │                   │               │         │
+│             └────────────────┴───────────────────┴───────────────┘         │
+│                                       │                                     │
+│                            Webhooks (async delivery confirm)                │
+│                            ┌──────────▼──────────────┐                     │
+│                            │  Reporting Svc          │                     │
+│                            │  Real-time: Redis counters                     │
+│                            │  Batch: Spark/Flink → BigQuery                 │
+│                            └─────────────────────────┘                     │
+│                                                                             │
+│   User Pref Consumer ← Kafka: user.preference  (cache invalidation)        │
+└─────────────────────────────────────────────────────────────────────────────┘</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S8 HLD SERVICES -->
+<div class="slide" id="s8" data-title="HLD — Services Breakdown">
+<h2>HLD — Every Service and Its Role</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>API Gateway &amp; Load Balancer</h3>
+      <ul>
+        <li>JWT / API key authentication</li>
+        <li>Rate limiting: 100 req/min per client</li>
+        <li>Route to Notification Svc</li>
+        <li>Round-robin across Notification Svc instances</li>
+      </ul>
+    </div>
+    <div class="card green" style="margin-bottom:10px">
+      <h3>Template Service</h3>
+      <ul>
+        <li>CRUD on templates → Template DB (Postgres)</li>
+        <li>Immutable versioning (new version on update)</li>
+        <li>Redis cache: <span class="cy">template:{id}:{v}</span> TTL 1h — 95% hit rate</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>User Preference Service</h3>
+      <ul>
+        <li>CRUD on preferences → UserPref DB</li>
+        <li>Redis cache: <span class="cy">user_pref:{userId}</span> TTL 24h</li>
+        <li>On update: publishes to <span class="hl">user.preference</span> Kafka topic</li>
+        <li>User Pref Consumer invalidates Redis cache</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card purple" style="margin-bottom:10px">
+      <h3>Notification Service (Core Orchestrator)</h3>
+      <ul>
+        <li>Validates template + user preferences</li>
+        <li>Renders template (fills {{variables}})</li>
+        <li>Writes Notifications + Outbox atomically</li>
+        <li>CDC Publisher polls outbox → Kafka</li>
+      </ul>
+    </div>
+    <div class="card red" style="margin-bottom:10px">
+      <h3>Delivery Consumers (Dlvy Cons)</h3>
+      <ul>
+        <li>Email consumers: 20 instances (<span class="rd">critical:10, std:20, promo:5</span>)</li>
+        <li>SMS consumers: 15 instances</li>
+        <li>Push consumers: 10 instances</li>
+        <li>Idempotency check + rate limit + provider call</li>
+      </ul>
+    </div>
+    <div class="card cyan">
+      <h3>Reporting Service</h3>
+      <ul>
+        <li><strong>Real-time:</strong> Redis counters INCR sent_count:{date}</li>
+        <li><strong>Batch:</strong> Hourly Spark/Flink aggregation</li>
+        <li>Stored in <span class="cy">InfluxDB / BigQuery</span> for dashboards</li>
+        <li>Metrics: delivery %, open rate, click rate, bounce rate</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S9 LLD STEP 1 -->
+<div class="slide" id="s9" data-title="LLD Step 1 — API Request + Template + Preferences">
+<h2>6. LLD Step 1 — Request Validation &amp; Template Rendering</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px"><span class="cm">Amazon calls:</span>
+POST /api/v1/notifications
+{
+  templateId:  "order_confirmation",
+  recipientId: "user123",
+  variables:   {name:"Alice", order_id:"ORD456"},
+  channels:    ["email","push"],
+  priority:    "high"
+}
+
+<span class="cm">API Gateway:</span>
+1. Verify JWT token → Amazon authorized ✅
+2. Rate limit: &lt;100/min per client ✅
+3. Route to Notification Service
+
+<span class="cm">Notification Service:</span>
+1. Fetch template from Redis / Template DB:
+   SELECT * FROM templates
+   WHERE template_id='order_confirmation'
+   AND is_active=true
+   → {subject:"Order {{order_id}} confirmed",
+      body:"Hi {{name}}...",
+      variables:['name','order_id']}
+
+2. Validate variables:
+   required: ['name','order_id']
+   provided: {name:"Alice",order_id:"ORD456"} ✅
+   missing?  → 400 "Missing variable: name"
+
+3. Redis: GET user_pref:user123
+   → {email:true, sms:false, push:true,
+      promotional:false, transactional:true}
+   cache miss? → query UserPref DB → SET TTL 24h
+
+4. Filter channels:
+   email → channel:true + type:transactional ✅ SEND
+   sms   → channel:false                     ❌ SKIP
+   push  → channel:true + type:transactional ✅ SEND
+
+5. Render template:
+   subject: "Order ORD456 confirmed"
+   body:    "Hi Alice, your order ORD456..."
+
+6. Generate UUID: notification_id = "NOTIF789"</div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Template Cache Hit Rate</h3>
+      <p>Templates change rarely. Redis cache with 1h TTL achieves <span class="hl">95% hit rate</span>. Only 5% of requests hit the DB. At 1M notif/min, this saves 950K DB queries/min.</p>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Preference Check is Mandatory</h3>
+      <ul>
+        <li>channels.sms = false → never send SMS</li>
+        <li>types.promotional = false → skip all marketing</li>
+        <li>do_not_disturb = true → skip ALL channels</li>
+        <li>Legal: GDPR, CAN-SPAM, TCPA compliance</li>
+      </ul>
+    </div>
+    <div class="info" style="margin-top:10px;font-size:11px">
+      <strong>Redis key patterns used here:</strong><br>
+      <span class="cy">user_pref:{userId}</span> → preferences JSON, TTL 24h<br>
+      <span class="cy">template:{id}:{version}</span> → template JSON, TTL 1h
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S10 LLD STEP 2 OUTBOX -->
+<div class="slide" id="s10" data-title="LLD Step 2 — Outbox Pattern (Atomic Write)">
+<h2>LLD Step 2 — Transactional Outbox Pattern</h2>
+<div class="cols2">
+  <div>
+    <div class="card red">
+      <h3>The Problem Without Outbox</h3>
+<div class="dia" style="font-size:10.5px">Naive approach (BROKEN):
+  1. INSERT notifications (status=PENDING) ✅
+  2. Kafka.publish("NOTIF789") ← CRASH 💥
+
+Result:
+  DB has NOTIF789 as PENDING
+  Kafka never got it
+  CDC/Publisher never finds it
+  Alice NEVER gets her email
+  Zero error logged. Silent loss. 😱
+
+Also broken the other way:
+  1. Kafka.publish("NOTIF789") ✅
+  2. INSERT notifications ← CRASH 💥
+  Kafka fires. Consumer tries to process.
+  notification_id not in DB → error/lost</div>
+    </div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>The Fix — One Atomic Transaction</h3>
+<div class="dia" style="font-size:10.5px">BEGIN TRANSACTION;
+
+  INSERT INTO notifications (
+    notification_id: 'NOTIF789',
+    user_id: 'user123',
+    template_id: 'order_confirmation',
+    channel: 'EMAIL',
+    payload: {subject, body, to:'alice@...'},
+    status: 'PENDING',
+    priority: 'high',
+    created_at: now()
+  );
+
+  INSERT INTO notifications_outbox (
+    outbox_id: uuid_generate_v4(),
+    notification_id: 'NOTIF789',
+    event_type: 'notification.created',
+    payload: {notification_id, channel, priority},
+    published: false,   <span class="cm">← CDC watches this</span>
+    created_at: now()
+  );
+
+COMMIT;
+<span class="cm">← Both succeed OR both fail — atomically</span>
+
+CDC Publisher (polls every 100ms):
+  SELECT * FROM outbox WHERE published=false
+  LIMIT 1000 ORDER BY created_at;
+  → Kafka.send(topic, key:notification_id)
+  → UPDATE outbox SET published=true
+  If Kafka fails: stays false, retried next poll</div>
+    </div>
+  </div>
+</div>
+<div class="tip" style="margin-top:6px">💡 <strong>Interview must-say:</strong> "If DB COMMIT succeeded, the message is in the outbox. CDC Publisher will EVENTUALLY publish it to Kafka — retrying until success. This guarantees at-least-once delivery even across service crashes, network failures, or Kafka restarts."</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S11 LLD STEP 3 KAFKA -->
+<div class="slide" id="s11" data-title="LLD Step 3 — CDC Publisher → Kafka Topics">
+<h2>LLD Step 3 — Kafka Topics &amp; Priority Queues</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px">CDC Publisher determines topic by priority + channel:
+
+  priority=critical + sms   → <span class="rd">notifications.critical.sms</span>
+  priority=critical + email → <span class="rd">notifications.critical.email</span>
+  priority=high    + email  → <span class="or">notifications.standard.email</span>
+  priority=normal  + push   → <span class="or">notifications.standard.push</span>
+  priority=low     + email  → <span class="pu">notifications.promotional.email</span>
+  bulk campaign    + email  → <span class="bl">notifications.bulk.email</span>
+  any failure             → <span class="cy">notifications.retry</span>
+  retry exhausted         → <span class="str">notifications.dlq</span>
+  pref update             → <span class="str">user.preference</span>
+
+<span class="cm">ALL 7 Kafka topics:</span>
+  notifications.critical.{channel}   <span class="rd">OTP, fraud alerts</span>
+  notifications.standard.{channel}   <span class="or">orders, shipping</span>
+  notifications.promotional.{channel}<span class="pu">marketing</span>
+  notifications.bulk.{channel}        <span class="bl">campaigns</span>
+  notifications.retry                 <span class="cy">failed + backoff</span>
+  notifications.dlq                   dead letter queue
+  user.preference                     pref cache updates</div>
+  </div>
+  <div>
+    <div class="card blue">
+      <h3>Consumer Group Allocation</h3>
+      <table class="tbl">
+        <tr><th>Topic</th><th>Email</th><th>SMS</th><th>Push</th></tr>
+        <tr><td><span class="pill red">critical</span></td><td class="rd">10</td><td class="rd">20</td><td class="rd">10</td></tr>
+        <tr><td><span class="pill yellow">standard</span></td><td class="hl">20</td><td class="hl">15</td><td class="hl">10</td></tr>
+        <tr><td><span class="pill purple">promotional</span></td><td class="pu">5</td><td class="pu">5</td><td class="pu">3</td></tr>
+        <tr><td><span class="pill blue">bulk</span></td><td class="bl">2</td><td class="bl">2</td><td class="bl">1</td></tr>
+      </table>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Why Separate Topics Matter</h3>
+      <p>Without priority: OTP waits behind 10K marketing emails. Same queue = same consumers = same speed.</p>
+      <p style="margin-top:6px">With separate topics: OTP critical topic has <span class="hl">20 dedicated consumers</span>, zero marketing emails competing. OTP always &lt;10s regardless of marketing backlog.</p>
+    </div>
+    <div class="info" style="font-size:11px;margin-top:8px">100 Kafka partitions per topic = 100 parallel consumers max. Autoscale: if lag &gt; 1000 → add consumers.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S12 LLD STEP 4 CONSUMER -->
+<div class="slide" id="s12" data-title="LLD Step 4 — Consumer Processing">
+<h2>LLD Step 4 — Consumer Processing Pipeline</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px">Consumer subscribes to notifications.standard.email
+Receives message:
+{
+  notification_id: "NOTIF789",
+  channel:         "EMAIL",
+  payload: {
+    subject: "Order ORD456 confirmed",
+    body:    "Hi Alice...",
+    to:      "alice@example.com"
+  },
+  priority: "high"
+}
+
+<span class="kw">Step 1 — Idempotency check:</span>
+  SELECT COUNT(*) FROM delivery_status
+  WHERE notification_id='NOTIF789'
+  AND channel='EMAIL'
+  → 0 rows → proceed (first time)
+  → 1 row  → SKIP (already sent, Kafka duplicate)
+
+  <span class="cm">Why needed? Kafka at-least-once may redeliver</span>
+  <span class="cm">on consumer restart or network retry.</span>
+  <span class="cm">Without this: Alice gets 5 identical emails.</span>
+
+<span class="kw">Step 2 — Rate limit check (Token Bucket):</span>
+  key: rate_limit:email:sendgrid
+  Redis Lua script (atomic):
+    tokens = GET key or capacity (100)
+    if tokens &gt;= 1:
+      DECR key
+      return "proceed"
+    else:
+      return "wait 100ms, retry"
+      <span class="cm">← backpressure: consumer slows, Kafka buffers</span>
+
+<span class="kw">Step 3 — Provider routing:</span>
+  EMAIL → Email Svc Provider (SendGrid/AmazonSES)
+  SMS   → SMS Svc Provider (Twilio/MSG91)
+  PUSH  → inAPP Svc Provider (FCM/APNS)
+  OTP   → OTP Svc (dedicated, high priority)</div>
+  </div>
+  <div>
+    <div class="card red">
+      <h3>ABC — Rate Limiter Details</h3>
+      <table class="tbl">
+        <tr><th>Provider</th><th>Limit</th><th>Redis Key</th></tr>
+        <tr><td>SendGrid</td><td>50/sec</td><td>rate_limit:email:sendgrid</td></tr>
+        <tr><td>AmazonSES</td><td>50/sec</td><td>rate_limit:email:ses</td></tr>
+        <tr><td>Twilio</td><td>100/sec</td><td>rate_limit:sms:twilio</td></tr>
+        <tr><td>MSG91</td><td>100/sec</td><td>rate_limit:sms:msg91</td></tr>
+        <tr><td>FCM</td><td>10K/sec</td><td>rate_limit:push:fcm</td></tr>
+        <tr><td>APNS</td><td>~5K/sec</td><td>rate_limit:push:apns</td></tr>
+      </table>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Batching Optimization</h3>
+      <p>SendGrid Bulk API: send <span class="hl">1000 emails per API call</span> vs 1 per call.</p>
+      <p>50 API calls/sec × 1000 emails = <span class="gr">50,000 emails/sec</span> effective throughput</p>
+      <p style="margin-top:4px">Reduces API overhead by 1000×</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S13 LLD EMAIL -->
+<div class="slide" id="s13" data-title="LLD Step 5a — Email Delivery (SendGrid)">
+<h2>LLD Step 5a — Email Delivery via SendGrid / AmazonSES</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px">Email Svc Provider — send via SendGrid:
+
+POST https://api.sendgrid.com/v3/mail/send
+{
+  personalizations: [{
+    to: [{email:"alice@example.com"}]
+  }],
+  from: {
+    email: "noreply@amazon.com",
+    name:  "Amazon"
+  },
+  subject: "Order ORD456 confirmed",
+  content: [{
+    type:  "text/html",
+    value: "&lt;h1&gt;Hi Alice...&lt;/h1&gt;"
+  }],
+  <span class="cm">// For promotional: add unsubscribe footer</span>
+  <span class="cm">// (CAN-SPAM compliance)</span>
+}
+
+Response: 202 Accepted
+{ id: "msg_abc123" }
+<span class="cm">← 202 ≠ delivered. It means SendGrid queued it.</span>
+<span class="cm">   Real delivery confirmation comes via webhook.</span>
+
+Update DB:
+  UPDATE notifications
+  SET status='SENT', sent_at=now()
+  WHERE notification_id='NOTIF789'
+
+  INSERT INTO delivery_status (
+    notification_id: 'NOTIF789',
+    channel:  'EMAIL',
+    provider: 'SendGrid',
+    provider_message_id: 'msg_abc123',
+    status:   'SENT',
+    sent_at:  now()
+  )</div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>SendGrid Webhook Events</h3>
+<div class="dia" style="font-size:10.5px">POST /webhooks/sendgrid
+{ event: "delivered",
+  sg_message_id: "msg_abc123" }
+
+  → UPDATE delivery_status
+    SET status='DELIVERED', delivered_at=now()
+    WHERE provider_message_id='msg_abc123'
+
+Event types &amp; actions:
+  delivered → status=DELIVERED ✅
+  opened    → status=OPENED (1px tracking pixel)
+  clicked   → status=CLICKED
+  bounced   → status=FAILED, no retry
+             (invalid email address)
+  spam      → status=FAILED, flag user</div>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Provider Failover</h3>
+      <p>Primary: <span class="bl">SendGrid</span> (50/sec)</p>
+      <p>Fallback: <span class="gr">AmazonSES</span> (50/sec)</p>
+      <p style="margin-top:6px">Circuit breaker: if SendGrid failure rate &gt;50% → open circuit → route ALL traffic to SES</p>
+      <p style="margin-top:4px">Total email capacity: <span class="hl">100 emails/sec</span> (combined)</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S14 LLD SMS + PUSH -->
+<div class="slide" id="s14" data-title="LLD Step 5b/5c — SMS (Twilio) + Push (FCM/APNS)">
+<h2>LLD Step 5b/c — SMS via Twilio &amp; Push via FCM/APNS</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>📱 SMS via Twilio</h3>
+<div class="dia" style="font-size:10.5px">POST https://api.twilio.com/.../Messages.json
+{
+  To:   "+919876543210",
+  From: "+12345678901",
+  Body: "Hi Alice, order ORD456 confirmed.
+         Track: https://track.link/ORD456
+         Reply STOP to unsubscribe"
+         <span class="cm">↑ TCPA compliance required</span>
+}
+Response: {sid:"SM1234abcd", status:"queued"}
+
+Twilio webhook:
+POST /webhooks/twilio
+{ MessageSid:"SM1234abcd", MessageStatus:"delivered" }
+  → UPDATE delivery_status SET status='DELIVERED'
+
+160 char limit per SMS segment.
+Longer messages auto-split into parts.</div>
+    </div>
+  </div>
+  <div>
+    <div class="card purple">
+      <h3>🔔 Push via FCM (Android) + APNS (iOS)</h3>
+<div class="dia" style="font-size:10.5px"><span class="cm">Fetch Alice's device tokens:</span>
+SELECT device_tokens FROM users
+WHERE user_id='user123'
+→ ["fcm_android_abc", "apns_ios_xyz",
+    "fcm_web_def"]   <span class="cm">← 3 devices</span>
+
+FCM (Android + Web):
+POST https://fcm.googleapis.com/v1/.../messages:send
+{ message: {
+    token: "fcm_android_abc",
+    notification: {title:"Order Confirmed",
+                   body:"ORD456 confirmed"},
+    data: {order_id:"ORD456",
+           deep_link:"app://orders/ORD456"},
+    android: {priority:"high"}
+  }
+}
+
+APNS (iPhone — HTTP/2):
+POST https://api.push.apple.com/3/device/{token}
+Headers: apns-topic, apns-priority: 10
+Body: {aps:{alert:{title,body},badge:1,sound:"default"}}
+
+Failure handling:
+  FCM 400 invalid-registration-token
+  APNS 410 Gone (app uninstalled)
+  → array_remove(device_tokens, stale_token)
+  → Don't retry permanent failures</div>
+    </div>
+  </div>
+</div>
+<div class="info" style="font-size:11px;margin-top:6px">Multi-device fanout: 3 tokens → 3 parallel API calls → 3 delivery_status rows. User gets push on ALL devices simultaneously.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S15 OTP -->
+<div class="slide" id="s15" data-title="LLD Step 6 — OTP Dedicated Fast Path">
+<h2>LLD Step 6 — OTP Dedicated High-Priority Path</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px">OTP Svc generates code:
+  6-digit OTP: 382910
+
+Store in Redis (auto-expires):
+  SET otp:user123:login "382910" EX 300
+      │                            │
+      key                    5-min TTL (auto-delete)
+
+Create notification (critical priority):
+POST /api/v1/notifications {
+  templateId:  "otp_login",
+  recipientId: "user123",
+  variables:   {otp: "382910"},
+  channels:    ["sms"],
+  priority:    "critical"   <span class="cm">← bypasses normal queue</span>
+}
+
+Kafka topic: <span class="rd">notifications.critical.sms</span>
+  → 20 dedicated consumers (not shared)
+  → NO rate limiting (critical = can't wait)
+  → Twilio call placed immediately
+
+Target: &lt;10 seconds end-to-end ⚡
+
+Verify flow:
+  User enters "382910"
+  GET otp:user123:login from Redis
+    → "382910" matches → ✅ login success
+    → nil (TTL expired) → "Please resend OTP"
+    → "382910" ≠ "111111" → wrong OTP</div>
+  </div>
+  <div>
+    <div class="card red">
+      <h3>OTP vs Normal: Side-by-Side</h3>
+      <table class="tbl">
+        <tr><th>Aspect</th><th class="rd">OTP</th><th>Order Email</th></tr>
+        <tr><td>Kafka topic</td><td class="rd">critical.sms</td><td>standard.email</td></tr>
+        <tr><td>Consumers</td><td class="rd">20 dedicated</td><td>20 shared</td></tr>
+        <tr><td>Rate limit</td><td class="gr">BYPASSED</td><td>50/sec</td></tr>
+        <tr><td>Target SLA</td><td class="rd">&lt;10 seconds</td><td>5–30 seconds</td></tr>
+        <tr><td>User state</td><td class="rd">Waiting at login</td><td>Not urgent</td></tr>
+        <tr><td>Queue depth</td><td class="gr">Near-zero</td><td>Potentially 10K+</td></tr>
+      </table>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Why Redis (not DB) for OTP?</h3>
+      <ul>
+        <li>Redis lookup: <span class="gr">&lt;1ms</span> (in-memory)</li>
+        <li>DB lookup: 5–20ms (disk-backed)</li>
+        <li>TTL auto-expiry: no cleanup job needed</li>
+        <li>Redis SETNX for atomic OTP creation (no duplicates)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S16 RETRY -->
+<div class="slide" id="s16" data-title="LLD Step 7 — Retry + DLQ">
+<h2>LLD Step 7 — Retry Mechanism + Exponential Backoff + DLQ</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px"><span class="kw">Temporary failures → RETRY:</span>
+  Provider timeout (no response in 10s)
+  HTTP 429 Too Many Requests
+  HTTP 5xx Server Error
+  Network connection refused
+
+Exponential backoff:
+  Attempt 1 fails
+  → Publish to notifications.retry
+    {notification_id, retry_count:1,
+     scheduled_at: now()+1min}
+  Attempt 2 fails (1 min later)
+  → retry_count: 2
+     scheduled_at: now()+5min
+  Attempt 3 fails (5 min later)
+  → retry_count: 3
+     scheduled_at: now()+15min
+  Attempt 4 fails (15 min later)
+  → retry_count &gt;= 3
+  → MOVE TO DLQ
+
+<span class="kw">Permanent failures → NO RETRY:</span>
+  Email bounced (550 User not found)
+  Invalid phone number
+  User unsubscribed (honor preference)
+  APNS 410 Gone (app uninstalled)
+  → UPDATE delivery_status
+    SET status='FAILED',
+    error_message='Invalid email address'
+
+<span class="kw">Dead Letter Queue (DLQ):</span>
+  notifications.dlq Kafka topic
+  Ops team alerted via PagerDuty
+  Manual investigation → root cause
+  Fixed? → replay from DLQ</div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Why Exponential Backoff?</h3>
+      <p>If Twilio is overloaded (HTTP 429):</p>
+      <ul style="margin-top:6px">
+        <li>Retry every 1s → <span class="rd">makes overload WORSE</span></li>
+        <li>Wait 1m, 5m, 15m → <span class="gr">gives Twilio time to recover</span></li>
+        <li>Spreads retry load over time</li>
+        <li>Industry standard across all distributed systems</li>
+      </ul>
+    </div>
+    <div class="card red" style="margin-top:10px">
+      <h3>Failure Scenarios Table</h3>
+      <table class="tbl">
+        <tr><th>Scenario</th><th>Action</th></tr>
+        <tr><td>Provider timeout</td><td class="hl">Retry (temp)</td></tr>
+        <tr><td>429 rate limit</td><td class="hl">Retry (temp)</td></tr>
+        <tr><td>Invalid email</td><td class="rd">Fail permanently</td></tr>
+        <tr><td>User unsubscribed</td><td class="rd">Fail permanently</td></tr>
+        <tr><td>App uninstalled (410)</td><td class="rd">Remove token</td></tr>
+        <tr><td>3 retries exhausted</td><td class="pu">DLQ + alert ops</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S17 DB SCHEMA 1 -->
+<div class="slide" id="s17" data-title="DB Schema — Notifications + Outbox">
+<h2>7. Database Schema — Notifications + Outbox Tables</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px">CREATE TABLE <span class="kw">notifications</span> (
+  notification_id   UUID PRIMARY KEY,
+  user_id           UUID NOT NULL,
+  external_user_id  VARCHAR(255),
+  template_id       UUID REFERENCES templates,
+  channel           ENUM('EMAIL','SMS','PUSH','INAPP'),
+  payload           JSONB,
+  <span class="cm">-- {subject, body, to, variables}</span>
+  status            ENUM(
+    'PENDING','SCHEDULED','SENT',
+    'DELIVERED','FAILED','CANCELLED'
+  ) DEFAULT 'PENDING',
+  priority          ENUM('critical','high','normal','low'),
+  scheduled_at      TIMESTAMPTZ,  <span class="cm">← NULL = send now</span>
+  created_at        TIMESTAMPTZ DEFAULT now(),
+  metadata          JSONB         <span class="cm">← campaign_id, tags</span>
+);
+
+<span class="cm">-- Indexes for common queries:</span>
+CREATE INDEX idx_notif_user_created
+  ON notifications(user_id, created_at);
+CREATE INDEX idx_notif_status_sched
+  ON notifications(status, scheduled_at);
+  <span class="cm">-- scheduler polls: WHERE status='SCHEDULED'</span>
+  <span class="cm">--   AND scheduled_at &lt;= now()</span>
+CREATE INDEX idx_notif_template
+  ON notifications(template_id);
+
+<span class="cm">-- Partitioned by created_at (monthly):</span>
+<span class="cm">-- notifications_2026_01, notifications_2026_02...</span>
+<span class="cm">-- Old partitions archived to S3 after 6 months</span></div>
+  </div>
+  <div>
+<div class="dia" style="font-size:10.5px">CREATE TABLE <span class="kw">notifications_outbox</span> (
+  outbox_id         UUID PRIMARY KEY,
+  notification_id   UUID NOT NULL
+    REFERENCES notifications(notification_id),
+  event_type        VARCHAR(50),
+  <span class="cm">-- e.g. 'notification.created'</span>
+  payload           JSONB,
+  <span class="cm">-- {notification_id, channel, priority}</span>
+  published         BOOLEAN DEFAULT FALSE,
+  <span class="cm">-- CDC Publisher polls WHERE published=false</span>
+  published_at      TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+<span class="cm">-- CDC Publisher query (every 100ms):</span>
+SELECT * FROM notifications_outbox
+WHERE published = false
+ORDER BY created_at ASC
+LIMIT 1000;
+
+<span class="cm">-- After Kafka publish succeeds:</span>
+UPDATE notifications_outbox
+SET published = true,
+    published_at = now()
+WHERE outbox_id = $1;</div>
+    <div class="info" style="margin-top:8px;font-size:11px">
+      <strong>Outbox + Notifications in one transaction</strong> = the foundation of at-least-once delivery. If Postgres commits, the outbox row exists forever until CDC publishes it.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S18 DB SCHEMA 2 -->
+<div class="slide" id="s18" data-title="DB Schema — Templates + User Preferences">
+<h2>DB Schema — Templates + User Preferences</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px">CREATE TABLE <span class="kw">templates</span> (
+  template_id  UUID NOT NULL,
+  version      INT  NOT NULL,
+  PRIMARY KEY (template_id, version),
+  <span class="cm">-- Composite PK = immutable versioning</span>
+  <span class="cm">-- Never UPDATE a row; INSERT new version</span>
+
+  name         VARCHAR(255),
+  channel      ENUM('EMAIL','SMS','PUSH','INAPP'),
+  subject      TEXT,   <span class="cm">← "Order {{order_id}} confirmed"</span>
+  body         TEXT,   <span class="cm">← "Hi {{name}}, your order..."</span>
+  variables    JSONB,  <span class="cm">← ['name','order_id']</span>
+  is_active    BOOLEAN DEFAULT TRUE,
+  created_at   TIMESTAMPTZ DEFAULT now()
+);
+
+<span class="cm">-- On template update:</span>
+<span class="cm">--   INSERT with version = old_version + 1</span>
+<span class="cm">--   SET old version is_active = false</span>
+
+<span class="cm">-- A/B testing:</span>
+<span class="cm">--   Route 50% requests to version 1</span>
+<span class="cm">--   Route 50% requests to version 2</span>
+<span class="cm">--   Compare delivery/open rates</span>
+
+<span class="cm">-- Redis cache:</span>
+<span class="cm">--   key: template:{id}:{version}</span>
+<span class="cm">--   TTL: 3600 (1 hour)</span>
+<span class="cm">--   Hit rate: ~95%</span></div>
+  </div>
+  <div>
+<div class="dia" style="font-size:10.5px">CREATE TABLE <span class="kw">user_preferences</span> (
+  client_id       VARCHAR(100) NOT NULL,
+  external_user_id VARCHAR(255) NOT NULL,
+  PRIMARY KEY (client_id, external_user_id),
+  <span class="cm">-- Composite PK: one pref per user per client</span>
+  <span class="cm">-- 'amazon' user 'alice' is different from</span>
+  <span class="cm">-- 'uber' user 'alice'</span>
+
+  channels        JSONB DEFAULT '{
+    "email": true,
+    "sms": true,
+    "push": true,
+    "inapp": true
+  }',
+  types           JSONB DEFAULT '{
+    "promotional": true,
+    "transactional": true,
+    "alerts": true
+  }',
+  do_not_disturb  BOOLEAN DEFAULT FALSE,
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+<span class="cm">-- On preference update:</span>
+<span class="cm">--   1. UPDATE user_preferences</span>
+<span class="cm">--   2. Publish to Kafka: user.preference</span>
+<span class="cm">--   3. User Pref Consumer:</span>
+<span class="cm">--      DEL user_pref:{userId} from Redis</span>
+<span class="cm">--      Next notification re-fetches from DB</span></div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S19 DB SCHEMA 3 -->
+<div class="slide" id="s19" data-title="DB Schema — DeliveryStatus + Redis Keys">
+<h2>DB Schema — DeliveryStatus Table + Redis Key Patterns</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px">CREATE TABLE <span class="kw">delivery_status</span> (
+  delivery_id        UUID PRIMARY KEY,
+  notification_id    UUID NOT NULL,
+  <span class="cm">-- INDEXED for: WHERE notification_id='NOTIF789'</span>
+  channel            ENUM('EMAIL','SMS','PUSH','INAPP'),
+  provider           VARCHAR(50),
+  <span class="cm">-- 'SendGrid', 'Twilio', 'FCM', 'APNS'</span>
+  provider_message_id VARCHAR(255),
+  <span class="cm">-- 'msg_abc123' (SendGrid), 'SM1234abcd' (Twilio)</span>
+  <span class="cm">-- INDEXED for webhook lookups</span>
+  provider_response  JSONB,
+  <span class="cm">-- Full API response for debugging</span>
+  status             ENUM(
+    'SENT','DELIVERED','FAILED',
+    'BOUNCED','OPENED','CLICKED'
+  ),
+  sent_at            TIMESTAMPTZ,
+  delivered_at       TIMESTAMPTZ,
+  error_message      TEXT,
+  retry_count        INT DEFAULT 0
+);
+
+CREATE INDEX idx_ds_notification_id
+  ON delivery_status(notification_id);
+
+CREATE INDEX idx_ds_provider_msg_id
+  ON delivery_status(provider_message_id);
+<span class="cm">-- Used by webhook handler to find the record</span>
+<span class="cm">-- POST /webhooks/sendgrid {sg_message_id:...}</span>
+<span class="cm">-- → lookup by provider_message_id instantly</span></div>
+  </div>
+  <div>
+    <div class="card cyan">
+      <h3>Redis Key Patterns (All 4)</h3>
+<div class="dia" style="font-size:10.5px"><span class="cm">1. User Preferences Cache</span>
+   key: user_pref:{userId}
+   value: JSON string
+   TTL: 86400 (24 hours)
+   SET user_pref:user123 '{email:true,...}' EX 86400
+
+<span class="cm">2. Template Cache</span>
+   key: template:{templateId}:{version}
+   value: JSON string (full template)
+   TTL: 3600 (1 hour)
+   hit rate: ~95%
+
+<span class="cm">3. Rate Limit Token Bucket</span>
+   key: rate_limit:{channel}:{provider}
+   value: INT (token count)
+   e.g. rate_limit:email:sendgrid = 47
+   Lua script: atomic check + DECR
+   TTL: 10 (reset after 10s idle)
+
+<span class="cm">4. OTP Storage</span>
+   key: otp:{userId}:{purpose}
+   value: "382910"
+   TTL: 300 (5 minutes, auto-expire)
+   SET otp:user123:login "382910" EX 300</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S20 SCALING 1 -->
+<div class="slide" id="s20" data-title="Scaling — Provider Failover + Circuit Breaker + Template Versioning">
+<h2>8. Scaling — Provider Failover, Circuit Breaker &amp; Template Versioning</h2>
+<div class="cols2">
+  <div>
+    <div class="card red">
+      <h3>Provider Failover (Technique 6)</h3>
+<div class="dia" style="font-size:10.5px">Email provider strategy:
+  Primary:  SendGrid   50 emails/sec
+  Fallback: AmazonSES  50 emails/sec
+  Combined: 100 emails/sec total
+
+Circuit Breaker pattern:
+  CLOSED state: all traffic → SendGrid
+    if failure rate &gt; 50%:
+    → OPEN circuit (use AmazonSES)
+
+  OPEN state: all traffic → AmazonSES
+    after 30 seconds:
+    → HALF-OPEN: try 1 request to SendGrid
+    if success: CLOSE (back to SendGrid)
+    if failure: stay OPEN
+
+SMS failover: Twilio (primary) → MSG91 (fallback)
+Push: no failover needed (FCM/APNS are Google/Apple
+       — effectively always available)</div>
+    </div>
+  </div>
+  <div>
+    <div class="card purple">
+      <h3>Template Versioning (Technique 4)</h3>
+<div class="dia" style="font-size:10.5px">Immutable versioning (never UPDATE):
+  Update template → INSERT new row
+  (template_id same, version=old+1)
+  Mark old version is_active=false
+
+Benefits:
+  1. Audit trail:
+     "On Nov 15, sent version 3 of template"
+     Know exact content for compliance
+
+  2. A/B testing:
+     Route 50% users to v1
+     Route 50% users to v2
+     Compare open rates → pick winner
+
+  3. Rollback:
+     v3 has a bug → set is_active=false
+     Re-activate v2 → immediate rollback
+
+  4. Zero-downtime deploy:
+     New template goes live without restart</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S21 SCALING 2 -->
+<div class="slide" id="s21" data-title="Scaling — DB Partitioning + Bulk Notifications + Kafka Autoscaling">
+<h2>Scaling — DB Partitioning, Bulk Notifications &amp; Kafka Autoscaling</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>Database Partitioning (Technique 8)</h3>
+<div class="dia" style="font-size:10.5px">Monthly range partitioning on created_at:
+  notifications_2026_01  (Jan 2026)
+  notifications_2026_02  (Feb 2026)
+  ...
+  notifications_2026_08  (current month)
+
+  Queries for recent data → hit small partition
+  Old partitions cold → archived to S3
+  S3 archive after 6 months (cost savings)
+
+  delivery_status partitioned by sent_at
+  Same strategy
+
+  Why partition?
+  Without: 1 table with 1B rows → slow queries
+  With: each partition ~80M rows → fast scans</div>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Bulk Notifications (Technique 9)</h3>
+<div class="dia" style="font-size:10.5px">Bulk campaign (100K+ recipients):
+  Batch INSERT: 1000 records at a time
+  Not: INSERT one row per recipient (slow)
+  Yes: COPY or bulk INSERT 1000 at once
+
+  SendGrid Bulk API:
+  1 API call = 1000 personalizations
+  50 API calls/sec × 1000 = 50K emails/sec
+
+  Rate limited to bulk topic (5 consumers)
+  Acceptable: campaign delivery over hours</div>
+    </div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Kafka Consumer Autoscaling (Technique 10)</h3>
+<div class="dia" style="font-size:10.5px">100 Kafka partitions per topic
+→ max 100 parallel consumers
+
+Autoscaling rule:
+  Monitor consumer group lag:
+    lag &lt; 100    → current consumers fine
+    lag &gt; 1000   → add consumer instances
+    lag &lt; 100    → scale back down
+
+  Kubernetes HPA (Horizontal Pod Autoscaler):
+    metric: kafka_consumer_group_lag
+    min: 5, max: 100 replicas
+
+  Throughput scales linearly:
+    10 consumers = 10K msg/sec
+    50 consumers = 50K msg/sec
+    100 consumers = 100K msg/sec</div>
+    </div>
+    <div class="card cyan" style="margin-top:10px">
+      <h3>Reporting (Technique 12)</h3>
+      <ul>
+        <li><strong>Real-time:</strong> <span class="cy">INCR sent_count:{date}</span> in Redis per send</li>
+        <li><strong>Batch:</strong> Hourly Spark/Flink job → GROUP BY template, date</li>
+        <li><strong>Store:</strong> InfluxDB (time-series) / BigQuery (analytics)</li>
+        <li><strong>Webhook batching:</strong> Update 100 delivery_status rows at once</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S22 SCHEDULED NOTIFICATIONS -->
+<div class="slide" id="s22" data-title="Scheduled Notifications + Webhook Processing">
+<h2>Scheduled Notifications &amp; Webhook Processing</h2>
+<div class="cols2">
+  <div>
+    <div class="card yellow">
+      <h3>Scheduled Notifications (Feature 4)</h3>
+<div class="dia" style="font-size:10.5px">POST /api/v1/notifications {
+  templateId:  "black_friday_promo",
+  recipientId: "all_users",
+  priority:    "promotional",
+  scheduledAt: "2026-11-29T09:00:00Z"
+}
+
+State: PENDING → SCHEDULED (saved with scheduled_at)
+
+Scheduler job (cron, every 1 minute):
+  SELECT * FROM notifications
+  WHERE status = 'SCHEDULED'
+  AND scheduled_at &lt;= now()
+  LIMIT 10000
+
+  For each: publish to Kafka as normal
+  UPDATE status = 'PENDING' (now in queue)
+
+Database index on (status, scheduled_at)
+makes this query fast even at 1M rows.</div>
+    </div>
+  </div>
+  <div>
+    <div class="card cyan">
+      <h3>Async Webhook Processing (Technique 11)</h3>
+<div class="dia" style="font-size:10.5px">Provider sends webhook:
+  POST /webhooks/sendgrid
+  {event:"delivered", sg_message_id:"msg123"}
+
+WRONG approach (synchronous):
+  1. Receive webhook
+  2. UPDATE delivery_status in DB
+  3. Return 200 OK
+  → If DB slow, provider times out and retries
+  → Duplicate webhooks = duplicate processing
+
+RIGHT approach (async):
+  1. Receive webhook
+  2. Return 200 OK immediately (no DB call)
+  3. Push event to internal queue
+  4. Background processor:
+     Batches 100 events → bulk UPDATE
+     MUCH faster, no duplicate issues
+
+Webhook batching: 100 DB updates per SQL call
+vs 1 per call → 100x fewer round-trips</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S23 INTERVIEW Q1 -->
+<div class="slide" id="s23" data-title="Interview Q1 — At-Least-Once Delivery Guarantee">
+<h2>⭐ Interview Q1 — "How do you ensure no notification is lost?"</h2>
+<div class="warn" style="margin-bottom:10px">Interviewers ALWAYS ask this. Your answer must cover all 5 points below.</div>
+<div class="cols2">
+  <div>
+    <div class="card red">
+      <h3>1. The Problem (dual-write failure)</h3>
+      <p>Naive: write DB then publish to Kafka. If Kafka fails after DB commit → notification stuck. If DB fails after Kafka publish → notification lost. Either way: silent failure.</p>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>2. Outbox Pattern (single transaction)</h3>
+      <p>INSERT notifications + INSERT outbox in ONE transaction. Either both commit or both rollback. No inconsistency possible.</p>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>3. CDC Publisher (at-least-once to Kafka)</h3>
+      <p>Polls outbox WHERE published=false every 100ms. Publishes to Kafka. Marks published=true. If CDC crashes after Kafka success but before mark: same message published twice on restart → idempotency handles it.</p>
+    </div>
+  </div>
+  <div>
+    <div class="card blue">
+      <h3>4. Idempotent Consumers (prevent duplicates)</h3>
+      <p>Consumer checks: SELECT COUNT(*) FROM delivery_status WHERE notification_id + channel. If exists → already sent → skip. Kafka at-least-once may deliver same message twice; idempotency prevents double emails.</p>
+    </div>
+    <div class="card purple" style="margin-top:10px">
+      <h3>5. Result: Effectively Exactly-Once</h3>
+      <p><strong>At-least-once delivery</strong> (Outbox + CDC) + <strong>Idempotent consumers</strong> = <span class="hl">exactly-once to the user</span>. Message never lost. Message never duplicated.</p>
+    </div>
+    <div class="tip" style="margin-top:10px">
+      <strong>How to say it:</strong> "We use the Transactional Outbox pattern — DB write and outbox row in one atomic transaction. CDC Publisher polls outbox to Kafka. Idempotent consumers prevent duplicates. This gives us at-least-once delivery with no silent losses, combined with idempotency for exactly-once semantics from the user's perspective."
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S24 INTERVIEW Q2 -->
+<div class="slide" id="s24" data-title="Interview Q2 — Rate Limiting at Scale">
+<h2>⭐ Interview Q2 — "How do you handle rate limiting at 1M+ notifications/min?"</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>Token Bucket — Redis Lua Script</h3>
+<div class="dia" style="font-size:10px">-- Atomic Lua script (thread-safe):
+local key          = KEYS[1]   -- rate_limit:email:sendgrid
+local capacity     = ARGV[1]   -- 100 tokens (max burst)
+local refill_rate  = ARGV[2]   -- 100 per second
+
+local tokens = redis.call('GET', key) or capacity
+
+if tonumber(tokens) &gt;= 1 then
+  redis.call('DECR', key)
+  redis.call('EXPIRE', key, 10)  -- reset after idle
+  return 1  -- proceed
+else
+  return 0  -- rate limited, consumer waits
+end
+
+-- Consumer behavior when rate limited:
+-- Option A: sleep 100ms, retry (simple)
+-- Option B: push back to Kafka topic
+--   (better: allows other consumers to work)</div>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Complete Strategy (5 parts)</h3>
+      <ul>
+        <li><strong>1. Token bucket per provider</strong> — Redis atomic, matches exact limits</li>
+        <li><strong>2. Backpressure</strong> — consumers slow → Kafka buffers (millions capacity)</li>
+        <li><strong>3. Multi-provider failover</strong> — SendGrid (50/s) + SES (50/s) = 100/s combined</li>
+        <li><strong>4. Batching</strong> — SendGrid bulk API: 1 call = 1000 emails → 50K/s effective</li>
+        <li><strong>5. OTP bypass</strong> — critical notifications skip rate limiter entirely</li>
+      </ul>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>Monitoring &amp; Alerting</h3>
+      <ul>
+        <li>Track: token bucket hits (how often consumers wait)</li>
+        <li>Alert: rate limit events &gt;10% of time → upgrade provider tier</li>
+        <li>Metric: Kafka consumer group lag (leading indicator)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S25 INTERVIEW Q3 -->
+<div class="slide" id="s25" data-title="Interview Q3 — Complete Flow Walkthrough">
+<h2>⭐ Interview Q3 — "Walk through complete notification flow with state transitions"</h2>
+<div class="dia" style="font-size:10.5px">
+Order placed → Order Svc → POST /api/v1/notifications
+                                       │
+                              API Gateway validates ✅
+                                       │
+                        Notification Svc:
+                        [1] Fetch template (Redis hit 95%)
+                        [2] Validate variables ✅
+                        [3] Get user prefs (Redis hit) → filter channels
+                        [4] Render template
+                        [5] ATOMIC TX: INSERT notifications (PENDING)
+                                       INSERT outbox (published=false)
+                                       COMMIT
+                        Response: 200 {notificationId:"NOTIF789", status:"PENDING"}
+                                       │
+                        CDC Publisher (100ms later):
+                        [6] Poll outbox WHERE published=false
+                            Publish: notifications.standard.email ← NOTIF789
+                            UPDATE outbox SET published=true
+                                       │
+                        Email Consumer:
+                        [7] Receive from Kafka
+                        [8] Idempotency check → 0 rows → proceed
+                        [9] Rate limit → token available → proceed
+                        [10] POST SendGrid API → 202 {id:"msg_abc123"}
+                        [11] INSERT delivery_status {status:SENT, provider_msg_id:msg_abc123}
+                             UPDATE notifications SET status=SENT
+                                       │
+                        SendGrid webhook (async, ~2-5 sec later):
+                        [12] POST /webhooks/sendgrid {event:"delivered", id:"msg_abc123"}
+                        [13] UPDATE delivery_status SET status=DELIVERED ✅
+
+State machine:          PENDING → (outbox committed)
+                        PENDING → (Kafka consumed, SendGrid called) → SENT
+                        SENT    → (webhook received) → DELIVERED ✅
+                        SENT    → (timeout/429)       → retry → SENT (attempt 2)
+                        SENT    → (3 retries exhausted) → FAILED → DLQ</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S26 INTERVIEW TIPS -->
+<div class="slide" id="s26" data-title="Critical Interview Tips">
+<h2>🎯 Critical Interview Tips — What Interviewers Are Testing</h2>
+<div class="cols2">
+  <div>
+    <div class="warn">
+      <h3>⚠️ Must-Mention: Outbox Pattern</h3>
+      <p>"NEVER publish to Kafka without DB write in same transaction. If Kafka succeeds but DB fails → notification lost forever. Outbox guarantees: if DB commit succeeded, message WILL be published eventually via CDC polling + retry."</p>
+    </div>
+    <div class="tip" style="margin-top:10px">
+      <h3>⭐ At-least-once + Idempotency</h3>
+      <p>"Outbox ensures message never lost. Idempotent consumers (delivery_status check) ensure message processed only once. Together = exactly-once to the user."</p>
+    </div>
+    <div class="tip" style="margin-top:10px">
+      <h3>⭐ Priority Queues</h3>
+      <p>"notifications.critical (OTP, &lt;10s, 20 workers), .standard (orders, 5min), .promotional (marketing, 30min), .bulk (campaigns). Critical bypasses rate limiting."</p>
+    </div>
+  </div>
+  <div>
+    <div class="tip">
+      <h3>⭐ Rate Limiting Token Bucket</h3>
+      <p>"Redis atomic Lua script. Provider limits: Twilio 100/s, SendGrid 50/s, FCM 10K/s. Backpressure: consumers slow → Kafka buffers. Multi-provider failover: SendGrid → AmazonSES circuit breaker."</p>
+    </div>
+    <div class="warn" style="margin-top:10px">
+      <h3>⚠️ Never Skip Preference Check</h3>
+      <p>"Check before sending: if email=false → skip email. DND=true → skip all. promotional=false → skip marketing. Legal: GDPR (EU), CAN-SPAM (email), TCPA (SMS). Cache in Redis 24h TTL."</p>
+    </div>
+    <div class="tip" style="margin-top:10px">
+      <h3>💡 Template Versioning</h3>
+      <p>"Immutable: never UPDATE existing template, always INSERT new version. Benefits: audit trail, A/B testing (50% v1/50% v2), rollback (reactivate old version). Cache: template:{id}:{v} in Redis, 95% hit rate."</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S27 FULL SCALING TABLE -->
+<div class="slide" id="s27" data-title="All 12 Scaling Techniques">
+<h2>All 12 Scaling &amp; Optimization Techniques</h2>
+<table class="tbl">
+  <tr><th>#</th><th>Technique</th><th>What it solves</th><th>How</th></tr>
+  <tr><td class="bl">1</td><td>Transactional Outbox</td><td>Never lose a notification</td><td>DB + Kafka write atomic, CDC polls</td></tr>
+  <tr><td class="bl">2</td><td>Prioritized Kafka topics</td><td>OTP &lt;10s, marketing 30min</td><td>4 priority levels, dedicated consumers</td></tr>
+  <tr><td class="bl">3</td><td>Token bucket rate limit</td><td>Don't exceed provider limits</td><td>Redis atomic Lua script per provider</td></tr>
+  <tr><td class="bl">4</td><td>Template caching</td><td>Avoid DB on every notification</td><td>Redis template:{id}:{v}, 1h TTL, 95% hit</td></tr>
+  <tr><td class="bl">5</td><td>Preference caching</td><td>Avoid 1M pref DB queries/min</td><td>Redis user_pref:{userId}, 24h TTL</td></tr>
+  <tr><td class="bl">6</td><td>Provider failover</td><td>Single provider outage</td><td>SendGrid→SES, Twilio→MSG91, circuit breaker</td></tr>
+  <tr><td class="bl">7</td><td>Idempotent consumers</td><td>Kafka duplicate delivery</td><td>delivery_status lookup before send</td></tr>
+  <tr><td class="bl">8</td><td>DB partitioning</td><td>1B+ row table slow queries</td><td>Monthly range partitions, S3 archive 6m</td></tr>
+  <tr><td class="bl">9</td><td>Batch bulk notifications</td><td>100K recipient campaigns</td><td>Bulk INSERT 1000 rows, SendGrid bulk API</td></tr>
+  <tr><td class="bl">10</td><td>Kafka autoscaling</td><td>Lag spikes during Black Friday</td><td>HPA on consumer group lag metric</td></tr>
+  <tr><td class="bl">11</td><td>Async webhook processing</td><td>Provider retries on slow webhook</td><td>200 OK immediately, batch 100 DB updates</td></tr>
+  <tr><td class="bl">12</td><td>Reporting aggregation</td><td>Real-time + historical analytics</td><td>Redis counters + Spark/Flink → BigQuery</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S28 FULL ARCH DIAGRAM -->
+<div class="slide" id="s28" data-title="Complete Architecture Summary Diagram">
+<h2>Complete Architecture — One-Page Architect View</h2>
+<div class="dia" style="font-size:9.5px">
+clients(Amazon/Uber)
+     │  POST /api/v1/notifications
+     ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│  API Gateway &amp; Load Balancer  [Auth · Rate 100/min · Round-Robin]           │
+└───────────────────────────────┬─────────────────────────────────────────────┘
+                                │
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                  ▼
+      ┌───────────────┐ ┌───────────────┐ ┌──────────────────────────────────┐
+      │ Template Svc  │ │ UserPref Svc  │ │       Notification Svc           │
+      │ Template DB   │ │ UserPref DB   │ │  validate+render+atomic-write    │
+      │ Redis cache   │ │ Redis cache   │ │  notifications + outbox (TX)     │
+      │ 1h TTL 95%    │ │ 24h TTL       │ └────────────────┬─────────────────┘
+      └───────────────┘ └───────┬───────┘                  │
+              ↑                 │                  ┌────────▼────────┐
+              │        user.preference Kafka        │  CDC Publisher  │
+              │        User Pref Consumer           │  polls outbox   │
+              │        → DEL Redis cache            └────────┬────────┘
+              └─────────────────────────────────────         │
+                                                    ┌────────▼────────────────────────────────┐
+                                                    │           KAFKA                         │
+                                                    │  notifications.critical.{ch}  [OTP]    │
+                                                    │  notifications.standard.{ch}  [orders] │
+                                                    │  notifications.promotional.{ch}[mktg]  │
+                                                    │  notifications.bulk.{ch}      [camp]   │
+                                                    │  notifications.retry          [retry]  │
+                                                    │  notifications.dlq            [dead]   │
+                                                    │  user.preference              [pref]   │
+                                                    └──────┬──────────┬──────────┬──────────┘
+                              ┌───────────────────────────┘          │          └────────────────────┐
+                              ▼                                       ▼                               ▼
+             ┌────────────────────────┐            ┌─────────────────────────┐  ┌────────────────────────────┐
+             │  Email Consumers       │            │  SMS Consumers          │  │  Push Consumers            │
+             │  critical:10,std:20,   │            │  critical:20,std:15     │  │  critical:10,std:10        │
+             │  promo:5, bulk:2       │            │  promo:5,bulk:2         │  │  promo:3,bulk:1            │
+             │  [idempotency+rate]    │            │  [idempotency+rate]     │  │  [idempotency+rate]        │
+             └────────────┬───────────┘            └────────────┬────────────┘  └─────────────┬──────────────┘
+                          │                                     │                              │
+              ┌───────────▼──────────┐            ┌────────────▼────────────┐  ┌─────────────▼──────────────┐
+              │ Email Svc Provider   │            │  SMS Svc Provider       │  │  inAPP Svc Provider        │
+              │ primary:  SendGrid   │            │  primary:  Twilio       │  │  FCM (Android/Web)         │
+              │ fallback: AmazonSES  │            │  fallback: MSG91        │  │  APNS (iOS)                │
+              │ [circuit breaker]    │            │  [circuit breaker]      │  │  multi-device fanout       │
+              └───────────┬──────────┘            └────────────┬────────────┘  └─────────────┬──────────────┘
+                          │           webhooks                  │  webhooks                    │
+                          └───────────────────────┬────────────┘                              │
+                                                  ▼                                           │
+                                    ┌─────────────────────────┐                              │
+                                    │    Reporting Svc        │◄─────────────────────────────┘
+                                    │  Real-time: Redis INCR  │
+                                    │  Batch: Spark/Flink     │
+                                    │  → InfluxDB / BigQuery  │
+                                    └─────────────────────────┘
+Databases: [Postgres: notifications, outbox, delivery_status, templates]
+           [Postgres: user_preferences]
+           [Redis: pref cache, template cache, rate limit, OTP]</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S29 CHEATSHEET -->
+<div class="slide" id="s29" data-title="Architect Cheatsheet">
+<h2>Architect Cheatsheet — Numbers &amp; Decisions</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>Key Numbers</h3>
+      <table class="tbl">
+        <tr><th>Item</th><th>Value</th></tr>
+        <tr><td>Peak scale</td><td class="hl">1M+ notif/min</td></tr>
+        <tr><td>OTP SLA</td><td class="rd">&lt;10 seconds</td></tr>
+        <tr><td>SendGrid limit</td><td>50 emails/sec</td></tr>
+        <tr><td>Twilio limit</td><td>100 SMS/sec</td></tr>
+        <tr><td>FCM limit</td><td>10,000 push/sec</td></tr>
+        <tr><td>Redis pref TTL</td><td>86400s (24h)</td></tr>
+        <tr><td>Redis template TTL</td><td>3600s (1h)</td></tr>
+        <tr><td>OTP TTL</td><td>300s (5min)</td></tr>
+        <tr><td>Rate limit bucket</td><td>100 tokens cap</td></tr>
+        <tr><td>CDC poll interval</td><td>100ms</td></tr>
+        <tr><td>Retry 1st delay</td><td>1 min</td></tr>
+        <tr><td>Retry 2nd delay</td><td>5 min</td></tr>
+        <tr><td>Retry 3rd delay</td><td>15 min</td></tr>
+        <tr><td>Max retries</td><td>3 (then DLQ)</td></tr>
+        <tr><td>Kafka partitions</td><td>100 per topic</td></tr>
+        <tr><td>DB archive</td><td>6 months → S3</td></tr>
+      </table>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Design Decisions</h3>
+      <table class="tbl">
+        <tr><th>Problem</th><th>Solution</th></tr>
+        <tr><td>Never lose a message</td><td class="gr">Outbox Pattern</td></tr>
+        <tr><td>OTP vs marketing speed</td><td class="rd">Priority Kafka topics</td></tr>
+        <tr><td>Provider rate limits</td><td class="hl">Token bucket Redis</td></tr>
+        <tr><td>Kafka duplicates</td><td class="cy">Idempotent consumers</td></tr>
+        <tr><td>Provider outage</td><td class="pu">Circuit breaker failover</td></tr>
+        <tr><td>1M pref DB queries</td><td class="gr">Redis cache 24h</td></tr>
+        <tr><td>Template history</td><td class="bl">Immutable versioning</td></tr>
+        <tr><td>1B+ row slow table</td><td class="hl">Monthly partitions</td></tr>
+        <tr><td>100K bulk campaign</td><td class="cy">Bulk API + batch INSERT</td></tr>
+        <tr><td>Black Friday spike</td><td class="rd">Kafka autoscale (HPA)</td></tr>
+        <tr><td>Webhook DB pressure</td><td class="gr">Async + batch 100</td></tr>
+        <tr><td>User opted out</td><td class="pu">Pref check + GDPR</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S30 END -->
+<div class="slide" id="s30" data-title="You're Done!">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🏛️</div>
+  <h1 class="gradient-text">Architect-Level Complete</h1>
+  <p style="margin-top:10px;color:#475569;font-size:.95rem">You've covered every layer an interviewer expects from a senior/staff engineer</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:700px;margin:20px auto;text-align:left">
+    <div class="card blue"><ul style="font-size:12px">
+      <li>✅ Functional &amp; Non-Functional Requirements</li>
+      <li>✅ CAP Theorem (Availability first)</li>
+      <li>✅ 7-Entity ER Diagram with all fields</li>
+      <li>✅ Full API Design</li>
+      <li>✅ HLD — all services + databases</li>
+    </ul></div>
+    <div class="card green"><ul style="font-size:12px">
+      <li>✅ LLD 8 steps — complete flow</li>
+      <li>✅ Outbox Pattern (zero message loss)</li>
+      <li>✅ Kafka topics (all 7)</li>
+      <li>✅ 5 DB tables with indexes</li>
+      <li>✅ 4 Redis key patterns</li>
+    </ul></div>
+    <div class="card yellow"><ul style="font-size:12px">
+      <li>✅ Rate limiting (token bucket, Lua)</li>
+      <li>✅ Provider failover + circuit breaker</li>
+      <li>✅ Template immutable versioning</li>
+      <li>✅ DB partitioning + bulk notifications</li>
+      <li>✅ Kafka autoscaling</li>
+    </ul></div>
+    <div class="card purple"><ul style="font-size:12px">
+      <li>✅ 3 Critical Interview Q&amp;As</li>
+      <li>✅ 5 Interview Tips</li>
+      <li>✅ All 12 Scaling Techniques</li>
+      <li>✅ Complete architecture diagram</li>
+      <li>✅ Numbers cheatsheet</li>
+    </ul></div>
+  </div>
+</div>
+</div>
+
+  </div><!-- end slide-area -->
+
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TOTAL = 30;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+// Build dots
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => { navigate(i - current); };
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  // scroll to top
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent =
+    el?.dataset.title || 'Notification System Design';
+  document.getElementById('progress-fill').style.width =
+    ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => {
+    d.classList.toggle('active', i+1===n);
+  });
+}
+
+function navigate(dir) {
+  showSlide(current + dir);
+  if(autoTimer) resetAuto();
+}
+
+function togglePlay() {
+  if(autoTimer) {
+    clearInterval(autoTimer); autoTimer=null;
+    document.getElementById('play-btn').textContent='▶ Play';
+  } else { startAuto(); }
+}
+
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => {
+    if(current < TOTAL) showSlide(current+1);
+    else togglePlay();
+  }, AUTO_INTERVAL);
+}
+
+function resetAuto() {
+  clearInterval(autoTimer);
+  startAuto();
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+showSlide(1);
+</script>
+</body>
+</html>

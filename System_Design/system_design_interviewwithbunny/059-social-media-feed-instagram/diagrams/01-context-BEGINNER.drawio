@@ -1,0 +1,229 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Social Media Context - BEGINNER" id="social-context">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="SOCIAL MEDIA FEEDS — Like Facebook/Instagram" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1200" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="🎯 Goal: Personalized feeds at 500M DAU with &lt;500ms load time • Push vs Pull • Fanout problem" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="200" y="70" width="1200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- THE PROBLEM Box -->
+        <mxCell id="problem-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="120" width="700" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="problem-title" value="❌ THE FEED GENERATION PROBLEM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#cc0000;" vertex="1" parent="1">
+          <mxGeometry x="50" y="130" width="700" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="problem-text" value="Naive approach: JOIN on every feed load&#xa;&#xa;When user opens app:&#xa;  SELECT * FROM posts p&#xa;  JOIN followers f ON p.user_id = f.followee_id&#xa;  WHERE f.follower_id = 'me'&#xa;  ORDER BY p.created_at DESC LIMIT 20;&#xa;&#xa;At 115,000 feed loads/second:&#xa;  • 115K database JOINs per second — instant collapse!&#xa;  • Each user follows 200 people on average&#xa;  • Query scans thousands of posts to find latest 20&#xa;  • Celebrity with 400M followers = 400M rows to JOIN&#xa;  • Latency: 2-5 seconds per feed load (unusable!)&#xa;&#xa;This is the #1 bottleneck in social media architecture." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="70" y="165" width="660" height="145" as="geometry" />
+        </mxCell>
+
+        <!-- SOLUTION: Fanout Box -->
+        <mxCell id="solution-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="800" y="120" width="750" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="solution-title" value="✅ SOLUTION: FANOUT (Pre-build Feeds)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#006600;" vertex="1" parent="1">
+          <mxGeometry x="800" y="130" width="750" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="solution-text" value="Newspaper Analogy: Print once overnight, deliver to every doorstep&#xa;&#xa;When Alice posts:&#xa;  1. Find all Alice's followers (500 people)&#xa;  2. PUSH post_id into each follower's Redis feed cache&#xa;     LPUSH feed:bob {post_id}&#xa;     LPUSH feed:carol {post_id}  ... (repeat 500 times)&#xa;  3. Feed is PRE-BUILT before anyone opens the app&#xa;&#xa;When Bob opens app:&#xa;  LRANGE feed:bob 0 19  → instant! &lt;10ms&#xa;  (Just read 20 post_ids from cache, no JOIN)&#xa;&#xa;Trade-off:&#xa;  • Write amplification: 1 post = 500 writes&#xa;  • But 115K reads/sec become cache lookups (fast!)&#xa;  • Celebrities need different strategy (Pull model)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="820" y="165" width="710" height="145" as="geometry" />
+        </mxCell>
+
+        <!-- Newspaper Analogy Visual -->
+        <mxCell id="analogy-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="350" width="500" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analogy-title" value="📰 FANOUT = NEWSPAPER PRINTING PRESS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="360" width="500" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analogy-text" value="Old way (JOIN on read):&#xa;  • Every morning, 500M people knock on doors&#xa;  • Each asks: &quot;What news from my friends?&quot;&#xa;  • Worker runs around gathering stories each time&#xa;  • Takes 5 seconds per person = chaos!&#xa;&#xa;Fanout (pre-build):&#xa;  • Printing press runs ONCE when news arrives&#xa;  • Drop a copy at every subscriber's doorstep&#xa;  • Morning: grab newspaper from doorstep (instant!)&#xa;  • No worker runs around anymore" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="70" y="395" width="460" height="125" as="geometry" />
+        </mxCell>
+
+        <!-- Celebrity Problem Box -->
+        <mxCell id="celeb-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="600" y="350" width="500" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="celeb-title" value="🌟 CELEBRITY PROBLEM (Fanout Won't Work!)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#d79b00" vertex="1" parent="1">
+          <mxGeometry x="600" y="360" width="500" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="celeb-text" value="Selena Gomez: 400M followers&#xa;&#xa;If we fanout her post:&#xa;  • 1 post = 400M Redis writes!&#xa;  • Like printing 400M newspapers simultaneously&#xa;  • Takes 10+ minutes to complete&#xa;  • Redis memory explodes&#xa;&#xa;Solution: PULL model (fanout on read)&#xa;  • DON'T push anything when she posts&#xa;  • When YOU open feed:&#xa;    - Fetch her latest 10 posts on-demand&#xa;    - Merge with your push-based feed&#xa;  • All 400M followers share ONE cached query result&#xa;  • Trade-off: Her post may take 5-10 min to appear" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="620" y="395" width="460" height="125" as="geometry" />
+        </mxCell>
+
+        <!-- Hybrid Strategy Box -->
+        <mxCell id="hybrid-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="350" width="400" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="hybrid-title" value="🎯 HYBRID STRATEGY (Production Reality)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#0066cc" vertex="1" parent="1">
+          <mxGeometry x="1150" y="360" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="hybrid-text" value="Follower count threshold = 5,000&#xa;&#xa;&lt;5K followers:&#xa;  → PUSH (fanout on write)&#xa;  → Pre-build feeds instantly&#xa;&#xa;5K-100K followers:&#xa;  → Hybrid&#xa;  → Push to active users only&#xa;  → Pull for inactive users&#xa;&#xa;&gt;100K followers:&#xa;  → PULL (fanout on read)&#xa;  → No pre-building&#xa;  → Query on-demand, cache result&#xa;&#xa;This keeps 99% of users on fast&#xa;PUSH path, celebrities on PULL." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="395" width="360" height="125" as="geometry" />
+        </mxCell>
+
+        <!-- System Boundary -->
+        <mxCell id="system-boundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=4;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+          <mxGeometry x="50" y="560" width="1500" height="380" as="geometry" />
+        </mxCell>
+
+        <mxCell id="system-title" value="📱 SOCIAL MEDIA PLATFORM — Core Services" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="570" width="1500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Users (Actors) -->
+        <mxCell id="user-alice" value="👤 Alice&#xa;(Posts content)&#xa;500 followers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="70" y="630" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="user-bob" value="👤 Bob&#xa;(Views feed)&#xa;Follows 200 people" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="70" y="760" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="celeb-user" value="🌟 Celebrity&#xa;400M followers&#xa;Needs PULL model" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1400" y="690" width="120" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Core Services Inside System -->
+        <mxCell id="content-svc" value="📝 Content Service&#xa;(Post Creation)&#xa;&#xa;• Validate post&#xa;• Upload to S3&#xa;• Store in Cassandra&#xa;• Trigger fanout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="240" y="620" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="fanout-svc" value="🚀 Fanout Service&#xa;(PUSH Model)&#xa;&#xa;• Find all followers&#xa;• LPUSH to each feed&#xa;• Async via Kafka&#xa;• &lt;5K followers only" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="480" y="620" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="feed-svc" value="📰 Feed Service&#xa;(Read Feeds)&#xa;&#xa;• LRANGE from Redis&#xa;• Merge PUSH + PULL&#xa;• Hydrate post data&#xa;• Return to client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="240" y="780" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-cache" value="⚡ Redis&#xa;(Feed Cache)&#xa;&#xa;feed:{user_id}&#xa;  → LIST of post_ids&#xa;  → LPUSH / LRANGE&#xa;  → Keep latest 1000" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9e6;strokeColor=#d6b656;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="720" y="620" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cassandra-db" value="🗄️ Cassandra&#xa;(Posts DB)&#xa;&#xa;• 100M posts/day&#xa;• Partition by user_id&#xa;• Clustering by time DESC&#xa;• High write throughput" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5e6ff;strokeColor=#9673a6;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="960" y="620" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="follower-svc" value="👥 Follower Service&#xa;(Social Graph)&#xa;&#xa;• Follow/Unfollow&#xa;• Find followers&#xa;• PostgreSQL&#xa;• Index on followee_id" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="480" y="780" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3-cdn" value="🖼️ S3 + CloudFront&#xa;(Media Storage)&#xa;&#xa;• 10TB/day uploads&#xa;• Photos, videos&#xa;• CDN edge cache&#xa;• 2 PB total" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#82b366;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="1200" y="620" width="180" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="engagement-svc" value="❤️ Engagement Service&#xa;(Likes, Comments)&#xa;&#xa;• Like counter (Redis)&#xa;• Comment threads (PG)&#xa;• Idempotency&#xa;• Kafka events" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="720" y="780" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="notif-svc" value="🔔 Notification Service&#xa;(Push Notifications)&#xa;&#xa;• Like/comment events&#xa;• FCM / APNs&#xa;• WebSocket for active&#xa;• Aggregation (5 likes)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0cc;strokeColor=#d6b656;fontSize=13;align=center" vertex="1" parent="1">
+          <mxGeometry x="960" y="780" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Arrows showing data flow -->
+        <mxCell id="arrow1" value="1. Create post" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=13;fontStyle=1;strokeColor=#0066CC" edge="1" parent="1" source="user-alice" target="content-svc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow2" value="2. Trigger&#xa;fanout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;dashed=1" edge="1" parent="1" source="content-svc" target="fanout-svc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow3" value="3. LPUSH to&#xa;each follower" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="fanout-svc" target="redis-cache">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow4" value="4. Store post" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="content-svc" target="cassandra-db">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="600" />
+              <mxPoint x="1060" y="600" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow5" value="5. Load feed" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=13;fontStyle=1;strokeColor=#00CC00" edge="1" parent="1" source="user-bob" target="feed-svc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow6" value="6. LRANGE&#xa;feed:bob" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;dashed=1" edge="1" parent="1" source="feed-svc" target="redis-cache">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="340" y="760" />
+              <mxPoint x="820" y="760" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow7" value="Upload media" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;dashed=1;strokeColor=#82b366" edge="1" parent="1" source="content-svc" target="s3-cdn">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="440" y="620" />
+              <mxPoint x="1290" y="620" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Scale Numbers Box -->
+        <mxCell id="numbers-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="960" width="1500" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="numbers-title" value="📊 SCALE NUMBERS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="970" width="1500" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num1" value="👥 500M DAU" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="995" width="130" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num2" value="📝 100M posts/day" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="230" y="995" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num3" value="📖 115K feed loads/sec" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="995" width="180" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num4" value="⚡ &lt;500ms feed load" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="995" width="160" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num5" value="🖼️ 10TB media/day" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="780" y="995" width="150" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num6" value="👥 200 avg follows/user" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="950" y="995" width="180" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num7" value="📊 Read:Write = 100:1" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="995" width="180" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num8" value="🎯 5K follower threshold" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1350" y="995" width="180" height="20" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

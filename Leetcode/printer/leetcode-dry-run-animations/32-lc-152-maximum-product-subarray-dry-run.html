@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LC 152 Maximum Product Subarray | Code Dry Run</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box}:root{--bg:#07111d;--s:#0c1a2a;--line:#25435b;--ink:#e8f1f7;--muted:#9cb5c9;--blue:#5eb5ff;--cyan:#5eead4;--amber:#fbbf24;--lime:#a3e635}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif}main{max-width:1180px;margin:auto;padding:22px}
+.eye{font:700 10px 'IBM Plex Mono',monospace;color:var(--cyan);letter-spacing:.08em}h1{margin:7px 0}p{color:var(--muted)}
+.ops{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.op{font:12px 'IBM Plex Mono',monospace;border:1px solid var(--line);border-radius:4px;padding:5px 7px;color:var(--muted)}
+.op.active{background:var(--amber);border-color:var(--amber);color:#07111d}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--s);border:1px solid var(--line);border-radius:8px;padding:15px}.panel h2{font-size:.85rem;color:var(--cyan);margin:0 0 10px}
+.state,.code{font:13px/1.65 'IBM Plex Mono',monospace;white-space:pre-wrap;min-height:125px}.code{max-height:365px;overflow:auto;color:#b7cede}
+.code div{padding:0 7px;border-left:3px solid transparent}.code .active{background:#173955;border-left-color:var(--amber);color:#fff}
+.note{margin-top:12px;background:#092033;border-left:3px solid var(--cyan);padding:12px;line-height:1.55}
+.why{margin-top:10px;background:#102311;border-left:3px solid var(--lime);padding:11px;color:#d9f99d}
+.btn{margin:14px 6px 0 0;background:#10253a;border:1px solid var(--line);color:var(--ink);padding:8px 13px;border-radius:5px;cursor:pointer}
+.meter{float:right;margin-top:22px;color:var(--muted);font:12px 'IBM Plex Mono',monospace}
+@media(max-width:720px){main{padding:15px}.grid{grid-template-columns:1fr}}</style>
+</head><body><main>
+<div class="eye">LC 152 | VISUAL CODE DRY RUN</div>
+<h1>Maximum Product Subarray</h1>
+<p>Pattern: Track max and min | Example: <code>nums = [2,3,-2,4]</code></p>
+<div class="ops" id="ops"></div>
+<div class="grid">
+  <section class="panel"><h2>Algorithm State</h2><div class="state" id="state"></div></section>
+  <section class="panel"><h2>Full Java Code: Active Line Executing</h2><div class="code" id="code"></div></section>
+</div>
+<div class="grid" style="margin-top:14px">
+  <section class="panel"><h2>What Changed?</h2><div class="note" id="note"></div><div class="why" id="why"></div></section>
+  <section class="panel"><h2>Problem Statement</h2><div class="state">Find contiguous subarray with largest product</div></section>
+</div>
+<button class="btn" id="play">Pause</button>
+<button class="btn" id="previous">Previous</button>
+<button class="btn" id="next">Next</button>
+<button class="btn" id="reset">Reset</button>
+<span class="meter" id="meter"></span>
+</main>
+<script>
+const codeLines=["public int maxProduct(int[] nums) {", "    int maxProd = nums[0], currentMax = nums[0], currentMin = nums[0];", "    for (int i = 1; i < nums.length; i++) {", "        int temp = Math.max(nums[i], Math.max(currentMax * nums[i], currentMin * nums[i]));", "        currentMin = Math.min(nums[i], Math.min(currentMax * nums[i], currentMin * nums[i]));", "        currentMax = temp;", "        maxProd = Math.max(maxProd, currentMax);", "    }", "    return maxProd;", "}"];
+const steps=[
+  {
+    "op": "1. Line 1",
+    "line": 0,
+    "state": "Executing line 1",
+    "text": "public int maxProduct(int[] nums) {",
+    "why": "Step 1 of Track max and min"
+  },
+  {
+    "op": "2. Line 2",
+    "line": 1,
+    "state": "Executing line 2",
+    "text": "int maxProd = nums[0], currentMax = nums[0], currentMin = nu",
+    "why": "Step 2 of Track max and min"
+  },
+  {
+    "op": "3. Line 3",
+    "line": 2,
+    "state": "Executing line 3",
+    "text": "for (int i = 1; i < nums.length; i++) {",
+    "why": "Step 3 of Track max and min"
+  },
+  {
+    "op": "4. Line 4",
+    "line": 3,
+    "state": "Executing line 4",
+    "text": "int temp = Math.max(nums[i], Math.max(currentMax * nums[i], ",
+    "why": "Step 4 of Track max and min"
+  },
+  {
+    "op": "5. Line 5",
+    "line": 4,
+    "state": "Executing line 5",
+    "text": "currentMin = Math.min(nums[i], Math.min(currentMax * nums[i]",
+    "why": "Step 5 of Track max and min"
+  },
+  {
+    "op": "6. Line 6",
+    "line": 5,
+    "state": "Executing line 6",
+    "text": "currentMax = temp;",
+    "why": "Step 6 of Track max and min"
+  },
+  {
+    "op": "7. Line 7",
+    "line": 6,
+    "state": "Executing line 7",
+    "text": "maxProd = Math.max(maxProd, currentMax);",
+    "why": "Step 7 of Track max and min"
+  },
+  {
+    "op": "8. Line 9",
+    "line": 8,
+    "state": "Executing line 9",
+    "text": "return maxProd;",
+    "why": "Step 8 of Track max and min"
+  }
+];
+const code=document.querySelector('#code'),ops=document.querySelector('#ops'),state=document.querySelector('#state'),note=document.querySelector('#note'),why=document.querySelector('#why'),meter=document.querySelector('#meter');
+codeLines.forEach((line,i)=>{const row=document.createElement('div');row.textContent=`${i+1}. ${line}`;code.append(row)});
+steps.forEach(step=>{const item=document.createElement('span');item.className='op';item.textContent=step.op;ops.append(item)});
+let index=0,running=false,timer;
+function render(){const step=steps[index];[...ops.children].forEach((item,i)=>item.classList.toggle('active',i===index));
+[...code.children].forEach((row,i)=>row.classList.toggle('active',i===step.line));
+code.children[step.line].scrollIntoView({block:'nearest'});state.textContent=step.state;note.textContent=step.text;
+why.innerHTML='<strong>Why:</strong> '+step.why;meter.textContent=`${index+1} / ${steps.length}`}
+function schedule(){clearInterval(timer);if(running)timer=setInterval(()=>{index=(index+1)%steps.length;render()},4200);
+document.querySelector('#play').textContent=running?'Pause':'Play'}
+document.querySelector('#play').onclick=()=>{running=!running;schedule()};
+document.querySelector('#next').onclick=()=>{running=false;schedule();index=Math.min(index+1,steps.length-1);render()};
+document.querySelector('#previous').onclick=()=>{running=false;schedule();index=Math.max(index-1,0);render()};
+document.querySelector('#reset').onclick=()=>{running=false;schedule();index=0;render()};
+render();
+</script></body></html>

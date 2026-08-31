@@ -1,0 +1,418 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Distributed Rate Limiter - Comprehensive" id="comprehensive">
+    <mxGraphModel dx="1920" dy="1080" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- ========== SECTION 1: BIG PICTURE (TOP STRIP) ========== -->
+        <mxCell id="title-box" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="10" y="10" width="1900" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="main-title" value="DISTRIBUTED RATE LIMITER — System Design" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=28;fontStyle=1;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="10" y="20" width="1900" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="Challenge: Enforce request quotas across distributed API Gateway instances without race conditions or becoming a bottleneck at 1M RPS" style="text;html=1;strokeColor=none;fillColor=#fff3e0;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="160" y="60" width="1600" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- WRITE PATH -->
+        <mxCell id="write-path-header" value="📝 WRITE PATH (Token Deduction)" style="text;html=1;strokeColor=none;fillColor=#c8e6c9;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="95" width="900" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="write-flow" value="Client → API GW (extract user_id) → Redis EVAL Lua (atomic: read+refill+decrement) → 200 OK + headers  |  1M req/sec" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="95" width="880" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- READ PATH -->
+        <mxCell id="read-path-header" value="📖 READ PATH (Policy Lookup)" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="980" y="95" width="900" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="read-flow" value="API GW → Redis GET policy (99% cache hit, 1hr TTL) → Cache miss → PostgreSQL → Write-through cache  |  &lt;0.5ms avg" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="990" y="95" width="880" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== SECTION 2: HLD (LEFT-CENTER, LARGEST) ========== -->
+        <mxCell id="hld-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="10" y="150" width="1100" height="570" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="hld-title" value="HIGH-LEVEL ARCHITECTURE" style="text;html=1;strokeColor=none;fillColor=#616161;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="20" y="160" width="1080" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- CLIENT LAYER (BLUE) -->
+        <mxCell id="client" value="🌐 Client&#xa;(Mobile/Web)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="220" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- GATEWAY LAYER (ORANGE) -->
+        <mxCell id="lb" value="⚖️ Load Balancer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="220" y="220" width="130" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="api-gw-1" value="🚪 API Gateway 1&#xa;(Rate Limiter)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="410" y="200" width="130" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="api-gw-2" value="🚪 API Gateway 2&#xa;(Rate Limiter)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="410" y="260" width="130" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="api-gw-n" value="..." style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="450" y="315" width="50" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- CORE SERVICES (GREEN) -->
+        <mxCell id="redis-cluster" value="⚡ Redis Cluster&#xa;(Shared State)&#xa;&#xa;• Token buckets (HASH)&#xa;• Policy cache (JSON)&#xa;• 8 shards&#xa;• &lt;1ms p99" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="620" y="190" width="150" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="backend-services" value="🔧 Backend Services&#xa;&#xa;UserSvc&#xa;OrderSvc&#xa;PaymentSvc&#xa;SearchSvc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="410" y="370" width="130" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- STORAGE LAYER (PURPLE) -->
+        <mxCell id="postgres" value="🗄️ PostgreSQL&#xa;(Policy DB)&#xa;&#xa;rate_limit_rules&#xa;• subject_type&#xa;• request_limit&#xa;• refill_rate&#xa;• enforce_by" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="800" y="190" width="140" height="130" as="geometry" />
+        </mxCell>
+        
+        <!-- MONITORING (GRAY) -->
+        <mxCell id="monitoring" value="📊 Monitoring&#xa;&#xa;• Rejection rate&#xa;• Redis latency&#xa;• Cache hit rate&#xa;• Alert &gt;5% 429s" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9e9e9e;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="970" y="190" width="120" height="130" as="geometry" />
+        </mxCell>
+        
+        <!-- ARROWS WITH LABELS -->
+        <mxCell id="arrow-client-lb" value="HTTP Request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#1976d2;fontSize=10;fontStyle=1" edge="1" parent="1" source="client" target="lb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-lb-gw" value="Round-robin" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#e65100;fontSize=10" edge="1" parent="1" source="lb" target="api-gw-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-gw-redis" value="1. GET policy:user123&#xa;(cache lookup)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#f57f17;fontSize=9;dashed=1" edge="1" parent="1" source="api-gw-1" target="redis-cluster">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-gw-redis-eval" value="2. EVAL Lua script&#xa;(atomic check+deduct)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#f57f17;fontSize=9;fontStyle=1" edge="1" parent="1" source="api-gw-2" target="redis-cluster">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="590" y="285" />
+              <mxPoint x="590" y="255" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="arrow-redis-postgres" value="Cache miss →&#xa;Fetch policy" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;fontSize=9;dashed=1" edge="1" parent="1" source="redis-cluster" target="postgres">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-gw-backend" value="3. Forward (if allowed)&#xa;+ headers" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=9" edge="1" parent="1" source="api-gw-2" target="backend-services">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="475" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="arrow-backend-client" value="4. Return 200 OK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#00c853;fontSize=9;dashed=1" edge="1" parent="1" source="backend-services" target="client">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="100" y="425" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="arrow-429" value="OR: 429 Too Many&#xa;+ Retry-After" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d32f2f;fontSize=9;dashed=1" edge="1" parent="1" source="api-gw-1" target="client">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="390" y="225" />
+              <mxPoint x="390" y="160" />
+              <mxPoint x="100" y="160" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- WHY BOXES -->
+        <mxCell id="why-distributed" value="❓ WHY SHARED REDIS?&#xa;&#xa;40 API Gateways with local counters&#xa;= 100×40 = 4000 req/min allowed&#xa;&#xa;Centralized Redis = ONE counter&#xa;all instances share = strict 100/min" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=10;align=left" vertex="1" parent="1">
+          <mxGeometry x="40" y="350" width="320" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-lua" value="❓ WHY LUA SCRIPT?&#xa;&#xa;Without: GET tokens=1 (GW1), GET tokens=1 (GW2)&#xa;         Both DECR → tokens=-1 (race!)&#xa;&#xa;With: EVAL script runs atomically in Redis&#xa;      No interleaving = no race condition" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;align=left" vertex="1" parent="1">
+          <mxGeometry x="40" y="470" width="320" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="token-bucket-visual" value="🪣 TOKEN BUCKET&#xa;&#xa;[████████████] 100 tokens (full)&#xa;Refills: +10/sec&#xa;Burst: can spend all 100 instantly&#xa;&#xa;t=0: 100 req → [    ] 0 tokens&#xa;t=5s: refill → [█████] 50 tokens" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=10;align=left;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="40" y="590" width="320" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- ALGORITHM COMPARISON -->
+        <mxCell id="algo-compare" value="ALGORITHM COMPARISON&#xa;&#xa;✅ Token Bucket: Burst OK, low mem&#xa;   (AWS, Stripe, GitHub)&#xa;❌ Fixed Window: Boundary spike&#xa;❌ Sliding Log: High memory&#xa;⚠️ Leaky Bucket: Traffic shaping" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=10;align=left;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="620" y="350" width="320" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- CIRCUIT BREAKER -->
+        <mxCell id="circuit-breaker" value="🔌 CIRCUIT BREAKER&#xa;&#xa;10 consecutive Redis failures&#xa;→ OPEN circuit for 30 sec&#xa;→ Fail OPEN (allow all + alert)&#xa;→ Half-open after 30s → retry&#xa;&#xa;Availability &gt; Strict Limiting" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=10;align=left;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="620" y="490" width="320" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="multi-level" value="📊 MULTI-LEVEL LIMITS&#xa;&#xa;Check ALL simultaneously:&#xa;• per-user: 100/min&#xa;• per-IP: 1000/min&#xa;• per-endpoint: 10K/min&#xa;• global: 1M/sec&#xa;&#xa;Reject if ANY exceeded" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;fontSize=10;align=left;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="620" y="630" width="320" height="90" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== SECTION 3: LLD (RIGHT-CENTER) ========== -->
+        <mxCell id="lld-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="150" width="780" height="350" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-title" value="LOW-LEVEL DESIGN — Token Bucket Request Flow" style="text;html=1;strokeColor=none;fillColor=#616161;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1140" y="160" width="760" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- LLD STEPS -->
+        <mxCell id="lld-step1" value="1️⃣ Extract Client Identity" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=11;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="1150" y="200" width="340" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step1-detail" value="Parse JWT token → extract user_id&#xa;Or: extract API key from header&#xa;Or: extract IP from X-Forwarded-For" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="205" width="320" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step2" value="2️⃣ Lookup Policy (Redis Cache)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=11;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="1150" y="240" width="340" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step2-detail" value="GET policy:user123:/api/users&#xa;→ {limit:100, refill_rate:10, burst:100}&#xa;99% cache hit (1hr TTL)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="245" width="320" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step3" value="3️⃣ Cache Miss? Fetch from PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;fontSize=11;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="1150" y="280" width="340" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step3-detail" value="SELECT * FROM rate_limit_rules WHERE...&#xa;Write-through cache: SET policy + TTL 3600" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="285" width="320" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step4" value="4️⃣ Execute Lua Script (ATOMIC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=11;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="1150" y="320" width="340" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step4-detail" value="EVAL token_bucket.lua rate_limit:user123&#xa;1. Read: tokens=95, last_refill=ts&#xa;2. Calculate: elapsed=5s → +50 tokens&#xa;3. Refill: min(100, 95+50) = 100&#xa;4. Deduct: 100-1 = 99&#xa;5. Write: tokens=99, last_refill=now&#xa;6. Return: 1 (allow)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="325" width="320" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step5" value="5️⃣ Decision: Allow or Reject" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;fontSize=11;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="1150" y="360" width="340" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step5-detail" value="If Lua returns 1 → goto step 6&#xa;If Lua returns 0 → goto step 7" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="365" width="320" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step6" value="6️⃣ ALLOW: Forward + Headers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b9f6ca;strokeColor=#00c853;fontSize=11;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="1150" y="400" width="340" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step6-detail" value="Proxy to backend service&#xa;Add: X-RateLimit-Limit: 100&#xa;     X-RateLimit-Remaining: 99&#xa;     X-RateLimit-Reset: 1712340788" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="405" width="320" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step7" value="7️⃣ REJECT: Return 429" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d32f2f;fontSize=11;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="1150" y="440" width="340" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lld-step7-detail" value="HTTP 429 Too Many Requests&#xa;Retry-After: 1 (wait 1 second)&#xa;X-RateLimit-Reset: {timestamp}&#xa;Body: {&quot;error&quot;:&quot;rate_limit_exceeded&quot;}" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="445" width="320" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- LUA SCRIPT VISUALIZATION -->
+        <mxCell id="lua-script-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="200" width="370" height="270" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lua-title" value="⚙️ REDIS LUA SCRIPT (Atomic Execution)" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1530" y="210" width="350" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lua-code" value="local tokens = redis.call('HGET', key, 'tokens')&#xa;local last = redis.call('HGET', key, 'last_refill')&#xa;local now = ARGV[1]  -- current timestamp&#xa;local capacity = ARGV[2]  -- e.g. 100&#xa;local rate = ARGV[3]  -- e.g. 10 tokens/sec&#xa;&#xa;-- Calculate refill&#xa;local elapsed = now - last&#xa;local refilled = math.min(&#xa;  capacity,&#xa;  tokens + (elapsed * rate)&#xa;)&#xa;&#xa;-- Check and deduct&#xa;if refilled &gt;= 1 then&#xa;  redis.call('HMSET', key,&#xa;    'tokens', refilled - 1,&#xa;    'last_refill', now)&#xa;  return 1  -- ALLOW&#xa;else&#xa;  return 0  -- REJECT&#xa;end" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1540" y="240" width="330" height="220" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== SECTION 4: ER DIAGRAM (BOTTOM-LEFT) ========== -->
+        <mxCell id="er-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="10" y="740" width="620" height="320" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er-title" value="DATABASE SCHEMA (PostgreSQL)" style="text;html=1;strokeColor=none;fillColor=#616161;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="20" y="750" width="600" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Clients Table -->
+        <mxCell id="table-clients" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="30" y="790" width="280" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="table-clients-header" value="clients" style="text;html=1;strokeColor=none;fillColor=#1976d2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="30" y="790" width="280" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="table-clients-fields" value="client_id         UUID PK&#xa;api_key           VARCHAR(255) UNIQUE&#xa;tier              ENUM(FREE,PREMIUM,ENT)&#xa;quota             INT&#xa;created_at        TIMESTAMPTZ" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="40" y="820" width="260" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Rate Limit Rules Table -->
+        <mxCell id="table-rules" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="330" y="790" width="280" height="240" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="table-rules-header" value="rate_limit_rules" style="text;html=1;strokeColor=none;fillColor=#f57f17;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="330" y="790" width="280" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="table-rules-fields" value="rule_id           UUID PK&#xa;subject_type      ENUM(USER_ID,API_KEY,IP)&#xa;subject_value     VARCHAR(255)&#xa;endpoint          VARCHAR(500)&#xa;algorithm         ENUM(TOKEN_BUCKET,...)&#xa;request_limit     INT&#xa;window_sec        INT&#xa;burst_capacity    INT&#xa;refill_rate       DECIMAL(10,2)&#xa;enforce_by        VARCHAR(50)&#xa;is_active         BOOLEAN&#xa;created_at        TIMESTAMPTZ&#xa;updated_at        TIMESTAMPTZ&#xa;&#xa;INDEX(subject_type,subject_value,endpoint)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="340" y="820" width="260" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Relationship Arrow -->
+        <mxCell id="fk-arrow" value="FK: tier" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#616161;fontSize=10;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="table-clients" target="table-rules">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="310" y="860" />
+              <mxPoint x="330" y="860" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Redis Keys -->
+        <mxCell id="redis-keys-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="30" y="950" width="580" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-keys-title" value="REDIS KEY PATTERNS" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="40" y="960" width="560" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-keys-content" value="Token State (HASH):     rate_limit:user123:/api/users  →  {tokens:95, last_refill:1706270445}  TTL=3600s&#xa;Policy Cache (JSON):    policy:user123:/api/users  →  {limit:100,refill:10,burst:100}  TTL=3600s&#xa;Sliding Window (ZSET):  rate_limit_log:user123  →  ZADD {timestamp} {req_uuid}  (if using SWL)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="40" y="985" width="560" height="55" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== SECTION 5: TECHNOLOGIES (RIGHT PANEL) ========== -->
+        <mxCell id="tech-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="520" width="780" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="tech-title" value="TECHNOLOGIES USED" style="text;html=1;strokeColor=none;fillColor=#616161;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1140" y="530" width="760" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Tech Table Header -->
+        <mxCell id="tech-header" value="Component          Technology          Why This Choice?" style="text;html=1;strokeColor=none;fillColor=#e0e0e0;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1150" y="565" width="740" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="tech-row1" value="⚡ Cache             Redis Cluster       In-memory, &lt;1ms p99, Lua atomicity, consistent hashing" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="590" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="tech-row2" value="🗄️ Policy DB         PostgreSQL          ACID, relational integrity, INDEX for fast lookups" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="610" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="tech-row3" value="⚙️ Algorithm          Token Bucket        Burst support, low memory (2 ints/user), production-proven" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="630" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="tech-row4" value="🔒 Atomicity         Lua Scripts         Single-threaded execution, no race conditions, 1 roundtrip" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="650" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="tech-row5" value="📡 Policy Sync       Redis Pub/Sub       &lt;1sec propagation, write-through cache, event-driven" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="670" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="tech-row6" value="🔌 Resilience        Circuit Breaker     10 failures → fail open (availability &gt; strict limiting)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1160" y="690" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== SECTION 6: LATENCY BUDGET (BOTTOM-CENTER) ========== -->
+        <mxCell id="latency-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="650" y="740" width="460" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="latency-title" value="LATENCY BUDGET (p95)" style="text;html=1;strokeColor=none;fillColor=#616161;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="660" y="750" width="440" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="latency-breakdown" value="Step                                   Time&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;1. Extract client identity ........... 0.1ms&#xa;2. Policy cache lookup (Redis GET) ... 0.5ms&#xa;3. Lua script EVAL (atomic op) ....... 1.0ms&#xa;4. Network roundtrip (co-located) .... 1.0ms&#xa;5. Header injection .................. 0.1ms&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;TOTAL ................................ 2.7ms&#xa;&#xa;✅ Target: &lt;5ms (well within budget)&#xa;&#xa;Cache miss penalty: +10ms (Postgres query)&#xa;But: 99% cache hit rate → 1% requests" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="670" y="785" width="420" height="145" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== SECTION 7: SCENARIO QUESTIONS (BOTTOM-RIGHT) ========== -->
+        <mxCell id="qa-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#616161;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1130" y="740" width="780" height="320" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa-title" value="INTERVIEWER SCENARIO QUESTIONS" style="text;html=1;strokeColor=none;fillColor=#616161;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1140" y="750" width="760" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa1" value="Q1: How do you handle race conditions in distributed rate limiting?" style="text;html=1;strokeColor=none;fillColor=#e1f5fe;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="785" width="740" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa1-ans" value="A: Redis Lua script runs atomically. Check+deduct happens in one command, no interleaving possible." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="1160" y="808" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa2" value="Q2: Token Bucket vs Leaky Bucket — when would you pick Leaky Bucket?" style="text;html=1;strokeColor=none;fillColor=#e1f5fe;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="830" width="740" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa2-ans" value="A: Leaky Bucket for traffic shaping (smooth output to rate-sensitive downstream). Token Bucket for user-facing APIs (burst OK)." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="1160" y="853" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa3" value="Q3: What happens if Redis goes down?" style="text;html=1;strokeColor=none;fillColor=#e1f5fe;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="875" width="740" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa3-ans" value="A: Circuit breaker after 10 failures → fail OPEN (allow all + alert). Availability &gt; strict limiting. Full outage worse than brief burst." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="1160" y="898" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa4" value="Q4: How do you handle multi-region rate limiting?" style="text;html=1;strokeColor=none;fillColor=#e1f5fe;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="920" width="740" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa4-ans" value="A: Per-region Redis (100/min each region) OR Global Redis (+50-100ms latency) OR Gossip/CRDT (complex). Default: per-region." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="1160" y="943" width="720" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa5" value="Q5: Fixed Window vs Sliding Window — explain the boundary problem." style="text;html=1;strokeColor=none;fillColor=#e1f5fe;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="965" width="740" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="qa5-ans" value="A: Fixed Window resets at sharp boundary. User can send 100 at 10:00:59 + 100 at 10:01:00 = 200 in 2 sec (exploit). Token Bucket has continuous refill, no boundary." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="1160" y="988" width="720" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- KEY TAKEAWAYS -->
+        <mxCell id="takeaways" value="🔑 KEY TAKEAWAYS&#xa;&#xa;• Centralized Redis = shared state across all instances&#xa;• Lua script = atomic execution, no race conditions&#xa;• Token Bucket = burst support + low memory&#xa;• Fail open = availability &gt; strict enforcement&#xa;• Multi-level limits = per-user + per-IP + per-endpoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b9f6ca;strokeColor=#00c853;fontSize=11;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="1150" y="1020" width="740" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- SCALE NUMBERS FOOTER -->
+        <mxCell id="scale-footer" value="📊 SCALE: 1M req/sec • 50M active users • &lt;5ms added latency • 8 Redis shards • 40 API Gateway instances • 99% cache hit rate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="650" y="960" width="460" height="100" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

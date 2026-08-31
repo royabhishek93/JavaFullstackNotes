@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Transactions — Consumer Side — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Transactions — Consumer Side — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 18</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:8.33%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🔒</div>
+  <h1 class="gradient-text">Kafka Transactions — Consumer Side — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Read Committed</span><span class="badge">Control Records</span><span class="badge">LSO</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: isolation.level, read_committed, read_uncommitted, LSO, Last Stable Offset, Control Records, .txn index, Aborted Transactions, EOS, Exactly-Once Semantics</p>
+</div>
+<div class="slide" id="s3" data-title="Three States a Record Can Be In">
+<h2>Three States a Record Can Be In</h2>
+<p>Every record in a Kafka partition log that was written inside a transaction is in one of three states. Non-transactional records have no state — they are always visible.</p>
+<div class="dia">Partition log (order-events, partition P2):
+
+  offset 0: PID=5, epoch=0, is_transactional=true, is_control=false  [data record]  ─┐
+  offset 1: PID=5, epoch=0, is_transactional=true, is_control=false  [data record]   ├── OPEN (no control record yet)
+                                                                                      ─┘
+  offset 2: PID=8, epoch=1, is_transactional=true, is_control=false  [data record]  ─┐
+  offset 3: PID=8, epoch=1, is_transactional=true, is_control=true   COMMIT          ┘── COMMITTED
+
+  offset 4: PID=9, epoch=0, is_transactional=true, is_control=false  [data record]  ─┐
+  offset 5: PID=9, epoch=0, is_transactional=true, is_control=true   ABORT           ┘── ABORTED
+
+  Non-transactional record (written without a transaction):
+  offset 6: is_transactional=false                                   [data record]  ──── always visible
+
+  State       Meaning                              Consumer (read_committed) sees it?
+  ──────────  ───────────────────────────────────  ───────────────────────────────────
+  OPEN        transaction started, not finished    ✗  wait
+  COMMITTED   COMMIT control record present        ✓  visible
+  ABORTED     ABORT control record present         ✗  skip
+  (none)      non-transactional record             ✓  always visible</div>
+</div>
+<div class="slide" id="s4" data-title="Control Records — The COMMIT and ABORT Markers">
+<h2>Control Records — The COMMIT and ABORT Markers</h2>
+<p>Control records are special log entries written by the transaction coordinator when a transaction finishes. They are never delivered to consumers — the broker filters them out before sending.</p>
+<div class="dia">What a control record looks like in the log:
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │  PID = 5                                                     │
+  │  epoch = 0                                                   │
+  │  is_transactional = true                                     │
+  │  is_control = true          ← this makes it a control record │
+  │  control_type = COMMIT      ← or ABORT                       │
+  └──────────────────────────────────────────────────────────────┘
+
+Normal data record in the log:
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │  PID = 5                                                     │
+  │  epoch = 0                                                   │
+  │  is_transactional = true                                     │
+  │  is_control = false         ← regular data record            │
+  │  [your key / value payload]                                  │
+  └──────────────────────────────────────────────────────────────┘
+
+                          BROKER
+                            │
+                 filters out is_control=true
+                            │
+              ┌─────────────┴──────────────────┐
+              │  delivers to consumer:          │
+              │  ✓ data records                 │
+              │  ✓ non-transactional records    │
+              │  ✗ control records (filtered)   │
+              └─────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s5" data-title="isolation.level — read_uncommitted vs read_committed">
+<h2>isolation.level — read_uncommitted vs read_committed</h2>
+<p>The isolation level is set on the consumer and controls how it handles transactional records.</p>
+<div class="dia">application.properties (consumer):
+  spring.kafka.consumer.properties.isolation.level=read_committed
+  (default is read_uncommitted if you do not set this)
+
+                    ┌─────────────────────────────────────────────────────────┐
+                    │                 PARTITION LOG                           │
+                    │  off 0: PID=5  txnal=true  [order-A]     ← COMMITTED   │
+                    │  off 1: PID=5  txnal=true  [order-B]     ← COMMITTED   │
+                    │  off 2: PID=8  txnal=true  [order-C]     ← OPEN        │
+                    │  off 3: PID=9  txnal=true  [order-D]     ← ABORTED     │
+                    │  off 4: txnal=false        [order-E]     ← non-txnal   │
+                    └─────────────────────────────────────────────────────────┘
+                               │                          │
+               read_uncommitted                    read_committed
+               (default)                                  │
+                    │                                      │
+    sees: 0, 1, 2, 3, 4                    sees: 0, 1, 4  only
+    (all records except                    (committed + non-txnal only;
+     control records)                       skips open and aborted)
+
+  read_uncommitted  ─  fast, simple, may read data from transactions that later abort
+  read_committed    ─  safe, used for EOS; waits for open txns, skips aborted ones</div>
+</div>
+<div class="slide" id="s6" data-title="LSO — Last Stable Offset">
+<h2>LSO — Last Stable Offset</h2>
+<p>LSO is a pointer maintained by the broker. It always points to the first record that belongs to an open (not yet committed or aborted) transaction.</p>
+<div class="dia">Partition log state:
+
+  offset 0: PID=5, txnal=true   [record]  ─┐ transaction T1
+  offset 1: PID=5, txnal=true   [record]   │ OPEN — no control record yet
+  offset 2: PID=5, txnal=true   [record]  ─┘
+
+  offset 3: PID=9, txnal=true   [record]  ─┐ transaction T2
+  offset 4: PID=9, control=true  COMMIT   ─┘ COMMITTED
+
+  offset 5: PID=7, txnal=true   [record]    transaction T3 — also OPEN
+
+        LSO = 0   ← points to the FIRST record of the earliest open transaction
+
+  When T1 commits or aborts:
+        LSO = 5   ← advances to the first record of the next open transaction
+
+  When T3 commits or aborts:
+        LSO = 6   ← no more open transactions; LSO = (next empty offset = HW)
+
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  LSO  ≤  High Watermark (HW)                                         │
+  │  HW   = the next offset to be written (all replicas have caught up)  │
+  │  LSO  = the safe read boundary for read_committed consumers          │
+  │                                                                      │
+  │  read_uncommitted consumer reads up to: HW                          │
+  │  read_committed   consumer reads up to: LSO                         │
+  └──────────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s7" data-title="How LSO Blocks Open Transactions">
+<h2>How LSO Blocks Open Transactions</h2>
+<p>When using <code>read_committed</code>, the consumer uses the LSO as its read boundary. It reads all offsets below LSO, then stops and waits.</p>
+<div class="dia">Partition log example:
+
+  off 0: PID=5, txnal=true   [data]  ─┐ T1 — COMMITTED  (ctrl at off 2)
+  off 1: PID=5, txnal=true   [data]   │
+  off 2: PID=5, ctrl=true    COMMIT  ─┘
+
+  off 3: PID=8, txnal=true   [data]  ─┐ T2 — OPEN ← first open record
+                                       │             LSO = 3
+  off 4: PID=9, txnal=true   [data]  ─┐ T3 — COMMITTED (ctrl at off 5)
+  off 5: PID=9, ctrl=true    COMMIT  ─┘
+
+Consumer with read_committed:
+
+  Broker says: LSO = 3
+
+  read offset 0?  0 &lt; LSO(3) → YES ✓
+  read offset 1?  1 &lt; LSO(3) → YES ✓
+  read offset 2?  control record → broker already filtered it out, not delivered
+  read offset 3?  3 &lt; LSO(3) → 3 is NOT less than 3 → STOP
+
+  Consumer stops at offset 3. It will NOT jump ahead to read offset 4 or 5.
+
+  WHY? Kafka guarantees in-order delivery within a partition.
+  Skipping offset 3 would break ordering. Consumer must wait for T2 to
+  either commit or abort before it can read offset 3 and beyond.
+
+  Once T2 commits/aborts → LSO advances → consumer resumes from offset 3.</div>
+</div>
+<div class="slide" id="s8" data-title="The .txn Index File — Skipping Aborted Records">
+<h2>The .txn Index File — Skipping Aborted Records</h2>
+<p>LSO handles open transactions, but what about records that belong to an already-aborted transaction? The broker maintains a separate index file (<code>.txn</code> / transaction index) for this.</p>
+<div class="dia">Partition log:
+
+  off 0: PID=5, txnal=true   [data]  ─┐ T1 — COMMITTED
+  off 1: PID=5, txnal=true   [data]   │
+  off 2: PID=5, ctrl=true    COMMIT  ─┘
+
+  off 3: PID=8, txnal=true   [data]  ─┐ T2 — ABORTED
+  off 4: PID=8, ctrl=true    ABORT   ─┘
+
+  off 5: PID=9, txnal=true   [data]  ─┐ T3 — COMMITTED
+  off 6: PID=9, ctrl=true    COMMIT  ─┘
+
+.txn index file (maintained by broker, one per partition log segment):
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  AbortedTransactionEntry:                                        │
+  │    producer_id   = 8                                             │
+  │    epoch         = 1                                             │
+  │    first_offset  = 3   ← where the aborted transaction starts   │
+  │    last_offset   = 4   ← offset of the ABORT control record     │
+  └──────────────────────────────────────────────────────────────────┘
+
+  Broker sends this abort index to the consumer along with the fetch response.
+
+Consumer checks each record against the abort index:
+
+  off 0: PID=5  →  not in abort index  → READ ✓
+  off 1: PID=5  →  not in abort index  → READ ✓
+  off 3: PID=8  →  PID=8 matches, offset 3 is inside [3..4]  → SKIP ✗
+  off 5: PID=9  →  not in abort index  → READ ✓
+
+  Note: control records (off 2, 4, 6) are never sent by the broker.</div>
+</div>
+<div class="slide" id="s9" data-title="Full Consumer Read — Combined LSO + Abort Index">
+<h2>Full Consumer Read — Combined LSO + Abort Index</h2>
+<p>A complete walkthrough showing how <code>read_committed</code> uses both LSO and the abort index together.</p>
+<div class="dia">Partition log (no open transactions, LSO = 9):
+
+  off 0: PID=5,  txnal=true              [data-A]   T1 COMMITTED
+  off 1: PID=5,  txnal=true              [data-B]   T1 COMMITTED
+  off 2: PID=5,  ctrl=true   COMMIT                 (filtered by broker)
+  off 3: PID=8,  txnal=true              [data-C]   T2 ABORTED
+  off 4: PID=8,  ctrl=true   ABORT                  (filtered by broker)
+  off 5: PID=8,  txnal=true              [data-D]   T4 COMMITTED  (same producer, new txn)
+  off 6: PID=9,  txnal=true              [data-E]   T3 COMMITTED
+  off 7: PID=9,  ctrl=true   COMMIT                 (filtered by broker)
+  off 8: PID=8,  ctrl=true   COMMIT                 (filtered by broker)
+
+  .txn abort index: { PID=8, epoch=1, first_offset=3, last_offset=4 }
+  LSO = 9  (all transactions closed)
+
+Broker delivers to consumer (after filtering control records):
+  off 0, off 1, off 3, off 5, off 6  + abort index
+
+Consumer applies read_committed logic:
+
+  off 0: 0 &lt; 9 ✓  |  PID=5 not aborted  →  DELIVER  ✓
+  off 1: 1 &lt; 9 ✓  |  PID=5 not aborted  →  DELIVER  ✓
+  off 3: 3 &lt; 9 ✓  |  PID=8, offset 3 inside [3..4]  →  SKIP    ✗
+  off 5: 5 &lt; 9 ✓  |  PID=8, offset 5 outside [3..4] →  DELIVER ✓
+  off 6: 6 &lt; 9 ✓  |  PID=9 not aborted  →  DELIVER  ✓
+
+  Consumer delivers: off 0, off 1, off 5, off 6
+  Consumer skips:    off 3 (aborted)</div>
+</div>
+<div class="slide" id="s10" data-title="EOS — Exactly-Once Semantics (Read-Process-Write)">
+<h2>EOS — Exactly-Once Semantics (Read-Process-Write)</h2>
+<p>EOS solves the read-process-write duplicate problem. The fix is to tie the downstream publish and the offset commit into one atomic transaction so they always succeed or fail together.</p>
+<div class="dia">THE PROBLEM:
+
+  Consumer reads offset 50 → processes → publishes to output-topic → commit offset
+                                                                            │
+                                                                      commit LOST
+                                                                            │
+  Consumer polls again → gets offset 50 again → processes AGAIN → publishes AGAIN
+  ✗ duplicate in output-topic
+
+THE FIX — tie write + offset commit into one transaction:
+
+  Consumer                   Kafka (as both consumer and producer)
+       │
+       │  read record (offset 50)
+       │──────────────────────────────────────────────────────►
+       │◄────────────────────────────────────────────────────── record delivered
+       │
+       │  [optional: process / transform]
+       │
+       │  beginTransaction()                                   (producer role)
+       │
+       │  send(output-topic, result).join()  ──────────────────► output-topic broker
+       │◄────────────────────────────────────────────────────── ACK
+       │
+       │  sendOffsetsToTransaction(                            ← buffers offset, does NOT commit yet
+       │      {input-topic/P0, offset=51},                      offset commit is part of the transaction
+       │      consumerGroupId
+       │  )
+       │
+       │  commitTransaction()  ──────────────────────────────► PREPARE_COMMIT written
+       │                        ─────────────────────────────► COMMIT control record → output-topic
+       │                        ─────────────────────────────► offset 51 committed to __consumer_offsets
+       │◄─────────────────────────────────────────────────────── success
+       │
+  If any step fails → abortTransaction() → output-topic write is rolled back
+                                         → offset is NOT committed → replay from offset 50
+
+Required properties for EOS on a consumer that also produces:
+
+  consumer:
+    isolation.level        = read_committed
+    enable.auto.commit     = false      ← manual offset management via transaction
+
+  producer (same app, since it publishes output):
+    transaction-id-prefix  = some-stable-prefix
+    (idempotency and acks=all are enabled automatically with transactions)</div>
+</div>
+<div class="slide" id="s11" data-title="High Watermark vs LSO — Side by Side">
+<h2>High Watermark vs LSO — Side by Side</h2>
+<div class="dia">  ┌─────────────────────────────────────────────────────────────────────────┐
+  │  PARTITION LOG                                                          │
+  │                                                                         │
+  │  off 0  [data]                                    ─┐                   │
+  │  off 1  [data]                                     │  all replicated   │
+  │  off 2  [data - committed txn]                     │  HW = 6           │
+  │  off 3  [data - open txn start]  ← LSO = 3         │                   │
+  │  off 4  [data - open txn]                          │                   │
+  │  off 5  [data - committed txn]                    ─┘                   │
+  │  off 6  (next empty slot)                                               │
+  │                                                                         │
+  │  HW  (High Watermark) = 6   ← all replicas have offsets 0..5           │
+  │  LSO (Last Stable Offset) = 3   ← first record of an open transaction  │
+  │                                                                         │
+  │  read_uncommitted consumer reads up to: HW  → sees off 0,1,2,3,4,5    │
+  │  read_committed   consumer reads up to: LSO → sees off 0,1,2 then WAIT │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+  LSO is always ≤ HW.
+  When there are no open transactions, LSO = HW (consumer reads everything).</div>
+</div>
+<div class="slide" id="s12" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                  What it is                                    Key point
+───────────────────────  ────────────────────────────────────────────  ─────────────────────────────────────────
+Control record           COMMIT or ABORT marker appended to log        is_control=true; broker never delivers it
+read_uncommitted         Default isolation level                        Reads all records (open, committed, aborted)
+read_committed           Safe isolation level                           Reads only committed + non-transactional
+LSO                      Last Stable Offset                             Pointer to the first open-transaction record
+HW                       High Watermark                                 Latest fully-replicated offset
+LSO vs HW                LSO ≤ HW                                       read_committed stops at LSO; read_uncommitted goes to HW
+.txn index               Per-segment abort index file on broker        Tells consumer which offset ranges to skip
+AbortedTransactionEntry  Entry in .txn index                           {PID, first_offset, last_offset (ctrl record)}
+Open transaction         Transaction begun, not yet committed/aborted  Consumer waits; does not skip ahead
+EOS                      Exactly-Once Semantics                         No duplicates in read-process-write pattern
+sendOffsetsToTransaction Ties offset commit into the producer txn      Offset only committed when transaction commits
+enable.auto.commit=false Required for EOS                              Offset must be committed inside the transaction
+
+EOS requirements (consumer that also publishes):
+  consumer side → isolation.level=read_committed + enable.auto.commit=false
+  producer side → transaction-id-prefix set (idempotency + acks=all auto-enabled)
+
+How aborted records are skipped:
+  1. Broker builds .txn index when an ABORT control record is written
+  2. Broker sends abort index to consumer in the fetch response
+  3. Consumer checks each record's (PID, offset) against the index
+  4. If offset falls inside an aborted range → skip; otherwise → deliver
+
+How open transactions are skipped:
+  1. Broker tracks LSO in memory (advances when open transactions close)
+  2. Consumer with read_committed only reads offsets &lt; LSO
+  3. Consumer stops and waits until LSO advances (i.e., open txn closes)</div>
+</div>
+<div class="slide" id="s13" data-title="Architecture — read_committed Consumers in the Notification System">
+<h2>Architecture — Why Every Delivery Consumer Uses read_committed</h2>
+<p>"Every delivery consumer — email, SMS, push — reads with isolation.level=read_committed, even though most topics have zero transactional producers today. Here's why that's not wasted caution."</p>
+<div class="dia">  notifications.standard.email (producer: CDC Publisher, transactional)
+        │
+        ▼  Broker tracks LSO — advances only when open transactions close
+        ▼
+  email-workers consumer (isolation.level=read_committed)
+        │  reads up to LSO only
+        │  skips any offset range covered by an ABORTED transaction (.txn index)
+        ▼
+  Guaranteed: never processes a NotificationEvent from a transaction that
+  later rolled back — even briefly, even under a race condition</div>
+<p><strong>Scenario-first:</strong> "If this consumer used read_uncommitted instead, a transaction that later aborts could still be briefly visible and processed — meaning an email could go out for an event that, from the producer's perspective, never actually happened. read_committed is the only setting that makes the transactional guarantee meaningful end-to-end."</p>
+</div>
+<div class="slide" id="s14" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why can't the consumer just check "is this a control record" itself
+   instead of relying on LSO/the .txn index?
+A: Control records ARE filtered out before delivery — but the harder
+   problem is records BEFORE the control record whose transaction is still
+   OPEN (not yet committed or aborted). The consumer has no way to know
+   the eventual outcome of an open transaction just by looking at the
+   record itself — LSO is what tells it "don't go past this until we know."
+
+Q: What's the practical cost of read_committed vs read_uncommitted?
+A: Added latency proportional to how long transactions stay open — a
+   consumer can't advance past an in-flight transaction's records until
+   it resolves, whereas read_uncommitted has zero such wait but zero
+   correctness guarantee either.
+
+Q: Why does EOS (exactly-once, read-process-write) require
+   sendOffsetsToTransaction instead of a normal commit?
+A: It ties the CONSUMER's offset commit into the SAME transaction as the
+   producer's downstream writes — so "I've processed this" and "I published
+   the result" become atomic together, closing the gap a separate commit
+   call would leave open.</div>
+</div>
+<div class="slide" id="s15" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision                Choice            Alternative           Why ours                            When to flip
+──────────────────────────  ────────────────  ────────────────────  ──────────────────────────────────  ─────────────────────
+Isolation level              read_committed     read_uncommitted      Never process data from a later-      Extremely latency-
+                                                                        aborted transaction, even briefly      sensitive analytics
+Offset commit (EOS)          sendOffsetsToTransaction  Separate commit() call  Atomic tie between consume     Non-EOS, simple
+                                                                        and downstream publish                 read-only consumers</div>
+</div>
+<div class="slide" id="s16" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "Your read_committed consumer's lag suddenly spikes even though
+  throughput looks normal elsewhere. First suspicion?"
+  Answer: "A hung or slow transaction upstream. Since read_committed
+  consumers can't read past the LSO, a single transaction that's
+  open-but-not-yet-committed on a partition blocks that consumer from
+  seeing ANY later, already-committed messages on the same partition —
+  even ones with nothing to do with the stuck transaction. I'd check for
+  a producer stuck mid-transaction before assuming a consumer-side problem."
+
+Trap 2 — "A teammate proposes skipping sendOffsetsToTransaction and just
+  calling commitSync() normally after publishing the downstream result,
+  'since both operations basically happen right next to each other in
+  code.' What's the actual gap this leaves?"
+  Answer: "A crash between the downstream publish succeeding and the
+  separate commitSync() call means, on restart, the consumer re-reads
+  the SAME input record and republishes the downstream result AGAIN —
+  a duplicate the transaction was specifically designed to prevent by
+  making both operations atomic together. 'Right next to each other in
+  code' doesn't mean atomic at the infrastructure level."</div>
+</div>
+<div class="slide" id="s17" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why read_committed everywhere, even on topics with mostly non-transactional
+  producers: zero cost when no transactions are open, but closes the gap
+  entirely the moment any producer starts using them.
+- Why sendOffsetsToTransaction for EOS consumers: the only way to make
+  "consumed" and "republished" atomic together.
+- Why the .txn index exists on the broker, not computed client-side: keeps
+  the skip-logic centralized and consistent regardless of which consumer reads it.
+- Why LSO is tracked separately from the High Watermark: HW reflects
+  replication completeness; LSO additionally accounts for transaction
+  resolution — two genuinely different concerns.</div>
+</div>
+<div class="slide" id="s18" data-title="Top 2 Technologies — Consumer Isolation Level">
+<h2>Top 2 Technologies — Consumer Isolation Level</h2>
+<div class="dia">read_committed  vs  read_uncommitted
+
+Why pick read_committed (our default): never process data from a
+  transaction that later aborts, even briefly — correctness over latency.
+Why pick read_uncommitted: zero added latency from transaction resolution,
+  acceptable when occasionally seeing since-aborted data has no real cost.
+
+Example 1 (read_committed): Notification System's delivery consumers —
+  sending an email for an event that later "never happened" is unacceptable.
+Example 2 (read_uncommitted, acceptable): A rough real-time dashboard
+  counter where a rare, brief overcount from an aborted transaction
+  self-corrects on the next refresh and has zero business consequence.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 18;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Transactions — Consumer Side — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

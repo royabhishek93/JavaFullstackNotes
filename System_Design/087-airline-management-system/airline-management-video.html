@@ -1,0 +1,1203 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Airline Management System Design</title>
+<link rel="stylesheet" href="../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Airline Management System — Flight Booking &amp; Ops</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+<!-- SLIDE 1: TITLE -->
+<div class="slide active" id="s1" data-title="Airline Management System Design">
+  <div class="title-wrap">
+    <div style="font-size:3rem;margin-bottom:12px">✈️</div>
+    <h1 class="gradient-text" style="font-size:2.2rem;margin-bottom:10px">Airline Management System</h1>
+    <p style="color:var(--soft);font-size:1rem;margin-bottom:20px;max-width:560px">Flight Booking · Seat Reservation · Operations · Revenue Management</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:24px">
+      <span class="badge" style="border-color:#3b82f6;color:#93c5fd">GDS</span>
+      <span class="badge" style="border-color:#22c55e;color:#86efac">Seat Lock</span>
+      <span class="badge" style="border-color:#f59e0b;color:#fde68a">PNR</span>
+      <span class="badge" style="border-color:#8b5cf6;color:#d8b4fe">IATA</span>
+      <span class="badge" style="border-color:#ef4444;color:#fca5a5">Overbooking</span>
+      <span class="badge" style="border-color:#06b6d4;color:#67e8f9">Revenue Management</span>
+    </div>
+    <div class="cols3" style="max-width:520px;margin-top:8px">
+      <div class="card blue" style="text-align:center;padding:10px">
+        <div class="hl" style="font-size:1.3rem;font-weight:800">10M+</div>
+        <div style="font-size:11px;color:var(--muted)">Bookings/month</div>
+      </div>
+      <div class="card green" style="text-align:center;padding:10px">
+        <div class="gr" style="font-size:1.3rem;font-weight:800">99.99%</div>
+        <div style="font-size:11px;color:var(--muted)">Uptime SLA</div>
+      </div>
+      <div class="card purple" style="text-align:center;padding:10px">
+        <div class="pu" style="font-size:1.3rem;font-weight:800">&lt;200ms</div>
+        <div style="font-size:11px;color:var(--muted)">Search latency</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 2: OPENING SCRIPT -->
+<div class="slide" id="s2" data-title="Opening Script — Search to Boarding Pass">
+  <h2>The Journey: Search to Boarding Pass</h2>
+  <p style="margin-bottom:14px;color:var(--soft)">Every airline booking follows a precise choreography across distributed systems. Let's trace it end-to-end.</p>
+  <div style="display:flex;flex-direction:column;gap:8px">
+    <div class="step-row"><span class="step">1</span><div><strong>Passenger searches</strong> — enters origin, destination, date. System queries GDS + internal inventory for available flights and fares.</div></div>
+    <div class="step-row"><span class="step">2</span><div><strong>Fare selection</strong> — results sorted by price, duration, stops. Pricing engine applies yield management rules in real time.</div></div>
+    <div class="step-row"><span class="step">3</span><div><strong>Seat selection</strong> — seat map fetched; a <strong class="hl">soft lock (15 min TTL)</strong> placed on chosen seat to prevent double-booking during checkout.</div></div>
+    <div class="step-row"><span class="step">4</span><div><strong>Passenger details</strong> — name, passport, contact; linked to existing frequent-flyer profile if present.</div></div>
+    <div class="step-row"><span class="step">5</span><div><strong>Payment</strong> — payment service charges card; on success seat lock upgrades to <strong class="gr">hard lock</strong> (permanent).</div></div>
+    <div class="step-row"><span class="step">6</span><div><strong>PNR issued</strong> — unique 6-char alphanumeric Passenger Name Record generated; itinerary stored; confirmation email + SMS sent.</div></div>
+    <div class="step-row"><span class="step">7</span><div><strong>Online check-in</strong> — opens 24h before departure; seat assignment confirmed; <strong class="cy">boarding pass</strong> generated (QR + barcode, BCBP format).</div></div>
+    <div class="step-row"><span class="step">8</span><div><strong>Airport ops</strong> — gate assignment, baggage tags, crew briefed via ACARS; real-time departure board updated.</div></div>
+  </div>
+</div>
+
+<!-- SLIDE 3: FUNCTIONAL REQUIREMENTS -->
+<div class="slide" id="s3" data-title="Functional Requirements">
+  <h2>Functional Requirements</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Passenger-Facing</h3>
+        <ul>
+          <li><strong>Flight Search</strong> — by route, date, airline, cabin class</li>
+          <li><strong>Booking</strong> — reserve, modify, cancel reservations</li>
+          <li><strong>Seat Selection</strong> — interactive seat map, upgrades</li>
+          <li><strong>Check-in</strong> — online 24h before, kiosk, counter</li>
+          <li><strong>Boarding Pass</strong> — digital (BCBP), print-at-home, mobile</li>
+          <li><strong>Payment</strong> — card, UPI, net banking, miles redemption</li>
+          <li><strong>Refunds</strong> — fare-rule-based partial/full refunds</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h3>Loyalty &amp; Profile</h3>
+        <ul>
+          <li>Frequent Flyer miles accrual &amp; redemption</li>
+          <li>Tier management (Silver / Gold / Platinum)</li>
+          <li>Passenger profile &amp; travel preferences</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card yellow" style="margin-bottom:10px">
+        <h3>Airline Staff / Ops</h3>
+        <ul>
+          <li><strong>Flight Management</strong> — schedule CRUD, aircraft assignment</li>
+          <li><strong>Crew Scheduling</strong> — pilot &amp; cabin crew rostering</li>
+          <li><strong>Gate Assignment</strong> — dynamic gate allocation</li>
+          <li><strong>Delay/Cancellation</strong> — cascade notifications, rebooking</li>
+          <li><strong>Baggage</strong> — tag generation, tracking</li>
+          <li><strong>ACARS Messaging</strong> — cockpit ↔ operations comms</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <h3>Admin</h3>
+        <ul>
+          <li>Overbooking controls per flight</li>
+          <li>Revenue management &amp; yield rules</li>
+          <li>GDS sync &amp; inventory reconciliation</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4: NON-FUNCTIONAL REQUIREMENTS -->
+<div class="slide" id="s4" data-title="Non-Functional Requirements">
+  <h2>Non-Functional Requirements</h2>
+  <div class="cols2" style="margin-bottom:12px">
+    <div class="card blue">
+      <h3>Scalability</h3>
+      <ul>
+        <li>10M+ bookings/month globally</li>
+        <li>1000+ flights/day per airline cluster</li>
+        <li>115 searches/sec baseline; 10x burst during sales</li>
+        <li>Horizontal scale for search, vertical for seat locks</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Availability</h3>
+      <ul>
+        <li><strong>99.99% uptime</strong> (&lt;52 min downtime/year)</li>
+        <li>Active-active multi-region deployment</li>
+        <li>Graceful degradation: read-only mode on DB failure</li>
+        <li>Circuit breakers on GDS &amp; payment calls</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>Consistency</h3>
+      <ul>
+        <li><strong>Strong consistency</strong> for seat inventory (no double-booking)</li>
+        <li>Eventual consistency acceptable for loyalty miles</li>
+        <li>Distributed lock / optimistic locking for seat reservation</li>
+        <li>SAGA pattern for booking + payment rollback</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3>Latency &amp; Security</h3>
+      <ul>
+        <li>Search response &lt; 200ms (p99)</li>
+        <li>Booking confirmation &lt; 2s end-to-end</li>
+        <li>Boarding pass generation &lt; 500ms</li>
+        <li>PCI-DSS compliance for payment data</li>
+        <li>GDPR — passenger PII encryption at rest</li>
+      </ul>
+    </div>
+  </div>
+  <div class="tip">⚡ CAP trade-off: seat inventory chooses <strong>CP</strong> (Consistency + Partition tolerance) — a lost sale is better than two passengers in the same seat.</div>
+</div>
+
+<!-- SLIDE 5: HLD ASCII -->
+<div class="slide" id="s5" data-title="High-Level Architecture">
+  <h2>High-Level Architecture</h2>
+  <div class="dia">
+<span class="cm">┌─────────────────────────────── CLIENT LAYER ──────────────────────────────────┐</span>
+<span class="cm">│  Web Browser   Mobile App (iOS/Android)   Airport Kiosk   Airline Staff Portal  │</span>
+<span class="cm">└──────────────────────┬─────────────────────────────────────────────────────────┘</span>
+                       │ HTTPS
+              <span class="kw">API Gateway</span> (Rate Limit · Auth · SSL Termination)
+                       │
+       ┌───────────────┼────────────────────────────┐
+       ▼               ▼                            ▼
+<span class="str">Booking Service</span>   <span class="str">Search Service</span>          <span class="str">Check-in Service</span>
+  │  Book/Modify    │  Flight + Fare            │  Online/Kiosk
+  │  Cancel/PNR     │  Availability             │  Boarding Pass
+  │                 │                           │
+  ▼                 ▼                           ▼
+<span class="num">Seat Inventory Svc</span>  <span class="num">GDS Integration</span>     <span class="num">Notification Svc</span>
+  │  Soft/Hard Lock   │  Amadeus/Sabre          │  Email/SMS/Push
+  │  Redis TTL        │  NDC / EDIFACT          │
+  ▼                   ▼                         ▼
+<span class="str">Payment Service</span>   <span class="str">Flight Ops Service</span>  <span class="str">Loyalty Service</span>
+  │  Stripe/PayU     │  Crew/Gate/Delay         │  Miles Accrual
+  │  Refunds         │  ACARS Messaging         │  Tier Mgmt
+
+<span class="cm">─── Data Layer ───────────────────────────────────────────────────────────────────</span>
+<span class="kw">PostgreSQL</span> (bookings/flights)  <span class="str">Redis</span> (seat locks/cache)  <span class="num">Kafka</span> (events/async)
+<span class="str">Elasticsearch</span> (flight search)  <span class="num">S3</span> (boarding pass PDFs)   <span class="kw">CDN</span> (static assets)</div>
+</div>
+
+<!-- SLIDE 6: FLIGHT SEARCH -->
+<div class="slide" id="s6" data-title="Flight Search Flow">
+  <h2>Flight Search Flow</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Search Request</h3>
+        <ul>
+          <li>Input: origin, destination, date, passengers, cabin class</li>
+          <li>Validated against IATA airport codes (e.g., DEL, BOM, JFK)</li>
+          <li>Cache key = hash(origin+dest+date+class)</li>
+          <li>Cache TTL: 60 seconds (fares change frequently)</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h3>Availability Query</h3>
+        <ul>
+          <li>Direct flights: query <strong>Elasticsearch</strong> flights index</li>
+          <li>Connecting flights: graph traversal on route graph</li>
+          <li>GDS fallback: Amadeus / Sabre API for partner airlines</li>
+          <li>Seat count: live query from Seat Inventory Service</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card yellow" style="margin-bottom:10px">
+        <h3>Pricing Engine</h3>
+        <ul>
+          <li>Base fare from GDS or airline inventory</li>
+          <li>Taxes + surcharges appended (YQ, YR fuel levy)</li>
+          <li>Fare classes: Y (full), B, M, Q, ... W (discounted)</li>
+          <li>Dynamic pricing adjusts by load factor &amp; days-to-departure</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <h3>Sort &amp; Filter</h3>
+        <ul>
+          <li>Sort: price ↑, duration ↑, departure time</li>
+          <li>Filter: stops, airline, departure window, cabin</li>
+          <li>Results paginated; scroll triggers next GDS page</li>
+          <li>Price guarantee lock: hold fare for 15 min (optional)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="tip">💡 Elasticsearch powers full-text route search + geo-distance queries for nearby airports within 100km radius.</div>
+</div>
+
+<!-- SLIDE 7: SEAT INVENTORY & LOCKING (PHASE 1) -->
+<div class="slide" id="s7" data-title="Seat Inventory — Soft Lock (Phase 1)">
+  <h2>Seat Inventory &amp; Locking — Phase 1: Soft Lock</h2>
+  <p style="margin-bottom:12px;color:var(--soft)">Airlines face the classic distributed reservation problem: two passengers must never land in the same seat.</p>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Seat States</h3>
+        <ul>
+          <li><span class="pill green">AVAILABLE</span> — free to select</li>
+          <li><span class="pill yellow">SOFT_LOCKED</span> — selected, TTL 15 min</li>
+          <li><span class="pill red">HARD_LOCKED</span> — paid &amp; confirmed</li>
+          <li><span class="pill purple">BLOCKED</span> — crew / special use</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h3>Soft Lock Mechanism</h3>
+        <ul>
+          <li>On seat selection → <strong>Redis SET seat:{flightId}:{seatId} userId EX 900</strong></li>
+          <li>900 seconds (15 min) TTL auto-expires stale holds</li>
+          <li>Lua script for atomic check-and-set (no race condition)</li>
+          <li>Only one session can hold a seat key at a time</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card yellow">
+        <h3>Seat Map API</h3>
+        <ul>
+          <li>GET /flights/{id}/seat-map returns grid with state per seat</li>
+          <li>Aircraft config: rows × columns (e.g., Boeing 737: 30×6)</li>
+          <li>Color-coded: window/middle/aisle, emergency exit rows</li>
+          <li>Soft-locked seats shown as <em>"held"</em> to other passengers</li>
+          <li>Countdown timer shown in UI to create urgency</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="dia" style="margin-top:10px">
+<span class="cm">Passenger A selects 14A</span>
+<span class="kw">SETNX</span> seat:AI101:14A → <span class="str">"sessionA"</span> EX 900   <span class="cm">→ OK (lock acquired)</span>
+Passenger B selects 14A
+<span class="kw">SETNX</span> seat:AI101:14A → <span class="str">"sessionB"</span> EX 900   <span class="cm">→ FAIL (seat held)</span>
+<span class="cm">                                              → UI: "Seat no longer available"</span></div>
+</div>
+
+<!-- SLIDE 8: SEAT INVENTORY & LOCKING (PHASE 2) -->
+<div class="slide" id="s8" data-title="Seat Inventory — Hard Lock (Phase 2)">
+  <h2>Seat Inventory &amp; Locking — Phase 2: Hard Lock</h2>
+  <div class="cols2">
+    <div>
+      <div class="card green" style="margin-bottom:10px">
+        <h3>Payment → Hard Lock Promotion</h3>
+        <ul>
+          <li>Payment service calls Seat Inventory Service with booking ID</li>
+          <li>Transactional update: Redis key deleted + DB row updated atomically</li>
+          <li>DB: <code style="font-size:11px;color:#60a5fa">UPDATE seats SET status='CONFIRMED', booking_id=? WHERE id=? AND status='SOFT_LOCKED'</code></li>
+          <li>Optimistic locking: version field incremented</li>
+          <li>If payment fails → soft lock remains until TTL expires naturally</li>
+        </ul>
+      </div>
+      <div class="card red">
+        <h3>Concurrency Edge Cases</h3>
+        <ul>
+          <li>Session crash mid-payment → TTL expires → seat freed</li>
+          <li>Double-submit prevention via idempotency key on booking API</li>
+          <li>Race between TTL expiry &amp; payment → DB constraint wins</li>
+          <li>Distributed Redis (Redlock) for multi-region deployments</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3>Two-Phase Flow Summary</h3>
+        <div class="dia" style="font-size:10.5px">
+<span class="cm">Phase 1 — Soft Lock (selection)</span>
+User selects seat
+  │
+  ▼
+Redis <span class="kw">SETNX</span> key EX 900
+  │ success              │ fail
+  ▼                      ▼
+Show seat locked     "Seat taken" UI
+  │
+  ▼ (15 min TTL starts)
+
+<span class="cm">Phase 2 — Hard Lock (post-payment)</span>
+Payment succeeds
+  │
+  ▼
+DB UPDATE + Redis DEL
+  │
+  ▼
+Booking confirmed
+PNR generated</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 9: PNR GENERATION -->
+<div class="slide" id="s9" data-title="PNR Generation">
+  <h2>PNR Generation — Passenger Name Record</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>What is a PNR?</h3>
+        <ul>
+          <li>Industry-standard booking reference (IATA standard)</li>
+          <li><strong>6-character alphanumeric</strong> code (A-Z, 0-9 excluding I, O to avoid confusion)</li>
+          <li>Unique per booking per airline; cross-airline via interline PNR</li>
+          <li>Examples: <span class="hl">ABC123</span>, <span class="hl">X7KP2Q</span></li>
+          <li>Stored in GDS &amp; airline system; retrievable by name + PNR</li>
+        </ul>
+      </div>
+      <div class="card yellow">
+        <h3>PNR Contents (Itinerary)</h3>
+        <ul>
+          <li>Passenger details (name, contact, passport)</li>
+          <li>Flight segments (flight no, date, origin, destination)</li>
+          <li>Seat assignments per segment</li>
+          <li>Fare basis &amp; ticket number</li>
+          <li>SSR codes: VGML (vegan meal), WCHR (wheelchair), etc.</li>
+          <li>OSI: Other Service Information (VIP, unaccompanied minor)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card green" style="margin-bottom:10px">
+        <h3>Generation Algorithm</h3>
+        <div class="dia" style="font-size:10.5px">
+<span class="cm">// Collision-resistant PNR generator</span>
+<span class="kw">function</span> <span class="str">generatePNR</span>():
+  chars = <span class="num">"ABCDEFGHJKLMNPQRSTUVWXYZ23456789"</span>
+  candidate = random 6-char string from chars
+
+  <span class="cm">// Check uniqueness in DB (very rare collision)</span>
+  <span class="kw">while</span> pnr_exists(candidate):
+    candidate = random 6-char string
+
+  <span class="kw">return</span> candidate  <span class="cm">// ~1 billion unique values</span>
+
+<span class="cm">// Alternatively: base-36 encode(snowflake_id)</span>
+<span class="cm">// guarantees uniqueness without DB check</span></div>
+      </div>
+      <div class="card purple">
+        <h3>Storage &amp; Lookup</h3>
+        <ul>
+          <li>Primary key in <strong>bookings</strong> table</li>
+          <li>Redis cache: PNR → booking_id (TTL 24h post-departure)</li>
+          <li>GDS pushes copy to Amadeus/Sabre for interoperability</li>
+          <li>Lookup: surname + PNR (IATA check-in standard)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10: OVERBOOKING STRATEGY -->
+<div class="slide" id="s10" data-title="Overbooking Strategy">
+  <h2>Overbooking Strategy</h2>
+  <p style="margin-bottom:12px;color:var(--soft)">Airlines intentionally sell more seats than available because ~5-15% of passengers historically no-show. It's a revenue optimization — not a bug.</p>
+  <div class="cols2">
+    <div>
+      <div class="card red" style="margin-bottom:10px">
+        <h3>How It Works</h3>
+        <ul>
+          <li>Aircraft has 180 physical seats → system allows 196 bookings (~8-9% overbook)</li>
+          <li>Overbook factor computed by Revenue Management from historical no-show rates per route/season</li>
+          <li>PROTECTED_SEATS field on flight: seats held back for premium pax / upgrades</li>
+          <li>Overbooking disabled within 24h of departure automatically</li>
+        </ul>
+      </div>
+      <div class="card yellow">
+        <h3>Volunteer Compensation Protocol</h3>
+        <ul>
+          <li>At gate: ask for volunteers to take later flight</li>
+          <li>Compensation: travel voucher, meal, hotel, miles</li>
+          <li>If no volunteers: IDB (Involuntary Denied Boarding)</li>
+          <li>IDB rules: EU261 / DOT regulations mandate cash compensation</li>
+          <li>Algorithm selects IDB candidates: latest booking, lowest fare, no connections</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue">
+        <h3>Overbooking Model</h3>
+        <div class="dia" style="font-size:10.5px">
+<span class="cm">// Simplified overbooking calculation</span>
+<span class="kw">Input:</span>
+  capacity        = 180 seats
+  historical_noshow_rate = 0.08  <span class="cm">// 8%</span>
+  std_deviation   = 0.03
+
+<span class="cm">// Expected no-shows at full booking</span>
+expected_noshow = 180 × 0.08 = <span class="num">14.4</span>
+
+<span class="cm">// Buffer: 1 std dev above expected</span>
+overbook_buffer = 180 × (0.08 + 0.03) = <span class="num">19.8</span>
+
+max_bookings = 180 + <span class="str">floor</span>(overbook_buffer)
+             = <span class="num">199</span> seats bookable
+
+<span class="cm">// Adjusted dynamically as cancellations arrive</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11: DYNAMIC PRICING / REVENUE MANAGEMENT -->
+<div class="slide" id="s11" data-title="Dynamic Pricing &amp; Revenue Management">
+  <h2>Dynamic Pricing &amp; Revenue Management</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Yield Management</h3>
+        <ul>
+          <li>Goal: maximize revenue per available seat mile (RASM)</li>
+          <li>Fare buckets: Y, B, M, H, Q, V, W — each with seat quota</li>
+          <li>As low-fare buckets fill, system opens higher-fare buckets only</li>
+          <li>EMSR (Expected Marginal Seat Revenue) model for optimal allocation</li>
+        </ul>
+      </div>
+      <div class="card yellow">
+        <h3>Load Factor Pricing</h3>
+        <ul>
+          <li>&lt;60% load → promotional fares, discounts</li>
+          <li>60-80% load → normal fares</li>
+          <li>80-95% load → premium pricing, no discounts</li>
+          <li>&gt;95% load → highest fare tier only</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card green" style="margin-bottom:10px">
+        <h3>Time-to-Departure Curve</h3>
+        <div class="dia" style="font-size:10.5px">
+Days before  Fare multiplier
+departure
+──────────── ────────────────
+  180+ days   0.6x  <span class="str">(early bird)</span>
+  90  days    0.8x
+  60  days    1.0x  <span class="cm">(base)</span>
+  30  days    1.3x
+  14  days    1.6x
+   7  days    2.0x
+   3  days    2.5x  <span class="num">(last minute)</span>
+   0  days    1.2x  <span class="str">(distress sale)</span></div>
+      </div>
+      <div class="card purple">
+        <h3>Factors Used</h3>
+        <ul>
+          <li>Day of week (Fri/Sun peak)</li>
+          <li>Holiday / event calendar</li>
+          <li>Competitor pricing (scraped / GDS monitor)</li>
+          <li>Historical demand patterns (ML model)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12: CHECK-IN FLOW -->
+<div class="slide" id="s12" data-title="Check-in Flow">
+  <h2>Check-in Flow</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Online Check-in (24h Window)</h3>
+        <ul>
+          <li>Opens 24h before departure, closes 1h before</li>
+          <li>Passenger retrieves booking via PNR + surname</li>
+          <li>Select/change seat (if not already selected)</li>
+          <li>Enter passport/APIS details for international flights</li>
+          <li>Generate boarding pass: BCBP (Bar Coded Boarding Pass) format</li>
+          <li>PDF/Wallet pass sent via email; QR code scannable at gate</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h3>Airport Kiosk Check-in</h3>
+        <ul>
+          <li>Scan passport or enter booking ref</li>
+          <li>Biometric match option (face recognition)</li>
+          <li>Print boarding pass + baggage tags in one flow</li>
+          <li>Kiosk uses same Check-in Service API over private network</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card yellow" style="margin-bottom:10px">
+        <h3>Boarding Pass — BCBP Format</h3>
+        <div class="dia" style="font-size:10.5px">
+<span class="cm">IATA BCBP Type M (Mandatory fields)</span>
+M1<span class="str">ROY/ABHISHEK         </span>EA<span class="str">BC1234</span>
+<span class="kw">AI</span> <span class="num">101</span>  <span class="str">DEL</span><span class="str">BOM</span>  <span class="num">235</span>  <span class="str">14A</span>  Y  <span class="num">001</span>
+
+<span class="cm">Fields: format, pax name, e-ticket,</span>
+<span class="cm">        airline, flight, origin, dest,</span>
+<span class="cm">        day-of-year, seat, class, sequence</span>
+
+<span class="cm">QR encodes full BCBP string</span>
+<span class="cm">Scanners verify at bag drop + gate</span></div>
+      </div>
+      <div class="card purple">
+        <h3>Baggage Tag Generation</h3>
+        <ul>
+          <li>10-digit IATA baggage tag number</li>
+          <li>Printed at bag drop or kiosk</li>
+          <li>Tracked via RFID/barcode through sorting system</li>
+          <li>WorldTracer integration for lost baggage claims</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 13: FLIGHT OPERATIONS -->
+<div class="slide" id="s13" data-title="Flight Operations">
+  <h2>Flight Operations</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Crew Scheduling</h3>
+        <ul>
+          <li>Pilots &amp; cabin crew assigned per flight 48h in advance</li>
+          <li>Constraints: rest requirements (FAR/EASA regulations), qualifications per aircraft type, seniority rules</li>
+          <li>Optimization: constraint satisfaction solver (CSP)</li>
+          <li>Disruption recovery: crew swap algorithm on delay/cancel</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h3>Gate Assignment</h3>
+        <ul>
+          <li>Gates assigned 3h before departure</li>
+          <li>Constraints: aircraft size, terminal, connection times</li>
+          <li>Dynamic reassignment on delay or equipment change</li>
+          <li>Published to FIDS (Flight Information Display System)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card yellow" style="margin-bottom:10px">
+        <h3>Delay Cascade Management</h3>
+        <ul>
+          <li>Incoming delay → outbound flights on same aircraft flagged</li>
+          <li>Domino effect calculator: which downstream flights are impacted</li>
+          <li>Kafka event: <code style="font-size:10.5px;color:#60a5fa">flight.delay.v1</code> triggers rebooking offers for tight connections</li>
+          <li>Automated SMS/push to affected passengers</li>
+          <li>Crew re-scheduling triggered automatically</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <h3>ACARS Communication</h3>
+        <ul>
+          <li>Aircraft Communications Addressing &amp; Reporting System</li>
+          <li>Digital datalink: cockpit ↔ airline operations control</li>
+          <li>Sends: OOOI times (Out/Off/On/In), fuel, performance data</li>
+          <li>Receives: weather, ATIS, clearances, rerouting</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 14: LOYALTY PROGRAM -->
+<div class="slide" id="s14" data-title="Loyalty Program">
+  <h2>Loyalty Program — Frequent Flyer</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Miles Accrual</h3>
+        <ul>
+          <li>Miles earned = distance flown × cabin multiplier × fare class multiplier</li>
+          <li>Economy Y: 1.0x, Business: 2.0x, First: 3.0x</li>
+          <li>Bonus miles for credit card, hotel partners, car rental</li>
+          <li>Miles credited within 24–72h of flight completion</li>
+          <li>Kafka consumer: <code style="font-size:10.5px;color:#60a5fa">flight.completed.v1</code> → loyalty-service</li>
+        </ul>
+      </div>
+      <div class="card yellow">
+        <h3>Tier System</h3>
+        <table class="tbl">
+          <tr><th>Tier</th><th>Annual Miles</th><th>Benefits</th></tr>
+          <tr><td><span class="soft">Blue</span></td><td>0+</td><td>Base earn rate</td></tr>
+          <tr><td><span class="pill blue">Silver</span></td><td>25,000+</td><td>Priority boarding, lounge access (1 guest)</td></tr>
+          <tr><td><span class="pill yellow">Gold</span></td><td>50,000+</td><td>Free upgrades, extra baggage</td></tr>
+          <tr><td><span class="pill purple">Platinum</span></td><td>1,00,000+</td><td>Suite upgrades, dedicated phone line</td></tr>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="card green" style="margin-bottom:10px">
+        <h3>Redemption Calculation</h3>
+        <ul>
+          <li>Miles required = distance × cabin factor × demand multiplier</li>
+          <li>Example: DEL→NYC Business = 45,000 miles (fixed) or 35,000–75,000 (dynamic)</li>
+          <li>Award tickets fetched from GDS award inventory buckets</li>
+          <li>Partial redemption: miles + cash (co-pay option)</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <h3>Data Model</h3>
+        <div class="dia" style="font-size:10.5px">
+loyalty_accounts
+  passenger_id PK
+  tier          ENUM(BLUE,SILVER,GOLD,PLATINUM)
+  total_miles   BIGINT
+  ytd_miles     INT     <span class="cm">-- for tier recalc</span>
+  expiry_date   DATE    <span class="cm">-- miles expire in 3y</span>
+
+miles_transactions
+  id, passenger_id, flight_id
+  miles_delta, reason, created_at</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 15: CANCELLATION & REFUND -->
+<div class="slide" id="s15" data-title="Cancellation &amp; Refund">
+  <h2>Cancellation &amp; Refund</h2>
+  <div class="cols2">
+    <div>
+      <div class="card red" style="margin-bottom:10px">
+        <h3>Fare Class Rules</h3>
+        <ul>
+          <li><span class="pill red">Non-refundable</span> — Q, V, W class: no cash refund; credit shell only</li>
+          <li><span class="pill yellow">Partially refundable</span> — M, H class: base fare refunded minus cancellation fee</li>
+          <li><span class="pill green">Fully refundable</span> — Y, B, J, F class: full refund within 7-10 business days</li>
+          <li>IRCTC-style: cancellation window matters; &gt;7 days = 0% penalty</li>
+        </ul>
+      </div>
+      <div class="card yellow">
+        <h3>Credit Shell</h3>
+        <ul>
+          <li>Non-refundable tickets → credit issued to passenger wallet</li>
+          <li>Valid for 12 months for same airline bookings</li>
+          <li>Stored as CREDIT_SHELL record tied to passenger profile</li>
+          <li>Applied at checkout via payment method selection</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Cancellation Flow</h3>
+        <div class="dia" style="font-size:10.5px">
+Passenger cancels booking
+  │
+  ▼
+Booking Service validates PNR
+  │
+  ▼
+Fare Rules Engine calculates refund
+  │ refundable?
+  ├── yes → Payment Service: initiate refund
+  │          GDS: cancel PNR segments
+  │          Seat: release → AVAILABLE
+  │          Loyalty: reverse miles accrual
+  │
+  └── no  → Issue credit shell
+             GDS: cancel PNR segments
+             Seat: release → AVAILABLE
+
+Notification Service: email/SMS sent</div>
+      </div>
+      <div class="card green">
+        <h3>Airline-Initiated Cancel</h3>
+        <ul>
+          <li>Flight cancelled by airline → mandatory full refund (EU261)</li>
+          <li>Auto-rebook on next available flight (opt-in)</li>
+          <li>Compensation: meals, hotel if delay &gt;3h (EU routes)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 16: ER DIAGRAM -->
+<div class="slide" id="s16" data-title="ER Diagram">
+  <h2>Entity Relationship Diagram</h2>
+  <div class="dia">
+<span class="kw">flights</span>                    <span class="kw">aircraft</span>
+  id PK                     id PK
+  flight_number             model          <span class="cm">(Boeing 737, A320)</span>
+  aircraft_id FK ──────────► total_seats
+  origin_code               <span class="kw">seats</span>
+  destination_code            id PK
+  departure_time              aircraft_id FK
+  arrival_time                seat_number    <span class="cm">(14A, 14B)</span>
+  status                      seat_class     <span class="cm">(ECONOMY/BUSINESS/FIRST)</span>
+  overbook_limit              status         <span class="cm">(AVAILABLE/SOFT_LOCKED/CONFIRMED)</span>
+       │                      booking_id FK ──────────────────────┐
+       │                                                           │
+<span class="str">bookings</span>                   <span class="str">passengers</span>                          │
+  id PK                     id PK                               │
+  pnr UNIQUE                name                                │
+  flight_id FK ◄── FK ──── booking_id (on passengers)           │
+  passenger_id FK──────────► email                              │
+  seat_id FK ───────────────────────────────────────────────────┘
+  fare_class                loyalty_account_id FK
+  status (CONFIRMED/CANCELLED/CHECKED_IN)
+  created_at
+
+<span class="num">payments</span>                   <span class="num">boarding_passes</span>
+  id PK                     id PK
+  booking_id FK             booking_id FK
+  amount                    bcbp_data      <span class="cm">(full BCBP string)</span>
+  currency                  barcode_url
+  method                    issued_at
+  status (PAID/REFUNDED/CREDIT_SHELL)
+  refund_amount</div>
+</div>
+
+<!-- SLIDE 17: DB SCHEMA DDL — FLIGHTS & SEATS -->
+<div class="slide" id="s17" data-title="DB Schema — flights &amp; seats">
+  <h2>DB Schema DDL — Flights &amp; Seats</h2>
+  <div class="dia">
+<span class="kw">CREATE TABLE</span> aircraft (
+  id           BIGSERIAL PRIMARY KEY,
+  model        VARCHAR(100) NOT NULL,       <span class="cm">-- 'Boeing 737-800'</span>
+  total_seats  INT NOT NULL,
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+<span class="kw">CREATE TABLE</span> flights (
+  id               BIGSERIAL PRIMARY KEY,
+  flight_number    VARCHAR(10) NOT NULL,    <span class="cm">-- 'AI101'</span>
+  aircraft_id      BIGINT REFERENCES aircraft(id),
+  origin_code      CHAR(3) NOT NULL,        <span class="cm">-- IATA 'DEL'</span>
+  destination_code CHAR(3) NOT NULL,
+  departure_time   TIMESTAMPTZ NOT NULL,
+  arrival_time     TIMESTAMPTZ NOT NULL,
+  status           VARCHAR(20) DEFAULT <span class="str">'SCHEDULED'</span>,
+  overbook_limit   INT DEFAULT 0,           <span class="cm">-- extra seats allowed</span>
+  UNIQUE(flight_number, departure_time)
+);
+
+<span class="kw">CREATE TABLE</span> seats (
+  id          BIGSERIAL PRIMARY KEY,
+  aircraft_id BIGINT REFERENCES aircraft(id),
+  seat_number VARCHAR(4) NOT NULL,          <span class="cm">-- '14A'</span>
+  seat_class  VARCHAR(20) NOT NULL,         <span class="cm">-- 'ECONOMY'</span>
+  <span class="cm">-- Per-flight seat state managed in seat_inventory</span>
+  UNIQUE(aircraft_id, seat_number)
+);
+
+<span class="kw">CREATE TABLE</span> seat_inventory (
+  id         BIGSERIAL PRIMARY KEY,
+  flight_id  BIGINT REFERENCES flights(id),
+  seat_id    BIGINT REFERENCES seats(id),
+  status     VARCHAR(20) DEFAULT <span class="str">'AVAILABLE'</span>,
+  booking_id BIGINT,                        <span class="cm">-- FK set on confirmation</span>
+  version    INT DEFAULT 0,                 <span class="cm">-- optimistic lock</span>
+  UNIQUE(flight_id, seat_id)
+);</div>
+</div>
+
+<!-- SLIDE 18: DB SCHEMA DDL — BOOKINGS & PAYMENTS -->
+<div class="slide" id="s18" data-title="DB Schema — bookings &amp; payments">
+  <h2>DB Schema DDL — Bookings &amp; Payments</h2>
+  <div class="dia">
+<span class="kw">CREATE TABLE</span> passengers (
+  id          BIGSERIAL PRIMARY KEY,
+  name        VARCHAR(200) NOT NULL,
+  email       VARCHAR(200) UNIQUE NOT NULL,
+  phone       VARCHAR(20),
+  passport_no VARCHAR(20),
+  ffp_number  VARCHAR(20),                  <span class="cm">-- frequent flyer program</span>
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+<span class="kw">CREATE TABLE</span> bookings (
+  id           BIGSERIAL PRIMARY KEY,
+  pnr          CHAR(6) UNIQUE NOT NULL,
+  passenger_id BIGINT REFERENCES passengers(id),
+  flight_id    BIGINT REFERENCES flights(id),
+  seat_id      BIGINT REFERENCES seats(id),
+  fare_class   CHAR(1) NOT NULL,            <span class="cm">-- 'Y', 'B', 'M'...</span>
+  status       VARCHAR(20) DEFAULT <span class="str">'PENDING'</span>,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  INDEX idx_bookings_pnr (pnr),
+  INDEX idx_bookings_passenger (passenger_id)
+);
+
+<span class="kw">CREATE TABLE</span> payments (
+  id            BIGSERIAL PRIMARY KEY,
+  booking_id    BIGINT REFERENCES bookings(id),
+  amount        NUMERIC(10,2) NOT NULL,
+  currency      CHAR(3) DEFAULT <span class="str">'INR'</span>,
+  method        VARCHAR(30),                <span class="cm">-- 'CREDIT_CARD', 'UPI'</span>
+  gateway_txn   VARCHAR(100),              <span class="cm">-- external txn ID</span>
+  status        VARCHAR(20) DEFAULT <span class="str">'PENDING'</span>,
+  refund_amount NUMERIC(10,2) DEFAULT 0,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);</div>
+</div>
+
+<!-- SLIDE 19: GDS INTEGRATION -->
+<div class="slide" id="s19" data-title="GDS Integration">
+  <h2>GDS Integration — Amadeus / Sabre / Travelport</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>What is a GDS?</h3>
+        <ul>
+          <li>Global Distribution System — intermediary between airlines and travel agents / OTAs</li>
+          <li>Aggregates inventory from 400+ airlines in one API</li>
+          <li>Big three: <strong class="hl">Amadeus</strong> (Europe), <strong class="cy">Sabre</strong> (Americas), <strong class="gr">Travelport</strong></li>
+          <li>Charges per-segment booking fee (~$3-5 per booking)</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h3>NDC vs EDIFACT</h3>
+        <ul>
+          <li><strong>EDIFACT</strong> (legacy) — 1980s UN data standard; still used by most GDS for airline messaging; binary, complex parsing</li>
+          <li><strong>NDC</strong> (New Distribution Capability) — IATA XML standard (2012+); modern REST/XML; supports rich content, bundles, ancillaries</li>
+          <li>Airlines migrating to NDC to bypass GDS fees and personalize offers</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card yellow" style="margin-bottom:10px">
+        <h3>GDS Integration Layer</h3>
+        <div class="dia" style="font-size:10.5px">
+Booking Service
+  │
+  ▼
+GDS Adapter (Strategy pattern)
+  ├── AmadeusAdapter  (REST/NDC)
+  ├── SabreAdapter    (EDIFACT/SOAP)
+  └── TravelportAdapter
+
+AmadeusAdapter:
+  search()  → /v2/shopping/flight-offers
+  book()    → /v1/booking/flight-orders
+  cancel()  → DELETE /v1/booking/flight-orders/{id}
+
+<span class="cm">Circuit breaker wraps each adapter</span>
+<span class="cm">Fallback: internal inventory only</span></div>
+      </div>
+      <div class="card purple">
+        <h3>Inventory Sync</h3>
+        <ul>
+          <li>Airline pushes availability updates to GDS every 30 sec via AV (Availability) messages</li>
+          <li>GDS notifies airline of external bookings via PNR mirror</li>
+          <li>Reconciliation job runs hourly to detect discrepancies</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 20: SCALING + TRADE-OFFS -->
+<div class="slide" id="s20" data-title="Scaling Architecture &amp; Trade-offs">
+  <h2>Scaling Architecture &amp; Key Trade-offs</h2>
+  <div class="cols2" style="margin-bottom:10px">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Search Service Scaling</h3>
+        <ul>
+          <li>Stateless pods; auto-scale on CPU/RPS (K8s HPA)</li>
+          <li>Elasticsearch cluster: 3 shards × 2 replicas per index</li>
+          <li>CDN-cached results for popular routes (60s TTL)</li>
+          <li>Read replica pool fronted by PgBouncer (connection pooling)</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h3>Booking Bottleneck</h3>
+        <ul>
+          <li>Seat lock = bottleneck: all writes for one flight → same Redis shard</li>
+          <li>Redis Cluster: hash slot per flight_id</li>
+          <li>DB: SELECT FOR UPDATE NOWAIT; backpressure via Kafka queue</li>
+          <li>Cross-region: Redlock adds ~80ms (acceptable for booking path)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <table class="tbl">
+        <tr><th>Decision</th><th>Chosen</th><th>Why</th></tr>
+        <tr><td>Seat locking</td><td class="gr">Redis TTL soft lock</td><td>Open DB transactions exhaust connections during payment delay</td></tr>
+        <tr><td>Search index</td><td class="gr">Elasticsearch</td><td>SQL can't handle geo-search or sub-200ms at scale</td></tr>
+        <tr><td>Booking DB</td><td class="gr">PostgreSQL (ACID)</td><td>Financial data needs strong consistency; conflicts must fail loudly</td></tr>
+        <tr><td>GDS protocol</td><td class="gr">NDC + EDIFACT</td><td>Legacy airlines still on EDIFACT; need dual-mode coverage</td></tr>
+        <tr><td>Miles accrual</td><td class="gr">Async (Kafka)</td><td>Non-critical; don't block booking on loyalty service failures</td></tr>
+        <tr><td>PNR storage</td><td class="gr">PostgreSQL + Redis</td><td>Redis is ephemeral; bookings are financial records needing durability</td></tr>
+      </table>
+      <div class="tip" style="margin-top:8px">⚖️ Seat inventory chooses <strong>CP</strong> over AP — a 200ms booking is better than two passengers in the same seat at the gate.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 21: SENIOR Q&A 1 -->
+<div class="slide" id="s21" data-title="Senior Q&amp;A — Overbooking Resolution">
+  <h2>Senior Q&amp;A 1 — Overbooking at the Gate</h2>
+  <div class="card blue" style="margin-bottom:12px">
+    <h3>Q: How do you resolve overbooking when no one volunteers to give up their seat?</h3>
+  </div>
+  <div class="cols2">
+    <div>
+      <div class="card yellow" style="margin-bottom:10px">
+        <h3>IDB Selection Algorithm</h3>
+        <ul>
+          <li>IDB = Involuntary Denied Boarding</li>
+          <li>Rank passengers: latest_booking_time DESC, fare_paid ASC, has_connection DESC</li>
+          <li>Latest bookings + cheapest fare + no onward connections selected first</li>
+          <li>Protected: unaccompanied minors, disabled passengers, medical cases</li>
+          <li>Algorithm runs in Gate Management Service on <code style="font-size:10.5px;color:#60a5fa">flight.overbooked.v1</code> Kafka event</li>
+        </ul>
+      </div>
+      <div class="card green">
+        <h3>Volunteer Flow (First Attempt)</h3>
+        <ul>
+          <li>Gate agent announces compensation offer (voucher + hotel + meal)</li>
+          <li>Passengers self-select via kiosk or mobile app in-airport</li>
+          <li>Increasing compensation auction: starts at $200, escalates every 10 min</li>
+          <li>Overbooking closes automatically within 24h of departure</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card red" style="margin-bottom:10px">
+        <h3>Regulatory Compliance</h3>
+        <ul>
+          <li><strong>EU261/2004</strong> — cash mandatory: €250 short / €400 medium / €600 long-haul</li>
+          <li><strong>DOT (US)</strong> — 200% of one-way fare (max $775) for &lt;4h delay; 400% (max $1,550) longer</li>
+          <li>Compensation auto-calculated and issued as bank transfer or voucher immediately</li>
+          <li>Rebooking offer sent for next available flight via notification service</li>
+        </ul>
+      </div>
+      <div class="card purple">
+        <h3>System Updates</h3>
+        <ul>
+          <li>Booking status → <code style="font-size:10.5px;color:#f87171">DENIED_BOARDING</code></li>
+          <li>Compensation record linked to booking_id</li>
+          <li>GDS notified; new PNR created for rebooking segment</li>
+          <li>Full audit log preserved for regulatory reporting</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 22: SENIOR Q&A 2 -->
+<div class="slide" id="s22" data-title="Senior Q&amp;A — Holiday Peak Traffic">
+  <h2>Senior Q&amp;A 2 — Holiday Search Peak (10× Traffic)</h2>
+  <div class="card blue" style="margin-bottom:12px">
+    <h3>Q: How do you handle 10× normal search traffic during Diwali / Christmas flash sales?</h3>
+  </div>
+  <div class="cols2">
+    <div>
+      <div class="card green" style="margin-bottom:10px">
+        <h3>Pre-Emptive Scaling</h3>
+        <ul>
+          <li>Search is stateless → horizontal pod autoscaling (K8s HPA) on CPU/RPS</li>
+          <li>Elasticsearch scales via replica promotion (no re-indexing needed)</li>
+          <li>Diwali/Christmas windows known in advance → pre-warm caches 2h before</li>
+          <li>Pre-compute top-500 routes; cache results at CDN edge (60s TTL)</li>
+        </ul>
+      </div>
+      <div class="card yellow">
+        <h3>Graceful Degradation Layers</h3>
+        <ul>
+          <li><strong>Layer 1</strong> — extend CDN TTL to 5 min: stale fares, zero DB load for browsing</li>
+          <li><strong>Layer 2</strong> — circuit breaker drops GDS calls; return internal inventory only</li>
+          <li><strong>Layer 3</strong> — shed lowest-priority traffic (fare scraper crawlers via UA detection)</li>
+          <li><strong>Layer 4</strong> — virtual queue: "You're #847 in line" UX for booking flow</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple" style="margin-bottom:10px">
+        <h3>Read vs Write Separation</h3>
+        <ul>
+          <li>Search hits read replicas (5 per region) — fully isolated from booking writes</li>
+          <li>Seat count in search: approximate (cached); exact only at seat selection step</li>
+          <li>Seat inventory lock path unchanged — kept lean as the critical path</li>
+          <li>Rate limiting: 10 searches/sec/IP via API Gateway (prevents fare scraping)</li>
+        </ul>
+      </div>
+      <div class="card red">
+        <h3>Kafka Backpressure</h3>
+        <ul>
+          <li>Booking service publishes to Kafka; downstream consumers process at own pace</li>
+          <li>No synchronous fan-out to loyalty/notification during peak</li>
+          <li>DLQ + exponential backoff retry ensures no booking is lost even if consumers lag</li>
+          <li>Monitoring: consumer lag alerts at 10K messages queued</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 23: SENIOR Q&A 3 -->
+<div class="slide" id="s23" data-title="Senior Q&amp;A — Codeshare PNR">
+  <h2>Senior Q&amp;A 3 — PNR Across Airlines (Codeshare)</h2>
+  <div class="card blue" style="margin-bottom:12px">
+    <h3>Q: How does a PNR work when a passenger books through a different airline — interline or codeshare?</h3>
+  </div>
+  <div class="cols2">
+    <div>
+      <div class="card green" style="margin-bottom:10px">
+        <h3>Interline PNR Chain</h3>
+        <ul>
+          <li>Carrier A creates its own PNR (e.g., <span class="hl">ABC123</span> on Air India)</li>
+          <li>Carrier B creates its own PNR (e.g., <span class="cy">XY9876</span> on Lufthansa)</li>
+          <li>Both PNRs contain a cross-reference field pointing to the other</li>
+          <li>GDS (Amadeus) maintains the <strong>master itinerary</strong> linking all segments</li>
+          <li>Passenger sees one booking reference; airlines see their own PNR internally</li>
+        </ul>
+      </div>
+      <div class="card yellow">
+        <h3>Codeshare Specifics</h3>
+        <ul>
+          <li>Flight <span class="hl">AI 4521</span> is operated by <span class="cy">LH 783</span></li>
+          <li>Marketing carrier (Air India) sells; operating carrier (Lufthansa) flies</li>
+          <li>Seat inventory owned entirely by operating carrier</li>
+          <li>Booking flows through GDS to operating carrier's inventory system</li>
+          <li>Both airlines' systems must hold a PNR record for the passenger</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card purple" style="margin-bottom:10px">
+        <h3>Check-in &amp; Disruptions</h3>
+        <ul>
+          <li>Each airline's check-in system verifies only its own segment independently</li>
+          <li>Passenger checks in with operating carrier's kiosk/app per leg</li>
+          <li>Disruption coordination via SSR/OSI messages through GDS message layer</li>
+          <li>Rebooking requires cross-airline operations coordination</li>
+        </ul>
+      </div>
+      <div class="card red">
+        <h3>Technical Flow</h3>
+        <div class="dia" style="font-size:10px">
+Booking Service → GDS (Amadeus)
+  GDS → Carrier A PNR created (<span class="hl">ABC123</span>)
+  GDS → Carrier B PNR created (<span class="cy">XY9876</span>)
+  GDS links: ABC123 ↔ XY9876
+
+Check-in (Carrier A leg):
+  Carrier A: GET /pnr/ABC123
+  Validates → boarding pass for leg 1
+
+Check-in (Carrier B leg):
+  Carrier B: GET /pnr/XY9876
+  Validates → boarding pass for leg 2
+
+Delay on leg 2:
+  GDS broadcasts SSR message → Carrier A
+  Auto-rebooking offer sent via notification svc</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 24: QUICK NUMBERS -->
+<div class="slide" id="s24" data-title="Quick Numbers to Remember">
+  <h2>Quick Numbers to Remember</h2>
+  <div class="cols2">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>SLAs &amp; Timings</h3>
+        <table class="tbl">
+          <tr><td>Seat soft lock TTL</td><td class="hl">15 minutes</td></tr>
+          <tr><td>Check-in opens</td><td class="gr">T − 24 hours</td></tr>
+          <tr><td>Check-in closes</td><td class="or">T − 1 hour</td></tr>
+          <tr><td>Flight search SLA</td><td class="cy">&lt; 200ms p99</td></tr>
+          <tr><td>Booking SLA</td><td>&lt; 2 seconds</td></tr>
+          <tr><td>Boarding pass gen</td><td>&lt; 500ms</td></tr>
+          <tr><td>Availability SLA</td><td class="gr">99.99% uptime</td></tr>
+          <tr><td>GDS sync interval</td><td>30 seconds</td></tr>
+          <tr><td>Reconciliation job</td><td>Hourly</td></tr>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="card green" style="margin-bottom:10px">
+        <h3>Scale &amp; Storage</h3>
+        <table class="tbl">
+          <tr><td>Monthly bookings</td><td class="hl">10M+</td></tr>
+          <tr><td>Daily bookings</td><td>300K = 3.5/sec</td></tr>
+          <tr><td>Peak bookings</td><td class="or">10/sec (flash sale)</td></tr>
+          <tr><td>Daily searches</td><td class="cy">10M = 115/sec</td></tr>
+          <tr><td>Overbooking rate</td><td>8 – 15%</td></tr>
+          <tr><td>PNR length</td><td>6 alphanumeric chars</td></tr>
+          <tr><td>Total storage (5yr)</td><td class="gr">~ 1.2 TB</td></tr>
+          <tr><td>Redis per region</td><td>~ 2 GB</td></tr>
+        </table>
+      </div>
+      <div class="card yellow">
+        <h3>Key Fare Classes</h3>
+        <ul>
+          <li><span class="pill green">Y / B</span> — Full economy (fully refundable)</li>
+          <li><span class="pill blue">M / H</span> — Mid fare (partial refund)</li>
+          <li><span class="pill red">Q / V / W</span> — Discounted (non-refundable / credit shell)</li>
+          <li><span class="pill purple">J / F / C</span> — Business / First (fully refundable)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 25: CLOSING -->
+<div class="slide" id="s25" data-title="Summary &amp; Closing">
+  <h2>Summary — Key Principles</h2>
+  <div class="cols2" style="margin-bottom:12px">
+    <div>
+      <div class="card blue" style="margin-bottom:10px">
+        <h3>Design Principles</h3>
+        <ul>
+          <li><strong>CP over AP</strong> for seat inventory — no double-booking ever</li>
+          <li><strong>Soft lock → hard lock</strong> two-phase reservation pattern</li>
+          <li><strong>SAGA pattern</strong> for distributed booking + payment rollback</li>
+          <li><strong>Event-driven</strong> (Kafka) for loyalty, notifications, ops cascade</li>
+          <li><strong>Strategy pattern</strong> for multi-GDS adapters (NDC + EDIFACT)</li>
+          <li><strong>Overbooking</strong> is an intentional business rule — not a bug</li>
+          <li><strong>Idempotency keys</strong> on booking API for double-submit protection</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card green" style="margin-bottom:10px">
+        <h3>Services Covered</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+          <span class="badge">Booking Svc</span>
+          <span class="badge">Search Svc</span>
+          <span class="badge">Seat Inventory</span>
+          <span class="badge">GDS Integration</span>
+          <span class="badge">Payment Svc</span>
+          <span class="badge">Check-in Svc</span>
+          <span class="badge">Notification Svc</span>
+          <span class="badge">Flight Ops Svc</span>
+          <span class="badge">Loyalty Svc</span>
+          <span class="badge">Revenue Mgmt</span>
+        </div>
+      </div>
+      <div class="card purple">
+        <h3>Interview Checklist</h3>
+        <ul>
+          <li>Start with functional + non-functional requirements</li>
+          <li>Draw HLD: client → API gateway → microservices → data stores</li>
+          <li>Deep-dive on seat locking — the hardest distributed part</li>
+          <li>Explain GDS role and why airlines need NDC + EDIFACT both</li>
+          <li>Address overbooking as a revenue management decision with clear IDB logic</li>
+          <li>Discuss CP vs AP trade-off for seat inventory explicitly</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="tip" style="text-align:center">✈️ <strong>Airline systems combine strong consistency, global distributed scale, regulatory compliance, and real-time operations.</strong> Master seat locking + PNR + overbooking — they come up in every airline system design interview.</div>
+</div>
+
+
+  </div><!-- #slide-area -->
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

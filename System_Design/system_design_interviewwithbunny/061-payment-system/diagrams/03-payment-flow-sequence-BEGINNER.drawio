@@ -1,0 +1,459 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Payment Flow Sequence" id="sequence">
+    <mxGraphModel dx="2000" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1400" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="PAYMENT SYSTEM — Payment Flow Sequence Diagram (Happy Path + Failure Scenarios)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1960" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="Idempotency check → MySQL TX → 202 Accepted → Outbox relay → Kafka → Processor → Bank API → SUCCESS/FAILED update" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="1700" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Swim Lanes Headers -->
+        <mxCell id="lane-client" value="CLIENT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1976d2;strokeColor=#1976d2;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-api-gw" value="API GATEWAY" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e65100;strokeColor=#e65100;fontSize=12;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="180" y="100" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-redis" value="REDIS&#xa;(Idempotency)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d84315;strokeColor=#d84315;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="340" y="100" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-payment-svc" value="PAYMENT&#xa;SERVICE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#388e3c;strokeColor=#388e3c;fontSize=12;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="480" y="100" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-mysql" value="MYSQL" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#8e24aa;strokeColor=#8e24aa;fontSize=12;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="640" y="100" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-outbox" value="OUTBOX&#xa;RELAY" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#00695c;strokeColor=#00695c;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="770" y="100" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-kafka" value="KAFKA" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#01579b;strokeColor=#01579b;fontSize=12;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="900" y="100" width="100" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-processor" value="PAYMENT&#xa;PROCESSOR" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#388e3c;strokeColor=#388e3c;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1020" y="100" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-bank" value="BANK API&#xa;(External)" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d84315;strokeColor=#d84315;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1180" y="100" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-notification" value="NOTIFICATION&#xa;SERVICE" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f57c00;strokeColor=#f57c00;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1320" y="100" width="130" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Vertical Lifelines -->
+        <mxCell id="lifeline-client" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#1976d2" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="100" y="140" as="sourcePoint" />
+            <mxPoint x="100" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-api" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#e65100" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="250" y="140" as="sourcePoint" />
+            <mxPoint x="250" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-redis" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#d84315" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="400" y="140" as="sourcePoint" />
+            <mxPoint x="400" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-payment" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="550" y="140" as="sourcePoint" />
+            <mxPoint x="550" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-mysql" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#8e24aa" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="695" y="140" as="sourcePoint" />
+            <mxPoint x="695" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-outbox" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#00695c" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="825" y="140" as="sourcePoint" />
+            <mxPoint x="825" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-kafka" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#01579b" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="950" y="140" as="sourcePoint" />
+            <mxPoint x="950" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-processor" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1090" y="140" as="sourcePoint" />
+            <mxPoint x="1090" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-bank" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#d84315" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1240" y="140" as="sourcePoint" />
+            <mxPoint x="1240" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="lifeline-notif" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#f57c00" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1385" y="140" as="sourcePoint" />
+            <mxPoint x="1385" y="1360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- PHASE 1: PAYMENT INITIATION (0-100ms) -->
+        <mxCell id="phase1-label" value="═══ PHASE 1: PAYMENT INITIATION (0-100ms) ═══" style="text;html=1;strokeColor=#1976d2;fillColor=#e3f2fd;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="1410" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 1 -->
+        <mxCell id="arrow1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="100" y="210" as="sourcePoint" />
+            <mxPoint x="250" y="210" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label1" value="POST /payments&#xa;{idempotencyKey: uuid_abc,&#xa; amount: 10000, from: alice,&#xa; to: bob}" style="text;html=1;strokeColor=none;fillColor=#e3f2fd;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="110" y="185" width="130" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 2: API Gateway to Redis -->
+        <mxCell id="arrow2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d84315;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="250" y="240" as="sourcePoint" />
+            <mxPoint x="400" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label2" value="GET uuid_abc" style="text;html=1;strokeColor=none;fillColor=#ffccbc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="275" y="225" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 3: Redis response MISS -->
+        <mxCell id="arrow3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d84315;dashed=1;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="265" as="sourcePoint" />
+            <mxPoint x="250" y="265" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label3" value="nil (MISS - first time)" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="260" y="250" width="130" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 4: API GW to Payment Service -->
+        <mxCell id="arrow4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="250" y="295" as="sourcePoint" />
+            <mxPoint x="550" y="295" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label4" value="Forward payment request" style="text;html=1;strokeColor=none;fillColor=#c8e6c9;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="320" y="280" width="160" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 5: Payment Service BEGIN TX -->
+        <mxCell id="arrow5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="550" y="325" as="sourcePoint" />
+            <mxPoint x="695" y="325" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label5" value="BEGIN TRANSACTION" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="570" y="310" width="110" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 6: Check balance (optimistic lock) -->
+        <mxCell id="arrow6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="550" y="355" as="sourcePoint" />
+            <mxPoint x="695" y="355" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label6" value="SELECT balance, version&#xa;FROM accounts&#xa;WHERE id=alice" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="565" y="340" width="120" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 7: Return balance -->
+        <mxCell id="arrow7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;dashed=1;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="695" y="385" as="sourcePoint" />
+            <mxPoint x="550" y="385" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label7" value="balance=50000,&#xa;version=10" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="585" y="370" width="90" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 8: INSERT payment -->
+        <mxCell id="arrow8" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="550" y="415" as="sourcePoint" />
+            <mxPoint x="695" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label8" value="INSERT payments&#xa;(status=INITIATED)" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="570" y="400" width="110" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 9: INSERT outbox -->
+        <mxCell id="arrow9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="550" y="445" as="sourcePoint" />
+            <mxPoint x="695" y="445" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label9" value="INSERT outbox_events&#xa;(published=false)" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="570" y="430" width="110" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 10: COMMIT -->
+        <mxCell id="arrow10" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#8e24aa;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="550" y="475" as="sourcePoint" />
+            <mxPoint x="695" y="475" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label10" value="COMMIT ✓" style="text;html=1;strokeColor=#8e24aa;fillColor=#fce4ec;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="580" y="460" width="90" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 11: Cache in Redis -->
+        <mxCell id="arrow11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d84315;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="550" y="505" as="sourcePoint" />
+            <mxPoint x="400" y="505" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label11" value="SET uuid_abc = {paymentId,&#xa;status: INITIATED} TTL 24hr" style="text;html=1;strokeColor=none;fillColor=#ffccbc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="410" y="490" width="130" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 12: 202 Accepted to client -->
+        <mxCell id="arrow12" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#1976d2;dashed=1;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="250" y="540" as="sourcePoint" />
+            <mxPoint x="100" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label12" value="202 Accepted&#xa;{paymentId: pay_xyz789,&#xa; status: INITIATED}" style="text;html=1;strokeColor=#1976d2;fillColor=#e3f2fd;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="110" y="520" width="130" height="35" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 2: OUTBOX RELAY &amp; KAFKA (async, after client response) -->
+        <mxCell id="phase2-label" value="═══ PHASE 2: OUTBOX RELAY → KAFKA (Async, after client gets 202) ═══" style="text;html=1;strokeColor=#00695c;fillColor=#e0f2f1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="1410" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 13: Outbox polls -->
+        <mxCell id="arrow13" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#00695c;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="825" y="630" as="sourcePoint" />
+            <mxPoint x="695" y="630" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label13" value="Poll: SELECT * FROM&#xa;outbox WHERE published=false" style="text;html=1;strokeColor=none;fillColor=#b2dfdb;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="700" y="615" width="115" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 14: Return outbox event -->
+        <mxCell id="arrow14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#00695c;dashed=1;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="695" y="660" as="sourcePoint" />
+            <mxPoint x="825" y="660" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label14" value="Return event row" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="715" y="645" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 15: Publish to Kafka -->
+        <mxCell id="arrow15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#01579b;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="825" y="690" as="sourcePoint" />
+            <mxPoint x="950" y="690" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label15" value="PUBLISH&#xa;payment.commands" style="text;html=1;strokeColor=#01579b;fillColor=#e1f5fe;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="840" y="675" width="100" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 16: Mark published -->
+        <mxCell id="arrow16" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#00695c;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="825" y="720" as="sourcePoint" />
+            <mxPoint x="695" y="720" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label16" value="UPDATE outbox&#xa;SET published=true" style="text;html=1;strokeColor=none;fillColor=#b2dfdb;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="710" y="705" width="105" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 3: PAYMENT PROCESSOR &amp; BANK API -->
+        <mxCell id="phase3-label" value="═══ PHASE 3: PAYMENT PROCESSOR → BANK API (1-30 sec) ═══" style="text;html=1;strokeColor=#388e3c;fillColor=#e8f5e9;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="1410" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 17: Processor consumes -->
+        <mxCell id="arrow17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#01579b;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="950" y="810" as="sourcePoint" />
+            <mxPoint x="1090" y="810" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label17" value="CONSUME event" style="text;html=1;strokeColor=none;fillColor=#e1f5fe;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="975" y="795" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 18: UPDATE status PROCESSING -->
+        <mxCell id="arrow18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1090" y="840" as="sourcePoint" />
+            <mxPoint x="695" y="840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label18" value="UPDATE payments&#xa;SET status=PROCESSING" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="850" y="825" width="140" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 19: Optimistic lock check -->
+        <mxCell id="arrow19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1090" y="870" as="sourcePoint" />
+            <mxPoint x="695" y="870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label19" value="SELECT balance, version&#xa;FROM accounts WHERE id=alice&#xa;FOR UPDATE (or optimistic)" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=7" vertex="1" parent="1">
+          <mxGeometry x="800" y="855" width="190" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 20: Call Bank API -->
+        <mxCell id="arrow20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#d84315;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1090" y="900" as="sourcePoint" />
+            <mxPoint x="1240" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label20" value="POST /charge&#xa;{amount, from, to,&#xa; paymentId}" style="text;html=1;strokeColor=#d84315;fillColor=#ffccbc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1105" y="880" width="120" height="35" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 21: Bank processing (1-30s) -->
+        <mxCell id="bank-processing" value="⏱️ Bank processes&#xa;(1-30 sec latency)" style="text;html=1;strokeColor=#d84315;fillColor=#fff3e0;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1180" y="930" width="120" height="35" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 22: Bank SUCCESS response -->
+        <mxCell id="arrow22" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#388e3c;dashed=1;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1240" y="980" as="sourcePoint" />
+            <mxPoint x="1090" y="980" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label22" value="200 OK&#xa;{status: SUCCESS,&#xa; ref_id: HDFC_XYZ}" style="text;html=1;strokeColor=#388e3c;fillColor=#c8e6c9;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1105" y="960" width="120" height="35" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 23: UPDATE payment SUCCESS -->
+        <mxCell id="arrow23" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#388e3c;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1090" y="1015" as="sourcePoint" />
+            <mxPoint x="695" y="1015" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label23" value="BEGIN TX:&#xa;  UPDATE payments SET status=SUCCESS,&#xa;    bank_ref=HDFC_XYZ&#xa;  UPDATE accounts SET balance=balance-10000,&#xa;    version=version+1 WHERE id=alice&#xa;  UPDATE accounts SET balance=balance+10000&#xa;    WHERE id=bob&#xa;  INSERT ledger_entries (DEBIT alice -10000)&#xa;  INSERT ledger_entries (CREDIT bob +10000)&#xa;COMMIT ✓" style="text;html=1;strokeColor=#388e3c;fillColor=#c8e6c9;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=7;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="710" y="980" width="370" height="90" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 24: Publish success event to Kafka -->
+        <mxCell id="arrow24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#01579b;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1090" y="1090" as="sourcePoint" />
+            <mxPoint x="950" y="1090" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label24" value="Publish payment.success" style="text;html=1;strokeColor=none;fillColor=#e1f5fe;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="960" y="1075" width="120" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 4: NOTIFICATION -->
+        <mxCell id="phase4-label" value="═══ PHASE 4: NOTIFICATION (async) ═══" style="text;html=1;strokeColor=#f57c00;fillColor=#fff3e0;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="1120" width="1410" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 25: Notification service consumes -->
+        <mxCell id="arrow25" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#f57c00;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="950" y="1170" as="sourcePoint" />
+            <mxPoint x="1385" y="1170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label25" value="Consume payment.success event" style="text;html=1;strokeColor=none;fillColor=#ffe0b2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="1050" y="1155" width="190" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 26: Send email/SMS -->
+        <mxCell id="arrow26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#f57c00;dashed=1;endArrow=block;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1385" y="1210" as="sourcePoint" />
+            <mxPoint x="100" y="1210" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label26" value="📧 Email/SMS: Payment Rs.100 SUCCESS" style="text;html=1;strokeColor=#f57c00;fillColor=#ffe0b2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="580" y="1195" width="260" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- KEY INSIGHTS BOX -->
+        <mxCell id="insights-box" value="🔑 KEY INSIGHTS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1480" y="200" width="490" height="580" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insights-text" value="1. CLIENT GETS 202 IN &lt;100ms&#xa;   Payment not yet confirmed by bank.&#xa;   INITIATED status means accepted for&#xa;   processing, NOT completed.&#xa;&#xa;2. IDEMPOTENCY KEY PREVENTS DOUBLE-CHARGE&#xa;   Second retry: Redis HIT → return cached&#xa;   response (same paymentId, no re-process).&#xa;&#xa;3. OUTBOX PATTERN = ZERO EVENT LOSS&#xa;   If app crashes after COMMIT but before&#xa;   Kafka publish → relay picks up event.&#xa;   Event delivery guaranteed.&#xa;&#xa;4. OPTIMISTIC LOCK PREVENTS OVERDRAFT&#xa;   Two concurrent debits:&#xa;   UPDATE ... WHERE version=10&#xa;   First wins, second gets 0 rows updated&#xa;   → ROLLBACK or retry.&#xa;&#xa;5. BANK API LATENCY: 100ms–30sec&#xa;   NEVER hold DB lock during bank call.&#xa;   Set status=PROCESSING, call async,&#xa;   then UPDATE result.&#xa;&#xa;6. DOUBLE-ENTRY LEDGER (IMMUTABLE)&#xa;   Every payment = 2 ledger rows:&#xa;   • DEBIT alice -Rs.100&#xa;   • CREDIT bob +Rs.100&#xa;   Sum always = 0. Never UPDATE/DELETE.&#xa;   Balance discrepancy? SUM(ledger).&#xa;&#xa;7. TIMEOUT SCENARIO&#xa;   If bank no response after 30s:&#xa;   UPDATE status=PENDING&#xa;   Schedule retry: poll bank status API&#xa;   GET /charge/{paymentId}&#xa;   Eventually bank responds SUCCESS/FAILED.&#xa;&#xa;8. FAILURE SCENARIO (bank rejects)&#xa;   Bank returns 400 {status: FAILED}&#xa;   UPDATE payment status=FAILED&#xa;   NO ledger entries created.&#xa;   Notify customer: payment declined.&#xa;&#xa;9. SAGA FOR CROSS-BANK TRANSFERS&#xa;   Debit our system → COMMIT&#xa;   Call external bank → if FAILED:&#xa;   Compensating txn (reverse debit).&#xa;   NOT 2PC — external APIs don't support it.&#xa;&#xa;10. RECONCILIATION (NIGHTLY)&#xa;    Download bank CSV statement.&#xa;    Compare each bank txn vs our ledger.&#xa;    Mismatch → alert ops, freeze account.&#xa;    Final safety net after all automation." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1490" y="230" width="470" height="540" as="geometry" />
+        </mxCell>
+        
+        <!-- FAILURE SCENARIO -->
+        <mxCell id="failure-box" value="❌ FAILURE SCENARIO: IDEMPOTENCY KEY HIT (Retry)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=3;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1480" y="810" width="490" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="failure-text" value="Client retries same payment (network timeout):&#xa;&#xa;POST /payments {idempotencyKey: uuid_abc, ...}&#xa;&#xa;API Gateway → Redis GET uuid_abc → HIT&#xa;  {paymentId: pay_xyz789, status: INITIATED}&#xa;&#xa;API Gateway returns 409 Conflict:&#xa;  {paymentId: pay_xyz789, status: INITIATED,&#xa;   message: 'Already processing this payment'}&#xa;&#xa;Client polls GET /payments/pay_xyz789 for status.&#xa;Eventually status changes to SUCCESS/FAILED.&#xa;&#xa;KEY: Idempotency key MUST be client-generated UUID.&#xa;Server-generated ID would change on retry → double charge." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1490" y="840" width="470" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- TIMEOUT SCENARIO -->
+        <mxCell id="timeout-box" value="⏱️ TIMEOUT SCENARIO: Bank API no response" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1480" y="1010" width="490" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="timeout-text" value="Processor calls bank API → waits 30 sec → no response.&#xa;&#xa;Processor: UPDATE payments SET status=PENDING&#xa;Schedule retry job (exponential backoff):&#xa;  1st retry: 30 sec later&#xa;  2nd retry: 1 min later&#xa;  3rd retry: 2 min later&#xa;  ...&#xa;&#xa;Poll bank status API:&#xa;GET /charge/{paymentId} → eventually returns:&#xa;  {status: SUCCESS, ref_id: HDFC_XYZ}&#xa;&#xa;Processor: UPDATE status=SUCCESS, insert ledger.&#xa;&#xa;If 10 retries fail → manual ops review.&#xa;Bank might have charged but response lost.&#xa;Reconciliation (nightly) catches this discrepancy.&#xa;&#xa;KEY: NEVER UPDATE account balance until bank confirms." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1490" y="1040" width="470" height="140" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

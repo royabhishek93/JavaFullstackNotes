@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?><mxfile host="app.diagrams.net" modified="2026-08-30T00:00:00.000Z" agent="GitHub Copilot" version="24.7.17"><diagram id="AirlineManagementSystemclass" name="Page-1"><mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="900" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="title" value="Airline Management System: Class Diagram" style="text;html=1;align=left;verticalAlign=middle;fontSize=24;fontStyle=1;fontColor=#1F2937;" vertex="1" parent="1"><mxGeometry x="40" y="30" width="900" height="40" as="geometry"/></mxCell><mxCell id="u0" value="Flight
+----------------
++ id
++ status
+----------------
++ execute()" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;rounded=0;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=14;fontColor=#4C1D95;" vertex="1" parent="1"><mxGeometry x="70" y="130" width="220" height="140" as="geometry"/></mxCell><mxCell id="u1" value="Aircraft
+----------------
++ id
++ status
+----------------
++ execute()" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;rounded=0;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=14;fontColor=#4C1D95;" vertex="1" parent="1"><mxGeometry x="380" y="130" width="220" height="140" as="geometry"/></mxCell><mxCell id="ue1" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="u0" target="u1"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="u2" value="Seat
+----------------
++ id
++ status
+----------------
++ execute()" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;rounded=0;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=14;fontColor=#4C1D95;" vertex="1" parent="1"><mxGeometry x="690" y="130" width="220" height="140" as="geometry"/></mxCell><mxCell id="ue2" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="u1" target="u2"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="u3" value="Reservation
+----------------
++ id
++ status
+----------------
++ execute()" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;rounded=0;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=14;fontColor=#4C1D95;" vertex="1" parent="1"><mxGeometry x="70" y="360" width="220" height="140" as="geometry"/></mxCell><mxCell id="ue3" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="u2" target="u3"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="u4" value="Passenger
+----------------
++ id
++ status
+----------------
++ execute()" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;rounded=0;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=14;fontColor=#4C1D95;" vertex="1" parent="1"><mxGeometry x="380" y="360" width="220" height="140" as="geometry"/></mxCell><mxCell id="ue4" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="u3" target="u4"><mxGeometry relative="1" as="geometry"/></mxCell><mxCell id="u5" value="Payment
+----------------
++ id
++ status
+----------------
++ execute()" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;rounded=0;html=1;fillColor=#EDE9FE;strokeColor=#7C3AED;fontSize=14;fontColor=#4C1D95;" vertex="1" parent="1"><mxGeometry x="690" y="360" width="220" height="140" as="geometry"/></mxCell><mxCell id="ue5" value="uses" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="u4" target="u5"><mxGeometry relative="1" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Streams Introduction — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Streams Introduction — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 18</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:8.33%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🌊</div>
+  <h1 class="gradient-text">Kafka Streams Introduction — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Stateless vs Stateful</span><span class="badge">Real-Time Aggregation</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Stateless vs Stateful Processing, Real-time Aggregation Problems, Window Operations, Stream Joins, Why Kafka Streams</p>
+</div>
+<div class="slide" id="s3" data-title="What We Had So Far (Plain Kafka Consumer)">
+<h2>What We Had So Far (Plain Kafka Consumer)</h2>
+<p>The basic Kafka flow — producer writes, consumer reads, processes, done.</p>
+<div class="dia">  Producer                  Broker                  Consumer
+  ────────                ──────────               ──────────
+  event-1  ──────────►  [P-0: e1,e2,e3]  ──────►  read e1 → send notification
+  event-2  ──────────►                            read e2 → send notification
+  event-3  ──────────►                            read e3 → send notification</div>
+<p>Each event is handled <strong>independently</strong> — no memory of what came before. This is called <strong>stateless processing</strong>.</p>
+</div>
+<div class="slide" id="s4" data-title="Stateless vs Stateful Processing">
+<h2>Stateless vs Stateful Processing</h2>
+<div class="dia">STATELESS (plain Kafka consumer)
+─────────────────────────────────────────────────────────
+  Event arrives  →  process it  →  done
+  Output depends ONLY on the current event.
+
+  Example: "Order placed → send confirmation email"
+           (no need to remember past events)
+
+  Event 1: order#1  →  send email for order#1  ✓
+  Event 2: order#2  →  send email for order#2  ✓
+  Event 3: order#3  →  send email for order#3  ✓
+
+
+STATEFUL (what Kafka Streams enables)
+─────────────────────────────────────────────────────────
+  Output depends on CURRENT event + PREVIOUS events combined.
+  You must REMEMBER state from past messages.
+
+  Example: "What is the total revenue for each customer so far?"
+
+  Event 1: C1 paid ₹50  →  C1 total = ₹50
+  Event 2: C2 paid ₹30  →  C2 total = ₹30
+  Event 3: C1 paid ₹70  →  C1 total = ₹50 + ₹70 = ₹120  ← needs memory!</div>
+<p>Plain Kafka consumer was built for stateless. Stateful needs something more — <strong>Kafka Streams</strong>.</p>
+</div>
+<div class="slide" id="s5" data-title="Real-World Problem 1 — Real-Time Aggregation">
+<h2>Real-World Problem 1 — Real-Time Aggregation</h2>
+<p><strong>Requirement:</strong> Find total revenue per customer in real-time as events stream in.</p>
+<div class="dia">Incoming events (topic: order-events):
+  { customer: C1, amount: ₹50 }
+  { customer: C2, amount: ₹30 }
+  { customer: C1, amount: ₹70 }
+  { customer: C3, amount: ₹90 }
+
+Expected running result:
+  C1 → ₹120
+  C2 → ₹30
+  C3 → ₹90</div>
+<p><strong>Naive Approach A: In-Memory Map</strong></p>
+<div class="dia">  Consumer
+  ┌─────────────────────────────────────┐
+  │  Map&lt;customerId, totalRevenue&gt;      │
+  │  ┌──────┬─────────┐                │
+  │  │  C1  │  ₹120   │                │
+  │  │  C2  │  ₹30    │                │
+  │  │  C3  │  ₹90    │                │
+  │  └──────┴─────────┘                │
+  │  (lives in JVM heap)               │
+  └─────────────────────────────────────┘</div>
+<p><strong>Problem 1: App Crash → State Lost</strong></p>
+<div class="dia">  Events processed so far: 1,00,000
+  In-memory map built:  { C1: ₹5000, C2: ₹3000, ... }
+
+  App CRASHES  ✗
+  Memory gone  ✗
+
+  Restart:
+  Map is empty  →  must replay from offset 0  →  slow &amp; expensive!</div>
+<p><strong>Problem 2: Multiple Instances → Partial Data</strong></p>
+<div class="dia">  Topic: order-events
+  ┌──────────────────────────────────────┐
+  │  Partition-0       Partition-1       │
+  │  C1, C2 events     C3, C4 events     │
+  └─────────┬──────────────┬─────────────┘
+            │              │
+            ▼              ▼
+      Consumer 1      Consumer 2
+      ┌────────────┐  ┌────────────┐
+      │ Map:       │  │ Map:       │
+      │  C1: ₹50  │  │  C3: ₹90  │  ← each has PARTIAL data!
+      │  C2: ₹30  │  │  C4: ₹20  │
+      └────────────┘  └────────────┘
+
+  Consumer 1 gets an order for C3 — C3 data is on Consumer 2!
+  They can't see each other's map.  ✗</div>
+</div>
+<div class="slide" id="s6" data-title="Real-World Problem 1 — Naive Approach B: Store State in MySQL">
+<h2>Real-World Problem 1 — Naive Approach B: Store State in MySQL</h2>
+<p>Instead of in-memory, use a database.</p>
+<div class="dia">  Event arrives: { C1, ₹20 }
+       │
+       ▼
+  SELECT revenue FROM customers WHERE id = 'C1'    ← network call
+       │
+       ▼ (returns ₹10)
+  UPDATE customers SET revenue = ₹30 WHERE id = 'C1' ← network call</div>
+<p><strong>Problem: Database Becomes the Bottleneck</strong></p>
+<div class="dia">  Event throughput: 1,00,000 events/second
+
+  Per event:  1 SELECT + 1 UPDATE  =  2 DB calls
+
+  Total:      1,00,000 × 2  =  2,00,000 DB calls/second  ✗
+
+  Database cannot handle this — it becomes the bottleneck!
+  Kafka's whole point is high throughput; DB kills it.</div>
+</div>
+<div class="slide" id="s7" data-title="Real-World Problem 2 — Window Operations">
+<h2>Real-World Problem 2 — Window Operations</h2>
+<p><strong>Requirement:</strong> Total revenue in the last 5 minutes only (not all time).</p>
+<div class="dia">Timeline:
+───────────────────────────────────────────────────────────────────►
+  t=0                    t=5min              t=10min
+  │                        │                   │
+  [C1:₹50][C2:₹30]         │  [C1:₹70][C3:₹90] │
+        ↑                  │        ↑
+        These should        │        Only these count
+        expire after 5 min  │        in the current 5-min window</div>
+<p><strong>What you'd have to build manually:</strong></p>
+<div class="dia">  For every event:
+  1. Record its timestamp
+  2. Check all stored events — evict entries older than 5 minutes
+  3. Re-aggregate what's left
+  4. Handle the fact that different consumers have PARTIAL window data
+
+  Consumer 1 window:  C1:₹50, C2:₹30    ← partial!
+  Consumer 2 window:  C1:₹70, C3:₹90   ← partial!
+
+  Combined answer is split across 2 instances  ✗</div>
+<p>You'd need to build timestamp tracking, expiry logic, and cross-instance merging yourself — massive overhead.</p>
+</div>
+<div class="slide" id="s8" data-title="Real-World Problem 3 — Joining Two Topics (Stream Enrichment)">
+<h2>Real-World Problem 3 — Joining Two Topics (Stream Enrichment)</h2>
+<p><strong>Requirement:</strong> For each order, look up the customer's name from a customer profile topic.</p>
+<div class="dia">  Topic: order-events           Topic: customer-profile
+  ─────────────────────         ────────────────────────
+  { orderId: O1, cId: C4 }      { cId: C1, name: "Alice" }
+  { orderId: O2, cId: C2 }      { cId: C2, name: "Bob"   }
+  { orderId: O3, cId: C1 }      { cId: C3, name: "Carol" }
+                                { cId: C4, name: "Dave"  }
+
+  Goal: enrich order with customer name
+  O1 → { orderId: O1, customer: "Dave"  }
+  O2 → { orderId: O2, customer: "Bob"   }
+  O3 → { orderId: O3, customer: "Alice" }</div>
+<p><strong>Manual approach: maintain a lookup map</strong></p>
+<div class="dia">  Consumer must:
+  1. Read customer-profile topic and build a map: { C1→Alice, C2→Bob... }
+  2. When order arrives, look up customer name in the map
+
+  ┌───────────────────────────────────────────────────────────┐
+  │  In-memory lookup map (customer profile)                  │
+  │  { C1: Alice, C2: Bob, C3: Carol, C4: Dave }              │
+  └───────────────────────────────────────────────────────────┘
+             App CRASHES  →  map gone  →  replay from offset 0  ✗</div>
+<p><strong>With Multiple Consumers — Cross-Partition Lookup Fails</strong></p>
+<div class="dia">  Both topics split across 2 partitions:
+
+  Consumer A  reads:              Consumer B  reads:
+  order-events   P-0              order-events   P-1
+  cust-profile   P-0              cust-profile   P-1
+
+  Consumer A local map:           Consumer B local map:
+  { C1: Alice, C2: Bob }          { C3: Carol, C4: Dave }
+
+  Consumer A gets order for C4    Consumer B gets order for C1
+  C4 data is on Consumer B  ✗    C1 data is on Consumer A  ✗
+
+  No way to cross-lookup without a shared distributed store!</div>
+</div>
+<div class="slide" id="s9" data-title="Summary of All Problems with Plain Kafka Consumer">
+<h2>Summary of All Problems with Plain Kafka Consumer</h2>
+<div class="dia">Problem                 Root Cause                    Manual Fix Needed?
+──────────────────────  ────────────────────────────  ──────────────────
+App crash → state lost  State in JVM heap             Rebuild from offset 0
+Multiple instances      Partial data per partition    Distributed state sharing
+DB bottleneck           1 DB call per event           Batch / cache strategy
+Window operations       No built-in time tracking     Timestamp + expiry logic
+Stream joins            No built-in topic join        Maintain lookup maps
+Cross-instance joins    Data partitioned differently  Distributed coordination</div>
+<p><strong>If you solve all of this manually, you've just built a stream processing framework from scratch.</strong></p>
+</div>
+<div class="slide" id="s10" data-title="What Kafka Streams Provides (Out of the Box)">
+<h2>What Kafka Streams Provides (Out of the Box)</h2>
+<div class="dia">┌─────────────────────────────────────────────────────────────────────┐
+│                         KAFKA STREAMS                               │
+│                                                                     │
+│  ┌──────────────────┐   ┌────────────────────┐   ┌──────────────┐  │
+│  │  State Stores    │   │  Window Operations │   │  Stream Joins│  │
+│  │  (built-in,      │   │  (tumbling,        │   │  (KStream ×  │  │
+│  │  crash-safe)     │   │   hopping, session)│   │   KTable)    │  │
+│  └──────────────────┘   └────────────────────┘   └──────────────┘  │
+│                                                                     │
+│  ┌──────────────────┐   ┌────────────────────┐                     │
+│  │  Crash Recovery  │   │  Scaling /         │                     │
+│  │  (state backed   │   │  Partition-aware   │                     │
+│  │   by Kafka topic)│   │  task assignment   │                     │
+│  └──────────────────┘   └────────────────────┘                     │
+└─────────────────────────────────────────────────────────────────────┘</div>
+<p>You write the business logic — Kafka Streams handles all the plumbing.</p>
+</div>
+<div class="slide" id="s11" data-title="Key Use Cases for Kafka Streams">
+<h2>Key Use Cases for Kafka Streams</h2>
+<div class="dia">Use Case                  Example
+──────────────────────    ─────────────────────────────────────────────
+Real-time aggregation     Total revenue per customer as orders arrive
+Leaderboard               Live ranking by score updated per event
+Window aggregation        Revenue in last 5 minutes / 1 hour
+Stream enrichment (join)  Add customer name to order event in real-time
+Anomaly detection         Flag if customer makes &gt; 5 orders in 1 minute
+Data transformation       Filter, map, rekey events between topics</div>
+</div>
+<div class="slide" id="s12" data-title="Quick Mental Model">
+<h2>Quick Mental Model</h2>
+<div class="dia">          Plain Kafka Consumer         Kafka Streams
+          ──────────────────────       ─────────────────────────────
+Purpose   Read &amp; process events        Read, process &amp; transform events
+State     No built-in state            Built-in state stores (crash-safe)
+Windows   Manual timestamp tracking    Built-in window operations
+Joins     Manual lookup maps           Built-in stream/table joins
+Scaling   Partial data per consumer    Partition-aware, coordinated
+Recovery  Replay from offset 0         State backed by Kafka changelog topic
+
+Rule of thumb:
+  Each event is independent?      →  use plain Kafka consumer
+  Need memory across events?      →  use Kafka Streams</div>
+</div>
+<div class="slide" id="s13" data-title="Architecture — Real-Time Reporting for the Notification System">
+<h2>Architecture — Where Streams Could Replace Batch Reporting</h2>
+<p>"Today the Reporting Service uses Redis counters plus an hourly Spark/Flink batch job. Let's explore replacing the batch layer with Kafka Streams for real-time delivery-rate aggregation."</p>
+<div class="dia">  delivery_status_events (one event per SENT/DELIVERED/FAILED)
+        │
+        ▼  Kafka Streams app (embedded in the Reporting Service JVM)
+        │  filter(status in DELIVERED/FAILED) → groupBy(channel)
+        │  → windowedBy(1 min) → aggregate → KTable
+        ▼
+  delivery-rate-per-min topic → Dashboard consumer</div>
+<p><strong>Scenario-first:</strong> "Compare to the batch job: it wakes up hourly, so 'delivery rate right now' is always up to 59 minutes stale. Streams computes it continuously — the cost is now owning a stateful application with local state that must survive restarts correctly, which is real operational weight, not free."</p>
+</div>
+<div class="slide" id="s14" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why is Kafka Streams "just a library," not a separate cluster like
+   Spark or Flink?
+A: It runs embedded in your own JVM application — scaling out means
+   running more instances of your app; Kafka's consumer group protocol
+   handles distributing work across them, no separate Streams cluster needed.
+
+Q: When would you keep the batch job even after adopting Streams for
+   some metrics?
+A: Batch is often better for large historical reprocessing/backfills and
+   complex joins across large static datasets — Streams shines at
+   continuous, low-latency aggregation over live topics, not heavy one-off analysis.
+
+Q: Why is "each event independent" vs "need memory across events" the
+   right first question to ask?
+A: It's the fastest way to rule OUT Streams for something like simple
+   fan-out delivery (plain consumer is simpler and sufficient) and rule
+   it IN for anything needing running totals, joins, or windows.</div>
+</div>
+<div class="slide" id="s15" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision                 Choice           Alternative        Why ours                          When to flip
+──────────────────────────  ───────────────  ─────────────────  ────────────────────────────────  ─────────────────────
+Real-time delivery-rate     Kafka Streams     Hourly batch job    Sub-minute freshness for an         Metric only reviewed
+metric                                                              operational dashboard               daily — batch is fine
+Deployment model             Embed in existing Separate Streams    Fewer moving parts if the           Streams workload has
+                              reporting svc     microservice         service already exists              very different scaling needs</div>
+</div>
+<div class="slide" id="s16" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "You scaled from 3 to 6 instances of your Streams app expecting
+  2x throughput. You got almost no improvement. Why?"
+  Answer: "Kafka Streams parallelism is capped by the number of PARTITIONS
+  in the source topic — you can't have more actively-working tasks than
+  partitions. If the source topic has only 6 partitions and you already
+  had 6 tasks running across 3 instances, adding 3 more instances just
+  gives each instance fewer tasks — total parallelism doesn't increase
+  because the ceiling was partition count, not instance count."
+
+Trap 2 — "A colleague suggests using Kafka Streams for the email-workers
+  delivery consumer itself, to 'get built-in state management for free.'
+  What's wrong with that idea?"
+  Answer: "The delivery worker's core job is calling an external HTTP API
+  (SendGrid) and recording the result — a side-effecting operation, not a
+  data transformation/aggregation. Kafka Streams' DSL and state-store model
+  are built for the latter; forcing an external-API-calling workload into
+  it fights the framework rather than leveraging it, and a plain consumer
+  with custom idempotency logic remains the better fit."</div>
+</div>
+<div class="slide" id="s17" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why explore Streams for reporting, not more Redis counters: Redis INCR
+  gives point-in-time counts but no native windowing or replay-based recovery.
+- Why keep the batch job for historical analysis: Streams isn't suited for
+  heavy one-off backfills across large historical datasets.
+- Why NOT use Streams for delivery workers: that workload is external-API
+  side effects, not data transformation — the wrong tool for the job.
+- Why embed Streams in the existing service rather than a new microservice:
+  avoids adding a new deployable unit when the existing lifecycle already fits.</div>
+</div>
+<div class="slide" id="s18" data-title="Top 2 Technologies — Stream Processing Choice">
+<h2>Top 2 Technologies — Stream Processing Layer</h2>
+<div class="dia">Kafka Streams  vs  Plain Kafka Consumer (for building a metric pipeline)
+
+Why pick Kafka Streams: built-in windowing, state stores, and
+  crash-recoverable aggregation — reimplementing this manually on a plain
+  consumer is significant, error-prone work.
+Why pick Plain Consumer: when the logic truly has no state/aggregation
+  need — just read and act per record, like the delivery workers.
+
+Example 1 (Kafka Streams): Notification System's hypothetical real-time
+  delivery-rate-per-minute aggregation — genuinely needs windowed state.
+Example 2 (Plain Consumer): Notification System's actual email/SMS/push
+  delivery workers — no aggregation, just per-record external API calls.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 18;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Streams Introduction — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

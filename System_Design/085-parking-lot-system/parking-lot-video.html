@@ -1,0 +1,1076 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Parking Lot System Design</title><link rel="stylesheet" href="../sd-player.css"></head><body>
+<div id="player"><div id="topbar"><span id="slide-title">Parking Lot System — OOP &amp; Distributed Design</span><span id="counter">1 / 25</span></div><div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div><div id="slide-area">
+
+<div class="slide active" id="s1" data-title="Parking Lot System Design">
+  <div class="title-wrap">
+    <p class="section-label">System Design · LLD + HLD · Interview Master Guide</p>
+    <h1 class="gradient-text">🚗 Parking Lot System Design</h1>
+    <p>OOP &amp; Distributed Architecture — Full Interview Walkthrough</p>
+    <div class="tags" style="justify-content:center;margin:14px 0">
+      <span class="badge">OOP</span>
+      <span class="badge">Strategy Pattern</span>
+      <span class="badge">Observer</span>
+      <span class="badge">Concurrency</span>
+      <span class="badge">Distributed Lock</span>
+      <span class="badge">Redis SETNX</span>
+      <span class="badge">WebSocket</span>
+      <span class="badge">PostgreSQL</span>
+    </div>
+    <div class="cols3" style="max-width:700px;margin:16px auto 0">
+      <div class="stat"><div class="val bl">6</div><div class="lbl">Core Entities</div></div>
+      <div class="stat"><div class="val cy">4</div><div class="lbl">Design Patterns</div></div>
+      <div class="stat"><div class="val gr">10M+</div><div class="lbl">Slots Scalable</div></div>
+    </div>
+    <div class="info" style="max-width:680px;margin:14px auto 0">
+      <strong>Asked at:</strong> Amazon · Google · Uber · Microsoft · Flipkart · Paytm — classic LLD + HLD combo
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s2" data-title="Interview Opening Script">
+  <h2>🎤 Interview Opening — How to Begin</h2>
+  <div class="quote">
+    <strong>Interviewer says:</strong> "Design a parking lot system." — Deceptively simple. Interviewers at FAANG expect you to probe beyond one lot: handle concurrent entries, multi-lot city rollout, real-time availability boards, and payment atomicity at peak load.
+  </div>
+  <div class="cols2" style="margin-top:10px">
+    <div>
+      <h3>Questions You Should Ask</h3>
+      <ul>
+        <li>Single city or multi-city lot network?</li>
+        <li>Hourly billing, slab pricing, or daily cap?</li>
+        <li>Pre-booking / reserved slots needed?</li>
+        <li>EV charging slots with separate pricing?</li>
+        <li>Real-time display board integration?</li>
+        <li>Payment must be synchronous or async?</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Depth Signals That Impress</h3>
+      <ul>
+        <li>Prevent two cars claiming same last slot</li>
+        <li>Slot + ticket state machine consistency</li>
+        <li>Idempotent exit API (duplicate scan safety)</li>
+        <li>WebSocket push to display boards</li>
+        <li>Saga pattern for payment rollback</li>
+        <li>Consistent hashing for multi-lot sharding</li>
+      </ul>
+    </div>
+  </div>
+  <div class="tip">
+    <strong>Your opener:</strong> "I'll start with LLD — entities, class diagram, design patterns, concurrency model — then zoom to HLD: multi-lot coordination, caching, payment flow, and how we scale to 10M+ slots."
+  </div>
+</div>
+
+<div class="slide" id="s3" data-title="Functional Requirements">
+  <h2>✅ Functional Requirements</h2>
+  <div class="cols2">
+    <div class="card blue">
+      <h3>Single-Lot Core</h3>
+      <ul>
+        <li>Multiple floors &amp; slot types: <span class="hl">Bike / Car / Truck / EV</span></li>
+        <li>Entry: find nearest valid slot, issue ticket with timestamp</li>
+        <li>Exit: scan ticket, compute fee, process payment, free slot</li>
+        <li>Prevent double assignment of the same slot</li>
+        <li>Support <span class="cy">VIP, Handicapped, EV</span> reserved slot classes</li>
+        <li>Multiple pricing: hourly, flat first hour, daily cap</li>
+        <li>Payment: card / wallet / UPI — generate receipt</li>
+        <li>Real-time slot availability count per floor</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Distributed / HLD Variant</h3>
+      <ul>
+        <li>100+ lots across multiple cities</li>
+        <li>Pre-booking up to 24 hours in advance</li>
+        <li>Central availability service with &lt;1s staleness</li>
+        <li>Mobile app search: nearby lots, filter by vehicle type</li>
+        <li>Dynamic / surge pricing during peak hours</li>
+        <li>Analytics: occupancy trends, revenue reports</li>
+        <li>Push notifications: booking confirm, expiry alert</li>
+        <li>IoT sensor feed for real-time occupancy (future)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cols2" style="margin-top:10px">
+    <div class="card yellow">
+      <h3>Key State Machines</h3>
+      <ul>
+        <li>Slot: <span class="gr">AVAILABLE</span> → <span class="hl">OCCUPIED</span> → <span class="gr">AVAILABLE</span></li>
+        <li>Ticket: <span class="bl">ACTIVE</span> → <span class="gr">CLOSED</span> | <span class="rd">LOST</span></li>
+        <li>Payment: <span class="hl">PENDING</span> → <span class="gr">SUCCESS</span> | <span class="rd">FAILED</span></li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3>Out of Scope (State This!)</h3>
+      <ul>
+        <li>Valet parking management</li>
+        <li>License plate AI / OCR recognition</li>
+        <li>In-lot turn-by-turn navigation</li>
+        <li>Multi-tenant lot-owner admin portal</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s4" data-title="Non-Functional Requirements">
+  <h2>⚙️ Non-Functional Requirements</h2>
+  <div class="cols2">
+    <div>
+      <h3>Performance &amp; Scale</h3>
+      <table class="tbl">
+        <tr><th>Metric</th><th>Target</th></tr>
+        <tr><td>API latency (p95)</td><td><span class="gr">&lt; 200 ms</span></td></tr>
+        <tr><td>API latency (p50)</td><td><span class="gr">&lt; 100 ms</span></td></tr>
+        <tr><td>Availability</td><td><span class="gr">99.9% uptime</span></td></tr>
+        <tr><td>Peak RPS</td><td><span class="hl">300 RPS</span></td></tr>
+        <tr><td>Slot availability staleness</td><td><span class="gr">&lt; 1 second</span></td></tr>
+        <tr><td>Daily transactions</td><td><span class="cy">100K+</span></td></tr>
+        <tr><td>Total users</td><td><span class="cy">1M+</span></td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Reliability &amp; Security</h3>
+      <table class="tbl">
+        <tr><th>Concern</th><th>Approach</th></tr>
+        <tr><td>Double booking</td><td><span class="bl">Distributed lock</span></td></tr>
+        <tr><td>Payment safety</td><td><span class="bl">PCI-DSS + Idempotency</span></td></tr>
+        <tr><td>Disaster recovery</td><td>RPO &lt;1h, RTO &lt;4h</td></tr>
+        <tr><td>Data consistency</td><td><span class="bl">Strong (ACID bookings)</span></td></tr>
+        <tr><td>Auth</td><td>JWT + OAuth 2.0</td></tr>
+        <tr><td>Rate limiting</td><td>100 req/min per user</td></tr>
+        <tr><td>Encryption</td><td>TLS 1.3 in-transit</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="cols3" style="margin-top:12px">
+    <div class="stat"><div class="val bl">500 GB</div><div class="lbl">5-year storage</div></div>
+    <div class="stat"><div class="val cy">40 Mbps</div><div class="lbl">outbound bandwidth</div></div>
+    <div class="stat"><div class="val gr">3×</div><div class="lbl">peak hour multiplier</div></div>
+  </div>
+</div>
+
+<div class="slide" id="s5" data-title="UML Class Diagram">
+  <h2>📐 UML Class Diagram — Core Entities</h2>
+  <div class="dia"><span class="cm">// Core LLD entities — relationships and key fields</span>
+
+<span class="kw">ParkingLot</span>                         <span class="kw">ParkingFloor</span>
+  id: UUID                             id: UUID
+  name: String                         lotId: UUID ─────────────► ParkingLot
+  address: String             1..*     floorNumber: int
+  floors: List&lt;Floor&gt; ────────────────► slots: List&lt;Slot&gt;
+  getAvailableSlots(type)
+  getAllFloors()
+
+<span class="kw">ParkingSlot</span>                        <span class="kw">Vehicle</span>
+  id: UUID                             plateNumber: String  &lt;&lt;PK&gt;&gt;
+  floorId: UUID                        vehicleType: VehicleType
+  slotNumber: String                   ownerId: UUID
+  slotType: SlotType    ◄── matched ──
+  status: SlotStatus
+  reservedFor: String?
+
+<span class="kw">ParkingTicket</span>                      <span class="kw">Payment</span>
+  id: UUID                             id: UUID
+  lotId: UUID                          ticketId: UUID ──────────► ParkingTicket
+  slotId: UUID ──────────► Slot        amount: BigDecimal
+  vehiclePlate: String                 method: PaymentMethod
+  entryTime: Instant                   status: PaymentStatus
+  exitTime: Instant?                   transactionRef: String
+  status: TicketStatus                 paidAt: Instant</div>
+  <div class="cols2" style="margin-top:8px">
+    <div class="info"><strong>SlotType enum:</strong> BIKE · CAR · TRUCK · EV</div>
+    <div class="info"><strong>SlotStatus enum:</strong> AVAILABLE · OCCUPIED · OUT_OF_SERVICE</div>
+  </div>
+</div>
+
+<div class="slide" id="s6" data-title="Vehicle Hierarchy &amp; Slot Sizing">
+  <h2>🚗 Vehicle Hierarchy &amp; Slot Sizing</h2>
+  <div class="cols2">
+    <div>
+      <h3>Inheritance Tree</h3>
+      <div class="dia"><span class="kw">abstract class</span> Vehicle
+  # plateNumber: String
+  # vehicleType: VehicleType
+  # ownerId: UUID
+  + <span class="kw">abstract</span> getSlotType(): SlotType
+
+<span class="kw">class</span> Bike <span class="kw">extends</span> Vehicle
+  + getSlotType() → BIKE
+
+<span class="kw">class</span> Car <span class="kw">extends</span> Vehicle
+  + getSlotType() → CAR
+
+<span class="kw">class</span> Truck <span class="kw">extends</span> Vehicle
+  + getSlotType() → TRUCK
+
+<span class="kw">class</span> ElectricVehicle <span class="kw">extends</span> Car
+  + chargingRequired: Boolean
+  + getSlotType() → EV</div>
+    </div>
+    <div>
+      <h3>Slot Size Matrix</h3>
+      <table class="tbl">
+        <tr><th>Vehicle</th><th>Slot Type</th><th>Size</th><th>EV Charger</th></tr>
+        <tr><td>Bike</td><td><span class="cy">BIKE</span></td><td>Small</td><td>No</td></tr>
+        <tr><td>Car</td><td><span class="gr">CAR</span></td><td>Medium</td><td>Optional</td></tr>
+        <tr><td>Truck</td><td><span class="hl">TRUCK</span></td><td>Large</td><td>No</td></tr>
+        <tr><td>Electric Car</td><td><span class="bl">EV</span></td><td>Medium</td><td><span class="gr">Yes</span></td></tr>
+      </table>
+      <div class="tip" style="margin-top:10px">
+        <strong>Compatibility rule:</strong> A CAR can park in a TRUCK slot (larger), but never in a BIKE slot. Model this with a <em>slot-size partial order</em> in SlotAssignmentService.
+      </div>
+      <h3 style="margin-top:10px">Factory Pattern for Vehicle</h3>
+      <div class="dia"><span class="kw">class</span> VehicleFactory {
+  <span class="kw">static</span> create(plate, type): Vehicle {
+    <span class="kw">return switch</span>(type) {
+      BIKE  → <span class="kw">new</span> Bike(plate)
+      CAR   → <span class="kw">new</span> Car(plate)
+      TRUCK → <span class="kw">new</span> Truck(plate)
+      EV    → <span class="kw">new</span> ElectricVehicle(plate) }}}
+</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s7" data-title="Slot Assignment — Strategy Pattern">
+  <h2>🎯 Slot Assignment — Strategy Pattern</h2>
+  <div class="cols2">
+    <div>
+      <h3>Interface &amp; Implementations</h3>
+      <div class="dia"><span class="kw">interface</span> SlotAssignmentStrategy {
+  findSlot(
+    floors: List&lt;Floor&gt;,
+    type: SlotType
+  ): Optional&lt;ParkingSlot&gt;
+}
+
+<span class="cm">// Strategy 1 — default for walk-in</span>
+<span class="kw">class</span> NearestEntranceStrategy
+    <span class="kw">implements</span> SlotAssignmentStrategy {
+  <span class="cm">// Iterates floor 1→N, returns first free</span>
+}
+
+<span class="cm">// Strategy 2 — for pre-booking spread</span>
+<span class="kw">class</span> RandomSpreadStrategy
+    <span class="kw">implements</span> SlotAssignmentStrategy {
+  <span class="cm">// Random slot to reduce hotspot on F1</span>
+}
+
+<span class="cm">// Strategy 3 — accessibility mandate</span>
+<span class="kw">class</span> HandicappedFirstStrategy
+    <span class="kw">implements</span> SlotAssignmentStrategy {
+  <span class="cm">// Nearest slot with HANDICAPPED flag</span>
+}</div>
+    </div>
+    <div>
+      <h3>Context: SlotAssignmentService</h3>
+      <div class="dia"><span class="kw">class</span> SlotAssignmentService {
+  <span class="kw">private</span> strategy: SlotAssignmentStrategy
+
+  setStrategy(s: SlotAssignmentStrategy) {
+    this.strategy = s
+  }
+
+  assignSlot(lot, vehicleType): Slot {
+    <span class="kw">return</span> strategy.findSlot(
+      lot.getFloors(),
+      vehicleType.getSlotType()
+    )
+  }
+}</div>
+      <div class="success">
+        <strong>Why Strategy here?</strong> The assignment algorithm varies by vehicle type, time of day, and lot policy. We can swap strategies at runtime — e.g. switch to RandomSpread during peak hours to balance floor utilisation.
+      </div>
+      <div class="tip">
+        <strong>Index trick:</strong> Maintain a <code>Map&lt;SlotType, Queue&lt;Slot&gt;&gt;</code> per floor for O(1) next-available lookup rather than scanning all slots.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s8" data-title="Entry &amp; Exit Flow">
+  <h2>🚦 Entry &amp; Exit Flow — Ticket Lifecycle</h2>
+  <div class="cols2">
+    <div>
+      <h3>Entry Flow — POST /v1/entry</h3>
+      <div class="step-row"><span class="step">1</span><span>Validate vehicle type &amp; plate format</span></div>
+      <div class="step-row"><span class="step">2</span><span>Check no active ticket already exists for this plate in lot</span></div>
+      <div class="step-row"><span class="step">3</span><span>Run <span class="bl">SlotAssignmentStrategy</span> → get candidate slot</span></div>
+      <div class="step-row"><span class="step">4</span><span><span class="hl">Atomic CAS:</span> UPDATE slot SET status=OCCUPIED WHERE status=AVAILABLE</span></div>
+      <div class="step-row"><span class="step">5</span><span>If CAS fails (race) → retry next candidate slot</span></div>
+      <div class="step-row"><span class="step">6</span><span>INSERT ParkingTicket (ACTIVE, entryTime=now, idempotency_key)</span></div>
+      <div class="step-row"><span class="step">7</span><span>Publish <span class="cy">SlotOccupied</span> event → WebSocket / Kafka</span></div>
+      <div class="step-row"><span class="step">8</span><span>Return ticketId to barrier controller</span></div>
+    </div>
+    <div>
+      <h3>Exit Flow — POST /v1/exit</h3>
+      <div class="step-row"><span class="step">1</span><span>Fetch ACTIVE ticket by ticketId (idempotency_key check)</span></div>
+      <div class="step-row"><span class="step">2</span><span>Set exitTime = now; compute duration in minutes</span></div>
+      <div class="step-row"><span class="step">3</span><span>Run <span class="pu">PricingStrategy</span> → calculate fee</span></div>
+      <div class="step-row"><span class="step">4</span><span>Create PENDING Payment record with idempotency key</span></div>
+      <div class="step-row"><span class="step">5</span><span>Charge via payment gateway (Stripe/PayPal)</span></div>
+      <div class="step-row"><span class="step">6</span><span>On SUCCESS: UPDATE ticket.status=CLOSED, slot.status=AVAILABLE</span></div>
+      <div class="step-row"><span class="step">7</span><span>Lift barrier; publish <span class="cy">SlotFreed</span> event</span></div>
+      <div class="step-row"><span class="step">8</span><span>On payment FAILURE: ticket stays ACTIVE, barrier stays down</span></div>
+    </div>
+  </div>
+  <div class="warn">
+    <strong>Critical invariant:</strong> Exactly one ACTIVE ticket per slot. Exactly one OCCUPIED slot per active ticket. These two constraints together prevent all race conditions.
+  </div>
+</div>
+
+<div class="slide" id="s9" data-title="Pricing Strategy Pattern">
+  <h2>💰 Pricing — Strategy Pattern</h2>
+  <div class="cols2">
+    <div>
+      <h3>Interface &amp; Implementations</h3>
+      <div class="dia"><span class="kw">interface</span> PricingStrategy {
+  calculate(durationMins: Long,
+            slotType: SlotType): BigDecimal
+}
+
+<span class="cm">// $2/hr — simple walk-in billing</span>
+<span class="kw">class</span> HourlyPricingStrategy {
+  calculate(mins, type) {
+    hours = ceil(mins / 60.0)
+    <span class="kw">return</span> hourlyRate[type] * hours
+  }
+}
+
+<span class="cm">// First hour flat, then per 30 min</span>
+<span class="kw">class</span> SlabPricingStrategy {
+  calculate(mins, type) {
+    <span class="kw">if</span>(mins &lt;= 60) <span class="kw">return</span> flatRate
+    extra = ceil((mins-60)/30.0)
+    <span class="kw">return</span> flatRate + extra*slabRate
+  }
+}
+
+<span class="cm">// Cap at daily max — long stays</span>
+<span class="kw">class</span> DailyMaxPricingStrategy {
+  calculate(mins, type) {
+    hourly = HourlyPricingStrategy...
+    <span class="kw">return</span> min(hourly, dailyMax)
+  }
+}
+
+<span class="cm">// Peak hours surge multiplier</span>
+<span class="kw">class</span> SurgePricingDecorator {
+  calculate(mins, type) {
+    base = delegate.calculate(mins, type)
+    <span class="kw">return</span> base * surgeMultiplier
+  }
+}</div>
+    </div>
+    <div>
+      <h3>Sample Rate Table</h3>
+      <table class="tbl">
+        <tr><th>Slot Type</th><th>Hourly</th><th>Daily Cap</th></tr>
+        <tr><td>Bike</td><td>$1.00</td><td>$8</td></tr>
+        <tr><td>Car</td><td>$2.00</td><td>$15</td></tr>
+        <tr><td>Truck</td><td>$4.00</td><td>$30</td></tr>
+        <tr><td>EV</td><td>$3.00 + charging</td><td>$20</td></tr>
+      </table>
+      <h3 style="margin-top:10px">Context: PricingService</h3>
+      <div class="dia"><span class="kw">class</span> PricingService {
+  strategy: PricingStrategy
+  setStrategy(s) { this.strategy = s }
+
+  computeFee(ticket): BigDecimal {
+    mins = Duration.between(
+      ticket.entryTime, now()).toMinutes()
+    <span class="kw">return</span> strategy.calculate(
+      mins, ticket.slotType)
+  }
+}</div>
+      <div class="tip">
+        Wrap any base strategy with <span class="hl">SurgePricingDecorator</span> at runtime. No if-else chains — open/closed principle preserved.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s10" data-title="Concurrency — Last Slot Race">
+  <h2>⚡ Concurrency — Last Slot Race Condition</h2>
+  <div class="cols2">
+    <div>
+      <h3>The Problem</h3>
+      <div class="warn">
+        T1 reads slot #42 → AVAILABLE<br>
+        T2 reads slot #42 → AVAILABLE<br>
+        T1 writes OCCUPIED ✓<br>
+        T2 writes OCCUPIED ✓ &lt;— <strong>double assignment!</strong>
+      </div>
+      <h3 style="margin-top:10px">Solution 1 — Optimistic Lock (DB)</h3>
+      <div class="dia"><span class="cm">-- Atomic conditional update (CAS)</span>
+<span class="kw">UPDATE</span> parking_slots
+<span class="kw">SET</span>    status = <span class="str">'OCCUPIED'</span>,
+       version = version + <span class="num">1</span>
+<span class="kw">WHERE</span>  id = ?
+  <span class="kw">AND</span>  status = <span class="str">'AVAILABLE'</span>
+  <span class="kw">AND</span>  version = ?;
+<span class="cm">-- affected rows = 0 → lost race, retry</span></div>
+      <h3 style="margin-top:10px">Solution 2 — Redis SETNX</h3>
+      <div class="dia"><span class="cm">// Distributed lock — 10s TTL</span>
+<span class="kw">String</span> key = <span class="str">"slot:lock:"</span> + slotId;
+<span class="kw">Boolean</span> acquired =
+  redis.set(key, requestId,
+    SET_IF_NOT_EXISTS, <span class="num">10</span>, SECONDS);
+<span class="kw">if</span> (!acquired) retryNextSlot();</div>
+    </div>
+    <div>
+      <h3>Solution 3 — Redlock (Multi-node)</h3>
+      <div class="dia"><span class="cm">// Redisson Redlock — quorum across</span>
+<span class="cm">// 5 independent Redis nodes</span>
+RLock lock = redisson.getLock(key);
+<span class="kw">if</span> (lock.tryLock(<span class="num">5</span>, <span class="num">10</span>, SECONDS)) {
+  <span class="kw">try</span> {
+    <span class="kw">if</span> (isAvailable(slotId))
+      reserveSlot(slotId);
+  } <span class="kw">finally</span> { lock.unlock(); }
+} <span class="kw">else</span> { retryNextSlot(); }</div>
+      <h3 style="margin-top:10px">Concurrent Entry Scenario</h3>
+      <div class="step-row"><span class="step">1</span><span>Car A &amp; B both request last slot on Floor 1</span></div>
+      <div class="step-row"><span class="step">2</span><span>Car A acquires Redis lock first → marks OCCUPIED</span></div>
+      <div class="step-row"><span class="step">3</span><span>Car B's CAS returns 0 rows → retries Floor 1 slot #43</span></div>
+      <div class="step-row"><span class="step">4</span><span>Both get distinct tickets and distinct slots</span></div>
+      <div class="success" style="margin-top:10px">
+        <strong>DB unique constraint</strong> as final safety net: UNIQUE(slot_id) on active tickets. Even if lock fails, the DB write will throw a constraint violation.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s11" data-title="Distributed Parking System — HLD">
+  <h2>🌐 Distributed Parking System — HLD Architecture</h2>
+  <div class="dia"><span class="cm">// Multi-lot, multi-city — microservices HLD</span>
+
+Mobile App / Web Portal
+        │
+        ▼
+  CDN ──► Load Balancer (ALB) ──► API Gateway (Kong)
+                                        │
+              ┌─────────────────────────┼──────────────────────┐
+              ▼                         ▼                      ▼
+       Booking Service          Search Service         Payment Service
+       (Spring Boot)            (FastAPI/Go)           (Spring Boot)
+              │                         │                      │
+        PostgreSQL               Elasticsearch            Stripe API
+        (Master+Replica)         (Geo-search)
+              │                         │
+         Redis Cache  ◄───────────── Kafka Events ──────────► Notification
+         (Avail. count)                                        Service
+                                                              (FCM/SMS)</div>
+  <div class="cols2" style="margin-top:8px">
+    <div class="card blue">
+      <h3>Booking Service</h3>
+      <ul>
+        <li>Create / cancel / extend reservations</li>
+        <li>Distributed lock via Redlock</li>
+        <li>Emits events to Kafka on state change</li>
+        <li>Horizontal scale: Kubernetes HPA</li>
+      </ul>
+    </div>
+    <div class="card cyan">
+      <h3>Search Service</h3>
+      <ul>
+        <li>Geo-spatial queries: find lots within 5km</li>
+        <li>Elasticsearch + Geohash index</li>
+        <li>Cache popular searches in Redis (5 min TTL)</li>
+        <li>Pre-aggregated availability counts</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s12" data-title="Caching Strategy — Redis Layers">
+  <h2>🗄️ Caching Strategy — Redis Layers</h2>
+  <div class="cols2">
+    <div>
+      <h3>L1 — Availability Counter (Hot)</h3>
+      <div class="dia">Key:   <span class="str">lot:{lotId}:avail:{slotType}</span>
+Value: <span class="num">45</span>          <span class="cm">// integer count</span>
+TTL:   <span class="num">30</span> seconds
+Op:    INCR / DECR on entry/exit event</div>
+      <h3 style="margin-top:10px">L2 — Booking Detail Cache</h3>
+      <div class="dia">Key:   <span class="str">booking:{bookingId}</span>
+Value: {userId, spotId, status, ...}
+TTL:   <span class="num">1</span> hour</div>
+      <h3 style="margin-top:10px">L3 — Search Results Cache</h3>
+      <div class="dia">Key:   <span class="str">search:{lat}:{lon}:{r}:{type}</span>
+Value: [list of available lots + counts]
+TTL:   <span class="num">5</span> minutes</div>
+    </div>
+    <div>
+      <h3>Cache Invalidation Strategy</h3>
+      <div class="card green">
+        <strong>Write-through:</strong> On every booking create/cancel → update DB then update cache atomically.
+      </div>
+      <div class="card yellow" style="margin-top:8px">
+        <strong>Event-driven:</strong> Kafka consumer listens for <em>SlotOccupied / SlotFreed</em> events → DECR / INCR availability counter.
+      </div>
+      <div class="card blue" style="margin-top:8px">
+        <strong>TTL fallback:</strong> Stale data self-expires. Acceptable for search cache; not for booking confirmation.
+      </div>
+      <h3 style="margin-top:10px">Redis Failure Handling</h3>
+      <ul>
+        <li>Fallback: query DB directly (slower but correct)</li>
+        <li>Redis Sentinel: automatic failover to replica</li>
+        <li>Circuit breaker: stop trying Redis after 3 failures</li>
+        <li>Stale cache served with "updating…" warning</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s13" data-title="Real-time Availability — WebSocket Push">
+  <h2>📡 Real-time Availability — WebSocket Push</h2>
+  <div class="cols2">
+    <div>
+      <h3>Architecture Flow</h3>
+      <div class="step-row"><span class="step">1</span><span>Vehicle enters → Booking Service marks slot OCCUPIED</span></div>
+      <div class="step-row"><span class="step">2</span><span>Booking Service publishes <span class="cy">SlotOccupied</span> event to Kafka</span></div>
+      <div class="step-row"><span class="step">3</span><span>Availability Service consumes event → DECR Redis counter</span></div>
+      <div class="step-row"><span class="step">4</span><span>Availability Service pushes update via <span class="hl">WebSocket</span></span></div>
+      <div class="step-row"><span class="step">5</span><span>Mobile app + display boards receive real-time count update</span></div>
+      <div class="step-row"><span class="step">6</span><span>Same flow in reverse when vehicle exits (SlotFreed event)</span></div>
+      <div class="dia" style="margin-top:10px"><span class="cm">// WebSocket message payload</span>
+{
+  <span class="str">"lotId"</span>:    <span class="str">"lot-123"</span>,
+  <span class="str">"floorId"</span>:  <span class="str">"floor-1"</span>,
+  <span class="str">"slotType"</span>: <span class="str">"CAR"</span>,
+  <span class="str">"available"</span>: <span class="num">12</span>,
+  <span class="str">"total"</span>:     <span class="num">50</span>,
+  <span class="str">"updatedAt"</span>: <span class="str">"2026-08-30T09:12:01Z"</span>
+}</div>
+    </div>
+    <div>
+      <h3>Why WebSocket over Polling?</h3>
+      <table class="tbl">
+        <tr><th>Approach</th><th>Latency</th><th>Server Load</th></tr>
+        <tr><td>HTTP Polling (1s)</td><td>~1s</td><td><span class="rd">High</span></td></tr>
+        <tr><td>Long Polling</td><td>~200ms</td><td><span class="hl">Medium</span></td></tr>
+        <tr><td><strong>WebSocket</strong></td><td><span class="gr">&lt;50ms</span></td><td><span class="gr">Low</span></td></tr>
+        <tr><td>SSE</td><td>&lt;100ms</td><td>Low (1-way)</td></tr>
+      </table>
+      <div class="tip" style="margin-top:10px">
+        <strong>Display Board Integration:</strong> Each physical LED board opens a persistent WebSocket to the Availability Service, subscribed to its floor ID. Sub-second updates with no polling overhead.
+      </div>
+      <h3 style="margin-top:10px">Observer Pattern</h3>
+      <div class="dia"><span class="kw">interface</span> AvailabilityObserver {
+  onSlotChanged(event: SlotEvent)
+}
+<span class="cm">// Observers: WebSocketBroadcaster,</span>
+<span class="cm">//   RedisCounterUpdater, AnalyticsWriter</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s14" data-title="Payment Flow — Fee to Barrier Lift">
+  <h2>💳 Payment Flow — Fee Calc → Charge → Barrier Lift</h2>
+  <div class="cols2">
+    <div>
+      <h3>Happy Path Steps</h3>
+      <div class="step-row"><span class="step">1</span><span>Driver scans ticket at exit terminal</span></div>
+      <div class="step-row"><span class="step">2</span><span>System computes duration → runs PricingStrategy → fee = $8.50</span></div>
+      <div class="step-row"><span class="step">3</span><span>Display fee to driver, accept payment method</span></div>
+      <div class="step-row"><span class="step">4</span><span>Create PENDING Payment with idempotency_key = ticketId + attempt</span></div>
+      <div class="step-row"><span class="step">5</span><span>Call Stripe / PayPal — receive payment_intent_id</span></div>
+      <div class="step-row"><span class="step">6</span><span>Webhook confirms SUCCESS → update Payment.status = SUCCESS</span></div>
+      <div class="step-row"><span class="step">7</span><span>Close ticket, free slot, lift barrier</span></div>
+      <div class="step-row"><span class="step">8</span><span>Emit SlotFreed event → WebSocket push + Redis INCR</span></div>
+    </div>
+    <div>
+      <h3>Failure Scenarios &amp; Saga Rollback</h3>
+      <div class="card red">
+        <strong>Payment timeout:</strong> Ticket stays ACTIVE, barrier stays down. Driver retries — idempotency key prevents double charge.
+      </div>
+      <div class="card yellow" style="margin-top:8px">
+        <strong>Barrier opens but DB write fails:</strong> Retry worker re-closes ticket within 30s grace. Slot freed on timeout.
+      </div>
+      <div class="card purple" style="margin-top:8px">
+        <strong>Stripe webhook delayed:</strong> Polling job reconciles payment_intent status after 60s.
+      </div>
+      <div class="tip" style="margin-top:8px">
+        <strong>Idempotency key format:</strong> <code>exit:{ticketId}:{attemptNo}</code> — Stripe rejects duplicate charges with the same key.
+      </div>
+      <div class="info">
+        <strong>PCI-DSS:</strong> Never store raw card numbers. Tokenise via Stripe. Store only <em>stripe_payment_id</em> in your DB.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s15" data-title="VIP &amp; Reserved Slots — Pre-booking">
+  <h2>🔖 VIP &amp; Reserved Slots — Pre-booking System</h2>
+  <div class="cols2">
+    <div>
+      <h3>Slot Reservation Types</h3>
+      <table class="tbl">
+        <tr><th>Type</th><th>Who</th><th>Hold Window</th></tr>
+        <tr><td><span class="hl">VIP Monthly</span></td><td>Subscribers</td><td>Always reserved</td></tr>
+        <tr><td><span class="cy">Pre-booked</span></td><td>Any user</td><td>Up to 24h ahead</td></tr>
+        <tr><td><span class="pu">Handicapped</span></td><td>Permit holders</td><td>Always reserved</td></tr>
+        <tr><td><span class="gr">EV Charging</span></td><td>EV vehicles</td><td>On assignment</td></tr>
+      </table>
+      <h3 style="margin-top:10px">Pre-booking Flow</h3>
+      <div class="step-row"><span class="step">1</span><span>User books via app: lot + slot type + time window</span></div>
+      <div class="step-row"><span class="step">2</span><span>System sets slot.status = RESERVED + booking_id FK</span></div>
+      <div class="step-row"><span class="step">3</span><span>Expiry job: if no entry within 15 min of start → release</span></div>
+      <div class="step-row"><span class="step">4</span><span>Entry with booking_id → skip strategy, use reserved slot directly</span></div>
+      <div class="step-row"><span class="step">5</span><span>Cancellation within 1h → full refund; else partial refund</span></div>
+    </div>
+    <div>
+      <h3>Hold Expiry Design</h3>
+      <div class="dia"><span class="cm">// Redis TTL-based hold expiry</span>
+<span class="kw">String</span> holdKey =
+  <span class="str">"hold:slot:"</span> + slotId + <span class="str">":"</span> + bookingId;
+redis.setex(holdKey, holdWindowSecs, bookingId);
+<span class="cm">// On expiry, Keyspace notification fires</span>
+<span class="cm">// → Expiry listener releases slot</span>
+<span class="kw">@EventListener</span>
+<span class="kw">void</span> onHoldExpired(KeyExpiredEvent e) {
+  slotService.releaseIfUnused(e.getValue());
+}</div>
+      <div class="card green" style="margin-top:8px">
+        <strong>Cancellation Policy:</strong>
+        <ul>
+          <li>&gt; 2h before start → 100% refund</li>
+          <li>1–2h before start → 50% refund</li>
+          <li>&lt; 1h before start → no refund</li>
+          <li>No-show (15 min grace) → slot released, no refund</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s16" data-title="ER Diagram — ASCII">
+  <h2>🗂️ ER Diagram — Entity Relationships</h2>
+  <div class="dia">PARKING_LOTS
+  PK id (UUID) │ name │ address │ city │ created_at
+       │ 1
+       │ has many
+       ▼ N
+PARKING_FLOORS
+  PK id (UUID) │ FK lot_id → parking_lots.id │ floor_number
+       │ 1
+       │ has many
+       ▼ N
+PARKING_SLOTS ───────────────────────────── VEHICLES
+  PK id (UUID)                               PK plate_number
+  FK floor_id → floors.id                      vehicle_type
+  slot_number                                   owner_id
+  slot_type  (BIKE/CAR/TRUCK/EV)
+  status     (AVAILABLE/OCCUPIED/OOS)              │ enters
+  created_at, updated_at                           │
+       │                                           ▼
+       │ assigned via          PARKING_TICKETS
+       └──────────────────────► PK id (UUID)
+                                FK lot_id  → parking_lots.id
+                                FK slot_id → parking_slots.id
+                                FK plate_number → vehicles
+                                entry_time │ exit_time │ status
+                                idempotency_key
+                                       │ paid by
+                                       ▼
+                               PAYMENTS
+                                PK id (UUID)
+                                FK ticket_id → tickets.id
+                                amount │ payment_method │ status
+                                transaction_ref │ paid_at</div>
+  <div class="cols2" style="margin-top:8px">
+    <div class="info"><strong>Unique constraints:</strong> (floor_id, slot_number) on slots; (idempotency_key) on tickets; (ticket_id) on payments</div>
+    <div class="success"><strong>Check constraints:</strong> amount &gt;= 0 on payments; status enum values enforced at DB level</div>
+  </div>
+</div>
+
+<div class="slide" id="s17" data-title="DB Schema DDL">
+  <h2>🛢️ DB Schema DDL — Slots &amp; Tickets</h2>
+  <div class="cols2">
+    <div>
+      <h3>parking_slots</h3>
+      <div class="dia"><span class="kw">CREATE TABLE</span> parking_slots (
+  id          UUID        <span class="kw">PRIMARY KEY</span>,
+  floor_id    UUID        <span class="kw">REFERENCES</span> parking_floors(id),
+  slot_number VARCHAR(<span class="num">10</span>) <span class="kw">NOT NULL</span>,
+  slot_type   VARCHAR(<span class="num">10</span>) <span class="kw">NOT NULL</span>,
+  <span class="cm">-- BIKE | CAR | TRUCK | EV</span>
+  status      VARCHAR(<span class="num">20</span>) <span class="kw">NOT NULL</span>
+              <span class="kw">DEFAULT</span> <span class="str">'AVAILABLE'</span>,
+  version     INT         <span class="kw">DEFAULT</span> <span class="num">0</span>,
+  created_at  TIMESTAMPTZ <span class="kw">DEFAULT</span> now(),
+  updated_at  TIMESTAMPTZ <span class="kw">DEFAULT</span> now(),
+  <span class="kw">UNIQUE</span> (floor_id, slot_number)
+);
+<span class="kw">CREATE INDEX</span> idx_slots_floor_status
+  <span class="kw">ON</span> parking_slots(floor_id, status);
+<span class="kw">CREATE INDEX</span> idx_slots_type_status
+  <span class="kw">ON</span> parking_slots(slot_type, status);</div>
+    </div>
+    <div>
+      <h3>parking_tickets</h3>
+      <div class="dia"><span class="kw">CREATE TABLE</span> parking_tickets (
+  id              UUID        <span class="kw">PRIMARY KEY</span>,
+  lot_id          UUID        <span class="kw">REFERENCES</span> parking_lots(id),
+  slot_id         UUID        <span class="kw">REFERENCES</span> parking_slots(id),
+  vehicle_plate   VARCHAR(<span class="num">20</span>) <span class="kw">NOT NULL</span>,
+  entry_time      TIMESTAMPTZ <span class="kw">NOT NULL</span>,
+  exit_time       TIMESTAMPTZ,
+  status          VARCHAR(<span class="num">10</span>) <span class="kw">NOT NULL</span>
+                  <span class="kw">DEFAULT</span> <span class="str">'ACTIVE'</span>,
+  idempotency_key VARCHAR(<span class="num">64</span>) <span class="kw">UNIQUE</span>,
+  created_at      TIMESTAMPTZ <span class="kw">DEFAULT</span> now(),
+  updated_at      TIMESTAMPTZ <span class="kw">DEFAULT</span> now()
+);
+<span class="kw">CREATE UNIQUE INDEX</span> idx_ticket_active_slot
+  <span class="kw">ON</span> parking_tickets(slot_id)
+  <span class="kw">WHERE</span> status = <span class="str">'ACTIVE'</span>;
+<span class="cm">-- Partial unique: only 1 active ticket per slot</span></div>
+    </div>
+  </div>
+  <div class="tip" style="margin-top:8px">
+    <strong>Partial unique index</strong> on (slot_id) WHERE status='ACTIVE' is the DB-level guard against double assignment. Even if application logic fails, the DB will reject the duplicate INSERT.
+  </div>
+</div>
+
+<div class="slide" id="s18" data-title="Scaling — 10M Slots &amp; Consistent Hashing">
+  <h2>📈 Scaling — 10M Slots, Consistent Hashing, Partitioning</h2>
+  <div class="cols2">
+    <div>
+      <h3>Sharding Strategy</h3>
+      <div class="card blue">
+        <strong>Shard key: <span class="hl">lot_id</span></strong><br>
+        Most queries are scoped to a single lot. Sharding by lot_id keeps related data co-located and avoids cross-shard joins.
+      </div>
+      <div class="dia" style="margin-top:8px"><span class="cm">-- Consistent hash ring — 4 shards</span>
+Shard 1: hash(lot_id) % 4 == 0  → DB-1
+Shard 2: hash(lot_id) % 4 == 1  → DB-2
+Shard 3: hash(lot_id) % 4 == 2  → DB-3
+Shard 4: hash(lot_id) % 4 == 3  → DB-4
+
+<span class="cm">-- Virtual nodes prevent hotspots</span>
+<span class="cm">-- Adding DB-5: rebalance only ~20%</span></div>
+      <h3 style="margin-top:10px">Database Tier</h3>
+      <div class="step-row"><span class="step">W</span><span>All writes → Primary PostgreSQL</span></div>
+      <div class="step-row"><span class="step">R</span><span>Reads → Replica pool (2+ replicas)</span></div>
+      <div class="step-row"><span class="step">A</span><span>Analytics → dedicated read replica</span></div>
+    </div>
+    <div>
+      <h3>Capacity Math for 10M Slots</h3>
+      <table class="tbl">
+        <tr><th>Resource</th><th>Estimate</th></tr>
+        <tr><td>Slot records</td><td>10M × 500B = <span class="cy">5 GB</span></td></tr>
+        <tr><td>Ticket records / year</td><td>100M × 1KB = <span class="cy">100 GB</span></td></tr>
+        <tr><td>Redis counters</td><td>10M keys × 50B = <span class="gr">500 MB</span></td></tr>
+        <tr><td>Peak write RPS</td><td><span class="hl">5000 RPS</span></td></tr>
+        <tr><td>DB shards needed</td><td>4–8 shards</td></tr>
+      </table>
+      <h3 style="margin-top:10px">Multi-Region Setup</h3>
+      <div class="dia">Route 53 (Geo-routing)
+   │                  │
+US-EAST-1         EU-WEST-1
+ALB→EKS→RDS      ALB→EKS→RDS
+      │   cross-region  │
+      └── replication ──┘</div>
+      <div class="success">
+        <strong>City-level isolation:</strong> Each city is its own shard group. A Paris lot outage never affects NYC bookings.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s19" data-title="Design Patterns Used">
+  <h2>🧩 Design Patterns — Applied in Parking Lot</h2>
+  <div class="cols2">
+    <div>
+      <h3>Strategy</h3>
+      <div class="card blue">
+        <strong>Where:</strong> SlotAssignmentStrategy, PricingStrategy<br>
+        <strong>Why:</strong> Algorithm varies by vehicle type, time of day, and lot policy. Swap at runtime without touching core service.
+      </div>
+      <h3 style="margin-top:8px">Observer</h3>
+      <div class="card cyan">
+        <strong>Where:</strong> AvailabilityObserver (Kafka → WebSocket)<br>
+        <strong>Why:</strong> Decouple slot-state changes from display boards, analytics writers, and mobile push — each is an independent observer.
+      </div>
+      <h3 style="margin-top:8px">Factory</h3>
+      <div class="card green">
+        <strong>Where:</strong> VehicleFactory, PricingStrategyFactory<br>
+        <strong>Why:</strong> Centralise object creation logic. New vehicle or pricing type → add one class, update factory — no change to callers.
+      </div>
+    </div>
+    <div>
+      <h3>Singleton</h3>
+      <div class="card yellow">
+        <strong>Where:</strong> ParkingLotManager (Spring @Bean), Redis connection pool<br>
+        <strong>Why:</strong> One managed instance of the lot registry per JVM. Spring IoC handles this naturally via @Component.
+      </div>
+      <h3 style="margin-top:8px">Decorator</h3>
+      <div class="card orange">
+        <strong>Where:</strong> SurgePricingDecorator wraps any base PricingStrategy<br>
+        <strong>Why:</strong> Add surge multiplier without modifying HourlyPricingStrategy or SlabPricingStrategy classes.
+      </div>
+      <h3 style="margin-top:8px">Builder</h3>
+      <div class="card purple">
+        <strong>Where:</strong> ParkingTicket.Builder, BookingRequest.Builder<br>
+        <strong>Why:</strong> Complex objects with optional fields. Avoids telescoping constructors. Makes test data creation clean.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s20" data-title="Trade-offs &amp; Design Decisions">
+  <h2>⚖️ Trade-offs &amp; Design Decisions</h2>
+  <table class="tbl">
+    <tr><th>Decision</th><th>Chosen Approach</th><th>Trade-off</th></tr>
+    <tr>
+      <td><strong>Slot locking</strong></td>
+      <td><span class="bl">Optimistic + Redis SETNX</span></td>
+      <td>Lower contention vs. pessimistic lock; retry logic adds complexity</td>
+    </tr>
+    <tr>
+      <td><strong>Consistency model</strong></td>
+      <td><span class="gr">Strong (ACID bookings)</span></td>
+      <td>No double-booking; higher write latency than eventual consistency</td>
+    </tr>
+    <tr>
+      <td><strong>Availability cache</strong></td>
+      <td><span class="cy">Redis INCR/DECR</span></td>
+      <td>Sub-ms reads; possible stale count on Redis crash (self-heals in 30s)</td>
+    </tr>
+    <tr>
+      <td><strong>Real-time push</strong></td>
+      <td><span class="hl">WebSocket via Kafka</span></td>
+      <td>Sub-50ms updates; requires persistent TCP connection management</td>
+    </tr>
+    <tr>
+      <td><strong>Payment atomicity</strong></td>
+      <td><span class="pu">Saga + idempotency keys</span></td>
+      <td>Eventually consistent; simpler than 2PC; rare failure window</td>
+    </tr>
+    <tr>
+      <td><strong>DB sharding</strong></td>
+      <td><span class="bl">lot_id consistent hash</span></td>
+      <td>Queries within a lot are local; cross-lot analytics need scatter-gather</td>
+    </tr>
+    <tr>
+      <td><strong>Search</strong></td>
+      <td><span class="cy">Elasticsearch geo-hash</span></td>
+      <td>Fast proximity search; eventual sync from Postgres (seconds lag)</td>
+    </tr>
+    <tr>
+      <td><strong>Hold expiry</strong></td>
+      <td><span class="gr">Redis TTL + keyspace events</span></td>
+      <td>Lightweight; requires Redis keyspace notifications to be enabled</td>
+    </tr>
+  </table>
+  <div class="tip">
+    State these trade-offs proactively — interviewers want to see you understand <em>why</em> you chose each approach, not just <em>what</em> you chose.
+  </div>
+</div>
+
+<div class="slide" id="s21" data-title="Senior Q&amp;A 1 — Concurrent Reservation">
+  <h2>🔴 Senior Q&amp;A 1 — Concurrent Reservation Under Load</h2>
+  <div class="quote">
+    <strong>Q:</strong> "Your lot has 1 CAR slot left. 500 users simultaneously try to book it. Walk me through exactly what happens and how your system remains correct and performant."
+  </div>
+  <div class="cols2" style="margin-top:10px">
+    <div>
+      <h3>What Happens — Step by Step</h3>
+      <div class="step-row"><span class="step">1</span><span>500 requests hit Booking Service pods (Kubernetes HPA — 20 pods)</span></div>
+      <div class="step-row"><span class="step">2</span><span>Each pod tries <code>redis.set("slot:lock:42", reqId, NX, EX 10)</code></span></div>
+      <div class="step-row"><span class="step">3</span><span>Exactly 1 pod acquires the lock — others get null (rejected atomically)</span></div>
+      <div class="step-row"><span class="step">4</span><span>Winner runs DB CAS: UPDATE slot SET status='OCCUPIED' WHERE status='AVAILABLE'</span></div>
+      <div class="step-row"><span class="step">5</span><span>499 rejections return HTTP 409 CONFLICT with "slot_unavailable" code</span></div>
+      <div class="step-row"><span class="step">6</span><span>Client UX shows "sold out" and suggests nearest alternative lot</span></div>
+    </div>
+    <div>
+      <h3>Safety Guarantees</h3>
+      <div class="success">
+        <strong>Redis SETNX</strong> is atomic — no two pods can both get "acquired = true" for the same key.
+      </div>
+      <div class="success" style="margin-top:8px">
+        <strong>DB partial unique index</strong> on (slot_id) WHERE status='ACTIVE' is the final backstop. Even if Redis fails, the DB INSERT will throw a constraint violation for the second attempt.
+      </div>
+      <div class="tip" style="margin-top:8px">
+        <strong>TTL on Redis lock (10s):</strong> If the winner pod crashes before unlocking, the lock auto-expires — no deadlock.
+      </div>
+      <div class="warn" style="margin-top:8px">
+        <strong>Don't use:</strong> Java <code>synchronized</code> — works only within one JVM, useless in a multi-pod deployment.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s22" data-title="Senior Q&amp;A 2 — Multi-city Scale">
+  <h2>🌍 Senior Q&amp;A 2 — Scaling to Multi-city (10M+ Slots)</h2>
+  <div class="quote">
+    <strong>Q:</strong> "You've designed a single-city system. How would you extend it to 50 cities, 10M+ slots, and 200K daily bookings without a redesign?"
+  </div>
+  <div class="cols2" style="margin-top:10px">
+    <div>
+      <h3>Architecture Changes</h3>
+      <div class="step-row"><span class="step">1</span><span><strong>City-level DB shards:</strong> Each city = its own shard group (Primary + 2 Replicas). Paris outage never affects NYC.</span></div>
+      <div class="step-row"><span class="step">2</span><span><strong>Consistent hashing on lot_id:</strong> Virtual nodes — adding a shard rebalances only ~20% of keys.</span></div>
+      <div class="step-row"><span class="step">3</span><span><strong>Multi-region deployment:</strong> US-East, EU-West, AP-South — Route 53 geo-routing to nearest region.</span></div>
+      <div class="step-row"><span class="step">4</span><span><strong>Global Redis cluster:</strong> Per-city Redis for availability counters; no cross-city replication needed.</span></div>
+      <div class="step-row"><span class="step">5</span><span><strong>Elasticsearch per region:</strong> Geo-search index kept in the same region as users searching it.</span></div>
+    </div>
+    <div>
+      <h3>Data &amp; Cost at Scale</h3>
+      <table class="tbl">
+        <tr><th>Item</th><th>10M Slots</th></tr>
+        <tr><td>Slot storage</td><td>5 GB total</td></tr>
+        <tr><td>Ticket records/yr</td><td>~100 GB/yr</td></tr>
+        <tr><td>DB shards</td><td>4–8</td></tr>
+        <tr><td>Redis nodes</td><td>1 cluster/city</td></tr>
+        <tr><td>Peak write RPS</td><td>~5,000</td></tr>
+      </table>
+      <div class="info" style="margin-top:10px">
+        <strong>Hot/Warm/Cold data:</strong> Last 3 months in PostgreSQL → 3–12 months in S3+Athena → older in Glacier. Keeps active DB lean and fast.
+      </div>
+      <div class="tip">
+        <strong>GDPR:</strong> Per-city data residency. EU slots data never leaves EU region. Add city_id to all data retention jobs.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s23" data-title="Senior Q&amp;A 3 — EV Charging Slots">
+  <h2>⚡ Senior Q&amp;A 3 — EV Charging Slots</h2>
+  <div class="quote">
+    <strong>Q:</strong> "How would you extend your parking lot design to support EV charging stations — including tracking charging sessions, billing for electricity, and managing charger availability separately from parking slots?"
+  </div>
+  <div class="cols2" style="margin-top:10px">
+    <div>
+      <h3>New Entities</h3>
+      <div class="dia"><span class="kw">class</span> ChargingStation
+  id: UUID
+  slotId: UUID   <span class="cm">// FK → parking_slots</span>
+  chargerType: LEVEL_2 | DC_FAST
+  powerKw: Float
+  status: AVAILABLE | IN_USE | FAULT
+
+<span class="kw">class</span> ChargingSession
+  id: UUID
+  stationId: UUID
+  ticketId: UUID
+  startTime: Instant
+  endTime: Instant?
+  energyKwh: Float  <span class="cm">// from meter API</span>
+  electricityFee: BigDecimal
+  parkingFee: BigDecimal</div>
+    </div>
+    <div>
+      <h3>Billing Model</h3>
+      <div class="card green">
+        <strong>Total fee = parking fee + electricity fee</strong><br>
+        Electricity: energyKwh × pricePerKwh<br>
+        Parking: standard PricingStrategy<br>
+        Both charged atomically at exit.
+      </div>
+      <h3 style="margin-top:10px">Design Changes</h3>
+      <div class="step-row"><span class="step">1</span><span>Add <span class="cy">EV</span> slot_type and ChargingStation entity linked to slot</span></div>
+      <div class="step-row"><span class="step">2</span><span>Entry flow: if EV vehicle → start ChargingSession, poll meter API every 5 min</span></div>
+      <div class="step-row"><span class="step">3</span><span>Exit flow: finalise kWh reading → compute electricity_fee → add to ticket total</span></div>
+      <div class="step-row"><span class="step">4</span><span>Charger availability tracked in Redis independently from parking slot</span></div>
+      <div class="tip" style="margin-top:8px">
+        <strong>Charger fault handling:</strong> If charger goes FAULT mid-session, notify driver via push, prorate electricity fee, offer alternative bay.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s24" data-title="Quick Reference Numbers">
+  <h2>🔢 Quick Reference Numbers — Capacity &amp; Targets</h2>
+  <div class="cols3">
+    <div class="stat"><div class="val bl">1M+</div><div class="lbl">Total Users</div></div>
+    <div class="stat"><div class="val cy">200K</div><div class="lbl">DAU (20%)</div></div>
+    <div class="stat"><div class="val gr">300 RPS</div><div class="lbl">Peak Traffic</div></div>
+    <div class="stat"><div class="val hl">100K</div><div class="lbl">Daily Bookings</div></div>
+    <div class="stat"><div class="val pu">&lt;200ms</div><div class="lbl">API p95 Latency</div></div>
+    <div class="stat"><div class="val gr">99.9%</div><div class="lbl">Uptime SLA</div></div>
+    <div class="stat"><div class="val cy">30s</div><div class="lbl">Cache TTL (Avail.)</div></div>
+    <div class="stat"><div class="val hl">10s</div><div class="lbl">Redis Lock TTL</div></div>
+    <div class="stat"><div class="val bl">500 GB</div><div class="lbl">5-year Storage</div></div>
+  </div>
+  <div class="cols2" style="margin-top:12px">
+    <div class="card blue">
+      <h3>Write:Read Ratio</h3>
+      <p>1:10 — far more reads (availability checks, search) than writes (bookings, payments). Design read path for scale: replicas + Redis cache.</p>
+    </div>
+    <div class="card green">
+      <h3>Monthly Infra Cost (~100 lots)</h3>
+      <table class="tbl">
+        <tr><td>EC2 (10× t3.medium)</td><td>$300</td></tr>
+        <tr><td>RDS + 2 replicas</td><td>$800</td></tr>
+        <tr><td>Redis + Elasticsearch</td><td>$700</td></tr>
+        <tr><td>EKS + ALB + CDN</td><td>$515</td></tr>
+        <tr><td>Kafka (MSK)</td><td>$250</td></tr>
+        <tr><td><strong>Total</strong></td><td><strong>~$2,700</strong></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s25" data-title="Closing — Key Takeaways">
+  <h2>🏁 Closing — Key Takeaways</h2>
+  <div class="cols2">
+    <div>
+      <h3>LLD Core Principles</h3>
+      <ul>
+        <li><span class="bl">Strategy Pattern</span> — swap slot assignment &amp; pricing at runtime</li>
+        <li><span class="cy">Observer Pattern</span> — decouple slot changes from display/push</li>
+        <li><span class="gr">Factory Pattern</span> — clean vehicle and strategy creation</li>
+        <li><span class="pu">Optimistic Lock</span> — CAS on slot row, no table-level lock</li>
+        <li><span class="hl">Idempotency keys</span> — safe retry on exit and payment APIs</li>
+        <li><span class="or">Partial unique index</span> — DB enforces 1 active ticket per slot</li>
+      </ul>
+      <div class="success" style="margin-top:10px">
+        <strong>Critical invariant to state:</strong><br>
+        "Exactly one ACTIVE ticket per slot AND exactly one OCCUPIED slot per active ticket."
+      </div>
+    </div>
+    <div>
+      <h3>HLD Scale Principles</h3>
+      <ul>
+        <li><span class="bl">Redis SETNX</span> — distributed lock across pods</li>
+        <li><span class="cy">Kafka events</span> — async fan-out to WebSocket, analytics</li>
+        <li><span class="gr">lot_id sharding</span> — consistent hash, city-level isolation</li>
+        <li><span class="hl">WebSocket push</span> — real-time boards &lt;50ms latency</li>
+        <li><span class="pu">Saga + idempotency</span> — payment consistency without 2PC</li>
+        <li><span class="or">Multi-region</span> — Route 53 geo-routing, per-city Redis</li>
+      </ul>
+      <div class="tip" style="margin-top:10px">
+        <strong>Interview closing line:</strong> "The hardest problems here are the last-slot race condition and payment atomicity at the barrier. I've addressed both with distributed locking + DB constraints and the Saga pattern with idempotency keys."
+      </div>
+    </div>
+  </div>
+  <div class="tags" style="justify-content:center;margin-top:12px">
+    <span class="pill blue">Strategy</span>
+    <span class="pill blue">Observer</span>
+    <span class="pill green">Factory</span>
+    <span class="pill green">Singleton</span>
+    <span class="pill yellow">Redis SETNX</span>
+    <span class="pill purple">WebSocket</span>
+    <span class="pill blue">Kafka</span>
+    <span class="pill green">PostgreSQL</span>
+    <span class="pill yellow">Saga Pattern</span>
+  </div>
+</div>
+
+</div><div id="controls"><button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button><div id="slide-dots"></div><div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div></div></div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

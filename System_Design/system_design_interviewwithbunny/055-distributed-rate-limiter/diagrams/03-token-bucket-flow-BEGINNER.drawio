@@ -1,0 +1,198 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Token Bucket Flow - BEGINNER" id="token-bucket-flow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1100" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="TOKEN BUCKET FLOW — Step-by-Step with Timing" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1000" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="🎯 Shows ALLOWED path (tokens available) and REJECTED path (no tokens left)" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="300" y="70" width="800" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Actors -->
+        <mxCell id="client" value="👤 Client&#xa;(Mobile App)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="140" width="120" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="gateway" value="🚪 API Gateway&#xa;(Rate Limiter)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="250" y="140" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis" value="⚡ Redis&#xa;(Token State)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="500" y="140" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="policy-db" value="🗄️ Policy DB&#xa;(Postgres)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="750" y="140" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="backend" value="🖥️ Backend&#xa;(Services)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="140" width="150" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- FLOW 1: ALLOWED PATH (Green) -->
+        <mxCell id="flow1-title" value="FLOW 1: REQUEST ALLOWED (Tokens Available) — Green Path ✅" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="230" width="1100" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1 -->
+        <mxCell id="step1-arrow" value="GET /api/users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=14;fontStyle=1;strokeColor=#006600" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="290" as="sourcePoint" />
+            <mxPoint x="325" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step1-box" value="⏱️ 0ms: Client sends request" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e1;strokeColor=#82b366;fontSize=13;align=left" vertex="1" parent="1">
+          <mxGeometry x="50" y="310" width="300" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Step 2 -->
+        <mxCell id="step2-arrow" value="GET policy:user123:/api/users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;strokeColor=#006600;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="325" y="360" as="sourcePoint" />
+            <mxPoint x="575" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step2-box" value="⏱️ +0.5ms: Check policy cache in Redis&#xa;Result: {limit:100, refill_rate:10, capacity:100}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e1;strokeColor=#82b366;fontSize=13;align=left" vertex="1" parent="1">
+          <mxGeometry x="50" y="380" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Step 3 -->
+        <mxCell id="step3-arrow" value="EVAL lua_script(user123, capacity=100, refill=10, now)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=12;strokeColor=#006600" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="325" y="440" as="sourcePoint" />
+            <mxPoint x="575" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step3-box" value="⏱️ +1.0ms: Execute Token Bucket Lua Script (ATOMIC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="460" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Lua Script Detail -->
+        <mxCell id="lua-detail-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="70" y="500" width="560" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lua-title" value="INSIDE REDIS (All happens atomically):" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="85" y="510" width="530" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="lua-steps" value="1. tokens_current = HGET('rate_limit:user123:/api/users', 'tokens') → 95&#xa;2. last_refill = HGET('rate_limit:user123:/api/users', 'last_refill') → 1706270440&#xa;3. now = 1706270445 (current time)&#xa;4. elapsed = 1706270445 - 1706270440 = 5 seconds&#xa;5. tokens_to_add = 5 × 10 = 50 tokens&#xa;6. new_tokens = min(100, 95 + 50) = min(100, 145) = 100 (capped at capacity)&#xa;7. new_tokens &gt;= 1? YES → ALLOW&#xa;8. HMSET 'tokens' = 100-1 = 99, 'last_refill' = 1706270445&#xa;9. RETURN 1 (allowed)" style="text;html=1;strokeColor=none;fillColor=#fff9e6;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="85" y="535" width="530" height="95" as="geometry" />
+        </mxCell>
+
+        <!-- Step 4 -->
+        <mxCell id="step4-arrow" value="return 1 (ALLOW)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=12;strokeColor=#006600;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="575" y="660" as="sourcePoint" />
+            <mxPoint x="325" y="660" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step4-box" value="⏱️ +0.5ms: Redis returns ALLOW signal to Gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e1;strokeColor=#82b366;fontSize=13;align=left" vertex="1" parent="1">
+          <mxGeometry x="50" y="680" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Step 5 -->
+        <mxCell id="step5-arrow" value="Forward request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=14;strokeColor=#006600" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="325" y="730" as="sourcePoint" />
+            <mxPoint x="1075" y="730" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step5-box" value="⏱️ +0.5ms: Gateway forwards request to backend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e1;strokeColor=#82b366;fontSize=13;align=left" vertex="1" parent="1">
+          <mxGeometry x="50" y="750" width="1100" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Step 6 -->
+        <mxCell id="step6-arrow" value="200 OK + data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=14;strokeColor=#006600;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1075" y="800" as="sourcePoint" />
+            <mxPoint x="110" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step6-box" value="⏱️ +20ms: Backend processes, returns data to client with rate limit headers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5e1;strokeColor=#82b366;fontSize=13;align=left" vertex="1" parent="1">
+          <mxGeometry x="50" y="820" width="1100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="headers-box" value="Response Headers:&#xa;X-RateLimit-Limit: 100&#xa;X-RateLimit-Remaining: 99&#xa;X-RateLimit-Reset: 1706270505 (unix timestamp)" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="700" y="750" width="450" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="total-time1" value="⏱️ TOTAL TIME ADDED: ~2.5ms (0.5 + 1.0 + 0.5 + 0.5)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="870" width="1100" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- FLOW 2: REJECTED PATH (Red) -->
+        <mxCell id="flow2-title" value="FLOW 2: REQUEST REJECTED (No Tokens Left) — Red Path ❌" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="940" width="1100" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Steps 1-3 same, then diverge -->
+        <mxCell id="reject-step1" value="⏱️ 0-1.5ms: Same as above (Steps 1-3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;align=center;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="50" y="995" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Lua script returns 0 -->
+        <mxCell id="reject-lua-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1035" width="560" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="reject-lua-title" value="INSIDE REDIS Lua Script (tokens exhausted):" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="85" y="1045" width="530" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="reject-lua-steps" value="1-6. (same calculations)&#xa;7. new_tokens = 0 (no refill happened yet)&#xa;8. new_tokens &gt;= 1? NO → REJECT&#xa;9. RETURN 0 (rejected)" style="text;html=1;strokeColor=none;fillColor=#fff9e6;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="85" y="1070" width="530" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Step 4 reject -->
+        <mxCell id="reject-step4-arrow" value="return 0 (REJECT)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=12;strokeColor=#cc0000;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="575" y="1160" as="sourcePoint" />
+            <mxPoint x="325" y="1160" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="reject-step4-box" value="⏱️ +0.5ms: Redis returns REJECT signal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;align=left" vertex="1" parent="1">
+          <mxGeometry x="50" y="1180" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Step 5 reject -->
+        <mxCell id="reject-step5-arrow" value="HTTP 429 Too Many Requests" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=14;strokeColor=#cc0000" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="325" y="1230" as="sourcePoint" />
+            <mxPoint x="110" y="1230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="reject-step5-box" value="⏱️ +0.5ms: Gateway immediately rejects client (backend NOT called!)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;align=left" vertex="1" parent="1">
+          <mxGeometry x="50" y="1250" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="reject-headers-box" value="Response:&#xa;HTTP/1.1 429 Too Many Requests&#xa;X-RateLimit-Limit: 100&#xa;X-RateLimit-Remaining: 0&#xa;X-RateLimit-Reset: 1706270505&#xa;Retry-After: 1&#xa;Content-Type: application/json&#xa;&#xa;{&quot;error&quot;: &quot;rate_limit_exceeded&quot;,&#xa; &quot;message&quot;: &quot;Please wait 1 second&quot;,&#xa; &quot;retry_after&quot;: 1}" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="700" y="995" width="450" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="total-time2" value="⏱️ TOTAL TIME: ~2.5ms (same as allowed path, but backend saved!)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="1300" width="1100" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why-note" value="💡 WHY BACKEND NOT CALLED ON 429?&#xa;That's the whole point! Rate limiter protects backend from overload.&#xa;Rejected requests never reach UserSvc/OrderSvc/PaymentSvc.&#xa;Gateway acts as a shield — blocks bad traffic at the front door." style="text;html=1;strokeColor=#d79b00;fillColor=#ffe6cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="700" y="1220" width="450" height="120" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

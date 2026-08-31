@@ -1,0 +1,1162 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search Engine System Design</title>
+<link rel="stylesheet" href="../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Search Engine — Google-Scale Web Search</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+<div class="slide active" id="s1" data-title="Title — Search Engine System Design">
+  <h1>🔍 Search Engine System Design</h1>
+  <h2>Google-Scale Web Search</h2>
+  <div class="badges">
+    <span class="badge">Crawler</span>
+    <span class="badge">Inverted Index</span>
+    <span class="badge">PageRank</span>
+    <span class="badge">TF-IDF</span>
+    <span class="badge">MapReduce</span>
+    <span class="badge">Ranking</span>
+  </div>
+  <div class="intro-block">
+    <p>A search engine is <strong>two completely separate systems</strong> that share one artifact — the <strong>index</strong>.</p>
+    <ul>
+      <li><strong>Offline pipeline:</strong> Crawler → Parser → Indexer → builds the inverted index (runs continuously)</li>
+      <li><strong>Online serving:</strong> Query in → lookup index → rank → return top-10 in &lt;200ms</li>
+    </ul>
+    <p>Most candidates conflate these. <em>State this separation early — it impresses interviewers immediately.</em></p>
+  </div>
+  <div class="quote-block">
+    "Design Google Search / Web Search Engine at 99,000 searches/second"
+  </div>
+</div>
+
+<div class="slide" id="s2" data-title="Opening Script — Scale &amp; Context">
+  <h2>Opening Script — Scale &amp; Context</h2>
+  <div class="speak-block">
+    <p><em>"A search engine is two separate systems sharing one artifact — the index. The offline pipeline crawls the web and builds an inverted index. The online serving layer uses that index to answer queries in &lt;200ms. The defining challenges are: building the inverted index at web scale, and query serving at 99,000 searches/second."</em></p>
+  </div>
+  <div class="two-col">
+    <div>
+      <h3>Web Scale Reality</h3>
+      <ul>
+        <li><strong>60 trillion</strong> pages indexed (Google)</li>
+        <li><strong>8.5 billion</strong> searches per day</li>
+        <li><strong>99,000</strong> searches per second</li>
+        <li><strong>~1M pages/sec</strong> crawler throughput</li>
+        <li><strong>100–200 PB</strong> inverted index size</li>
+        <li><strong>~1.2 exabytes</strong> raw text content</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Key Insight</h3>
+      <ul>
+        <li>Index is a <strong>derived artifact</strong> — source of truth is the crawled page store</li>
+        <li>Read:Write ≈ <strong>10,000:1</strong> — optimize for reads</li>
+        <li>Query cache absorbs <strong>25–30%</strong> of all traffic</li>
+        <li>Breaking news indexed in <strong>minutes</strong></li>
+        <li>Regular pages indexed in <strong>hours–days</strong></li>
+        <li>Target p99 latency: <strong>&lt;200ms</strong> end-to-end</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s3" data-title="Functional Requirements">
+  <h2>Functional Requirements</h2>
+  <div class="two-col">
+    <div>
+      <h3>In Scope</h3>
+      <ul>
+        <li>Crawl the web and store page content</li>
+        <li>Parse HTML — extract text, links, metadata</li>
+        <li>Build and maintain an inverted index</li>
+        <li>Accept user queries, return ranked results</li>
+        <li>Full-text multi-word queries</li>
+        <li>Phrase queries ("new york times")</li>
+        <li>Ranked results — relevance + authority</li>
+        <li>Spelling corrections and suggestions</li>
+        <li>Query expansion (synonyms)</li>
+        <li>Boolean queries (AND, OR, NOT)</li>
+        <li>Near-duplicate content detection</li>
+        <li>Fresh results — re-crawl changed pages</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Out of Scope</h3>
+      <ul>
+        <li>Image / video search</li>
+        <li>Real-time social media indexing</li>
+        <li>Personalized search ranking</li>
+      </ul>
+      <h3>Scoping Questions to Ask</h3>
+      <ul>
+        <li>"Web-scale or domain-specific?"</li>
+        <li>"Phrase queries supported?"</li>
+        <li>"How fast — SLO for p99?"</li>
+        <li>"QPS target?"</li>
+        <li>"How many pages to index?"</li>
+      </ul>
+      <div class="highlight-box">
+        Core: Crawl → Index → Rank → Serve
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s4" data-title="Non-Functional Requirements &amp; Capacity">
+  <h2>Non-Functional Requirements &amp; Capacity</h2>
+  <div class="two-col">
+    <div>
+      <h3>NFRs</h3>
+      <ul>
+        <li><strong>Latency:</strong> p99 &lt;200ms end-to-end query</li>
+        <li><strong>Availability:</strong> 99.99% for query serving</li>
+        <li><strong>Scale:</strong> 8B pages indexed, 50K–99K QPS</li>
+        <li><strong>Freshness:</strong> Top pages re-crawled within 24h</li>
+        <li><strong>Consistency:</strong> Eventual for index updates; strong for query serving</li>
+        <li><strong>Crawl throughput:</strong> 1B pages/day</li>
+      </ul>
+      <h3>Key Tensions</h3>
+      <ul>
+        <li>Latency vs. freshness</li>
+        <li>Coverage vs. quality</li>
+        <li>Recall vs. precision</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Capacity Math</h3>
+      <pre>STORAGE:
+8B pages × 500B avg compressed
+  = ~4 PB raw content
+Forward index: ~1.6 PB
+Inverted index: ~320 TB
+  (with 3× replicas: ~1 PB)
+
+QUERY:
+50,000 QPS
+Each query → ~100 shards parallel
+Each shard &lt; 10ms → 200ms budget
+Cache hit 30% → 35,000 QPS on index
+
+CRAWL:
+1B pages/day = 11,574 pages/sec
+Each page ~50KB raw HTML
+Bandwidth: ~580 MB/s inbound</pre>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s5" data-title="High-Level Architecture">
+  <h2>High-Level Architecture — End-to-End</h2>
+  <pre class="arch-diagram">
+ ══════════════ OFFLINE PIPELINE (runs continuously) ══════════════
+
+  [Seed URLs]
+       │
+       ▼
+ ┌─────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
+ │ URL Frontier│──▶│  Crawler     │──▶│  HTML Parser │──▶│  Doc         │
+ │ (Redis ZSET)│   │  Workers     │   │  & Link Ext. │   │  Processor   │
+ │ priority=   │   │  robots.txt  │   │  SimHash Dup │   │  tokenize    │
+ │ PageRank+   │◀──│  politeness  │   │  Detection   │   │  stem/stop   │
+ │ freshness   │   └──────────────┘   └──────────────┘   └──────┬───────┘
+ └─────────────┘                                                 │
+                                                                 ▼
+                                    ┌─────────────────────────────────────┐
+                                    │      INVERTED INDEX SHARDS (N)      │
+                                    │  "java" → [(doc1,tf=3,pos=[5,18])   │
+                                    │  (doc99,tf=1,pos=[2]), ...]          │
+                                    │  sharded by doc_id range, 3× replica│
+                                    └──────────────────┬──────────────────┘
+                                                       │
+ ══════════════ ONLINE SERVING (99K searches/sec) ══════════════
+                                                       │
+ [User Query]──▶[Query API GW]──▶[Query Parser]──▶[SCATTER to all shards]
+                 rate limit        tokenize            │
+                 Redis cache       stem/expand         ▼ (parallel fan-out)
+                 (30% hit)         spell-check    [Shard 1][Shard 2]..[Shard N]
+                                                       │ GATHER top-K
+                                                       ▼
+                                    [Result Merger → Re-rank → Cache → Snippets]
+                                                       │
+                                                  [User Results]</pre>
+</div>
+
+<div class="slide" id="s6" data-title="Web Crawler Design">
+  <h2>Web Crawler Design</h2>
+  <div class="two-col">
+    <div>
+      <h3>URL Frontier (Priority Queue)</h3>
+      <pre>Redis Sorted Set (ZPOPMIN = atomic)
+score = PageRank_estimate × freshness_need
+
+FRONT QUEUE (priority-based):
+  HIGH:   news sites, .gov, .edu
+  MEDIUM: known good domains
+  LOW:    newly discovered URLs
+
+BACK QUEUE (per-domain politeness):
+  domain-A: [url1, url2, url3]
+  domain-B: [url4, url5]
+  → never 2 requests to same domain
+    within crawl-delay window</pre>
+      <h3>URL Dedup — Bloom Filter</h3>
+      <ul>
+        <li>100B URLs × 10 bits/URL = 125 GB (tiny)</li>
+        <li>False positives OK — skip a URL once</li>
+        <li>Never false negatives — never re-crawl</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Crawl Flow</h3>
+      <pre>Frontier dequeue (highest priority,
+                   politeness OK)
+    → DNS Resolver (cached, TTL-aware)
+    → robots.txt cache check
+        allowed? → proceed
+        blocked? → skip, mark URL
+    → HTTP Fetcher
+        200 OK    → store raw HTML
+        301/302   → follow redirect (max 5)
+        404/410   → mark URL dead
+        429/503   → back-off, re-enqueue
+    → SimHash check
+        duplicate → discard
+        changed   → parse queue
+    → Extract links → URL Frontier</pre>
+      <h3>Spider Trap Prevention</h3>
+      <ul>
+        <li>URL depth limit (max depth 6)</li>
+        <li>Max URLs per domain per cycle</li>
+        <li>Detect repeating URL patterns</li>
+        <li>URL normalisation before dedup</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s7" data-title="HTML Parsing &amp; Content Extraction">
+  <h2>HTML Parsing &amp; Content Extraction</h2>
+  <div class="two-col">
+    <div>
+      <h3>Parser Pipeline</h3>
+      <pre>Raw HTML Input
+    │
+    ▼
+DOM Parse (JSoup / Jsoup)
+    │
+    ├──▶ Text Extraction
+    │     • strip tags, scripts, styles
+    │     • extract visible text only
+    │     • title, headings, body
+    │
+    ├──▶ Anchor Link Extraction
+    │     • href → new URLs for frontier
+    │     • anchor_text (strong ranking signal)
+    │       "click here" ← bad anchor
+    │       "Java tutorial Oracle" ← good
+    │
+    ├──▶ Metadata Extraction
+    │     • &lt;title&gt;, &lt;meta description&gt;
+    │     • &lt;meta lang&gt;, canonical URL
+    │     • &lt;link rel="canonical"&gt;
+    │
+    └──▶ Language Detection
+          • n-gram model (langdetect)
+          • route to language-specific index</pre>
+    </div>
+    <div>
+      <h3>Doc Processing</h3>
+      <pre>Raw text: "Java is a programming language"
+    │
+    ▼ Tokenize
+  ["Java","is","a","programming","language"]
+    │
+    ▼ Lowercase
+  ["java","is","a","programming","language"]
+    │
+    ▼ Remove Stop Words
+  ["java","programming","language"]
+    │
+    ▼ Stem (Porter Stemmer)
+  ["java","program","languag"]
+    │
+    ▼ Term Frequency Map
+  {java:1, program:1, languag:1}
+    │
+    ▼ SimHash fingerprint (near-dup check)
+  64-bit fingerprint → compare Hamming
+  distance ≤ 3 → near-duplicate → skip</pre>
+      <div class="highlight-box">
+        Anchor text of inbound links is a stronger relevance signal than the page's own text
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s8" data-title="Inverted Index Structure">
+  <h2>Inverted Index — The Heart of Search</h2>
+  <div class="two-col">
+    <div>
+      <h3>Structure: term → postings list</h3>
+      <pre>TERM        DOC_IDS + TF + POSITIONS
+────────    ───────────────────────────────
+"java"   →  [(doc1, tf=5, pos=[10,45,67]),
+             (doc3, tf=2, pos=[5,89]), ...]
+"tutorial"→ [(doc1, tf=3, pos=[11,46]),
+             (doc7, tf=1, pos=[3]),    ...]
+"python" →  [(doc2, tf=8, pos=[1,2,3]),
+             (doc5, tf=4, pos=[22]),   ...]
+
+Query "java tutorial":
+  1. Lookup "java"     → {doc1, doc3, ...}
+  2. Lookup "tutorial" → {doc1, doc7, ...}
+  3. Intersect (AND)   → {doc1}
+  4. Score doc1 by BM25
+  5. Return top results</pre>
+      <h3>Posting List Fields</h3>
+      <pre>doc_id | tf | dl | pos[0] | pos[1] | ...
+──────────────────────────────────────────
+df  = document frequency (how many docs)
+tf  = term frequency (occurrences in doc)
+dl  = doc length (BM25 normalisation)
+pos = positions (enables phrase matching)</pre>
+    </div>
+    <div>
+      <h3>Building the Index (MapReduce)</h3>
+      <pre>Phase 1: MAP (per document)
+  doc_1: "java programming language"
+  Emit: (java,doc1,tf=1), (program,doc1,tf=1)
+
+Phase 2: SORT (by term globally)
+  All (term, docId, tf) sorted by term
+
+Phase 3: REDUCE (merge per term)
+  java → [(doc1,1),(doc3,5),(doc7,2)]
+  Sort by docId within list (fast merge)
+
+Phase 4: WRITE to index shards
+  Distribute: hash(term) % num_shards
+    OR shard by doc_id range (preferred)</pre>
+      <h3>Delta + Base Index</h3>
+      <ul>
+        <li><strong>Base index:</strong> full rebuild weekly</li>
+        <li><strong>Delta index:</strong> last 24h, updated hourly</li>
+        <li>Queries hit BOTH; prefer delta version</li>
+        <li>Periodic merge: delta → base, reset delta</li>
+      </ul>
+      <div class="highlight-box">
+        Stored as compressed binary (delta-encoded doc IDs). NOT a SQL table — custom Lucene segment files.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s9" data-title="TF-IDF Scoring">
+  <h2>TF-IDF — Term Relevance Scoring</h2>
+  <div class="two-col">
+    <div>
+      <h3>Formula</h3>
+      <pre>TF (Term Frequency)
+  = count of term t in doc d
+    ─────────────────────────
+    total words in doc d
+
+IDF (Inverse Document Frequency)
+  = log( total docs / docs containing t )
+
+TF-IDF(t, d) = TF(t, d) × IDF(t)</pre>
+      <h3>Intuition Examples</h3>
+      <pre>"the"     : TF=0.10, IDF=log(8B/8B)=0
+            → score=0.00 (useless, everywhere)
+
+"java"    : TF=0.05, IDF=log(8B/10M)≈3
+            → score=0.15 (somewhat useful)
+
+"graalvm" : TF=0.02, IDF=log(8B/100K)≈5
+            → score=0.10 (very specific, rare)</pre>
+      <div class="highlight-box">
+        High IDF = rare word = strong signal.<br>
+        "the" in every doc = IDF≈0 = useless.
+      </div>
+    </div>
+    <div>
+      <h3>Why TF-IDF Has Limits</h3>
+      <ul>
+        <li>A 10,000-word doc mentioning "java" once scores same as a 100-word doc — unfair</li>
+        <li>Doubling TF doubles score — no diminishing returns</li>
+        <li>No length normalisation</li>
+      </ul>
+      <h3>Stop Words (removed before indexing)</h3>
+      <ul>
+        <li>"the", "a", "is", "of", "and", "in"</li>
+        <li>Appear in nearly every doc → IDF ≈ 0</li>
+        <li>Removing them saves index space and reduces noise</li>
+      </ul>
+      <h3>Stemming (applied before TF-IDF)</h3>
+      <pre>"running" → "run"
+"searches"→ "search"
+"developer"→ "develop"
+Ensures "run" query matches "running" docs</pre>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s10" data-title="PageRank Algorithm">
+  <h2>PageRank Algorithm</h2>
+  <div class="two-col">
+    <div>
+      <h3>Core Formula</h3>
+      <pre>PR(A) = (1 - d) + d × SUM(
+          PR(B) / OutLinks(B)
+        ) for all B that link to A
+
+d = damping factor = 0.85
+  (probability random surfer follows a
+   link rather than jumping randomly)
+
+Computed iteratively until convergence
+  → typically 50–100 iterations
+  → run as offline Spark batch job
+     on the full web_graph table</pre>
+      <h3>Intuition</h3>
+      <ul>
+        <li>Wikipedia: millions of inbound links → very high PageRank</li>
+        <li>New blog, zero inbound links → PR ≈ 0</li>
+        <li>Linked by high-PR pages → boosted even with few total links</li>
+        <li>Quality of linker matters more than quantity of links</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Dangling Nodes</h3>
+      <ul>
+        <li>Pages with no outbound links — "sink" all PageRank</li>
+        <li>Fix: distribute dangling node PR evenly across all pages</li>
+        <li>Or: add teleport probability to a random page</li>
+      </ul>
+      <h3>Anti-Spam (TrustRank)</h3>
+      <pre>Seed: known-good domains
+  (Wikipedia, .gov, .edu, NYT)
+TrustRank propagates OUTWARD from seeds.
+Links FROM trusted pages = high value.
+Links from new domains (registered &lt;30d)
+  = near-zero PageRank contribution.
+Link farm detection: 1000s of pages
+  with same content linking same target
+  → ML spam classifier → penalise.</pre>
+      <div class="highlight-box">
+        PageRank is computed OFFLINE (batch). It is 1 of 200+ ranking signals in modern Google — not dominant alone.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s11" data-title="BM25 — Industry-Standard Ranking">
+  <h2>BM25 — Industry-Standard Text Ranking</h2>
+  <div class="two-col">
+    <div>
+      <h3>Formula</h3>
+      <pre>BM25(t, d) = IDF(t) ×
+  [ tf × (k1 + 1) ]
+  ─────────────────────────────────────
+  [ tf + k1 × (1 - b + b × dl/avgdl) ]
+
+Parameters:
+  k1    = 1.5  (TF saturation)
+  b     = 0.75 (doc length normalisation)
+  tf    = term frequency in doc
+  dl    = document length
+  avgdl = average document length
+
+IDF(t) = log((N - df + 0.5) / (df + 0.5))
+  N  = total documents
+  df = documents containing term t</pre>
+    </div>
+    <div>
+      <h3>Why BM25 Beats TF-IDF</h3>
+      <ul>
+        <li><strong>TF saturation (k1):</strong> seeing "java" 100× vs 10× is NOT 10× better — plateau effect</li>
+        <li><strong>Length normalisation (b):</strong> long doc mentioning "java" once = less relevant than short doc</li>
+        <li>Avoids bias towards verbose documents</li>
+      </ul>
+      <h3>Where BM25 Is Used</h3>
+      <ul>
+        <li>Elasticsearch — default ranker</li>
+        <li>Apache Solr — default ranker</li>
+        <li>Lucene (underlying engine)</li>
+        <li>Google uses BM25 as baseline, then adds 200+ signals</li>
+      </ul>
+      <div class="highlight-box">
+        BM25 scores are computed AT INDEX TIME and stored in the postings table — not recalculated per query.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s12" data-title="Modern Ranking Signals (200+)">
+  <h2>Modern Ranking — 200+ Signals</h2>
+  <div class="two-col">
+    <div>
+      <h3>Final Score Formula</h3>
+      <pre>score(doc, query) =
+  α × BM25(doc, query)       text relevance
++ β × PageRank(doc)          link authority
++ γ × FreshnessScore(doc)    recency bonus
++ δ × AnchorTextScore(doc)   what others call it
++ ε × CTR_model(doc, query)  click-through rate
+
+α, β, γ, δ, ε = learned weights (ML tuning)
+
+FreshnessScore = 1 / (1 + days_since_crawl)
+AnchorText = text of hyperlinks pointing here</pre>
+      <h3>E-E-A-T Signals (Google)</h3>
+      <ul>
+        <li><strong>Experience</strong> — first-hand expertise signals</li>
+        <li><strong>Expertise</strong> — author credentials, domain authority</li>
+        <li><strong>Authoritativeness</strong> — inbound link quality</li>
+        <li><strong>Trustworthiness</strong> — HTTPS, accuracy, factual</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Other Key Ranking Factors</h3>
+      <ul>
+        <li><strong>Query-document relevance</strong> — BM25 + BERT semantic similarity</li>
+        <li><strong>Freshness</strong> — recently crawled pages get recency boost</li>
+        <li><strong>Mobile-friendliness</strong> — responsive design signals</li>
+        <li><strong>Page speed / Core Web Vitals</strong></li>
+        <li><strong>HTTPS security</strong></li>
+        <li><strong>Click-through rate (CTR)</strong> — past user behaviour</li>
+        <li><strong>Dwell time</strong> — how long users stay on page</li>
+        <li><strong>Bounce rate</strong> — users returning to search quickly</li>
+      </ul>
+      <h3>Query Intent (ML)</h3>
+      <ul>
+        <li>"jaguar" → animal, car, or NFL team?</li>
+        <li>BERT-based classifier predicts intent distribution</li>
+        <li>Return blended results for ambiguous queries</li>
+        <li>User clicks train future personalization</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s13" data-title="Query Processing Pipeline">
+  <h2>Query Processing Pipeline</h2>
+  <pre class="arch-diagram">
+User → "runing java tutorail"
+         │
+         ▼ Step 1: Cache Check
+    Redis: query_cache:{hash} → HIT? → return instantly (30% of queries)
+         │ MISS
+         ▼ Step 2: Query Parsing
+    Tokenize  : ["runing", "java", "tutorail"]
+    Spell fix : ["running", "java", "tutorial"]
+    Stem      : ["run", "java", "tutori"]
+    Stop words: (none here — all meaningful)
+    Expand    : "java" → may add "jvm" as synonym
+         │
+         ▼ Step 3: Shard Planning
+    Document-based sharding → ALL shards must be queried
+    (any shard can hold any term's documents)
+         │
+         ▼ Step 4: Parallel Shard Query (SCATTER — all at once)
+    Each shard independently:
+      • Lookup posting lists for "run", "java", "tutori"
+      • Intersect → docs containing ALL terms
+      • Score each doc: BM25 × PageRank
+      • Return local top-K  (timeout: 50ms hard limit)
+         │
+         ▼ Step 5: GATHER + Global Rank (MERGE)
+    Collect top-K from each shard
+    Apply global signals: PageRank, freshness, CTR
+    Re-rank → global top-10
+         │
+         ▼ Step 6: Cache + Snippet Generation
+    Store in Redis (TTL: news=30s, static=1h)
+    Extract best matching sentence per result
+    Highlight matching terms in bold
+         │
+         ▼ Return results in &lt;200ms</pre>
+</div>
+
+<div class="slide" id="s14" data-title="Spell Correction &amp; Autocomplete">
+  <h2>Spell Correction &amp; Autocomplete</h2>
+  <div class="two-col">
+    <div>
+      <h3>Spell Correction</h3>
+      <pre>Edit Distance (Levenshtein):
+  "jaav" → "java" (1 substitution)
+  "jaava" → "java" (1 deletion)
+
+Approach:
+  1. Generate candidates within edit distance 1–2
+  2. Filter by query log frequency
+     (how often was this term queried?)
+  3. Rank by: frequency × phonetic similarity
+  4. Use noisy channel model:
+       P(intended | typed) ∝
+         P(typed | intended) × P(intended)
+
+N-gram model:
+  "jaav dev" → check bigram frequency
+  in query logs → "java dev" is 1000×
+  more common → suggest correction</pre>
+    </div>
+    <div>
+      <h3>Autocomplete (Type-Ahead)</h3>
+      <pre>Trie Data Structure:
+  j → ja → jav → java
+                → java developer (freq: 1M)
+                → java tutorial  (freq: 800K)
+                → java spring    (freq: 600K)
+
+Top-K completions stored at each trie node
+(avoid full trie traversal per keypress)
+
+Sources of suggestions:
+  • Query log frequency (top searched)
+  • Current trending queries
+  • Personalized history (logged-in user)</pre>
+      <h3>Multilingual Support</h3>
+      <ul>
+        <li>Language detection at parse time (n-gram model)</li>
+        <li>Language-specific stemming rules</li>
+        <li>Separate stop word lists per language</li>
+        <li>Language tag on each posting → query routing filters by detected language</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s15" data-title="Index Sharding Strategies">
+  <h2>Index Sharding Strategies</h2>
+  <div class="two-col">
+    <div>
+      <h3>Document-Based Sharding (PREFERRED)</h3>
+      <pre>Shard by: hash(URL) % N_shards
+  OR: doc_id range per shard
+
+Each shard holds ALL terms for its
+  subset of documents.
+
+Query "java": fan out to ALL N shards
+  → each shard returns its local top-K
+  → merger combines into global top-K
+
+WHY this wins:
+  No "hot posting list" problem
+  "java" is distributed across all shards
+  Each shard handles equal query load
+  Balanced storage across shards</pre>
+      <h3>Replication</h3>
+      <pre>3 copies per shard (primary + 2 replicas)
+100 PB ÷ 1 TB/server = 100,000 servers
+× 3 replicas = 300,000 servers
+(This is why Google has ~1M+ servers)</pre>
+    </div>
+    <div>
+      <h3>Term-Based Sharding (AVOID)</h3>
+      <pre>Shard by: hash(term) % N_shards
+  Each shard owns all docs for its terms
+
+WHY this fails at scale:
+  "java" → 10M postings → ONE shard
+  That shard is hot for every query
+  containing "java" — bottleneck!
+  Uneven shard load impossible to fix</pre>
+      <h3>Distributed Query Fan-Out</h3>
+      <pre>Query → Planner → fan-out to all N shards
+Each shard: 10ms response target
+Merger waits max 50ms (scatter-gather timeout)
+  → if shard exceeds 50ms: partial results
+  → "stragglers" dropped; SLO preserved
+
+Latency budget breakdown:
+  Query parse:    ~5ms
+  Scatter-gather: ~40ms (all shards parallel)
+  Merge + rank:   ~10ms
+  Snippet gen:    ~5ms
+  Network:        ~10ms
+  Cache/return:   ~5ms  → Total: ~75ms p50</pre>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s16" data-title="Index Freshness Strategy">
+  <h2>Index Freshness Strategy</h2>
+  <div class="two-col">
+    <div>
+      <h3>Freshness Tiers</h3>
+      <pre>HIGH (re-crawl every 15 min–hours):
+  • News sites, weather, stock tickers
+  • Pages with &lt;meta http-equiv="refresh"&gt;
+  • Pages that changed on every prior crawl
+  • RSS/Atom feed subscriptions
+  • Sitemap ping via Search Console
+
+MEDIUM (re-crawl daily):
+  • Blog posts, product pages
+  • Sitemap changefreq=daily pages
+  • High-PageRank pages with recent changes
+
+LOW (re-crawl weekly/monthly):
+  • Wikipedia articles, static docs
+  • Pages that never changed across 5 crawls
+  • Low-traffic long-tail pages
+
+Signal: if last_crawl_hash == current_hash
+  → content unchanged → extend re-crawl interval</pre>
+    </div>
+    <div>
+      <h3>Delta + Base Index Architecture</h3>
+      <pre>BASE INDEX:
+  Full inverted index — all crawled pages
+  Rebuilt weekly (full rebuild via MapReduce)
+  Stable, large, slow to update
+
+DELTA INDEX:
+  Pages crawled in last 24 hours
+  Updated hourly
+  Small and fast to query
+
+QUERY SERVING:
+  Query hits BOTH indexes in parallel
+  Merge results → prefer DELTA if same docId
+  (delta has fresher data)
+
+MERGE JOB (periodic, low-traffic window):
+  delta → base, reset delta
+  Done during off-peak hours</pre>
+      <div class="highlight-box">
+        Breaking news path: RSS/sitemap ping → expedited crawl queue → delta index → live in minutes
+      </div>
+      <h3>Crawl Priority Formula</h3>
+      <pre>priority = PageRank × freshness_need
+freshness_need = 1 / days_since_changed</pre>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s17" data-title="DB Schema Design">
+  <h2>Database Schema Design</h2>
+  <pre class="arch-diagram">
+┌──────────────────────┐     ┌──────────────────────┐
+│ url_frontier          │     │ documents             │
+│──────────────────────│     │──────────────────────│
+│ url_id   PK          │     │ doc_id   PK           │
+│ url      UNIQUE      │     │ url_id   FK           │
+│ domain               │     │ content_hash  INDEX   │
+│ priority             │     │ sim_hash              │
+│ status (PENDING/     │     │ title                 │
+│   CRAWLED/FAILED/    │     │ language              │
+│   EXCLUDED)          │     │ crawled_at            │
+│ last_crawled_at      │     │ page_rank_score       │
+│ next_crawl_at        │     │ doc_length            │
+│ crawl_delay_ms       │     └──────────────────────┘
+└──────────────────────┘
+
+┌──────────────────────┐     ┌──────────────────────┐
+│ terms                 │     │ postings              │
+│──────────────────────│     │──────────────────────│
+│ term_id  PK          │     │ term_id  FK  PK1      │
+│ term_text UNIQUE IDX │     │ doc_id   FK  PK2      │
+│ doc_frequency        │     │ term_frequency        │
+│ idf_score            │     │ doc_length            │
+└──────────────────────┘     │ positions (array)     │
+                              │ bm25_score            │
+┌──────────────────────┐     └──────────────────────┘
+│ search_cache          │     ┌──────────────────────┐
+│──────────────────────│     │ web_graph             │
+│ query_hash PK        │     │──────────────────────│
+│ results_blob         │     │ src_doc_id FK  INDEX  │
+│ cached_at            │     │ dst_doc_id FK  INDEX  │
+│ ttl_seconds          │     │ anchor_text           │
+└──────────────────────┘     └──────────────────────┘
+  Redis (TTL-based)            For PageRank compute (Spark)</pre>
+</div>
+
+<div class="slide" id="s18" data-title="Scatter-Gather Query Serving">
+  <h2>Scatter-Gather Query Serving</h2>
+  <div class="two-col">
+    <div>
+      <h3>Why Scatter-Gather?</h3>
+      <ul>
+        <li>Index is 100+ PB — one machine cannot hold it</li>
+        <li>Sequential search: 1000 shards × 10ms = <strong>10 seconds</strong> per query</li>
+        <li>Parallel scatter-gather: all shards simultaneously = <strong>10ms regardless of count</strong></li>
+      </ul>
+      <h3>Sequence</h3>
+      <pre>Query → fan-out to ALL N shards (SCATTER)
+         │
+         ├──▶ Shard 1: BM25 → local top-K
+         ├──▶ Shard 2: BM25 → local top-K
+         ├──▶ Shard 3: BM25 → local top-K
+         └──▶ Shard N: BM25 → local top-K
+                     │ (50ms timeout)
+                     ▼ GATHER
+         Result Merger:
+           • Merge top-K from all shards
+           • Apply PageRank + freshness boost
+           • Global re-rank → top-10
+           • Generate snippets</pre>
+    </div>
+    <div>
+      <h3>Latency Protection</h3>
+      <ul>
+        <li><strong>Hedged requests:</strong> send to both primary and replica, use first response</li>
+        <li><strong>Hard timeout 50ms:</strong> straggler shards dropped; partial results returned</li>
+        <li><strong>Reduce top-K during load:</strong> return top-5 instead of top-20 per shard</li>
+        <li><strong>Load shedding:</strong> drop lowest-priority queries if queue depth spikes</li>
+      </ul>
+      <h3>Java Implementation</h3>
+      <pre>// CompletableFuture scatter-gather
+List&lt;CompletableFuture&lt;ShardResult&gt;&gt; futures =
+  shards.stream()
+    .map(shard -&gt; shard.queryAsync(plan)
+          .orTimeout(50, MILLISECONDS))
+    .collect(toList());
+
+CompletableFuture.allOf(futures.toArray(...))
+  .thenApply(v -&gt; merger.merge(futures));</pre>
+      <div class="highlight-box">
+        Partial results &gt; no results. Users rarely notice if 1/1000 shards is down.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s19" data-title="Result Caching">
+  <h2>Result Caching</h2>
+  <div class="two-col">
+    <div>
+      <h3>Why Caching Is High-Leverage</h3>
+      <ul>
+        <li>Zipf's law: top 1% of queries = 20–30% of all traffic</li>
+        <li>"weather today", "youtube", "google" searched millions of times/hour</li>
+        <li>Cache hit avoids FULL index fan-out → massive latency + compute savings</li>
+        <li>25–30% hit rate removes 30% of shard load entirely</li>
+      </ul>
+      <h3>Cache Key</h3>
+      <pre>Key  = hash(normalised_query_string)
+         → lowercase, trimmed, sorted tokens
+Value= serialised results list
+TTL  = based on query category:
+  news queries   → 30 seconds
+  static queries → 1 hour
+  popular queries→ 5 minutes</pre>
+    </div>
+    <div>
+      <h3>Cache Stack</h3>
+      <pre>L1: In-process memory cache
+      (JVM heap, sub-ms, per instance)
+L2: Redis cluster
+      (shared, distributed, ~1ms)
+L3: CDN (for static result pages, rare)</pre>
+      <h3>Cache Invalidation</h3>
+      <ul>
+        <li>TTL-based expiry (primary strategy)</li>
+        <li>No explicit invalidation on index update — acceptable staleness</li>
+        <li>Breaking news: short TTL (30s) for news-domain queries</li>
+      </ul>
+      <h3>Why NOT CDN for Query Results</h3>
+      <ul>
+        <li>Results are personalised (logged-in user)</li>
+        <li>Highly dynamic — TTL would be too short</li>
+        <li>Redis in-process cache is more flexible</li>
+      </ul>
+      <div class="highlight-box">
+        Result caching is the single highest-leverage latency optimization in a search engine.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s20" data-title="Failure Scenarios &amp; Handling">
+  <h2>Failure Scenarios &amp; Handling</h2>
+  <div class="two-col">
+    <div>
+      <h3>Crawler Worker Crash</h3>
+      <pre>Risk: URLs in-flight are permanently lost
+Fix:  URL leasing — worker gets 5-min lease
+      → lease expires on crash
+      → URL auto re-queued
+      Idempotent crawl: re-fetching
+      just overwrites stored HTML</pre>
+      <h3>Index Shard Down</h3>
+      <pre>Risk: queries to that shard → missing results
+Fix:  3 replicas per shard (primary + 2)
+      Query router auto-fails to replica
+      Replica lag: slightly stale content
+      (acceptable — eventual consistency)
+      If ALL replicas down: partial results
+      → never return 500 to users</pre>
+      <h3>Index Shard Overloaded</h3>
+      <pre>Risk: shard latency spikes → p99 &gt; 200ms
+Fix:  Result cache absorbs 30%+ of reads
+      Per-shard timeout: 50ms hard limit
+      Scatter-gather drops stragglers
+      Load shedding on queue depth spike</pre>
+    </div>
+    <div>
+      <h3>Duplicate Content Flood</h3>
+      <pre>Risk: mirror sites fill index; crowd original
+Fix:  SimHash dedup (near-dupes dropped)
+      &lt;link rel="canonical"&gt; detection
+      Domain trust score: low-trust = low prio</pre>
+      <h3>Query Latency Spike Runbook</h3>
+      <pre>1. Check cache hit rate — if dropped,
+   replay recent popular queries to warm
+2. Check shard latency metrics
+   → which shard is slow?
+3. One shard slow → route to replica
+4. All shards slow → delta merge job
+   competing for I/O → pause merge
+5. Enable scatter-gather early timeout
+   (reduce top-K per shard)
+6. If still slow: serve from cache only</pre>
+      <h3>Spider Trap</h3>
+      <pre>Risk: infinite URL generation
+Fix:  depth limit (6), per-domain URL cap,
+      regex blacklist for session IDs,
+      URL normalisation before dedup</pre>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s21" data-title="Anti-Spam &amp; Security">
+  <h2>Anti-Spam &amp; Search Security</h2>
+  <div class="two-col">
+    <div>
+      <h3>Content Spam Controls</h3>
+      <ul>
+        <li><strong>Keyword stuffing:</strong> detect abnormally high TF for low-value terms</li>
+        <li><strong>Hidden text:</strong> white text on white background → penalise page</li>
+        <li><strong>Thin content:</strong> pages &lt;100 meaningful words → low crawl priority</li>
+        <li><strong>Cloaking:</strong> different HTML for crawler vs. human → permanent ban</li>
+        <li>Detect by comparing crawled HTML vs. rendered HTML (headless browser)</li>
+      </ul>
+      <h3>Link Spam Controls</h3>
+      <ul>
+        <li><strong>Link farm detection:</strong> domain with 1000s of outbound links to same target</li>
+        <li><strong>Nofollow:</strong> rel="nofollow" on sponsored links — no PageRank passed</li>
+        <li><strong>TrustRank:</strong> trust propagates from seed domains (Wikipedia, .gov)</li>
+        <li><strong>Domain age:</strong> links from domains &lt;30 days old = near-zero PR</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Query Abuse Controls</h3>
+      <ul>
+        <li>Rate limit per IP and per user (API Gateway)</li>
+        <li>Detect scraping patterns (sequential queries, no dwell time)</li>
+        <li>CAPTCHA challenge after threshold</li>
+        <li>Query length limit (max 64 tokens)</li>
+        <li>Block queries that probe API credentials</li>
+      </ul>
+      <h3>Crawler Ethics</h3>
+      <pre>MUST do:
+  • Respect robots.txt (legal requirement)
+  • Honour Crawl-delay directive
+  • Identify as known crawler
+    (not disguise as browser)
+  • Limit requests per domain/sec
+  • Back off on 429/503 responses
+  • Distribute traffic across IP ranges</pre>
+      <div class="highlight-box">
+        Violating robots.txt is a legal and ethical issue. Crawlers that ignore it are blocked or banned.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s22" data-title="Scaling Trade-Offs">
+  <h2>Scaling Trade-Offs</h2>
+  <table class="tradeoffs-table">
+    <thead>
+      <tr><th>Choice</th><th>Advantage</th><th>Trade-Off</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Document-based sharding</td>
+        <td>Balanced load, no hot shard</td>
+        <td>Cross-shard merge required on every query</td>
+      </tr>
+      <tr>
+        <td>Term-based sharding</td>
+        <td>No fan-out for single-term queries</td>
+        <td>Hot terms overload one shard — fatal at scale</td>
+      </tr>
+      <tr>
+        <td>Delta + Base index split</td>
+        <td>Fresh results without full rebuild</td>
+        <td>Every query must hit both indexes</td>
+      </tr>
+      <tr>
+        <td>BM25 over TF-IDF</td>
+        <td>Better length normalisation, saturation cap</td>
+        <td>Slightly more compute per scoring</td>
+      </tr>
+      <tr>
+        <td>Result caching (Redis)</td>
+        <td>30%+ latency win; removes shard load</td>
+        <td>Stale results during TTL window</td>
+      </tr>
+      <tr>
+        <td>Eventual consistency on index</td>
+        <td>Crawl pipeline fully decoupled from query</td>
+        <td>Pages indexed minutes–hours after crawl</td>
+      </tr>
+      <tr>
+        <td>Timeout + partial results</td>
+        <td>Latency SLO preserved; no full failure</td>
+        <td>Occasionally missing shard results</td>
+      </tr>
+      <tr>
+        <td>Offline PageRank (Spark batch)</td>
+        <td>Cheap, accurate over full web graph</td>
+        <td>PageRank is hours/days stale</td>
+      </tr>
+      <tr>
+        <td>Async PageRank + realtime BM25</td>
+        <td>Best of both: authority + freshness</td>
+        <td>Two separate pipeline runs to maintain</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="quote-block">
+    "I accept eventual consistency for index updates — a page indexed 30 seconds late is fine. I never accept it for query serving — users expect consistent top results."
+  </div>
+</div>
+
+<div class="slide" id="s23" data-title="Senior Q&amp;A — Query Intent &amp; Shard Failure">
+  <h2>Senior Q&amp;A — Levels 1 &amp; 2</h2>
+  <div class="two-col">
+    <div>
+      <h3>Q1: "User searches 'jaguar' — animal, car, or NFL team?"</h3>
+      <div class="speak-block">
+        <p><em>"This is the query intent disambiguation problem. Short answer: return a blended result set, weighted by predicted intent."</em></p>
+      </div>
+      <ul>
+        <li><strong>Session context:</strong> previous query "buy" + "car" → car intent</li>
+        <li><strong>Location signal:</strong> user near Jacksonville FL → NFL team more likely</li>
+        <li><strong>Query co-occurrence:</strong> historically, "jaguar" with no context → 60% car, 30% animal, 10% NFL → weighted blend</li>
+        <li><strong>ML intent classifier:</strong> BERT model trained on (query, click) pairs → predict intent distribution</li>
+        <li><strong>Diverse top-10:</strong> return mix of all intents for ambiguous queries</li>
+        <li>User's click teaches the system their intent → personalise future results</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Q2: "An index shard goes down. What happens?"</h3>
+      <div class="speak-block">
+        <p><em>"Graceful degradation with replica failover. Every shard has 2–3 replicas."</em></p>
+      </div>
+      <ul>
+        <li>Query router auto-routes to replica via heartbeat health check</li>
+        <li>If ALL replicas down: queries return partial results (missing that shard's docs)</li>
+        <li>Result page silently degrades — NEVER return 500 to users</li>
+        <li>PagerDuty alert fires immediately on full shard loss</li>
+        <li>SLA: 99.99% complete results requires 3 replicas — P(all down) = (0.001)³ ≈ negligible</li>
+      </ul>
+      <div class="highlight-box">
+        Key principle: partial results &gt; no results. 1/1000 shards down = users rarely notice.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s24" data-title="Senior Q&amp;A — Index Updates &amp; PageRank Spam">
+  <h2>Senior Q&amp;A — Levels 3 &amp; 4</h2>
+  <div class="two-col">
+    <div>
+      <h3>Q3: "Webpage updates its content — how to re-index without re-crawling all?"</h3>
+      <div class="speak-block">
+        <p><em>"Differential indexing. When a page is re-crawled (freshness scheduler triggers it), new content replaces old."</em></p>
+      </div>
+      <ul>
+        <li>Lucene: docs are immutable once written to segment</li>
+        <li>Update = tombstone old docId (mark deleted) + insert new docId with new content</li>
+        <li>Merged segments eventually garbage-collect tombstoned docs</li>
+        <li>HTTP <code>If-Modified-Since</code> header: skip re-parsing if 304 Not Modified</li>
+        <li>Triggers: freshness priority scheduler, sitemap ping, RSS/Atom subscription, Search Console request</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Q4: "Spammy site creates 10M fake links to boost PageRank — how to stop it?"</h3>
+      <div class="speak-block">
+        <p><em>"Link quality vs. quantity. Several defences."</em></p>
+      </div>
+      <ul>
+        <li><strong>TrustRank:</strong> seed known-good domains (Wikipedia, .gov, .edu). TrustRank propagates outward — only trusted pages can pass PageRank effectively</li>
+        <li><strong>Link farm detection:</strong> 10M pages with identical content linking same target → ML spam classifier flags cluster</li>
+        <li><strong>Nofollow attribute:</strong> rel="nofollow" = no PageRank passed (for sponsored links)</li>
+        <li><strong>Domain authority decay:</strong> domains registered &lt;30 days = near-zero PR contribution until history is established</li>
+        <li>Google: dedicated spam team + ML classifiers + manual penalties via Search Console</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s25" data-title="Quick Numbers &amp; Closing">
+  <h2>Quick Numbers &amp; Closing</h2>
+  <div class="two-col">
+    <div>
+      <h3>Numbers to Memorise</h3>
+      <table class="numbers-table">
+        <tr><td>Google indexed pages</td><td>60 trillion</td></tr>
+        <tr><td>Google searches/day</td><td>8.5 billion</td></tr>
+        <tr><td>Google searches/second</td><td>~99,000</td></tr>
+        <tr><td>Query response target</td><td>&lt;200ms p99</td></tr>
+        <tr><td>Raw text storage</td><td>~1.2 exabytes</td></tr>
+        <tr><td>Inverted index size</td><td>100–200 PB</td></tr>
+        <tr><td>Index servers (3× replication)</td><td>~300,000</td></tr>
+        <tr><td>Query cache hit rate</td><td>25–30%</td></tr>
+        <tr><td>BM25 params (k1, b)</td><td>1.5, 0.75</td></tr>
+        <tr><td>PageRank damping factor (d)</td><td>0.85</td></tr>
+        <tr><td>PageRank convergence</td><td>50–100 iterations</td></tr>
+        <tr><td>Freshness: breaking news</td><td>minutes</td></tr>
+        <tr><td>Shard scatter-gather timeout</td><td>50ms hard limit</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>2-Minute Whiteboard Summary</h3>
+      <pre>1. Crawl   : URL Frontier → Workers → Raw Store
+2. Parse   : HTML Parser → text + links + meta
+3. Dedup   : SimHash → drop near-duplicates
+4. Index   : tokenize/stem → Inverted Index (sharded)
+5. Rank    : BM25 at index time + PageRank (batch)
+6. Query   : API → spell-correct → stem → expand
+7. Fan-out : Planner → all shards parallel (50ms)
+8. Merge   : top-K per shard → global rank
+9. Cache   : Redis (TTL by query type)
+10. Serve  : Snippets → highlight → return
+11. Fresh  : Delta index (hourly) + Base (weekly)
+12. Ops    : frontier depth + indexing lag +
+             shard p99 + cache hit rate</pre>
+      <div class="quote-block">
+        "Crawl everything, index the important parts, rank by relevance and authority, serve under 200ms. The web is always changing — duplicate content is the norm — and every query must complete under 200ms regardless of how many shards we fan out to."
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

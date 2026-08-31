@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LC 146 LRU Cache | Visual Code Dry Run</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box}:root{--bg:#07111d;--s:#0c1a2a;--s2:#10253a;--line:#25435b;--ink:#e8f1f7;--muted:#9cb5c9;--blue:#5eb5ff;--cyan:#5eead4;--lime:#a3e635;--amber:#fbbf24;--red:#fb7185}body{margin:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif}main{max-width:1240px;margin:auto;padding:22px}.eyebrow{font:700 10px 'IBM Plex Mono',monospace;color:var(--cyan);letter-spacing:.08em}h1{margin:7px 0 4px;font-size:clamp(1.8rem,4vw,3rem)}p{color:var(--muted);margin:0;line-height:1.55}.ops{display:flex;gap:7px;flex-wrap:wrap;margin:17px 0}.op{font:600 13px 'IBM Plex Mono',monospace;border:1px solid var(--line);border-radius:5px;padding:7px 10px;color:var(--muted)}.op.active{background:var(--amber);border-color:var(--amber);color:#07111d}.grid{display:grid;grid-template-columns:1.2fr .8fr;gap:14px}.panel{background:var(--s);border:1px solid var(--line);border-radius:8px;padding:15px}.panel h2{font-size:.85rem;color:var(--cyan);margin:0 0 11px}.list{display:flex;align-items:center;gap:7px;min-height:72px;flex-wrap:wrap}.node{min-width:68px;text-align:center;background:#0a1c30;border:1px solid var(--blue);border-radius:5px;padding:10px 6px;font:700 15px 'IBM Plex Mono',monospace;transition:.28s}.node.hot{background:var(--amber);border-color:var(--amber);color:#07111d;transform:translateY(-5px)}.arrow{color:var(--muted)}.sentinel{color:var(--muted);font:11px 'IBM Plex Mono',monospace}.detached{display:none;margin-top:7px;color:#fecdd3;font:12px 'IBM Plex Mono',monospace}.detached.visible{display:block}.pointer-state{margin-top:7px;padding:8px;border-left:3px solid var(--amber);background:#17160c;color:#fde68a;font:12px/1.5 'IBM Plex Mono',monospace;white-space:pre-wrap;min-height:48px}.map{font:14px/1.8 'IBM Plex Mono',monospace;min-height:92px;color:#c8ddec}.code{font:12px/1.65 'IBM Plex Mono',monospace;white-space:pre;overflow:auto;color:#a9c3d8;max-height:338px}.code div{padding:0 7px;border-left:3px solid transparent}.code .active{background:#173955;border-left-color:var(--amber);color:#fff}.explain{margin-top:14px;background:#092033;border-left:3px solid var(--cyan);border-radius:0 7px 7px 0;padding:13px 15px;font-size:1.02rem;line-height:1.55}.why{margin-top:12px;background:#102311;border-left:3px solid var(--lime);border-radius:0 7px 7px 0;padding:11px 14px;color:#d9f99d;line-height:1.5}.controls{display:flex;align-items:center;gap:9px;margin-top:15px}.btn{background:var(--s2);border:1px solid var(--line);color:var(--ink);font:600 13px 'DM Sans',sans-serif;padding:8px 13px;border-radius:5px;cursor:pointer}.btn.primary{background:#123b5c;border-color:var(--blue)}.meter{margin-left:auto;color:var(--muted);font:12px 'IBM Plex Mono',monospace}@media(max-width:760px){main{padding:15px}.grid{grid-template-columns:1fr}.code{max-height:280px}.meter{margin-left:0}.controls{flex-wrap:wrap}}</style>
+</head>
+<body><main>
+<div class="eyebrow">LC 146 | VISUAL CODE DRY RUN</div>
+<h1>LRU Cache, capacity = 2</h1>
+<p>Full code dry run: constructor, every `put`, every `get`, and each internal `remove` / `addToHead` call.</p>
+<div class="ops" id="operations"></div>
+<div class="grid">
+  <section class="panel"><h2>Linked List: most recent at HEAD, eviction at TAIL</h2><div class="list"><span class="sentinel">HEAD</span><span class="arrow">&lt;-&gt;</span><div id="list" class="list"></div><span class="arrow">&lt;-&gt;</span><span class="sentinel">TAIL</span></div><div class="detached" id="detached"></div><div class="pointer-state" id="pointers"></div></section>
+  <section class="panel"><h2>HashMap: key -> node</h2><div class="map" id="map"></div></section>
+</div>
+<div class="grid" style="margin-top:14px"><section class="panel"><h2>Java code: highlighted line is executing</h2><div class="code" id="code"></div></section><section class="panel"><h2>What changed now?</h2><div class="explain" id="explain"></div><div class="why" id="why"></div></section></div>
+<div class="controls"><button class="btn primary" id="play">Pause</button><button class="btn" id="previous">Previous</button><button class="btn" id="next">Next</button><button class="btn" id="reset">Reset</button><span class="meter" id="meter"></span></div>
+</main>
+<script>
+const codeLines=[
+  'class LRUCache {',
+  '  class Node {',
+  '    int key, value;',
+  '    Node prev, next;',
+  '    Node(int key, int value) { this.key = key; this.value = value; }',
+  '  }',
+  '  private Map<Integer, Node> cache = new HashMap<>();',
+  '  private Node head = new Node(0, 0);',
+  '  private Node tail = new Node(0, 0);',
+  '  private int capacity;',
+  '',
+  '  public LRUCache(int capacity) {',
+  '    this.capacity = capacity;',
+  '    head.next = tail;',
+  '    tail.prev = head;',
+  '  }',
+  '',
+  '  public int get(int key) {',
+  '    if (!cache.containsKey(key)) return -1;',
+  '    Node node = cache.get(key);',
+  '    remove(node);',
+  '    addToHead(node);',
+  '    return node.value;',
+  '  }',
+  '',
+  '  public void put(int key, int value) {',
+  '    if (cache.containsKey(key)) {',
+  '      Node node = cache.get(key);',
+  '      node.value = value;',
+  '      remove(node);',
+  '      addToHead(node);',
+  '      return;',
+  '    }',
+  '    if (cache.size() == capacity) {',
+  '      Node lru = tail.prev;',
+  '      cache.remove(lru.key);',
+  '      remove(lru);',
+  '    }',
+  '    Node newNode = new Node(key, value);',
+  '    cache.put(key, newNode);',
+  '    addToHead(newNode);',
+  '  }',
+  '',
+  '  private void remove(Node node) {',
+  '    node.prev.next = node.next;',
+  '    node.next.prev = node.prev;',
+  '  }',
+  '',
+  '  private void addToHead(Node node) {',
+  '    node.next = head.next;',
+  '    node.prev = head;',
+  '    head.next.prev = node;',
+  '    head.next = node;',
+  '  }',
+  '}'
+];
+const steps=[
+  {op:'1. constructor: capacity = 2', list:[], map:[], line:12, hot:null, text:'Run `this.capacity = capacity`. The cache can hold exactly two real nodes.', why:'Capacity is checked before a new node is inserted.'},
+  {op:'2. constructor: head.next = tail', list:[], map:[], line:13, hot:null, text:'Run `head.next = tail`. HEAD now points forward to TAIL.', why:'The first sentinel connection establishes the forward empty-list link.'},
+  {op:'3. constructor: tail.prev = head', list:[], map:[], line:14, hot:null, text:'Run `tail.prev = head`. Empty cache is HEAD <-> TAIL.', why:'The second sentinel connection establishes the backward empty-list link.'},
+  {op:'4. put(1, 1): capacity check', list:[], map:[], line:33, hot:null, text:'Key 1 is absent and size 0 is not capacity 2. Skip eviction.', why:'The code only evicts when a new key would exceed capacity.'},
+  {op:'5. put(1, 1): new Node', list:[], map:[], line:38, hot:'1', text:'Create `new Node(1, 1)`. It is not connected yet.', why:'The new node must exist before map and list can reference it.'},
+  {op:'6. put(1, 1): cache.put', list:[], map:['1 -> node(1,1)'], line:39, hot:'1', text:'HashMap now maps key 1 directly to node 1.', why:'This gives a future `get(1)` O(1) access to the node.'},
+  {op:'7. put(1, 1): call addToHead', list:['1'], map:['1 -> node(1,1)'], line:40, hot:'1', text:'Call `addToHead(newNode)`. The helper links node 1 between HEAD and TAIL.', why:'Newly inserted data is most recently used.'},
+  {op:'7. put(2, 2): capacity check', list:['1'], map:['1 -> node(1,1)'], line:33, hot:null, text:'Key 2 is new and size 1 is below capacity. Skip eviction.', why:'One space remains.'},
+  {op:'9. put(2, 2): call addToHead', list:['2','1'], map:['2 -> node(2,2)','1 -> node(1,1)'], line:40, hot:'2', text:'Node 2 is stored in the map, then `addToHead(newNode)` makes list order 2 <-> 1.', why:'Key 2 is newest and key 1 is now least recently used.'},
+  {op:'9. get(1): containsKey', list:['2','1'], map:['2 -> node(2,2)','1 -> node(1,1)'], line:18, hot:'1', text:'Key 1 exists, so do not return -1.', why:'A cache miss returns immediately and must not change list order.'},
+  {op:'10. get(1): cache.get', list:['2','1'], map:['2 -> node(2,2)','1 -> node(1,1)'], line:19, hot:'1', text:'`cache.get(1)` retrieves the exact node object in O(1).', why:'No linked-list search is needed.'},
+  {op:'11. remove(1): node.prev.next = node.next', list:['2'], detached:'1', pointers:'node = 1\nnode.prev = 2, node.next = TAIL\n2.next = TAIL', map:['2 -> node(2,2)','1 -> node(1,1)'], line:44, hot:'1', text:'First line of `remove`: node 2 now points directly to TAIL. Node 1 is detached from the forward chain.', why:'We save node 1 references first; the map still points to node 1 while it is temporarily detached.'},
+  {op:'12. remove(1): node.next.prev = node.prev', list:['2'], detached:'1', pointers:'node = 1\nnode.prev = 2, node.next = TAIL\nTAIL.prev = 2', map:['2 -> node(2,2)','1 -> node(1,1)'], line:45, hot:'1', text:'Second line of `remove`: TAIL now points backward to node 2. The list is consistent without node 1.', why:'A doubly linked list requires both directions to be rewired.'},
+  {op:'13. addToHead(1): node.next = head.next', list:['2'], detached:'1', pointers:'node = 1\n1.next = 2\n1.prev = old value (not updated yet)', map:['2 -> node(2,2)','1 -> node(1,1)'], line:49, hot:'1', text:'First line of `addToHead`: node 1 remembers that node 2 was the old first real node.', why:'Set node.next before changing HEAD, otherwise we lose the old first node.'},
+  {op:'14. addToHead(1): node.prev = head', list:['2'], detached:'1', pointers:'node = 1\n1.next = 2\n1.prev = HEAD', map:['2 -> node(2,2)','1 -> node(1,1)'], line:50, hot:'1', text:'Second line: node 1 now knows both of its intended neighbors: HEAD and node 2.', why:'The new node is prepared before we let any existing node point to it.'},
+  {op:'15. addToHead(1): head.next.prev = node', list:['2'], detached:'1', pointers:'node = 1\n2.prev = 1\nHEAD.next still points to 2', map:['2 -> node(2,2)','1 -> node(1,1)'], line:51, hot:'1', text:'Third line: old first node 2 now points backward to node 1.', why:'This repairs the backward link before moving HEAD forward.'},
+  {op:'16. addToHead(1): head.next = node', list:['1','2'], pointers:'HEAD.next = 1\n1.prev = HEAD, 1.next = 2\n2.prev = 1', map:['1 -> node(1,1)','2 -> node(2,2)'], line:52, hot:'1', text:'Final line: HEAD points to node 1. The list is HEAD <-> 1 <-> 2 <-> TAIL. Return value 1.', why:'All four links now agree, and node 1 is most recently used.'},
+  {op:'13. put(3, 3): capacity check', list:['1','2'], map:['1 -> node(1,1)','2 -> node(2,2)'], line:33, hot:'2', text:'Size equals capacity. `tail.prev` is node 2, the least recently used node.', why:'The list order makes eviction O(1).'},
+  {op:'14. put(3, 3): choose lru', list:['1','2'], map:['1 -> node(1,1)','2 -> node(2,2)'], line:34, hot:'2', text:'Store `tail.prev` in variable `lru`. It points to node 2.', why:'Keep the node reference before removing it from map and list.'},
+  {op:'15. put(3, 3): cache.remove(2)', list:['1','2'], map:['1 -> node(1,1)'], line:35, hot:'2', text:'Remove key 2 from the map.', why:'The map must not point at an evicted list node.'},
+  {op:'20. put(3, 3): remove lru', list:['1'], map:['1 -> node(1,1)'], line:44, hot:'2', text:'The remove helper unlinks node 2 before inserting key 3.', why:'Eviction removes node 2 from both structures.'},
+  {op:'21. put(3, 3): create node', list:['1'], map:['1 -> node(1,1)'], line:38, hot:'3', text:'Create node 3 after room is available.', why:'A new node is created only after any required eviction.'},
+  {op:'22. put(3, 3): cache.put', list:['1'], map:['3 -> node(3,3)','1 -> node(1,1)'], line:39, hot:'3', text:'Store key 3 in the map.', why:'The map is updated before the node becomes reachable from HEAD.'},
+  {op:'23. put(3, 3): call addToHead', list:['3','1'], map:['3 -> node(3,3)','1 -> node(1,1)'], line:40, hot:'3', text:'Call `addToHead(newNode)`. List order becomes 3 <-> 1.', why:'The inserted key is the most recent.'},
+  {op:'24. get(2): miss', list:['3','1'], map:['3 -> node(3,3)','1 -> node(1,1)'], line:18, hot:'2', text:'Key 2 was evicted, so `containsKey(2)` is false. Return -1.', why:'A miss must leave list and map unchanged.'},
+  {op:'25. put(4, 4): call put path', list:['4','3'], map:['4 -> node(4,4)','3 -> node(3,3)'], line:40, hot:'4', text:'Capacity is full: the method evicts tail-side key 1, then inserts key 4 at HEAD. List becomes 4 <-> 3.', why:'Key 1 is older than key 3, so 1 is correctly evicted.'},
+  {op:'26. get(1): miss', list:['4','3'], map:['4 -> node(4,4)','3 -> node(3,3)'], line:18, hot:'1', text:'Key 1 is no longer in the map. Return -1.', why:'Only keys 4 and 3 remain.'},
+  {op:'27. get(3): call get path', list:['3','4'], map:['3 -> node(3,3)','4 -> node(4,4)'], line:20, hot:'3', text:'Find node 3, then the helper calls move it to HEAD. Return 3. List becomes 3 <-> 4.', why:'A hit refreshes recency.'},
+  {op:'28. get(4): call get path', list:['4','3'], map:['4 -> node(4,4)','3 -> node(3,3)'], line:20, hot:'4', text:'Find node 4, then the helper calls move it to HEAD. Return 4. Final list is 4 <-> 3.', why:'Final rule: map keys and list nodes match; HEAD is newest and tail-side node 3 is next to evict.'}
+];
+steps.forEach((step, index) => {
+  step.op = `${index + 1}. ${step.op.replace(/^\d+\.\s*/, '')}`;
+});
+const code=document.querySelector('#code'),ops=document.querySelector('#operations'),list=document.querySelector('#list'),map=document.querySelector('#map'),detached=document.querySelector('#detached'),pointers=document.querySelector('#pointers'),explain=document.querySelector('#explain'),why=document.querySelector('#why'),meter=document.querySelector('#meter');
+codeLines.forEach((line,index)=>{const row=document.createElement('div');row.textContent=`${index+1}. ${line}`;code.append(row)});
+steps.forEach(step=>{const pill=document.createElement('span');pill.className='op';pill.textContent=step.op;ops.append(pill)});
+let index=0,running=false,timer;
+function render(){const step=steps[index];const lines=step.lines||[step.line];[...ops.children].forEach((item,i)=>item.classList.toggle('active',i===index));const activeRow=code.children[lines[0]];[...code.children].forEach((row,i)=>row.classList.toggle('active',lines.includes(i)));activeRow.scrollIntoView({block:'nearest',behavior:'smooth'});list.innerHTML='';step.list.forEach(key=>{const node=document.createElement('span');node.className='node'+(step.hot===key?' hot':'');node.textContent=key;list.append(node)});detached.textContent=step.detached?`Detached node: ${step.detached}`:'';detached.classList.toggle('visible',Boolean(step.detached));pointers.textContent=step.pointers||'Pointer state is unchanged in this step.';map.textContent=step.map.length?step.map.join('\n'):'(empty)';explain.textContent=step.text;why.innerHTML='<strong>Why:</strong> '+step.why;meter.textContent=`${index+1} / ${steps.length}`}
+function advance(){index=(index+1)%steps.length;render()}function schedule(){clearInterval(timer);if(running)timer=setInterval(advance,5000);document.querySelector('#play').textContent=running?'Pause':'Play'}
+document.querySelector('#play').onclick=()=>{running=!running;schedule()};document.querySelector('#next').onclick=()=>{running=false;schedule();advance()};document.querySelector('#previous').onclick=()=>{running=false;schedule();index=(index+steps.length-1)%steps.length;render()};document.querySelector('#reset').onclick=()=>{running=false;schedule();index=0;render()};document.addEventListener('keydown',event=>{if(event.key==='ArrowRight')document.querySelector('#next').click();if(event.key==='ArrowLeft')document.querySelector('#previous').click();if(event.key===' ')document.querySelector('#play').click()});render();
+</script></body></html>

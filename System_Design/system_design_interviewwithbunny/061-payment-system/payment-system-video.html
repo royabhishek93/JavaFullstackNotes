@@ -1,0 +1,1226 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Payment System Design</title>
+<link rel="stylesheet" href="../../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Payment System / Payment Gateway System Design</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <div class="slide active" id="s1" data-title="Payment System / Payment Gateway System Design">
+      <h1>Payment System Design</h1>
+      <h2>Stripe / Razorpay / Braintree / Square</h2>
+      <div class="intro-grid">
+        <div class="intro-card">
+          <div class="intro-icon">💳</div>
+          <div class="intro-label">Core Challenge</div>
+          <div class="intro-value">Exactly-Once Execution</div>
+        </div>
+        <div class="intro-card">
+          <div class="intro-icon">🔒</div>
+          <div class="intro-label">Consistency Model</div>
+          <div class="intro-value">ACID — No Eventual</div>
+        </div>
+        <div class="intro-card">
+          <div class="intro-icon">⚡</div>
+          <div class="intro-label">Scale</div>
+          <div class="intro-value">1M txns / day</div>
+        </div>
+        <div class="intro-card">
+          <div class="intro-icon">📋</div>
+          <div class="intro-label">Compliance</div>
+          <div class="intro-value">PCI-DSS Level 1</div>
+        </div>
+      </div>
+      <div class="key-insight">
+        <strong>Interview Focus:</strong> 40% design, 60% failure modes.
+        Every question will be — what happens when this component fails mid-operation?
+        Money must never be created from nothing, lost, or moved twice.
+      </div>
+      <div class="tag-row">
+        <span class="tag">Idempotency Keys</span>
+        <span class="tag">Saga Pattern</span>
+        <span class="tag">Double-Entry Ledger</span>
+        <span class="tag">Outbox Pattern</span>
+        <span class="tag">Optimistic Locking</span>
+        <span class="tag">Reconciliation</span>
+      </div>
+    </div>
+
+    <div class="slide" id="s2" data-title="Opening Script — Framing the Problem">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Opening Script — Framing the Problem</h2>
+      <div class="speak-block">
+        <div class="speak-header">Say This to Your Interviewer</div>
+        <p>"The fundamental challenge here is <strong>correctness under failure</strong>. In distributed
+        systems, the rule is: anything that can fail, will fail. For a payment system that means:
+        money must never be created from nothing, lost, or moved twice. Every single design decision
+        I make will be driven by the question: <em>what happens when this component fails mid-operation?</em>"</p>
+      </div>
+      <h3>Why This System Is Unique</h3>
+      <ul class="content-list">
+        <li><strong>Not a CRUD app</strong> — it is a distributed state machine enforcing exactly-once execution of money movement</li>
+        <li><strong>External parties</strong> — banks, card networks you do not fully control or transact with atomically</li>
+        <li><strong>Hardest problems</strong> — NOT performance (100 TPS is trivial for MySQL); they are <em>correctness under failure</em></li>
+        <li><strong>Partial writes</strong> — bank debits the customer, your DB write fails; now what?</li>
+        <li><strong>Network timeouts</strong> — bank processed the payment, you never got the response</li>
+        <li><strong>Double charges</strong> — client retries after timeout; ensure idempotency at every layer</li>
+      </ul>
+      <div class="key-insight">
+        <strong>Senior signal:</strong> Open with failure modes, not happy-path features.
+        Interviewers at staff/principal level are testing whether you instinctively think about correctness first.
+      </div>
+    </div>
+
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Functional Requirements</h2>
+      <div class="two-col">
+        <div>
+          <h3>Core Features</h3>
+          <ul class="content-list">
+            <li><strong>Create Payment</strong> — card, bank transfer, UPI</li>
+            <li><strong>Wallet-to-wallet Transfer</strong> — P2P between users</li>
+            <li><strong>Check Payment Status</strong> — async result polling</li>
+            <li><strong>Refund a Payment</strong> — full or partial refund</li>
+            <li><strong>View Transaction History</strong> — paginated ledger</li>
+            <li><strong>Multi-currency Support</strong> — INR, USD, EUR</li>
+            <li><strong>Idempotent Retry Support</strong> — no double charges</li>
+            <li><strong>Async Fraud Detection</strong> — non-blocking</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Requirements Clarification Q&amp;A</h3>
+          <table class="data-table">
+            <tr><th>You Ask</th><th>Typical Answer</th></tr>
+            <tr><td>Gateway or wallet?</td><td>Both — card + P2P</td></tr>
+            <tr><td>Direct or via processor?</td><td>Via Visa/MC/bank APIs</td></tr>
+            <tr><td>Transaction volume?</td><td>~1M transactions/day</td></tr>
+            <tr><td>Refunds &amp; chargebacks?</td><td>Yes refunds; bank handles chargebacks</td></tr>
+            <tr><td>Currencies?</td><td>Multi: INR, USD, EUR</td></tr>
+            <tr><td>Latency requirement?</td><td>API &lt;500ms; settlement async</td></tr>
+            <tr><td>Fraud detection?</td><td>Yes, async — don't block txn</td></tr>
+            <tr><td>Consistency?</td><td>Strong — no double charges</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s4" data-title="Non-Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Non-Functional Requirements</h2>
+      <div class="req-grid">
+        <div class="req-card req-perf">
+          <div class="req-title">Latency</div>
+          <div class="req-body">
+            <div>API response &lt; <strong>500ms</strong></div>
+            <div>Settlement: <strong>async</strong></div>
+            <div>Fraud check: &lt; <strong>5 sec</strong> async</div>
+            <div>Status read from Redis: <strong>&lt;5ms</strong></div>
+          </div>
+        </div>
+        <div class="req-card req-scale">
+          <div class="req-title">Scale</div>
+          <div class="req-body">
+            <div>1M transactions/day</div>
+            <div>~12 TPS average</div>
+            <div>~100 TPS peak (8x)</div>
+            <div>MySQL handles 10K TPS easily</div>
+          </div>
+        </div>
+        <div class="req-card req-rel">
+          <div class="req-title">Consistency</div>
+          <div class="req-body">
+            <div><strong>Strong ACID</strong> — no eventual</div>
+            <div>No MongoDB / Cassandra</div>
+            <div>No double charges</div>
+            <div>No lost payments</div>
+          </div>
+        </div>
+        <div class="req-card req-sec">
+          <div class="req-title">Availability</div>
+          <div class="req-body">
+            <div><strong>99.99%</strong> (four nines)</div>
+            <div>~52 min downtime/year</div>
+            <div>Multi-AZ MySQL</div>
+            <div>Read replicas for status</div>
+          </div>
+        </div>
+        <div class="req-card req-sec">
+          <div class="req-title">PCI-DSS Compliance</div>
+          <div class="req-body">
+            <div>Never store raw card numbers</div>
+            <div>Tokenization via card network</div>
+            <div>TLS everywhere</div>
+            <div>PCI Level 1 certification</div>
+          </div>
+        </div>
+        <div class="req-card req-rel">
+          <div class="req-title">Data Retention</div>
+          <div class="req-body">
+            <div>7 years minimum</div>
+            <div>RBI mandate (India)</div>
+            <div>Immutable audit trail</div>
+            <div>Ledger append-only</div>
+          </div>
+        </div>
+      </div>
+      <div class="key-insight">
+        <strong>Key Insight:</strong> Volume (100 TPS) is NOT the design constraint.
+        MySQL handles 10,000+ TPS per shard. The constraint is <strong>correctness</strong>: exactly-once execution, immutable audit trail, zero money creation or loss.
+      </div>
+    </div>
+
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <div class="section-label">🏛 HLD</div>
+      <h2>High-Level Architecture</h2>
+      <pre class="arch-diagram">
+  CLIENT (Mobile / Web)
+    │  POST /payments { idempotencyKey, amount, from, to }
+    ▼
+  ┌─────────────────────────────────────────────────────┐
+  │              API GATEWAY                            │
+  │       TLS termination · JWT auth · Rate limiting    │
+  └──────────────────────┬──────────────────────────────┘
+                         │
+               ┌─────────▼──────────┐
+               │  Idempotency Check  │  Redis: HIT → return cached
+               │  Redis GET key      │  MISS → proceed
+               └─────────┬──────────┘
+                         │ MISS
+                         ▼
+  ┌─────────────────────────────────────────────────────┐
+  │              Payment Service (stateless)            │
+  │  BEGIN TX: INSERT payment(INITIATED) +              │
+  │            INSERT outbox_event(published=false)     │
+  │  COMMIT → Store Redis → Return 202 Accepted         │
+  └──────────────────────┬──────────────────────────────┘
+                         │ async
+               ┌─────────▼──────────┐
+               │   Outbox Relay      │  Polls DB → publishes to Kafka
+               └─────────┬──────────┘
+                         ▼
+  ┌─────────────────────────────────────────────────────┐
+  │            Kafka  topic: payment.process            │
+  │         Partitioned by from_account_id              │
+  └──────────────────────┬──────────────────────────────┘
+                         ▼
+  ┌─────────────────────────────────────────────────────┐
+  │         Payment Processor Service                   │
+  │  UPDATE → PROCESSING → Call Bank API (async)        │
+  │  SUCCESS: UPDATE → SUCCESS + INSERT ledger          │
+  │  FAILURE: UPDATE → FAILED                           │
+  │  TIMEOUT: UPDATE → PENDING + schedule retry         │
+  └───────────┬─────────────────────┬───────────────────┘
+              ▼                     ▼
+  ┌──────────────────┐   ┌──────────────────────────────┐
+  │  MySQL (Primary) │   │  External Bank / Card Network │
+  │  payments        │   │  HDFC · SBI · Visa · MC      │
+  │  accounts        │   │  Response: SUCCESS/FAILED/   │
+  │  ledger_entries  │   │  PENDING (with ref ID)       │
+  │  outbox_events   │   └──────────────────────────────┘
+  └────────┬─────────┘
+           │ nightly
+           ▼
+  ┌─────────────────────────────────────────────────────┐
+  │  Reconciliation Service: ledger vs bank statement   │
+  │  Mismatch → alert ops, freeze account               │
+  └─────────────────────────────────────────────────────┘</pre>
+    </div>
+
+    <div class="slide" id="s6" data-title="Idempotency Key Design">
+      <div class="section-label">💳 Payment Flow</div>
+      <h2>Idempotency Key Design — Preventing Double Charges</h2>
+      <div class="key-insight">
+        <strong>Most Important Correctness Guarantee:</strong> A client-generated UUID included in every API call.
+        The server uses this to detect and suppress duplicate requests — no re-charge, no matter how many retries.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>How It Works</h3>
+          <ol class="content-list">
+            <li>Client generates <code>UUID v4</code> per payment attempt</li>
+            <li>Included in HTTP header: <code>Idempotency-Key: &lt;UUID&gt;</code></li>
+            <li>Server checks Redis: <code>GET idempotencyKey</code></li>
+            <li><strong>HIT</strong> → return cached response, skip all processing</li>
+            <li><strong>MISS</strong> → process payment, store result in Redis (TTL 24h)</li>
+            <li>UNIQUE constraint on DB column as second safety net</li>
+          </ol>
+          <h3>Why Redis (not MySQL)?</h3>
+          <ul class="content-list">
+            <li>O(1) lookup, sub-millisecond latency</li>
+            <li>TTL handles automatic expiry (24 hours)</li>
+            <li>~150 MB for 1M payments/day — trivial footprint</li>
+            <li>DB query on every request = 5-10ms overhead + hot read table</li>
+          </ul>
+        </div>
+        <div>
+          <h3>API Contract</h3>
+          <pre class="code-block">POST /api/v1/payments
+Idempotency-Key: user_123_txn_abc789
+{
+  "fromAccountId": "acc_alice_001",
+  "toAccountId":   "acc_bob_002",
+  "amount":        50000,
+  "currency":      "INR"
+}
+
+// First call → 202 Accepted
+{ "paymentId": "pay_9f2a", "status": "INITIATED" }
+
+// Retry with SAME key → 409 Conflict
+// Returns original response (cached from Redis)
+{ "paymentId": "pay_9f2a", "status": "SUCCESS" }</pre>
+          <div class="callout callout-warn">
+            <strong>Duplicate key in DB:</strong> Even if Redis misses (cache eviction),
+            the UNIQUE constraint on <code>idempotency_key</code> column prevents double-insert at DB layer.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s7" data-title="Saga Pattern for Distributed Transactions">
+      <div class="section-label">💳 Payment Flow</div>
+      <h2>Saga Pattern for Distributed Transactions</h2>
+      <div class="key-insight">
+        <strong>Why NOT 2PC:</strong> External bank APIs (SWIFT, NEFT, Visa) don't support a PREPARE phase.
+        They either execute or they don't. 2PC holds locks indefinitely if a participant is unavailable.
+        Use <strong>Saga + compensating transactions</strong> instead.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Saga Steps — Happy Path</h3>
+          <ol class="content-list">
+            <li>Payment Service: INSERT payment (INITIATED) + outbox event — <em>local ACID TX</em></li>
+            <li>Outbox Relay: publish event to Kafka</li>
+            <li>Payment Processor: UPDATE → PROCESSING</li>
+            <li>Call external bank API (async, non-blocking)</li>
+            <li>On SUCCESS: UPDATE → SUCCESS + INSERT ledger entries — <em>local ACID TX</em></li>
+          </ol>
+          <h3>Compensating Transactions — Failure Path</h3>
+          <ol class="content-list">
+            <li>Bank call fails: UPDATE payment → FAILED</li>
+            <li>If funds were already moved: issue reverse payment (compensating TX)</li>
+            <li>INSERT new ledger entries: CREDIT source, DEBIT destination (undo)</li>
+            <li>Notify user of failure</li>
+            <li>Daily reconciliation as final safety net</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Cross-Shard Saga (At Scale)</h3>
+          <pre class="arch-diagram">
+Shard A (source account):
+  Step 1: DEBIT source — local ACID ✓
+
+Shard B (destination account):
+  Step 2: CREDIT dest — local ACID ✓
+
+  If Step 2 FAILS:
+    Compensating TX on Shard A:
+    RE-CREDIT source account
+    Mark payment FAILED</pre>
+          <h3>Why No 2PC Across External Banks</h3>
+          <table class="data-table">
+            <tr><th>2PC</th><th>Saga</th></tr>
+            <tr><td>Requires PREPARE phase</td><td>Just execute &amp; compensate</td></tr>
+            <tr><td>Banks don't support it</td><td>Works with any bank API</td></tr>
+            <tr><td>Indefinite lock hold</td><td>No locks across services</td></tr>
+            <tr><td>Single point of failure</td><td>Async &amp; resilient</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s8" data-title="Payment State Machine">
+      <div class="section-label">💳 Payment Flow</div>
+      <h2>Payment State Machine</h2>
+      <pre class="arch-diagram">
+  ┌─────────────────────────────────────────────────────────────────────────┐
+  │                    PAYMENT STATUS TRANSITIONS                           │
+  └─────────────────────────────────────────────────────────────────────────┘
+
+         Client submits payment
+                  │
+                  ▼
+          ┌──────────────┐
+          │  INITIATED   │ ← INSERT in DB, outbox event written
+          └──────┬───────┘
+                 │ Kafka consumed by processor
+                 ▼
+          ┌──────────────┐
+          │  PROCESSING  │ ← Bank API called (async)
+          └──────┬───────┘
+                 │
+        ┌────────┼──────────────────────────┐
+        │        │                          │
+        ▼        ▼                          ▼
+  ┌──────────┐ ┌────────────────┐   ┌─────────────┐
+  │  FAILED  │ │   AUTHORIZED   │   │   TIMEOUT / │
+  │(bank     │ │ (bank approved,│   │   PENDING   │
+  │ declined)│ │ not captured)  │   │             │
+  └──────────┘ └───────┬────────┘   └──────┬──────┘
+                       │ capture           │ status poll
+                       ▼                   ▼ (exponential backoff)
+                ┌──────────────┐    [AUTHORIZED or FAILED]
+                │   CAPTURED   │
+                └───────┬──────┘
+                        │ bank settlement (T+1)
+                        ▼
+                ┌──────────────┐
+                │   SETTLED    │
+                └───────┬──────┘
+                        │ refund requested
+                        ▼
+                ┌──────────────┐
+                │   REFUNDED   │ ← New payment record (reverse flow)
+                └──────────────┘</pre>
+      <div class="callout callout-info">
+        <strong>State enforcement:</strong> DB ENUM column + application-layer CHECK prevent invalid transitions
+        (e.g., SETTLED → INITIATED is impossible). Every transition is audited with <code>updated_at</code> timestamp.
+        REFUNDED creates a <strong>new payment record</strong> — the original payment is never modified.
+      </div>
+    </div>
+
+    <div class="slide" id="s9" data-title="Double-Entry Ledger Accounting">
+      <div class="section-label">💳 Payment Flow</div>
+      <h2>Double-Entry Ledger Accounting</h2>
+      <div class="key-insight">
+        <strong>Core Principle:</strong> Every financial event records both source (DEBIT) and destination (CREDIT).
+        Sum of all entries = 0 always. Ledger is <strong>append-only — never UPDATE a ledger row.</strong>
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Example: Rs.500 from Alice → Bob</h3>
+          <table class="data-table">
+            <tr><th>entry_id</th><th>payment_id</th><th>account</th><th>amount</th><th>type</th></tr>
+            <tr><td>1001</td><td>pay_abc</td><td>acc_alice</td><td>50000</td><td class="status-fail">DEBIT</td></tr>
+            <tr><td>1002</td><td>pay_abc</td><td>acc_bob</td><td>50000</td><td class="status-ok">CREDIT</td></tr>
+          </table>
+          <p style="margin-top:8px">DEBIT 50000 + CREDIT (-50000) = <strong>0</strong></p>
+          <h3>Why Append-Only?</h3>
+          <ul class="content-list">
+            <li>Immutable audit trail — legal and regulatory requirement</li>
+            <li>To correct an error: add a new reversing entry</li>
+            <li>Original entry stays forever; auditors see full history</li>
+            <li>Balance = SUM of all entries for an account</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Balance Calculation</h3>
+          <pre class="code-block">-- Current balance (source of truth)
+SELECT SUM(
+  CASE entry_type
+    WHEN 'CREDIT' THEN  amount
+    WHEN 'DEBIT'  THEN -amount
+  END
+) AS balance
+FROM ledger_entries
+WHERE account_id = :accountId;
+
+-- accounts.balance is a materialized view
+-- (maintained for fast reads)
+-- If accounts.balance diverges from ledger SUM
+-- → ledger wins, reconstruct accounts.balance</pre>
+          <div class="callout callout-warn">
+            <strong>Never store money as FLOAT.</strong>
+            <code>0.1 + 0.2 = 0.30000000000000004</code> in IEEE 754.
+            Always use BIGINT in smallest unit: Rs.10.50 → 1050 paise.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s10" data-title="Fraud Detection System">
+      <div class="section-label">💳 Payment Flow</div>
+      <h2>Fraud Detection — Velocity Checks + ML Scoring</h2>
+      <div class="two-col">
+        <div>
+          <h3>Two-Layer Architecture</h3>
+          <h4>Layer 1: Synchronous Pre-checks (&lt;5ms)</h4>
+          <ul class="content-list">
+            <li><strong>Velocity check</strong>: &gt;5 payments in 1 minute from same device?</li>
+            <li><strong>Blacklist check</strong>: account/IP on fraud blacklist?</li>
+            <li><strong>Amount threshold</strong>: unusually large amount for user?</li>
+            <li><strong>Geographic anomaly</strong>: payment from new country?</li>
+            <li>Implemented in Redis with sliding window counters</li>
+            <li>Blocks obvious fraud before any DB write</li>
+          </ul>
+          <h4>Layer 2: Async ML Scoring (200–500ms)</h4>
+          <ul class="content-list">
+            <li>Payment accepted (202), fraud check runs in parallel</li>
+            <li>ML model scores risk 0.0–1.0</li>
+            <li>Score &gt; 0.8 → payment set to FRAUD_BLOCKED</li>
+            <li>Push notification to user, account review triggered</li>
+            <li>Score &lt; 0.3 → proceed automatically</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Velocity Check in Redis</h3>
+          <pre class="code-block">-- Sliding window: 5 payments / 60 sec
+-- Key: velocity:{accountId}:{minute_bucket}
+
+INCR velocity:acc_alice:20240101_1030
+EXPIRE velocity:acc_alice:20240101_1030 60
+
+-- If count > 5 → reject synchronously
+
+-- ML Feature Vector (sent to fraud service):
+{
+  "accountAge": 730,      // days
+  "avgTxnAmount": 1200,   // paise avg
+  "txnCount24h": 3,
+  "newDevice": false,
+  "countryMismatch": false,
+  "amountZScore": 1.2     // stddevs from mean
+}</pre>
+          <div class="callout callout-info">
+            <strong>Trade-off:</strong> Async fraud check means a small window where a fraudulent payment
+            may start processing before being blocked. Mitigated by the synchronous pre-checks
+            catching 95%+ of fraud before the ML model runs.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s11" data-title="Reconciliation Service">
+      <div class="section-label">💳 Payment Flow</div>
+      <h2>Reconciliation Service — The Final Safety Net</h2>
+      <div class="key-insight">
+        <strong>Purpose:</strong> Even with idempotency, outbox pattern, and saga, bugs can slip through.
+        Daily reconciliation compares our internal ledger against bank statements to catch every discrepancy.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Reconciliation Flow (Nightly Batch)</h3>
+          <ol class="content-list">
+            <li>Download bank statement CSV/API for T-1 day</li>
+            <li>For each bank transaction: find matching ledger entry by bank_reference_id</li>
+            <li>Amounts must match exactly (BIGINT comparison)</li>
+            <li>Every bank txn must have a corresponding SUCCESS ledger entry</li>
+            <li>Every SUCCESS ledger entry must exist in bank statement</li>
+            <li>Mismatches categorized: missing, extra, amount mismatch</li>
+            <li>Alert ops team, freeze account pending investigation</li>
+          </ol>
+          <div class="callout callout-warn">
+            <strong>NEVER auto-correct mismatches.</strong> A balance discrepancy means something
+            fundamentally wrong happened — a bug, security incident, or bank error.
+            Always require human review.
+          </div>
+        </div>
+        <div>
+          <h3>What Reconciliation Catches</h3>
+          <table class="data-table">
+            <tr><th>Scenario</th><th>Detection</th></tr>
+            <tr><td>Bank debited, our DB write failed</td><td>Bank txn without ledger entry</td></tr>
+            <tr><td>Our ledger shows SUCCESS, bank shows failed</td><td>Ledger entry without bank txn</td></tr>
+            <tr><td>Amount mismatch (rounding bug)</td><td>Amount field divergence</td></tr>
+            <tr><td>Duplicate bank processing</td><td>Two bank txns, one ledger entry</td></tr>
+            <tr><td>Silent bank error</td><td>Missing bank acknowledgment</td></tr>
+          </table>
+          <h3>Settlement Windows</h3>
+          <ul class="content-list">
+            <li>Card payments: T+1 or T+2 settlement</li>
+            <li>UPI/NEFT (India): real-time or T+0</li>
+            <li>SWIFT international: T+2 to T+5</li>
+            <li>Saga compensating window: T+1 day max</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s12" data-title="Retry Logic — Exponential Backoff + Circuit Breaker">
+      <div class="section-label">💳 Payment Flow</div>
+      <h2>Retry — Exponential Backoff + Circuit Breaker</h2>
+      <div class="two-col">
+        <div>
+          <h3>Exponential Backoff Strategy</h3>
+          <pre class="code-block">// Bank API call with exponential backoff
+// NEVER retry with a new paymentId — always
+// same payment_id (bank idempotency key)
+
+attempt 1:  wait 0s   → call bank
+attempt 2:  wait 1s   → call bank
+attempt 3:  wait 2s   → call bank
+attempt 4:  wait 4s   → call bank
+attempt 5:  wait 8s   → call bank
+max:        wait 30s  → PENDING, alert ops
+
+// Formula: min(2^attempt * 1000ms, 30000ms)
+// + jitter: random(0, 1000ms) to avoid
+//   thundering herd
+
+// Total backoff: ~63 seconds before giving up
+// On final timeout: payment → PENDING_CONFIRMATION
+// Schedule status-poll background job</pre>
+        </div>
+        <div>
+          <h3>Circuit Breaker Pattern</h3>
+          <pre class="arch-diagram">
+  CLOSED (normal)
+    ├─ Requests flow to bank
+    ├─ Track failure rate
+    └─ &gt;50% failures in 10s?
+              │ OPEN
+              ▼
+  OPEN (tripped)
+    ├─ Requests fail fast (no bank call)
+    ├─ Return 503 immediately
+    └─ After 30s cooldown?
+              │ HALF-OPEN
+              ▼
+  HALF-OPEN (probing)
+    ├─ Allow 1 test request
+    ├─ Success → CLOSED
+    └─ Failure → OPEN again</pre>
+          <div class="callout callout-info">
+            <strong>Why Circuit Breaker for payments:</strong> If HDFC bank API is down, returning fast failures
+            prevents thread exhaustion (no 3000 threads each waiting 30s for a bank timeout).
+            Payments in flight are marked PENDING and retried when circuit closes.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s13" data-title="PCI-DSS Compliance Requirements">
+      <div class="section-label">🔒 Compliance</div>
+      <h2>PCI-DSS Compliance Requirements</h2>
+      <div class="key-insight">
+        <strong>Golden Rule:</strong> Your application should NEVER see or store raw card numbers (PAN) or CVV.
+        Use client-side tokenization — card data goes directly to the card network, never through your servers.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Tokenization Flow</h3>
+          <ol class="content-list">
+            <li>Payment form uses Stripe.js-like SDK embedded in client</li>
+            <li>User enters card details — SDK intercepts, sends directly to card network</li>
+            <li>Card network returns a single-use token (e.g., <code>tok_abc123</code>)</li>
+            <li>Your API receives ONLY the token — never the raw card number</li>
+            <li>Store only: token, last 4 digits, card brand, expiry month/year</li>
+            <li>For recurring: card network issues permanent network token</li>
+            <li>Token is merchant-scoped — useless to an attacker</li>
+          </ol>
+          <div class="callout callout-warn">
+            <strong>PCI-DSS scope reduction:</strong> By never touching raw card data, you dramatically
+            reduce compliance scope. You still need PCI Level 1 for the processing environment,
+            but card storage is completely out of scope.
+          </div>
+        </div>
+        <div>
+          <h3>12 PCI-DSS Requirements (Summary)</h3>
+          <table class="data-table">
+            <tr><th>#</th><th>Requirement</th></tr>
+            <tr><td>1–2</td><td>Firewall + no vendor defaults</td></tr>
+            <tr><td>3–4</td><td>Encrypt stored/transmitted card data</td></tr>
+            <tr><td>5–6</td><td>Anti-malware + secure dev</td></tr>
+            <tr><td>7–8</td><td>Access control + unique IDs</td></tr>
+            <tr><td>9</td><td>Physical access restriction</td></tr>
+            <tr><td>10</td><td>Monitor and log all access</td></tr>
+            <tr><td>11</td><td>Regular security testing</td></tr>
+            <tr><td>12</td><td>Security policy maintenance</td></tr>
+          </table>
+          <h3>Additional Compliance</h3>
+          <ul class="content-list">
+            <li><strong>RBI mandate (India):</strong> 7-year data retention</li>
+            <li><strong>TLS 1.2+</strong> on all payment endpoints</li>
+            <li><strong>HSM</strong> (Hardware Security Module) for encryption keys</li>
+            <li><strong>SOC 2 Type II</strong> audit annually</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s14" data-title="ER Diagram">
+      <div class="section-label">🗄 DB Schema</div>
+      <h2>Entity Relationship Diagram</h2>
+      <pre class="arch-diagram">
+┌──────────────┐           ┌───────────────────────────────────┐
+│    users     │           │            accounts               │
+├──────────────┤           ├───────────────────────────────────┤
+│ PK user_id   │◄─────────│ PK account_id  BIGINT             │
+│    name TEXT │  1    N   │ FK user_id     BIGINT             │
+│    email TEXT│           │    balance     BIGINT (paise)     │
+│    kyc_status│           │    currency    CHAR(3)            │
+└──────────────┘           │    version     INT  ← optim. lock │
+                           │    status      ENUM(ACTIVE,FROZEN)│
+                           └──────────┬────────────────────────┘
+                                      │ 1  (from_account / to_account)
+                                      │
+          ┌───────────────────────────▼───────────────────────────┐
+          │                      payments                         │
+          ├───────────────────────────────────────────────────────┤
+          │ PK payment_id       UUID                              │
+          │    idempotency_key  VARCHAR UNIQUE  ← DB safety net   │
+          │ FK from_account_id  BIGINT ──────────────→ accounts   │
+          │ FK to_account_id    BIGINT ──────────────→ accounts   │
+          │    amount           BIGINT (cents/paise)              │
+          │    currency         CHAR(3)                           │
+          │    status           ENUM  ← state machine             │
+          │    bank_reference_id VARCHAR                          │
+          │    created_at / updated_at  TIMESTAMP                 │
+          └────────────┬──────────────────────────────────────────┘
+                       │ 1 payment → 2 ledger entries
+                       │
+          ┌────────────▼──────────────────┐   ┌─────────────────────────────┐
+          │       ledger_entries          │   │       outbox_events         │
+          ├───────────────────────────────┤   ├─────────────────────────────┤
+          │ PK entry_id    BIGINT         │   │ PK event_id   BIGINT        │
+          │ FK payment_id  UUID           │   │ FK payment_id UUID          │
+          │ FK account_id  BIGINT         │   │    event_type VARCHAR       │
+          │    amount      BIGINT         │   │    payload    JSON          │
+          │    entry_type  ENUM(DEBIT,    │   │    published  BOOLEAN       │
+          │                     CREDIT)  │   │    created_at TIMESTAMP     │
+          │    created_at  TIMESTAMP      │   └─────────────────────────────┘
+          │                               │
+          │  ⚠ APPEND-ONLY. NEVER UPDATE. │
+          └───────────────────────────────┘</pre>
+    </div>
+
+    <div class="slide" id="s15" data-title="Database Schema — SQL Tables">
+      <div class="section-label">🗄 DB Schema</div>
+      <h2>Database Schema — Key Tables</h2>
+      <div class="two-col">
+        <div>
+          <pre class="code-block">-- Store money as BIGINT (paise/cents). NEVER FLOAT.
+CREATE TABLE payments (
+  payment_id       VARCHAR(36) PRIMARY KEY,
+  idempotency_key  VARCHAR(64) UNIQUE NOT NULL,
+  amount           BIGINT      NOT NULL,  -- paise
+  currency         CHAR(3)     NOT NULL,  -- ISO 4217
+  from_account_id  BIGINT      NOT NULL,
+  to_account_id    BIGINT      NOT NULL,
+  status           ENUM('INITIATED','PROCESSING',
+                        'AUTHORIZED','CAPTURED',
+                        'SETTLED','FAILED',
+                        'REFUNDED','PENDING') NOT NULL,
+  bank_reference_id VARCHAR(100),
+  created_at       TIMESTAMP DEFAULT NOW(),
+  updated_at       TIMESTAMP DEFAULT NOW()
+                   ON UPDATE NOW()
+);
+
+CREATE TABLE accounts (
+  account_id  BIGINT AUTO_INCREMENT PRIMARY KEY,
+  user_id     BIGINT NOT NULL,
+  balance     BIGINT NOT NULL DEFAULT 0,
+  currency    CHAR(3) NOT NULL,
+  version     INT    NOT NULL DEFAULT 0, -- optimistic lock
+  status      ENUM('ACTIVE','FROZEN','CLOSED') NOT NULL,
+  created_at  TIMESTAMP DEFAULT NOW()
+);</pre>
+        </div>
+        <div>
+          <pre class="code-block">-- Append-only. NEVER UPDATE a ledger row.
+CREATE TABLE ledger_entries (
+  entry_id        BIGINT AUTO_INCREMENT PRIMARY KEY,
+  payment_id      VARCHAR(36) NOT NULL,
+  account_id      BIGINT      NOT NULL,
+  amount          BIGINT      NOT NULL,
+  entry_type      ENUM('DEBIT','CREDIT') NOT NULL,
+  running_balance BIGINT,  -- snapshot after entry
+  created_at      TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE outbox_events (
+  event_id    BIGINT AUTO_INCREMENT PRIMARY KEY,
+  payment_id  VARCHAR(36) NOT NULL,
+  event_type  VARCHAR(50) NOT NULL,
+  payload     JSON,
+  published   BOOLEAN NOT NULL DEFAULT false,
+  created_at  TIMESTAMP DEFAULT NOW()
+);
+
+-- CRITICAL: Optimistic lock deduction query
+UPDATE accounts
+  SET balance = balance - :amount,
+      version = version + 1
+WHERE account_id = :id
+  AND version    = :expectedVersion
+  AND balance   >= :amount
+  AND status     = 'ACTIVE';
+-- rows_affected = 0 → conflict → retry or fail</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s16" data-title="Scaling — Stripe at 1M Txns/Min">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Scaling — Stripe at 1M Transactions / Minute</h2>
+      <div class="key-insight">
+        <strong>Reality check:</strong> At 100 TPS (our target), a single MySQL primary is fine.
+        Stripe processes ~17K TPS globally. The bottlenecks are not what you expect.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Bottleneck 1: MySQL Balance Updates</h3>
+          <ul class="content-list">
+            <li><strong>Problem:</strong> 10K+ TPS → single primary is a bottleneck</li>
+            <li><strong>Solution:</strong> Shard by <code>account_id</code></li>
+            <li>Same-shard payments: local ACID transaction</li>
+            <li>Cross-shard payments: Saga pattern</li>
+            <li>Shard A debit → Shard B credit → compensate on failure</li>
+          </ul>
+          <h3>Bottleneck 2: Bank API I/O</h3>
+          <ul class="content-list">
+            <li><strong>Problem:</strong> 100-3000ms bank calls block threads</li>
+            <li><strong>Solution:</strong> Non-blocking async HTTP (Java: WebClient/Netty)</li>
+            <li>10 threads handle 1000+ concurrent bank calls</li>
+            <li>Timeout: 30s → mark PENDING → status-poll retry</li>
+          </ul>
+          <h3>Bottleneck 3: Status Query Reads</h3>
+          <ul class="content-list">
+            <li><strong>Problem:</strong> 1M users polling status every 2s = 500K reads/s</li>
+            <li><strong>Solution:</strong> Cache status in Redis on every state change</li>
+            <li>Better: WebSockets / SSE to push status update</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Capacity Numbers</h3>
+          <table class="data-table">
+            <tr><th>Metric</th><th>Value</th></tr>
+            <tr><td>Target TPS avg</td><td>12 TPS</td></tr>
+            <tr><td>Target TPS peak</td><td>100 TPS</td></tr>
+            <tr><td>MySQL single node</td><td>10,000 TPS</td></tr>
+            <tr><td>Stripe global</td><td>~17,000 TPS</td></tr>
+            <tr><td>Razorpay India</td><td>~38 TPS avg</td></tr>
+            <tr><td>Storage 7yr retention</td><td>~2.3 TB</td></tr>
+            <tr><td>Redis idempotency</td><td>~150 MB</td></tr>
+          </table>
+          <h3>Fraud Detection Scaling</h3>
+          <ul class="content-list">
+            <li><strong>Problem:</strong> ML model 200-500ms blocks payment path</li>
+            <li><strong>Solution:</strong> Async via Kafka after 202 response</li>
+            <li>Lightweight pre-check (&lt;5ms) in synchronous path</li>
+            <li>HIGH_RISK → FRAUD_BLOCKED before funds move</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s17" data-title="Design Trade-offs Table">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Design Trade-offs</h2>
+      <table class="data-table" style="font-size:0.85em">
+        <tr>
+          <th>Decision</th>
+          <th>Chosen Approach</th>
+          <th>Trade-off / Why Not Alternative</th>
+        </tr>
+        <tr>
+          <td>Database</td>
+          <td>MySQL (ACID)</td>
+          <td>No Cassandra/MongoDB — eventual consistency allows double-spend on concurrent balance reads</td>
+        </tr>
+        <tr>
+          <td>Idempotency store</td>
+          <td>Redis (TTL 24h)</td>
+          <td>Sub-ms vs 5-10ms DB query; DB also has UNIQUE constraint as fallback</td>
+        </tr>
+        <tr>
+          <td>Kafka integration</td>
+          <td>Outbox pattern</td>
+          <td>Direct publish: DB commits but Kafka fails → event lost. Outbox guarantees at-least-once</td>
+        </tr>
+        <tr>
+          <td>Distributed txn</td>
+          <td>Saga</td>
+          <td>No 2PC — banks don't support PREPARE phase; 2PC holds locks indefinitely if bank is down</td>
+        </tr>
+        <tr>
+          <td>Concurrency control</td>
+          <td>Optimistic locking (version)</td>
+          <td>No SELECT FOR UPDATE — holds row lock 100-3000ms during bank call → deadlocks at scale</td>
+        </tr>
+        <tr>
+          <td>Fraud detection</td>
+          <td>Async ML (post-202)</td>
+          <td>Adds 500ms if sync; small fraud window acceptable vs degraded UX for all users</td>
+        </tr>
+        <tr>
+          <td>Refunds</td>
+          <td>New payment record</td>
+          <td>Modifying original breaks immutable audit trail; new record preserves full history</td>
+        </tr>
+        <tr>
+          <td>Amount storage</td>
+          <td>BIGINT (paise/cents)</td>
+          <td>FLOAT: 0.1+0.2=0.30000000000000004; rounding errors accumulate → ledger never balances</td>
+        </tr>
+        <tr>
+          <td>Status reads</td>
+          <td>Redis cache + SSE/WS</td>
+          <td>Polling MySQL at 500K req/s destroys DB; push model eliminates polling entirely</td>
+        </tr>
+        <tr>
+          <td>Sharding key</td>
+          <td>account_id</td>
+          <td>Keeps user's transactions on one shard (local ACID); cross-shard only for P2P</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s18" data-title="Stripe vs Braintree vs Razorpay">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Stripe vs Braintree vs Razorpay</h2>
+      <table class="data-table">
+        <tr>
+          <th>Feature</th>
+          <th>Stripe</th>
+          <th>Braintree (PayPal)</th>
+          <th>Razorpay</th>
+        </tr>
+        <tr>
+          <td>Primary market</td>
+          <td>Global (US-centric)</td>
+          <td>Global (PayPal ecosystem)</td>
+          <td>India (UPI native)</td>
+        </tr>
+        <tr>
+          <td>Tokenization</td>
+          <td>Stripe.js SDK</td>
+          <td>Braintree.js SDK</td>
+          <td>Razorpay checkout</td>
+        </tr>
+        <tr>
+          <td>Network tokens</td>
+          <td>Yes (Visa/MC)</td>
+          <td>Yes (PayPal vault)</td>
+          <td>Yes (RBI compliant)</td>
+        </tr>
+        <tr>
+          <td>UPI support</td>
+          <td>No (via partners)</td>
+          <td>No</td>
+          <td>Yes (native)</td>
+        </tr>
+        <tr>
+          <td>Fraud engine</td>
+          <td>Stripe Radar (ML)</td>
+          <td>Basic rules + PayPal signals</td>
+          <td>Razorpay Thirdwatch</td>
+        </tr>
+        <tr>
+          <td>Settlement</td>
+          <td>T+2 standard</td>
+          <td>T+2 standard</td>
+          <td>T+1 / T+3</td>
+        </tr>
+        <tr>
+          <td>Webhooks</td>
+          <td>Reliable + retry</td>
+          <td>Reliable + retry</td>
+          <td>Reliable</td>
+        </tr>
+        <tr>
+          <td>Pricing (cards)</td>
+          <td>2.9% + $0.30</td>
+          <td>2.59% + $0.49</td>
+          <td>2% (domestic India)</td>
+        </tr>
+        <tr>
+          <td>DB architecture</td>
+          <td>Sharded MySQL</td>
+          <td>Sharded MySQL</td>
+          <td>MySQL + Redis</td>
+        </tr>
+        <tr>
+          <td>Scale (2024)</td>
+          <td>~$1T / year</td>
+          <td>~$400B / year</td>
+          <td>~$130B / year</td>
+        </tr>
+      </table>
+      <div class="key-insight">
+        <strong>System design interview note:</strong> All three use MySQL (not NoSQL) for financial data.
+        This is not a coincidence — ACID is non-negotiable for money movement.
+      </div>
+    </div>
+
+    <div class="slide" id="s19" data-title="Kafka vs RabbitMQ for Payment Events">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Kafka vs RabbitMQ for Payment Events</h2>
+      <table class="data-table">
+        <tr>
+          <th>Property</th>
+          <th>Kafka</th>
+          <th>RabbitMQ</th>
+          <th>Payment System Verdict</th>
+        </tr>
+        <tr>
+          <td>Message retention</td>
+          <td>Configurable (days/weeks)</td>
+          <td>Until consumed</td>
+          <td>Kafka wins — replay failed payments</td>
+        </tr>
+        <tr>
+          <td>Consumer model</td>
+          <td>Pull (consumer groups)</td>
+          <td>Push (subscribers)</td>
+          <td>Kafka — at-own-pace processing</td>
+        </tr>
+        <tr>
+          <td>Ordering</td>
+          <td>Per-partition ordering</td>
+          <td>Per-queue ordering</td>
+          <td>Kafka — partition by account_id</td>
+        </tr>
+        <tr>
+          <td>Throughput</td>
+          <td>Millions/sec</td>
+          <td>Tens of thousands/sec</td>
+          <td>Kafka wins at scale</td>
+        </tr>
+        <tr>
+          <td>Replay</td>
+          <td>Yes — seek to offset</td>
+          <td>No (message deleted on ack)</td>
+          <td>Kafka wins — audit &amp; replay</td>
+        </tr>
+        <tr>
+          <td>Exactly-once</td>
+          <td>Yes (transactional producer)</td>
+          <td>At-least-once only</td>
+          <td>Kafka for critical payments</td>
+        </tr>
+        <tr>
+          <td>Complexity</td>
+          <td>High (ZooKeeper/KRaft)</td>
+          <td>Lower</td>
+          <td>RabbitMQ for small teams</td>
+        </tr>
+        <tr>
+          <td>Use case fit</td>
+          <td>Event sourcing, audit logs</td>
+          <td>Task queues, notifications</td>
+          <td>Kafka for payment events</td>
+        </tr>
+      </table>
+      <div class="key-insight">
+        <strong>Why Kafka for payments:</strong> Partition by <code>from_account_id</code> gives per-account ordering.
+        Message retention enables replay when a downstream service (fraud, ledger) has an outage.
+        Transactional producer pairs with the outbox pattern for exactly-once event delivery.
+      </div>
+    </div>
+
+    <div class="slide" id="s20" data-title="Senior Trap — Bank Timeout Scenario">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Trap Q&amp;A 1 — Bank API Timeout</h2>
+      <div class="qa-block">
+        <div class="qa-q">Q: Bank API times out after 30s. Payment is in PROCESSING. Customer is staring at a spinner. What do you do?</div>
+        <div class="qa-a">
+          <strong>A:</strong>
+          <ol class="content-list">
+            <li>Mark payment status as <strong>PENDING_CONFIRMATION</strong> — do not keep client waiting</li>
+            <li>Return current status to client immediately (202/200 with PENDING status)</li>
+            <li>Schedule background job to <strong>poll bank status API</strong> using our <code>merchant_reference_id</code> (= payment_id)</li>
+            <li>Use exponential backoff: 1s, 2s, 4s, 8s, 16s, 30s, then alert ops after 24h</li>
+            <li>Bank status returns COMPLETED → update to SUCCESS, insert ledger entries, push notification to user</li>
+            <li>Bank status returns FAILED → update to FAILED, verify no balance deduction, notify user</li>
+          </ol>
+          <div class="callout callout-warn">
+            <strong>Critical:</strong> NEVER retry the original payment initiation with the same payment_id as a NEW request — that is how you double-charge.
+            Only use the status query endpoint (<code>GET /charge/{paymentId}</code>) with the idempotent bank reference.
+            If bank status API also times out repeatedly after 24h → escalate to manual ops review.
+          </div>
+        </div>
+      </div>
+      <div class="qa-block">
+        <div class="qa-q">Q: DB write of SUCCESS status fails AFTER the bank confirmed and debited the customer. What now?</div>
+        <div class="qa-a">
+          <strong>A:</strong> This is the "lost update" scenario — most dangerous failure case.
+          <ul class="content-list">
+            <li>Payment Processor reads Kafka at-least-once → retries processing this payment</li>
+            <li>Before new bank call: call bank status API with original payment_id</li>
+            <li>Bank returns COMPLETED with its reference ID → update DB to SUCCESS with proof</li>
+            <li>If DB keeps failing (outage): payment stays PROCESSING in DB, but customer was debited</li>
+            <li>Nightly reconciliation catches it: bank statement entry has no SUCCESS ledger entry → alert ops</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s21" data-title="Senior Trap — Concurrent Payments (Double-Spend)">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Trap Q&amp;A 2 — Concurrent Payments</h2>
+      <div class="qa-block">
+        <div class="qa-q">Q: User has Rs.100. Submits two payments of Rs.80 simultaneously from two devices. How does your system guarantee at most one succeeds?</div>
+        <div class="qa-a">
+          <strong>A: Optimistic locking on the accounts table.</strong>
+          <pre class="code-block">-- Both requests read: account version=5, balance=10000 paise
+-- Both attempt deduction:
+
+UPDATE accounts
+  SET balance = 2000, version = 6
+WHERE account_id = X
+  AND version = 5      -- optimistic check
+  AND balance >= 8000;
+
+-- Request A executes first: rows_affected = 1 ✓
+--   → version is now 6, balance = 2000
+
+-- Request B executes next: version=5 no longer matches
+--   rows_affected = 0 → CONFLICT
+--   → Re-read balance: 2000 paise
+--   → 2000 < 8000 → INSUFFICIENT_FUNDS ✗</pre>
+          <div class="callout callout-info">
+            <strong>Important edge case:</strong> The INITIATED step does an early fast-fail balance check,
+            but the <em>definitive deduction with optimistic lock</em> happens in the SUCCESS commit step.
+            Do NOT hold the lock from INITIATED through the bank call (100-3000ms).
+            The optimistic lock is only taken at the final ledger insert — no locks held during I/O.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s22" data-title="Senior Trap — PCI-DSS &amp; Refund Architecture">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Trap Q&amp;A 3 — PCI-DSS + Refund Design</h2>
+      <div class="qa-block">
+        <div class="qa-q">Q: PCI-DSS requires cardholder data is never stored in your systems unless encrypted. How does your architecture handle this?</div>
+        <div class="qa-a">
+          <ol class="content-list">
+            <li>Payment form uses client-side SDK (Stripe.js) — card data sent directly to card network's secure tokenization endpoint</li>
+            <li>SDK returns a single-use token. Your API receives ONLY the token — you NEVER see the raw PAN or CVV</li>
+            <li>Store: token, last 4 digits (display only), card brand, expiry month/year</li>
+            <li>For recurring charges: card network issues permanent network token</li>
+            <li>Token is merchant-scoped — useless to an attacker outside your merchant account</li>
+            <li>Result: your application servers are out of PCI-DSS card storage scope</li>
+          </ol>
+        </div>
+      </div>
+      <div class="qa-block">
+        <div class="qa-q">Q: How do you handle refunds for a payment that has already been settled?</div>
+        <div class="qa-a">
+          <strong>A: A refund is a NEW payment record — never modify the original.</strong>
+          <ul class="content-list">
+            <li>Create new payment with <code>type=REFUND</code>, reference to original <code>payment_id</code></li>
+            <li>Refund goes through full pipeline: idempotency check, outbox, bank API (reverse transfer / card refund)</li>
+            <li>Insert two new ledger entries: CREDIT source account (customer gets money back), DEBIT destination (merchant)</li>
+            <li>Original payment + original ledger entries remain <strong>immutable</strong> forever</li>
+            <li>Partial refunds: same approach — refund payment for partial amount</li>
+            <li>Audit trail: compliance team sees full history — original, refund, any re-refunds</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s23" data-title="Quick Numbers — Memorize These">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Quick Numbers — Memorize These</h2>
+      <table class="data-table">
+        <tr><th>Metric</th><th>Value</th><th>Why It Matters</th></tr>
+        <tr><td>Stripe transactions/year</td><td>~1B = 32 TPS global</td><td>Shows scale context</td></tr>
+        <tr><td>Razorpay transactions/month</td><td>~100M = 38 TPS</td><td>Indian market baseline</td></tr>
+        <tr><td>MySQL single node TPS</td><td>10,000 TPS</td><td>Volume is NOT the bottleneck</td></tr>
+        <tr><td>Bank API latency (domestic)</td><td>100–500ms</td><td>Why async; why no TX held open</td></tr>
+        <tr><td>Bank API latency (SWIFT intl)</td><td>1–30 seconds</td><td>Never hold DB lock during this</td></tr>
+        <tr><td>Card network (Visa/MC)</td><td>200–800ms</td><td>Async processing rationale</td></tr>
+        <tr><td>Idempotency key TTL</td><td>24 hours</td><td>Covers all reasonable retry windows</td></tr>
+        <tr><td>Data retention (RBI India)</td><td>7 years minimum</td><td>Storage &amp; immutability requirement</td></tr>
+        <tr><td>Amount storage type</td><td>BIGINT (paise/cents)</td><td>Never FLOAT — rounding errors</td></tr>
+        <tr><td>Optimistic lock: rows affected</td><td>0 = conflict, 1 = success</td><td>Core concurrency pattern</td></tr>
+        <tr><td>Ledger entries per payment</td><td>2 (1 DEBIT + 1 CREDIT)</td><td>Sum always = 0</td></tr>
+        <tr><td>Reconciliation frequency</td><td>Daily (nightly batch)</td><td>T+1 settlement window</td></tr>
+        <tr><td>Redis idempotency footprint</td><td>~150 MB / 1M payments</td><td>Trivially small</td></tr>
+        <tr><td>Storage for 7yr retention</td><td>~2.3 TB</td><td>Single MySQL shard handles</td></tr>
+        <tr><td>Saga compensating window</td><td>T+1 day auto-reversal</td><td>Cross-bank failure recovery</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s24" data-title="What NOT to Say — Instant Fails">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>What NOT to Say — Instant Fails</h2>
+      <table class="data-table" style="font-size:0.85em">
+        <tr><th>Statement</th><th>Why It's Wrong</th></tr>
+        <tr>
+          <td>"I'll use MongoDB for the payments DB"</td>
+          <td>Multi-document transactions weaker than MySQL ACID. Two concurrent balance reads can both see sufficient funds → double-spend. Financial data needs ACID. Say MySQL or PostgreSQL.</td>
+        </tr>
+        <tr>
+          <td>"Store payment amount as FLOAT/DOUBLE"</td>
+          <td>0.1 + 0.2 = 0.30000000000000004 in IEEE 754. Rounding errors accumulate → ledger never balances. Always BIGINT in smallest denomination (paise, cents).</td>
+        </tr>
+        <tr>
+          <td>"Call bank API while holding DB transaction open"</td>
+          <td>Bank takes 100-3000ms. MySQL holds row locks for 3 seconds → blocks all payments on same accounts → deadlock cascade at scale. Commit DB first, then call bank async.</td>
+        </tr>
+        <tr>
+          <td>"Use 2PC across our system and the external bank"</td>
+          <td>External banks don't implement PREPARE phase. 2PC holds locks until coordinator decides — bank unavailability means infinite lock hold. Use Saga + compensating transactions.</td>
+        </tr>
+        <tr>
+          <td>"UPDATE the ledger entry to correct it"</td>
+          <td>Legally immutable. Financial regulations (RBI, PCI-DSS) require immutable audit trail. Create a new reversing CREDIT/DEBIT entry. Original entry stays forever.</td>
+        </tr>
+        <tr>
+          <td>"Use SELECT FOR UPDATE on accounts"</td>
+          <td>Lock held during entire bank API call (up to 3 seconds). Two concurrent payments serialize completely. Timeouts → lock cascade. Use optimistic locking (version column) instead.</td>
+        </tr>
+        <tr>
+          <td>"Auto-correct reconciliation mismatches"</td>
+          <td>A mismatch means something fundamentally wrong — bug, security incident, or bank error. Auto-correcting masks the root cause. Alert ops, freeze account, require human review.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s25" data-title="Summary &amp; Closing Script">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Summary — The Five Pillars</h2>
+      <div class="speak-block">
+        <div class="speak-header">Closing Script — Say This to Wrap Up</div>
+        <p>"To summarize: a production-grade payment system rests on <strong>five correctness pillars</strong>:
+        (1) <em>Idempotency Layer</em> — Redis check prevents any duplicate charge regardless of retries.
+        (2) <em>ACID Database</em> — MySQL guarantees payment and ledger entries commit atomically or not at all.
+        (3) <em>Double-Entry Bookkeeping</em> — every payment creates a DEBIT and CREDIT; the ledger is append-only and immutable.
+        (4) <em>Outbox Pattern</em> — event and payment written in same MySQL transaction; relay publishes to Kafka; no silent event loss.
+        (5) <em>Saga + Reconciliation</em> — Saga handles cross-bank failures with compensating transactions; daily reconciliation is the final safety net that catches everything else."</p>
+      </div>
+      <div class="req-grid">
+        <div class="req-card req-perf">
+          <div class="req-title">1. Idempotency</div>
+          <div class="req-body">Redis + DB UNIQUE constraint. Client UUID per attempt. TTL 24h.</div>
+        </div>
+        <div class="req-card req-scale">
+          <div class="req-title">2. ACID (MySQL)</div>
+          <div class="req-body">No MongoDB. No Cassandra. ACID is non-negotiable for money.</div>
+        </div>
+        <div class="req-card req-rel">
+          <div class="req-title">3. Double-Entry</div>
+          <div class="req-body">Append-only ledger. 1 DEBIT + 1 CREDIT per payment. Sum = 0.</div>
+        </div>
+        <div class="req-card req-sec">
+          <div class="req-title">4. Outbox + Kafka</div>
+          <div class="req-body">Same DB TX for payment + event. Relay publishes. At-least-once.</div>
+        </div>
+        <div class="req-card req-perf">
+          <div class="req-title">5. Saga + Reconcile</div>
+          <div class="req-body">No 2PC. Compensating TXs on failure. Daily ledger vs bank audit.</div>
+        </div>
+        <div class="req-card req-scale">
+          <div class="req-title">Key Design Insight</div>
+          <div class="req-body">Volume is NOT the challenge. Correctness under failure is everything.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'Payment System';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

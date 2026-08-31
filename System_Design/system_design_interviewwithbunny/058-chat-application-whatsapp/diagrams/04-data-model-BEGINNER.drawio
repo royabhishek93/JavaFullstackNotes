@@ -1,0 +1,271 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Data Model - BEGINNER" id="data-model">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1600" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="DATA MODEL — Database Schemas &amp; Storage Patterns" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1200" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="subtitle" value="🎯 Different databases for different access patterns — No single database is optimal for everything!" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="200" y="70" width="1200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- PostgreSQL Section -->
+        <mxCell id="postgres-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#2196f3;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="120" width="480" height="500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="postgres-title" value="🐘 POSTGRESQL (User Data &amp; Relations)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#1976d2" vertex="1" parent="1">
+          <mxGeometry x="50" y="130" width="480" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="postgres-why" value="WHY SQL HERE? Structured data, ACID transactions for signup/payment, complex joins" style="text;html=1;strokeColor=none;fillColor=#bbdefb;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="70" y="165" width="440" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- users table -->
+        <mxCell id="users-table" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2196f3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="80" y="210" width="200" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="users-header" value="users" style="text;html=1;strokeColor=none;fillColor=#2196f3;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="80" y="210" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="users-fields" value="🔑 user_id (UUID)&#xa;📞 phone_number (UNIQUE)&#xa;👤 name&#xa;📧 email&#xa;🖼️ avatar_url&#xa;💬 status_text&#xa;🔐 password_hash&#xa;⏰ created_at&#xa;⏰ last_seen" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="90" y="245" width="180" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- contacts table -->
+        <mxCell id="contacts-table" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2196f3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="310" y="210" width="200" height="110" as="geometry" />
+        </mxCell>
+
+        <mxCell id="contacts-header" value="contacts" style="text;html=1;strokeColor=none;fillColor=#2196f3;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="310" y="210" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="contacts-fields" value="🔑 id (serial)&#xa;👤 user_id (FK → users)&#xa;📱 contact_id (FK → users)&#xa;⏰ added_at" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="245" width="180" height="65" as="geometry" />
+        </mxCell>
+
+        <!-- groups table -->
+        <mxCell id="groups-table" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2196f3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="80" y="410" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="groups-header" value="groups" style="text;html=1;strokeColor=none;fillColor=#2196f3;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="80" y="410" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="groups-fields" value="🔑 group_id (UUID)&#xa;👥 name&#xa;🖼️ avatar_url&#xa;👤 created_by (FK → users)&#xa;⏰ created_at" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="90" y="445" width="180" height="75" as="geometry" />
+        </mxCell>
+
+        <!-- group_members table -->
+        <mxCell id="group-members-table" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2196f3;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="310" y="340" width="200" height="130" as="geometry" />
+        </mxCell>
+
+        <mxCell id="group-members-header" value="group_members" style="text;html=1;strokeColor=none;fillColor=#2196f3;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="310" y="340" width="200" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="group-members-fields" value="🔑 id (serial)&#xa;👥 group_id (FK → groups)&#xa;👤 user_id (FK → users)&#xa;🔐 role (ADMIN|MEMBER)&#xa;⏰ joined_at" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="320" y="375" width="180" height="85" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Cache Note -->
+        <mxCell id="redis-cache-note" value="💾 REDIS CACHE&#xa;&#xa;Cache user profiles:&#xa;  user:profile:{user_id} → JSON&#xa;  TTL: 1 hour&#xa;&#xa;Read pattern:&#xa;  1. Check Redis&#xa;  2. If miss, query PostgreSQL&#xa;  3. Cache result" style="text;html=1;strokeColor=#ff9800;fillColor=#fff3e0;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="80" y="550" width="430" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Cassandra Section -->
+        <mxCell id="cassandra-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#9673a6;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="570" y="120" width="1000" height="500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cassandra-title" value="🗄️ CASSANDRA (Message Store — Time-Series Data)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#6a1b9a" vertex="1" parent="1">
+          <mxGeometry x="570" y="130" width="1000" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cassandra-why" value="WHY CASSANDRA? Append-only writes, time-ordered reads, no complex joins, scales horizontally, 700K writes/sec" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="590" y="165" width="960" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- messages table -->
+        <mxCell id="messages-table" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="600" y="210" width="350" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="messages-header" value="messages (Cassandra CQL)" style="text;html=1;strokeColor=none;fillColor=#9673a6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="600" y="210" width="350" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="messages-schema" value="PRIMARY KEY:&#xa;  ((conv_id), timestamp, message_id)&#xa;  ↑ partition key  ↑ clustering keys (sorted DESC)&#xa;&#xa;Fields:&#xa;  🔑 message_id (UUID)&#xa;  💬 conv_id (String) — PARTITION KEY&#xa;  ⏰ timestamp (Long) — CLUSTERING KEY ⬇️ DESC&#xa;  👤 sender_id (UUID)&#xa;  📝 content (encrypted bytes or text)&#xa;  🖼️ type (TEXT | IMAGE | VIDEO | VOICE)&#xa;  ✅ status (SENT | DELIVERED | READ)&#xa;  🔢 seq_id (Int) — per-conversation sequence&#xa;&#xa;Why this schema?&#xa;  • All messages for 'alice-bob' in ONE partition&#xa;  • Sorted newest-first by timestamp&#xa;  • Query: SELECT * FROM messages&#xa;            WHERE conv_id = 'alice-bob'&#xa;            ORDER BY timestamp DESC LIMIT 50;&#xa;    → Blazing fast! One partition scan ⚡" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="615" y="245" width="320" height="235" as="geometry" />
+        </mxCell>
+
+        <!-- Cassandra Example -->
+        <mxCell id="cassandra-example" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9e6;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="990" y="210" width="550" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="example-title" value="📖 EXAMPLE: Fetch Alice-Bob chat history" style="text;html=1;strokeColor=none;fillColor=#9673a6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="990" y="210" width="550" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="example-query" value="CQL Query:&#xa;&#xa;SELECT * FROM messages&#xa;WHERE conv_id = 'alice-bob'&#xa;  AND timestamp > 1735488000000  -- last 24 hours&#xa;ORDER BY timestamp DESC&#xa;LIMIT 50;&#xa;&#xa;What Cassandra does internally:&#xa;  1. Hash 'alice-bob' → find partition node&#xa;  2. Read that ONE partition (no table scan!)&#xa;  3. Rows already sorted DESC by timestamp&#xa;     (stored on disk in clustering order)&#xa;  4. Return top 50 → Done in &lt;10ms ⚡&#xa;&#xa;Compare to MySQL:&#xa;  • Would need sharding by user pair&#xa;  • Index on (conv_id, timestamp) — still slower&#xa;  • At 700K writes/sec, MySQL would struggle&#xa;&#xa;Partition size limit:&#xa;  • Cassandra recommends &lt;100MB per partition&#xa;  • 1 year of messages (40/day × 365 × 220 bytes)&#xa;    = ~3.2 MB per conversation → Safe! ✓&#xa;&#xa;TTL for cleanup:&#xa;  • Undelivered messages: 30 days TTL&#xa;  • Delivered messages: Move to S3 after 1 year" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="245" width="510" height="235" as="geometry" />
+        </mxCell>
+
+        <!-- Cassandra Write Flow -->
+        <mxCell id="write-flow" value="✍️ WRITE FLOW (Append-Only)&#xa;&#xa;1. Client sends message&#xa;2. Chat Service stamps timestamp + seq_id&#xa;3. INSERT INTO messages (...)&#xa;   → Cassandra appends to SSTable (no read before write!)&#xa;4. Replication factor 3 → write to 3 nodes&#xa;5. ACK when quorum (2/3) confirms&#xa;&#xa;Total write latency: 3-8ms at P99 ⚡" style="text;html=1;strokeColor=#27ae60;fillColor=#d5f5d5;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;strokeWidth=2;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="510" width="460" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="capacity" value="💾 CAPACITY&#xa;&#xa;• 20B msgs/day × 220 bytes = 4.4 TB/day&#xa;• Replication 3× → 13.2 TB/day raw storage&#xa;• 30-day retention → ~400 TB cluster size" style="text;html=1;strokeColor=#1976d2;fillColor=#bbdefb;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="1080" y="510" width="460" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Section -->
+        <mxCell id="redis-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#d6b656;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="650" width="750" height="400" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-title" value="⚡ REDIS (Hot Delivery Queue &amp; Presence)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#f57c00" vertex="1" parent="1">
+          <mxGeometry x="50" y="660" width="750" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-why" value="WHY REDIS? Sub-millisecond latency, in-memory, perfect for ephemeral data (queues, presence)" style="text;html=1;strokeColor=none;fillColor=#ffecb3;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="70" y="695" width="710" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Streams -->
+        <mxCell id="redis-streams-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="80" y="740" width="340" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="streams-header" value="📨 REDIS STREAMS (Message Queue)" style="text;html=1;strokeColor=none;fillColor=#d6b656;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="80" y="740" width="340" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="streams-content" value="Structure:&#xa;  Stream key: 'server.ws{id}.inbox'&#xa;  &#xa;  Example: server.ws87.inbox&#xa;    Entry 1: {msg_id, to, content, ...}&#xa;    Entry 2: {msg_id, to, content, ...}&#xa;    ...&#xa;&#xa;Consumer Groups:&#xa;  Group: ws-workers&#xa;    Consumer: worker-1&#xa;    Consumer: worker-2&#xa;&#xa;Commands:&#xa;  XADD server.ws87.inbox * field value&#xa;  XREADGROUP GROUP ws-workers worker-1&#xa;            COUNT 10 BLOCK 5000&#xa;            STREAMS server.ws87.inbox >&#xa;&#xa;Retry if worker crashes:&#xa;  XPENDING + XCLAIM" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="95" y="775" width="310" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Presence -->
+        <mxCell id="presence-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="740" width="340" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="presence-header" value="🟢 PRESENCE (Online/Offline Status)" style="text;html=1;strokeColor=none;fillColor=#d6b656;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="440" y="740" width="340" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="presence-content" value="Data structures:&#xa;  • HSET user:{user_id}:status&#xa;      'online' '1'&#xa;      'last_seen' '1735488123'&#xa;      'device' 'iPhone 15 Pro'&#xa;  &#xa;  • SET online_users (sorted set)&#xa;      ZADD online_users 1735488123 'user_123'&#xa;      (score = last heartbeat timestamp)&#xa;&#xa;Heartbeat:&#xa;  • WebSocket sends heartbeat every 30s&#xa;  • Update last_seen timestamp&#xa;  • TTL 60s — if no heartbeat, key expires&#xa;    → User appears offline&#xa;&#xa;Pub/Sub for real-time updates:&#xa;  • PUBLISH user:123:presence 'online'&#xa;  • Friends subscribe to presence channel" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="455" y="775" width="310" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Notes -->
+        <mxCell id="redis-note1" value="⚠️ Redis is NOT durable storage!&#xa;Cassandra = source of truth&#xa;Redis = hot path for speed" style="text;html=1;strokeColor=#cc0000;fillColor=#ffe6e6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="80" y="940" width="340" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-note2" value="🔥 Stream retention:&#xa;XTRIM to keep only last 10K entries&#xa;(after delivery, discard)" style="text;html=1;strokeColor=#ff9800;fillColor=#fff3e0;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="440" y="940" width="340" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-memory" value="💾 MEMORY ESTIMATE&#xa;&#xa;Presence data:&#xa;  • 500M online users&#xa;  • 100 bytes per user → 50 GB&#xa;&#xa;Streams (temporary):&#xa;  • 2,500 streams × 10K entries × 500 bytes&#xa;  • ≈ 12.5 GB&#xa;&#xa;Total: ~65 GB Redis cluster" style="text;html=1;strokeColor=#1976d2;fillColor=#bbdefb;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="80" y="1000" width="700" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- S3 + CDN Section -->
+        <mxCell id="s3-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#4caf50;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="840" y="650" width="730" height="400" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3-title" value="🖼️ S3 + CLOUDFRONT (Media Storage &amp; CDN)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#2e7d32" vertex="1" parent="1">
+          <mxGeometry x="840" y="660" width="730" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3-why" value="WHY S3 + CDN? Blob storage is expensive in databases, S3 = 11 9s durability, CDN serves from edge (20ms vs 200ms)" style="text;html=1;strokeColor=none;fillColor=#c8e6c9;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="860" y="695" width="690" height="25" as="geometry" />
+        </mxCell>
+
+        <!-- Upload Flow -->
+        <mxCell id="upload-flow" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4caf50;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="870" y="740" width="320" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="upload-header" value="📤 UPLOAD FLOW (Pre-Signed URL)" style="text;html=1;strokeColor=none;fillColor=#4caf50;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="870" y="740" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="upload-steps" value="1️⃣ Alice: &quot;I want to send a photo&quot;&#xa;   → Chat Service&#xa;&#xa;2️⃣ Chat Service generates:&#xa;   S3 pre-signed URL (expires in 5 min)&#xa;   media_id = UUID()&#xa;   &#xa;3️⃣ Returns to Alice:&#xa;   {&quot;upload_url&quot;: &quot;s3://...&quot;,&#xa;    &quot;media_id&quot;: &quot;xyz-123&quot;}&#xa;&#xa;4️⃣ Alice uploads DIRECTLY to S3&#xa;   (server never touches bytes!)&#xa;&#xa;5️⃣ Alice sends message:&#xa;   {&quot;to&quot;: &quot;bob&quot;,&#xa;    &quot;type&quot;: &quot;IMAGE&quot;,&#xa;    &quot;media_id&quot;: &quot;xyz-123&quot;}&#xa;&#xa;Server stores only media_id in Cassandra" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="885" y="775" width="290" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- Download Flow -->
+        <mxCell id="download-flow" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4caf50;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="740" width="320" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="download-header" value="📥 DOWNLOAD FLOW (CDN Edge Cache)" style="text;html=1;strokeColor=none;fillColor=#4caf50;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1220" y="740" width="320" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="download-steps" value="1️⃣ Bob receives message with media_id&#xa;&#xa;2️⃣ Bob requests download URL:&#xa;   GET /media/xyz-123&#xa;&#xa;3️⃣ Chat Service returns CloudFront URL:&#xa;   https://d1234.cloudfront.net/xyz-123.jpg&#xa;   (signed, expires in 1 hour)&#xa;&#xa;4️⃣ Bob's app fetches from CloudFront&#xa;&#xa;5️⃣ CloudFront checks edge cache:&#xa;   • Cache HIT → serve from edge (20ms) ✅&#xa;   • Cache MISS → fetch from S3 (200ms)&#xa;     → cache it for next request&#xa;&#xa;90% of downloads = cache hits!&#xa;&#xa;Why this saves bandwidth:&#xa;  • 2B downloads/day × 100KB = 200 TB&#xa;  • 90% from CDN edge = offload servers!" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1235" y="775" width="290" height="135" as="geometry" />
+        </mxCell>
+
+        <!-- S3 Notes -->
+        <mxCell id="s3-structure" value="📁 S3 BUCKET STRUCTURE&#xa;&#xa;Bucket: whatsapp-media-prod&#xa;  /images/{year}/{month}/{media_id}.jpg&#xa;  /videos/{year}/{month}/{media_id}.mp4&#xa;  /voice/{year}/{month}/{media_id}.m4a&#xa;  /thumbnails/{media_id}_thumb.jpg&#xa;&#xa;Lifecycle policy:&#xa;  • After 90 days → move to S3 Glacier&#xa;  • After 2 years → delete (if allowed by policy)" style="text;html=1;strokeColor=#4caf50;fillColor=#ffffff;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="870" y="940" width="320" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="s3-capacity" value="💾 MEDIA CAPACITY&#xa;&#xa;• 10% of 20B msgs = 2B media/day&#xa;• 100 KB average → 200 TB/day&#xa;• Annual → 73 PB/year&#xa;  (use S3 Intelligent-Tiering!)&#xa;&#xa;Cost optimization:&#xa;  • S3 Standard: first 30 days&#xa;  • S3-IA: 30-90 days&#xa;  • Glacier: 90+ days" style="text;html=1;strokeColor=#1976d2;fillColor=#bbdefb;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="1220" y="940" width="320" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Summary -->
+        <mxCell id="summary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffcc;strokeColor=#d6b656;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1080" width="1520" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="summary-title" value="🎯 DATABASE CHOICE SUMMARY — Right Tool for Right Job" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="1090" width="1520" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sum1" value="🐘 PostgreSQL&#xa;User profiles, contacts,&#xa;groups (structured data)" style="text;html=1;strokeColor=#2196f3;fillColor=#bbdefb;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="80" y="1130" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sum2" value="🗄️ Cassandra&#xa;Message history&#xa;(time-series, append-only)" style="text;html=1;strokeColor=#9673a6;fillColor=#e1bee7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="300" y="1130" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sum3" value="⚡ Redis Streams&#xa;Hot delivery queue&#xa;(&lt;100ms latency)" style="text;html=1;strokeColor=#d6b656;fillColor=#ffecb3;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="520" y="1130" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sum4" value="🟢 Redis Pub/Sub&#xa;Presence, typing&#xa;(ephemeral, real-time)" style="text;html=1;strokeColor=#4caf50;fillColor=#c8e6c9;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="1130" width="200" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sum5" value="🖼️ S3 + CloudFront&#xa;Media blobs&#xa;(99.999999999% durable)" style="text;html=1;strokeColor=#ff9800;fillColor=#fff3e0;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="960" y="1130" width="220" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="sum6" value="📨 Kafka&#xa;Async analytics, search&#xa;(replayable event log)" style="text;html=1;strokeColor=#795548;fillColor=#d7ccc8;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;strokeWidth=2" vertex="1" parent="1">
+          <mxGeometry x="1200" y="1130" width="200" height="40" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

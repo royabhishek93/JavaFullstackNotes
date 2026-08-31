@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outbox Pattern in Event-Driven Architecture — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Outbox Pattern in Event-Driven Architecture — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 16</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:10.0%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🔁</div>
+  <h1 class="gradient-text">Outbox Pattern in Event-Driven Architecture — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Dual-Write Problem</span><span class="badge">Polling Relay</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Dual-Write Problem, @Transactional Gap, Outbox Table, Polling Relay, At-Least-Once Delivery, Idempotency</p>
+</div>
+<div class="slide" id="s3" data-title="The Dual-Write Problem">
+<h2>The Dual-Write Problem</h2>
+<p>When a service must write to both a database and Kafka in a single request, the two systems are independent — either can succeed while the other fails, leaving data inconsistent.</p>
+<div class="dia">HAPPY PATH (both succeed — no problem):
+  createOrder()
+      ├──► DB.save(order)          ✓  order stored
+      └──► kafka.publish(event)    ✓  downstream notified
+
+FAILURE CASE 1 — DB succeeds, Kafka fails:
+  createOrder()
+      ├──► DB.save(order)          ✓  order stored
+      └──► kafka.publish(event)    ✗  FAILED
+
+  payment-service, inventory-service → NEVER notified
+  order exists in DB but no downstream update  ✗
+
+FAILURE CASE 2 — Kafka succeeds, DB fails:
+  createOrder()
+      ├──► DB.save(order)          ✗  FAILED (rolled back)
+      └──► kafka.publish(event)    ✓  event published!
+
+  payment-service, inventory-service → update themselves
+  but order does NOT exist in DB  ✗  (more dangerous — ghost event)</div>
+<p>This is called the <strong>dual-write problem</strong>: writing to two independent systems in one request has no atomicity guarantee.</p>
+</div>
+<div class="slide" id="s4" data-title="Why @Transactional Alone Does Not Fix It">
+<h2>Why @Transactional Alone Does Not Fix It</h2>
+<p>Wrapping both writes in <code>@Transactional</code> seems to solve it — if Kafka fails, the DB rolls back. But there is a hidden gap: the network acknowledgement.</p>
+<div class="dia">  @Transactional
+  createOrder() {
+      orderRepo.save(order);             ← step 1: DB write succeeds
+
+      try {
+          kafka.send(event);             ← step 2: message travels to broker
+                                                    │
+                                         ┌──────────┴───────────────────────┐
+                                         │  broker received message  ✓      │
+                                         │  but ACK packet lost on network  │
+                                         │  producer never gets the ACK  ✗  │
+                                         └──────────────────────────────────┘
+          // producer thinks: "send FAILED" → throws exception
+      } catch (e) {
+          // @Transactional sees the exception → rolls back DB
+      }
+  }
+
+  RESULT:
+  ┌──────────────────────────────────────┐
+  │  DB:    order ROLLED BACK       ✗   │
+  │  Kafka: event PUBLISHED         ✓   │
+  └──────────────────────────────────────┘
+  → Kafka event exists but DB order does not  ← still inconsistent!</div>
+<p><strong>Two-Phase Commit (2PC)</strong> also fails: Kafka simply does not support the 2PC protocol — it cannot act as a participant in a distributed transaction. There is no "prepare" phase in Kafka.</p>
+</div>
+<div class="slide" id="s5" data-title="The Outbox Pattern — The Correct Solution">
+<h2>The Outbox Pattern — The Correct Solution</h2>
+<p>Instead of writing to Kafka directly, write the event details into a dedicated <strong>outbox table</strong> in the same database transaction. A separate relay process then reads that table and publishes to Kafka.</p>
+<div class="dia">BEFORE (dual-write — dangerous):
+  createOrder()
+      ├──► orders table  (DB)    ─┐  two INDEPENDENT systems
+      └──► Kafka broker           ─┘  no atomicity between them
+
+AFTER (outbox pattern — safe):
+  createOrder()                         ┌─ ONE DB TRANSACTION ─┐
+      ├──► orders table  (DB)           │  both writes in       │
+      └──► outbox_events table (DB) ────┘  the same DB          │
+                                        └──────────────────────┘
+                    │
+                    │  (later, separately)
+                    ▼
+  ┌──────────────────────────────────────────────────┐
+  │  Relay Process (scheduler or CDC)                │
+  │  reads outbox_events ──────────────► Kafka       │
+  └──────────────────────────────────────────────────┘</div>
+<p>Both writes go to the <strong>same database</strong>, so they participate in a single ACID transaction — either both commit or both roll back. Kafka is never touched during the user request.</p>
+</div>
+<div class="slide" id="s6" data-title="Outbox Table Structure">
+<h2>Outbox Table Structure</h2>
+<p>The outbox table stores everything the relay needs to construct and publish a Kafka message.</p>
+<div class="dia">┌────────────────────────────────────────────────────────────────────────┐
+│                         outbox_events  table                           │
+├─────────────────┬──────────────────────────────────────────────────────┤
+│ Column          │ Purpose                                              │
+├─────────────────┼──────────────────────────────────────────────────────┤
+│ id              │ Unique event UUID — used for deduplication           │
+│ aggregate_type  │ Entity type → determines the Kafka topic             │
+│                 │  e.g. "ORDER" → topic: order-events                  │
+│ aggregate_id    │ Entity ID → used as the Kafka message KEY            │
+│                 │  same aggregate_id → same partition → ordering ✓     │
+│ event_type      │ What happened: ORDER_CREATED, ORDER_CANCELLED        │
+│ payload         │ Full JSON body to publish as the Kafka message value │
+│ created_at      │ Timestamp — used for ORDER BY in polling queries     │
+│ published       │ false = not yet sent │ true = sent  ← polling only  │
+│ published_at    │ When it was sent                   ← polling only   │
+└─────────────────┴──────────────────────────────────────────────────────┘
+
+Example row:
+  id             = "uuid-abc-123"
+  aggregate_type = "ORDER"           → Kafka topic:  order-events
+  aggregate_id   = "customer-K1"     → Kafka key:    customer-K1
+  event_type     = "ORDER_CREATED"
+  payload        = { "orderId": 42, "amount": 500 }
+  published      = false
+
+Why aggregate_id as key?
+  customer-K1: ORDER_CREATED  ──► partition-3  ─┐
+  customer-K1: ORDER_CANCELLED ──► partition-3  ─┘  same partition
+  → ordering guaranteed: created always before cancelled  ✓</div>
+</div>
+<div class="slide" id="s7" data-title="Polling Relay (Scheduler) Flow">
+<h2>Polling Relay (Scheduler) Flow</h2>
+<p>A scheduled job runs every N seconds, reads unpublished rows from the outbox table ordered by <code>created_at</code>, publishes them to Kafka, and marks each row as published.</p>
+<div class="dia">  Every 2 seconds:
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  @Scheduled(fixedDelay = 2000)                                   │
+  │                                                                  │
+  │  SELECT * FROM outbox_events                                     │
+  │  WHERE published = false                                         │
+  │  ORDER BY created_at                    ← preserve insertion order│
+  │  LIMIT 10;                              ← process in small batch │
+  │                                                                  │
+  │  for each event:                                                 │
+  │    kafka.send(topic, aggregateId, payload)   ──► Kafka  ✓        │
+  │    event.published    = true                                     │
+  │    event.published_at = now()                                    │
+  │    outboxRepo.save(event)               ← mark as done in DB    │
+  │    if any error → BREAK immediately     ← preserve order!       │
+  └──────────────────────────────────────────────────────────────────┘
+
+  Timeline example (2-second poll interval):
+  ─────────────────────────────────────────────────────────────────────
+  10:00:00.000  event inserted (published=false)
+  10:00:01.000  event inserted (published=false)
+  10:00:02.000  scheduler fires → reads 2 rows → publishes → marks done
+  10:00:04.000  scheduler fires → 0 unpublished rows → nothing to do</div>
+<p><strong>Why BREAK on first error?</strong> If events 1, 2, 3 share the same Kafka key (same customer), skipping a failed event 1 and publishing 2 then 3 would break ordering. Always stop at the first failure so no gaps appear in the sequence.</p>
+</div>
+<div class="slide" id="s8" data-title="At-Least-Once Delivery and Idempotency">
+<h2>At-Least-Once Delivery and Idempotency</h2>
+<p>The relay guarantees that every event is published <strong>at least once</strong> — but it can publish the same event more than once if the <code>published=true</code> update fails after a successful Kafka send.</p>
+<div class="dia">  DUPLICATE SCENARIO:
+  ─────────────────────────────────────────────────────────────────
+  Run 1:
+    Read row (published = false)
+    kafka.send(event)                  ✓  published to Kafka
+    outboxRepo.save(published = true)  ✗  DB update FAILS (crash/timeout)
+
+  Run 2 (next scheduler tick, 2 seconds later):
+    Read SAME row (still published = false — DB was never updated)
+    kafka.send(event)                  ✓  published to Kafka AGAIN
+
+  Consumer receives event TWICE:
+  ┌──────────────────────────────────────────────┐
+  │  msg-1:  { orderId: 42, type: ORDER_CREATED }│  ← first delivery
+  │  msg-2:  { orderId: 42, type: ORDER_CREATED }│  ← duplicate!
+  └──────────────────────────────────────────────┘
+
+  CONSUMER MUST BE IDEMPOTENT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │  onMessage(event) {                                          │
+  │    if (alreadyProcessed(event.id)) {                         │
+  │      return;   ← skip duplicate using the unique event id    │
+  │    }                                                         │
+  │    process(event);                                           │
+  │    markProcessed(event.id);                                  │
+  │  }                                                           │
+  └──────────────────────────────────────────────────────────────┘
+  Use event.id (UUID) as the deduplication key.</div>
+</div>
+<div class="slide" id="s9" data-title="Polling Disadvantages">
+<h2>Polling Disadvantages</h2>
+<p>Polling works but comes with several operational challenges that grow as the system scales.</p>
+<div class="dia">┌──────────────────────────────┬──────────────────────────────────────────┐
+│  Problem                     │  What goes wrong                         │
+├──────────────────────────────┼──────────────────────────────────────────┤
+│ Constant DB load             │ Scheduler hits the DB every 2 seconds    │
+│                              │ even when there are zero new events       │
+├──────────────────────────────┼──────────────────────────────────────────┤
+│ Polling gap / latency        │ Event created at 10:00:00 but published   │
+│                              │ at 10:00:02 — always N-second delay       │
+├──────────────────────────────┼──────────────────────────────────────────┤
+│ Multi-instance conflict      │ 3 app instances → 3 schedulers running    │
+│                              │ all read and publish the same rows        │
+│                              │ Need distributed locking (e.g. ShedLock)  │
+├──────────────────────────────┼──────────────────────────────────────────┤
+│ Duplicate publishing         │ Publish succeeds, mark-as-done fails      │
+│                              │ → same event published twice              │
+│                              │ → consumers must be idempotent            │
+├──────────────────────────────┼──────────────────────────────────────────┤
+│ Table cleanup                │ outbox_events grows indefinitely          │
+│                              │ Need a separate archive / delete job      │
+└──────────────────────────────┴──────────────────────────────────────────┘
+
+Multi-instance conflict diagram:
+  outbox_events table
+  ┌──────┬─────────────┬───────────┐
+  │  id  │  payload    │ published │
+  ├──────┼─────────────┼───────────┤
+  │  1   │ order-100   │  false    │◄─── Scheduler-1 reads row 1
+  │  2   │ order-101   │  false    │◄─── Scheduler-2 reads row 1 (same!)
+  │  3   │ order-102   │  false    │◄─── Scheduler-3 reads row 1 (same!)
+  └──────┴─────────────┴───────────┘
+  → All three publish the same event  ✗  (triple duplicate)</div>
+<p>These problems are why <strong>CDC (Change Data Capture)</strong> — covered in the next topic — is the preferred approach in production systems.</p>
+</div>
+<div class="slide" id="s10" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept               What it is                              Key point
+────────────────────  ──────────────────────────────────────  ──────────────────────────────────
+Dual-write problem    Writing to DB + Kafka in one request    Either can fail — no atomicity
+@Transactional gap    ACK packet can be lost on the network   DB rolls back but Kafka event sent
+2PC on Kafka          Two-phase commit involving Kafka        Not supported — Kafka has no 2PC
+Outbox table          Extra DB table for pending events       Same transaction as business write
+aggregate_type        Column that maps to a Kafka topic       "ORDER" → topic: order-events
+aggregate_id          Column used as the Kafka message key    Same key → same partition → ordering
+Polling relay         Scheduler reads outbox → publishes      Runs every N seconds, marks rows done
+ORDER BY created_at   Query ordering in polling               Ensures events are published in order
+published flag        Tracks whether a row was sent           Only needed for the polling approach
+BREAK on error        Stop batch if any event publish fails   Preserves in-order delivery per key
+At-least-once         Guarantee the relay provides            Event may be published more than once
+Idempotent consumer   Consumer that handles duplicates        Deduplicate using the unique event id</div>
+</div>
+<div class="slide" id="s11" data-title="Architecture — The Notification System's Polling Publisher">
+<h2>Architecture — Why We Still Poll Today</h2>
+<p>"The Notification System runs the polling approach right now, at ~100K notifications/min — not because it's theoretically best, but because it matches our actual scale."</p>
+<div class="dia">  Notification Service                    Postgres                   Kafka
+        │  BEGIN TX                            │                        │
+        │──INSERT notifications(PENDING)──────►│                        │
+        │──INSERT notifications_outbox─────────►│ (published=false)     │
+        │  COMMIT                               │                        │
+        │                                        │◄──every 100ms: SELECT│
+        │                                        │  WHERE published=false│
+        │                                        │──rows─────────────────►│ CDC Publisher sends
+        │                                        │◄──UPDATE published=true│</div>
+<p><strong>Scenario-first:</strong> "At 100ms polling and ~100K/min volume, this adds sub-second latency and negligible DB load. A 15-YOE architect doesn't reach for the theoretically fanciest solution — CDC/Debezium — until the actual bottleneck (query load, latency) demands it."</p>
+</div>
+<div class="slide" id="s12" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why not just wrap the Kafka send in the same @Transactional method as
+   the DB write?
+A: @Transactional only manages resources participating in Spring's
+   transaction manager (typically JDBC) — Kafka's send is a separate
+   network call it can't roll back or guarantee atomically with the DB write.
+
+Q: What happens if the polling publisher crashes right after Kafka.send()
+   succeeds but before UPDATE published=true?
+A: On restart it re-queries WHERE published=false, finds the same row, and
+   republishes — a duplicate at the Kafka level. This is exactly why
+   idempotent consumers are non-negotiable regardless of publisher choice.
+
+Q: At what scale would you switch from polling to CDC?
+A: Roughly when outbox write volume nears 5-10K/sec, where the polling
+   query itself becomes a measurable chunk of total DB load — not a fixed
+   number, but the point where polling overhead stops being "free."</div>
+</div>
+<div class="slide" id="s13" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision                Choice            Alternative    Why ours                            When to flip
+──────────────────────────  ────────────────  ─────────────  ──────────────────────────────────  ─────────────────────
+Publisher mechanism          Polling (100ms)    CDC/Debezium   Simpler ops, adequate at current       Sustained volume near
+                                                                  scale, no new system to run             5-10K writes/sec
+Outbox cleanup                Soft-delete via    Hard-delete    Keeps an audit trail / retry safety    Storage cost matters
+                              published flag     after publish  net                                     more than audit trail</div>
+</div>
+<div class="slide" id="s14" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "Your polling publisher's SELECT * FROM outbox WHERE
+  published=false query is taking 800ms during peak traffic, up from a
+  10ms baseline. Diagnose it."
+  Answer: "Almost certainly a missing or degraded index on published (or
+  more precisely a composite index like (published, created_at) for the
+  ORDER BY), combined with table bloat — if published rows aren't purged
+  promptly, the table grows unbounded and the WHERE clause scans through
+  millions of already-published rows even with an index. I'd check
+  EXPLAIN ANALYZE first, then confirm old rows are actually being purged."
+
+Trap 2 — "A teammate says 'let's just wrap the Kafka send in the same
+  @Transactional method as the DB write, problem solved.' What's wrong,
+  precisely?"
+  Answer: "@Transactional can't roll back an already-succeeded Kafka send,
+  and can't undo an already-committed DB write if the Kafka send throws
+  afterward — you get the illusion of atomicity with none of the
+  guarantee. This is precisely the dual-write problem restated, not solved."</div>
+</div>
+<div class="slide" id="s15" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why the outbox pattern at all: the only widely-adopted way to get
+  effectively-atomic "write to DB + notify Kafka" without a distributed
+  transaction across two different systems.
+- Why polling today, not CDC: matches our actual current write volume;
+  CDC's benefits aren't worth the added operational complexity yet.
+- Why BREAK on first publish error within a batch: preserves in-order
+  delivery for events sharing the same key.
+- Why idempotent consumers regardless of publisher mechanism: both polling
+  and CDC can produce duplicate publishes on their own crash-recovery paths.</div>
+</div>
+<div class="slide" id="s16" data-title="Top 2 Technologies — Outbox Publishing Mechanism">
+<h2>Top 2 Technologies — Outbox Publishing Mechanism</h2>
+<div class="dia">Polling Publisher  vs  Debezium CDC (covered next)
+
+Why pick Polling (our choice today): zero new infrastructure, trivially
+  debuggable — it's just a SQL query plus a Kafka producer.
+Why pick Debezium: near-zero latency, zero added query load, scales to
+  very high write volumes without touching application code.
+
+Example 1 (Polling): Notification System today — ~100K notifications/min,
+  100ms poll interval comfortably keeps up.
+Example 2 (Debezium): A payments platform processing 50K transactions/sec
+  needing sub-100ms event propagation to fraud-detection consumers.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 16;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Outbox Pattern in Event-Driven Architecture — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

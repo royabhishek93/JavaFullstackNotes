@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LC 79 Word Search | Code Dry Run</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box}:root{--bg:#07111d;--s:#0c1a2a;--line:#25435b;--ink:#e8f1f7;--muted:#9cb5c9;--blue:#5eb5ff;--cyan:#5eead4;--amber:#fbbf24;--lime:#a3e635}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif}main{max-width:1180px;margin:auto;padding:22px}
+.eye{font:700 10px 'IBM Plex Mono',monospace;color:var(--cyan);letter-spacing:.08em}h1{margin:7px 0}p{color:var(--muted)}
+.ops{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.op{font:12px 'IBM Plex Mono',monospace;border:1px solid var(--line);border-radius:4px;padding:5px 7px;color:var(--muted)}
+.op.active{background:var(--amber);border-color:var(--amber);color:#07111d}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--s);border:1px solid var(--line);border-radius:8px;padding:15px}.panel h2{font-size:.85rem;color:var(--cyan);margin:0 0 10px}
+.state,.code{font:13px/1.65 'IBM Plex Mono',monospace;white-space:pre-wrap;min-height:125px}.code{max-height:365px;overflow:auto;color:#b7cede}
+.code div{padding:0 7px;border-left:3px solid transparent}.code .active{background:#173955;border-left-color:var(--amber);color:#fff}
+.note{margin-top:12px;background:#092033;border-left:3px solid var(--cyan);padding:12px;line-height:1.55}
+.why{margin-top:10px;background:#102311;border-left:3px solid var(--lime);padding:11px;color:#d9f99d}
+.btn{margin:14px 6px 0 0;background:#10253a;border:1px solid var(--line);color:var(--ink);padding:8px 13px;border-radius:5px;cursor:pointer}
+.meter{float:right;margin-top:22px;color:var(--muted);font:12px 'IBM Plex Mono',monospace}
+@media(max-width:720px){main{padding:15px}.grid{grid-template-columns:1fr}}</style>
+</head><body><main>
+<div class="eye">LC 79 | VISUAL CODE DRY RUN</div>
+<h1>Word Search</h1>
+<p>Pattern: Backtracking DFS | Example: <code>board = [["A","B","C"],["S","F","C"],["A","D","E"]], word = "ABCCED"</code></p>
+<div class="ops" id="ops"></div>
+<div class="grid">
+  <section class="panel"><h2>Algorithm State</h2><div class="state" id="state"></div></section>
+  <section class="panel"><h2>Full Java Code: Active Line Executing</h2><div class="code" id="code"></div></section>
+</div>
+<div class="grid" style="margin-top:14px">
+  <section class="panel"><h2>What Changed?</h2><div class="note" id="note"></div><div class="why" id="why"></div></section>
+  <section class="panel"><h2>Problem Statement</h2><div class="state">Find if word exists in grid</div></section>
+</div>
+<button class="btn" id="play">Pause</button>
+<button class="btn" id="previous">Previous</button>
+<button class="btn" id="next">Next</button>
+<button class="btn" id="reset">Reset</button>
+<span class="meter" id="meter"></span>
+</main>
+<script>
+const codeLines=["public boolean exist(char[][] board, String word) {", "    for (int i = 0; i < board.length; i++) {", "        for (int j = 0; j < board[0].length; j++) {", "            if (dfs(board, word, 0, i, j)) return true;", "        }", "    }", "    return false;", "}", "", "private boolean dfs(char[][] board, String word, int index, int i, int j) {", "    if (index == word.length()) return true;", "    if (i < 0 || i >= board.length || j < 0 || j >= board[0].length || ", "        board[i][j] != word.charAt(index)) return false;", "    ", "    char temp = board[i][j];", "    board[i][j] = '#';", "    ", "    boolean found = dfs(board, word, index+1, i+1, j) ||", "                    dfs(board, word, index+1, i-1, j) ||", "                    dfs(board, word, index+1, i, j+1) ||", "                    dfs(board, word, index+1, i, j-1);", "    ", "    board[i][j] = temp;", "    return found;", "}"];
+const steps=[
+  {
+    "op": "1. Build graph",
+    "line": 0,
+    "state": "Input: board = [[\"A\",\"B\",\"C\"],[\"S\",\"F\",\"C\"],[\"A\",\"D\",\"E\"]], word = \"ABCCED\"\\ngraph: {}\\nvisited: set()\\npath: []",
+    "text": "Initialize graph data structures",
+    "why": "Track visited nodes to avoid cycles"
+  },
+  {
+    "op": "2. DFS step",
+    "line": 0,
+    "state": "graph: {0:[1,2], 1:[3], ...}\\nvisited: {0,1}\\ncurrent: 2",
+    "text": "public boolean exist(char[][] board, String word) {",
+    "why": "Explore all paths via depth-first search"
+  },
+  {
+    "op": "3. DFS step",
+    "line": 1,
+    "state": "graph: {0:[1,2], 1:[3], ...}\\nvisited: {0,1}\\ncurrent: 2",
+    "text": "for (int i = 0; i < board.length; i++) {",
+    "why": "Explore all paths via depth-first search"
+  },
+  {
+    "op": "4. DFS step",
+    "line": 2,
+    "state": "graph: {0:[1,2], 1:[3], ...}\\nvisited: {0,1}\\ncurrent: 2",
+    "text": "for (int j = 0; j < board[0].length; j++) {",
+    "why": "Explore all paths via depth-first search"
+  },
+  {
+    "op": "5. DFS step",
+    "line": 3,
+    "state": "graph: {0:[1,2], 1:[3], ...}\\nvisited: {0,1}\\ncurrent: 2",
+    "text": "if (dfs(board, word, 0, i, j)) return true;",
+    "why": "Explore all paths via depth-first search"
+  },
+  {
+    "op": "6. DFS step",
+    "line": 6,
+    "state": "graph: {0:[1,2], 1:[3], ...}\\nvisited: {0,1}\\ncurrent: 2",
+    "text": "return false;",
+    "why": "Explore all paths via depth-first search"
+  },
+  {
+    "op": "7. DFS step",
+    "line": 9,
+    "state": "graph: {0:[1,2], 1:[3], ...}\\nvisited: {0,1}\\ncurrent: 2",
+    "text": "private boolean dfs(char[][] board, String word, int index, ",
+    "why": "Explore all paths via depth-first search"
+  },
+  {
+    "op": "8. DFS step",
+    "line": 10,
+    "state": "graph: {0:[1,2], 1:[3], ...}\\nvisited: {0,1}\\ncurrent: 2",
+    "text": "if (index == word.length()) return true;",
+    "why": "Explore all paths via depth-first search"
+  },
+  {
+    "op": "9. DFS step",
+    "line": 11,
+    "state": "graph: {0:[1,2], 1:[3], ...}\\nvisited: {0,1}\\ncurrent: 2",
+    "text": "if (i < 0 || i >= board.length || j < 0 || j >= board[0].len",
+    "why": "Explore all paths via depth-first search"
+  }
+];
+const code=document.querySelector('#code'),ops=document.querySelector('#ops'),state=document.querySelector('#state'),note=document.querySelector('#note'),why=document.querySelector('#why'),meter=document.querySelector('#meter');
+codeLines.forEach((line,i)=>{const row=document.createElement('div');row.textContent=`${i+1}. ${line}`;code.append(row)});
+steps.forEach(step=>{const item=document.createElement('span');item.className='op';item.textContent=step.op;ops.append(item)});
+let index=0,running=false,timer;
+function render(){const step=steps[index];[...ops.children].forEach((item,i)=>item.classList.toggle('active',i===index));
+[...code.children].forEach((row,i)=>row.classList.toggle('active',i===step.line));
+code.children[step.line].scrollIntoView({block:'nearest'});state.textContent=step.state;note.textContent=step.text;
+why.innerHTML='<strong>Why:</strong> '+step.why;meter.textContent=`${index+1} / ${steps.length}`}
+function schedule(){clearInterval(timer);if(running)timer=setInterval(()=>{index=(index+1)%steps.length;render()},4200);
+document.querySelector('#play').textContent=running?'Pause':'Play'}
+document.querySelector('#play').onclick=()=>{running=!running;schedule()};
+document.querySelector('#next').onclick=()=>{running=false;schedule();index=Math.min(index+1,steps.length-1);render()};
+document.querySelector('#previous').onclick=()=>{running=false;schedule();index=Math.max(index-1,0);render()};
+document.querySelector('#reset').onclick=()=>{running=false;schedule();index=0;render()};
+render();
+</script></body></html>

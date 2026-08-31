@@ -1,0 +1,131 @@
+<mxfile host="app.diagrams.net"><diagram name="Order Execution Flow" id="trading-seq"><mxGraphModel dx="2400" dy="1700" grid="1" gridSize="10" page="1" pageScale="1" pageWidth="2400" pageHeight="1700" background="#ffffff"><root><mxCell id="0"/><mxCell id="1" parent="0"/>
+<mxCell id="t" value="STOCK TRADING - Order Execution Flow (Fund Locking + Kafka Validation + FIX Protocol + Settlement)" style="text;html=1;strokeColor=none;fillColor=none;align=center;fontSize=20;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1"><mxGeometry x="60" y="20" width="2280" height="35" as="geometry"/></mxCell>
+<mxCell id="subtitle" value="6 Phases: (1) Order Placement + Fund Lock | (2) Kafka Async Validation | (3) FIX Protocol to Exchange | (4) Matching Engine Execution | (5) Settlement | (6) Portfolio Update + Notification" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;rounded=1;fontSize=12" vertex="1" parent="1"><mxGeometry x="80" y="65" width="2240" height="28" as="geometry"/></mxCell>
+
+<mxCell id="user" value="User" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="60" y="130" width="100" height="50" as="geometry"/></mxCell>
+<mxCell id="userLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#1976d2;strokeColor=#1976d2" vertex="1" parent="1"><mxGeometry x="105" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="orderSvc" value="Order&#10;Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="200" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="orderLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#388e3c;strokeColor=#388e3c" vertex="1" parent="1"><mxGeometry x="255" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="fundsDB" value="Funds&#10;PostgreSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="360" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="fundsLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#7b1fa2;strokeColor=#7b1fa2" vertex="1" parent="1"><mxGeometry x="415" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="kafka" value="Kafka" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcc80;strokeColor=#ef6c00;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="520" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="kafkaLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#ef6c00;strokeColor=#ef6c00" vertex="1" parent="1"><mxGeometry x="575" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="validator" value="Validator&#10;Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="680" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="validatorLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#388e3c;strokeColor=#388e3c" vertex="1" parent="1"><mxGeometry x="735" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="redis" value="Redis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="840" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="redisLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#f57f17;strokeColor=#f57f17" vertex="1" parent="1"><mxGeometry x="895" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="exchGW" value="Exchange&#10;Gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="1000" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="exchLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#388e3c;strokeColor=#388e3c" vertex="1" parent="1"><mxGeometry x="1055" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="nse" value="NSE&#10;Exchange" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="1160" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="nseLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#f57f17;strokeColor=#f57f17" vertex="1" parent="1"><mxGeometry x="1215" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="orderTracker" value="Order&#10;Tracker" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="1320" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="trackerLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#388e3c;strokeColor=#388e3c" vertex="1" parent="1"><mxGeometry x="1375" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="portfolio" value="Portfolio&#10;Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="1480" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="portfolioLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#388e3c;strokeColor=#388e3c" vertex="1" parent="1"><mxGeometry x="1535" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="notification" value="Notification&#10;Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=11;align=center" vertex="1" parent="1"><mxGeometry x="1640" y="130" width="120" height="50" as="geometry"/></mxCell>
+<mxCell id="notifLine" value="" style="html=1;points=[];perimeter=orthogonalPerimeter;fillColor=#388e3c;strokeColor=#388e3c" vertex="1" parent="1"><mxGeometry x="1695" y="210" width="10" height="1420" as="geometry"/></mxCell>
+
+<mxCell id="phase1" value="PHASE 1: ORDER PLACEMENT + FUND LOCK (CP - Consistency Critical)" style="text;html=1;strokeColor=#1976d2;fillColor=#e3f2fd;align=left;fontSize=12;fontStyle=1;rounded=1" vertex="1" parent="1"><mxGeometry x="1800" y="230" width="560" height="25" as="geometry"/></mxCell>
+
+<mxCell id="s1" value="1. POST /api/v1/orders&#10;{symbol:RELIANCE, type:MARKET,&#10;trade:BUY, qty:10}" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#1976d2;fontSize=10" edge="1" parent="1" source="userLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s2" value="2. Validate: JWT, market hours,&#10;stock exists, qty positive" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="orderLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="255" y="290" as="sourcePoint"/><mxPoint x="275" y="290" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s3" value="3. GET stock_price:RELIANCE" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=3;strokeColor=#f57f17;fontSize=10" edge="1" parent="1" source="orderLine" target="redisLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+<mxCell id="s4" value="4. ₹2458.75" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;strokeWidth=1;strokeColor=#f57f17;fontSize=10" edge="1" parent="1" source="redisLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s5" value="5. Estimate cost: 10×2458.75+₹20 = ₹24607.50" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="orderLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="255" y="370" as="sourcePoint"/><mxPoint x="275" y="370" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s6" value="6. BEGIN TRANSACTION&#10;SELECT available_balance&#10;FROM funds WHERE user_id&#10;FOR UPDATE" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#7b1fa2;fontSize=10" edge="1" parent="1" source="orderLine" target="fundsLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="lockNote" value="PESSIMISTIC ROW LOCK&#10;blocks concurrent txns" style="text;html=1;strokeColor=#c62828;fillColor=#ffebee;align=center;fontSize=10;rounded=1;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1800" y="420" width="180" height="35" as="geometry"/></mxCell>
+
+<mxCell id="s7" value="7. ₹50,000 (locked)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;strokeWidth=1;strokeColor=#7b1fa2;fontSize=10" edge="1" parent="1" source="fundsLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s8" value="8. IF 50000 &lt; 24607.50&#10;ROLLBACK → 400" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#c62828;fontSize=10;dashed=1" edge="1" parent="1" source="orderLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="255" y="500" as="sourcePoint"/><mxPoint x="275" y="500" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s9" value="9. UPDATE funds SET&#10;available -= 24607.50,&#10;locked += 24607.50&#10;COMMIT" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#7b1fa2;fontSize=10" edge="1" parent="1" source="orderLine" target="fundsLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s10" value="10. Lock released" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;strokeWidth=1;strokeColor=#7b1fa2;fontSize=10" edge="1" parent="1" source="fundsLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s11" value="11. INSERT orders&#10;(order_id, user_id, symbol,&#10;type:MARKET, qty:10,&#10;status:PENDING)" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="orderLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="255" y="620" as="sourcePoint"/><mxPoint x="275" y="620" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s12" value="12. 200 OK {orderId,&#10;status:PENDING}" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;strokeWidth=1;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="orderLine" target="userLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="userNote" value="User gets response&#10;&lt;10ms, not blocked" style="text;html=1;strokeColor=#388e3c;fillColor=#e8f5e9;align=center;fontSize=10;rounded=1" vertex="1" parent="1"><mxGeometry x="60" y="690" width="100" height="40" as="geometry"/></mxCell>
+
+<mxCell id="phase2" value="PHASE 2: KAFKA ASYNC VALIDATION (4-STAGE PIPELINE)" style="text;html=1;strokeColor=#ef6c00;fillColor=#fff3e0;align=left;fontSize=12;fontStyle=1;rounded=1" vertex="1" parent="1"><mxGeometry x="1800" y="750" width="560" height="25" as="geometry"/></mxCell>
+
+<mxCell id="s13" value="13. Kafka.send(new_orders,&#10;{orderId, symbol, ...})" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#ef6c00;fontSize=10" edge="1" parent="1" source="orderLine" target="kafkaLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s14" value="14. Consume new_orders" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#ef6c00;fontSize=10" edge="1" parent="1" source="kafkaLine" target="validatorLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s15" value="15. CHECK 1: Dedup&#10;SETNX order_lock:{orderId}&#10;1 EX 30" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=3;strokeColor=#f57f17;fontSize=10" edge="1" parent="1" source="validatorLine" target="redisLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+<mxCell id="s16" value="16. 1 (success)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;strokeWidth=1;strokeColor=#f57f17;fontSize=10" edge="1" parent="1" source="redisLine" target="validatorLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="dedupNote" value="If returns 0:&#10;duplicate, reject" style="text;html=1;strokeColor=#f57f17;fillColor=#fff9c4;align=center;fontSize=10;rounded=1" vertex="1" parent="1"><mxGeometry x="1800" y="850" width="120" height="35" as="geometry"/></mxCell>
+
+<mxCell id="s17" value="17. CHECK 2: KYC&#10;SELECT kyc_status FROM users&#10;WHERE user_id" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="validatorLine" target="validatorLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="735" y="940" as="sourcePoint"/><mxPoint x="755" y="940" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s18" value="18. CHECK 3: Risk limit&#10;(total exposure &lt; 10× balance)" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="validatorLine" target="validatorLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="735" y="980" as="sourcePoint"/><mxPoint x="755" y="980" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s19" value="19. CHECK 4: Circuit breaker&#10;GET price_change:RELIANCE:5m&#10;IF &gt;10% → REJECT" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=3;strokeColor=#f57f17;fontSize=10" edge="1" parent="1" source="validatorLine" target="redisLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+<mxCell id="s20" value="20. +2.3% (OK)" style="html=1;verticalAlign=bottom;endArrow=open;dashed=1;strokeWidth=1;strokeColor=#f57f17;fontSize=10" edge="1" parent="1" source="redisLine" target="validatorLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s21" value="21. All checks passed&#10;UPDATE orders SET&#10;status=VERIFIED" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="validatorLine" target="validatorLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="735" y="1120" as="sourcePoint"/><mxPoint x="755" y="1120" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s22" value="22. Kafka.send(verified_orders,&#10;{orderId, ...})" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#ef6c00;fontSize=10" edge="1" parent="1" source="validatorLine" target="kafkaLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="phase3" value="PHASE 3: FIX PROTOCOL TO EXCHANGE" style="text;html=1;strokeColor=#f57f17;fillColor=#fff9c4;align=left;fontSize=12;fontStyle=1;rounded=1" vertex="1" parent="1"><mxGeometry x="1800" y="1200" width="560" height="25" as="geometry"/></mxCell>
+
+<mxCell id="s23" value="23. Consume verified_orders" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#ef6c00;fontSize=10" edge="1" parent="1" source="kafkaLine" target="exchLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s24" value="24. Format FIX message:&#10;Tag 35=D (NewOrderSingle)&#10;Tag 55=RELIANCE (Symbol)&#10;Tag 54=1 (Side:Buy)&#10;Tag 38=10 (Qty)&#10;Tag 40=1 (Type:Market)" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="exchLine" target="exchLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="1055" y="1280" as="sourcePoint"/><mxPoint x="1075" y="1280" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s25" value="25. FIX TCP persistent conn&#10;(one of 400-500)" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=3;strokeColor=#f57f17;fontSize=10" edge="1" parent="1" source="exchLine" target="nseLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s26" value="26. UPDATE orders SET&#10;status=PLACED,&#10;exchange_order_id" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="exchLine" target="exchLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="1055" y="1380" as="sourcePoint"/><mxPoint x="1075" y="1380" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="phase4" value="PHASE 4: MATCHING ENGINE EXECUTION (SEQUENTIAL PER SYMBOL)" style="text;html=1;strokeColor=#c62828;fillColor=#ffebee;align=left;fontSize=12;fontStyle=1;rounded=1" vertex="1" parent="1"><mxGeometry x="1800" y="1430" width="560" height="25" as="geometry"/></mxCell>
+
+<mxCell id="s27" value="27. Order book (in-memory)&#10;Best bid: ₹2459.00 (10 qty)&#10;Best ask: ₹2459.00 (15 qty)&#10;MATCH! Execute at ₹2459.00" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#c62828;fontSize=10" edge="1" parent="1" source="nseLine" target="nseLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="1215" y="1470" as="sourcePoint"/><mxPoint x="1235" y="1470" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="matchNote" value="Sequential matching&#10;prevents duplicate trades" style="text;html=1;strokeColor=#c62828;fillColor=#ffebee;align=center;fontSize=10;rounded=1;fontStyle=1" vertex="1" parent="1"><mxGeometry x="1800" y="1480" width="180" height="35" as="geometry"/></mxCell>
+
+<mxCell id="s28" value="28. FIX ExecutionReport&#10;Tag 35=8 (ExecReport)&#10;Tag 150=2 (Filled)&#10;executedPrice:2459.00&#10;executedQty:10" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=3;strokeColor=#f57f17;fontSize=10" edge="1" parent="1" source="nseLine" target="exchLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s29" value="29. Kafka.send(order_status,&#10;{orderId, status:EXECUTED,&#10;executedPrice:2459})" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#ef6c00;fontSize=10" edge="1" parent="1" source="exchLine" target="kafkaLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="phase5" value="PHASE 5: SETTLEMENT (UNLOCK FUNDS + SETTLE ACTUAL COST)" style="text;html=1;strokeColor=#7b1fa2;fillColor=#f3e5f5;align=left;fontSize=12;fontStyle=1;rounded=1" vertex="1" parent="1"><mxGeometry x="1800" y="1330" width="560" height="25" as="geometry"/></mxCell>
+
+<mxCell id="s30" value="30. Actual cost:&#10;10×2459+₹20 = ₹24610&#10;Estimated: ₹24607.50&#10;Diff: ₹2.50" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="orderLine" target="orderLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="255" y="1250" as="sourcePoint"/><mxPoint x="275" y="1250" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s31" value="31. UPDATE funds SET&#10;locked -= 24607.50,&#10;available -= 2.50" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#7b1fa2;fontSize=10" edge="1" parent="1" source="orderLine" target="fundsLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="phase6" value="PHASE 6: PORTFOLIO UPDATE + NOTIFICATION (KAFKA PARALLEL CONSUMERS)" style="text;html=1;strokeColor=#388e3c;fillColor=#e8f5e9;align=left;fontSize=12;fontStyle=1;rounded=1" vertex="1" parent="1"><mxGeometry x="1800" y="1180" width="560" height="25" as="geometry"/></mxCell>
+
+<mxCell id="s32" value="32. Consume order_status" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#ef6c00;fontSize=10" edge="1" parent="1" source="kafkaLine" target="trackerLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s33" value="33. UPDATE orders SET&#10;status=EXECUTED,&#10;executed_at, executed_price&#10;INSERT trades" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="trackerLine" target="trackerLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="1375" y="1250" as="sourcePoint"/><mxPoint x="1395" y="1250" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s34" value="34. Consume order_status" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#ef6c00;fontSize=10" edge="1" parent="1" source="kafkaLine" target="portfolioLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s35" value="35. UPDATE portfolio SET&#10;quantity += 10,&#10;avg_buy_price weighted,&#10;total_investment += 24610" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="portfolioLine" target="portfolioLine"><mxGeometry width="80" relative="1" as="geometry"><mxPoint x="1535" y="1370" as="sourcePoint"/><mxPoint x="1555" y="1370" as="offset"/></mxGeometry></mxCell>
+
+<mxCell id="s36" value="36. Consume order_status" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#ef6c00;fontSize=10" edge="1" parent="1" source="kafkaLine" target="notifLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="s37" value="37. Push FCM/APNS:&#10;RELIANCE BUY 10 @ ₹2459&#10;EXECUTED" style="html=1;verticalAlign=bottom;endArrow=block;strokeWidth=2;strokeColor=#388e3c;fontSize=10" edge="1" parent="1" source="notifLine" target="userLine"><mxGeometry width="80" relative="1" as="geometry"/></mxCell>
+
+<mxCell id="interview" value="INTERVIEW KEY QUESTIONS&#10;&#10;Q1: How do you prevent overdraft with simultaneous orders?&#10;A1: Fund locking with SELECT FOR UPDATE SERIALIZABLE. User ₹50K places two orders simultaneously ₹49K + ₹17.5K. First SELECT FOR UPDATE locks row → UPDATE available -= 49K, locked += 49K → COMMIT. Second order waits on lock, reads updated balance ₹820, insufficient → ROLLBACK 400 error. Pessimistic row lock guarantees no race condition.&#10;&#10;Q2: Why Kafka for order events instead of direct service calls?&#10;A2: Decoupling + async + horizontal scaling + at-least-once delivery. Order Svc returns 200 PENDING in &lt;10ms (user not blocked), Validator/Exchange Gateway/Order Tracker process async in parallel. If Exchange Gateway crashes, Kafka buffers verified_orders → replay on restart → zero lost orders. Add more consumers per topic for horizontal scale (Validator 5 instances 50 partitions).&#10;&#10;Q3: Why FIX protocol with 400-500 persistent connections instead of REST?&#10;A3: FIX is industry standard for exchanges globally (binary TCP, low latency). Persistent connections avoid TCP handshake overhead ~3-5ms per order. Grouped by symbol (RELIANCE, TCS on same conn) → reuse connections, load balance by symbol hash. REST would require new HTTPS connection per order → TLS handshake + HTTP overhead → 10x slower.&#10;&#10;Q4: Why circuit breaker if price moves &gt;10% in 5 min?&#10;A4: 2010 US Flash Crash: Dow fell 1000 points in minutes due to algorithmic feedback loop. Circuit breaker: Validator checks Redis price_change:RELIANCE:5m → if &gt;10% → reject all new orders with 429 Too Many Requests Circuit Breaker Active. SEBI legally mandates these halts to prevent market crash during extreme volatility. Breaks runaway sell spiral that could crash stock to zero.&#10;&#10;Q5: Why P&amp;L calculated on-the-fly, never stored?&#10;A5: Stock price changes hundreds of times per second. If you store current_value in DB, it becomes stale instantly → users see wrong P&amp;L. Portfolio table stores static fields: quantity, avg_buy_price, total_investment. GET /api/v1/portfolio reads Redis GET stock_price:RELIANCE (TTL 1s refreshed continuously by Price Ingester) → current_value = qty × current_price → PL = current_value - total_investment. Fresh calculation every time guarantees accuracy.&#10;&#10;Q6: Order state machine transitions?&#10;A6: PENDING (order placed, funds locked) → VERIFIED (passed KYC/funds/risk/circuit/dedup) → PLACED (sent to NSE via FIX) → EXECUTED (matched on exchange) OR REJECTED (failed validation at any stage). Each state transition published to Kafka topics consumed by different services in parallel. Order Tracker updates orders table, Portfolio Svc updates holdings, Notification Svc pushes to user.&#10;&#10;Q7: Why InfluxDB for prices instead of PostgreSQL?&#10;A7: Stock prices are append-only time-stamped data stream (never update yesterday tick). InfluxDB LSM tree optimized for 100K+ writes/sec across 10K stocks. SQL B-tree rebuilds index on every insert → write bottleneck. Auto-downsampling: 1-min candles (raw forever) → continuous query aggregates to 5-min → hourly → daily. Chart query: mean(price) GROUP BY time(5m) last 1Y returns 288 points in &lt;100ms. Time-based partitioning: last hour query skips directly to time chunk.&#10;&#10;Q8: Settlement T+1 vs instant?&#10;A8: Trade executes instantly (EXECUTED status), but actual share transfer from seller demat to buyer demat happens next business day (T+1) through clearinghouse NSCCL/ICCL. Portfolio shows new shares immediately (for display), but legal ownership in CDSL/NSDL depositories confirmed T+1. Fund locking on PENDING guarantees cash available at T+1 even before settlement runs. T+1 gives ecosystem overnight to reconcile and handle exceptions (one failure doesn block entire market)." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=2;fontSize=11;align=left;verticalAlign=top;spacing=10" vertex="1" parent="1"><mxGeometry x="60" y="1670" width="2300" height="20" as="geometry"/></mxCell>
+
+</root></mxGraphModel></diagram></mxfile>

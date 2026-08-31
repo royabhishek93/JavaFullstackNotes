@@ -1,0 +1,167 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Rate Limiter Algorithms - BEGINNER" id="algorithms">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1200" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="4 RATE LIMITING ALGORITHMS COMPARED" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1000" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="Each algorithm trades off: Memory Cost vs Accuracy vs Burst Support" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="300" y="70" width="800" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Algorithm 1: Fixed Window Counter -->
+        <mxCell id="algo1-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="130" width="600" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="algo1-title" value="1️⃣ FIXED WINDOW COUNTER (Simplest but has flaws)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#cc0000" vertex="1" parent="1">
+          <mxGeometry x="50" y="140" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo1-timeline" value="TIMELINE (Limit: 100 req/min):&#xa;&#xa;09:59:00                    10:00:00                    10:01:00&#xa;   |&lt;------ Window A -------&gt;|&lt;------ Window B -------&gt;|&#xa;   |      counter = 0         |      counter = 0         |" style="text;html=1;strokeColor=none;fillColor=#ffe6cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="185" width="420" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo1-problem" value="❌ BOUNDARY SPIKE PROBLEM:&#xa;&#xa;99 requests at 10:00:58 → Window A → ALLOWED&#xa;100 requests at 10:01:00 → Window B → ALLOWED&#xa;────────────────────────────────────────────&#xa;199 requests in 2 seconds! Violates 100/min limit" style="text;html=1;strokeColor=#b85450;fillColor=#f8cecc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="70" y="285" width="420" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo1-stats" value="Memory: ⭐⭐⭐⭐⭐ (Just 1 int)&#xa;Accuracy: ⭐ (Boundary spikes)&#xa;Burst: ✅ Yes (exploitable)&#xa;&#xa;Use when: Internal APIs only" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="510" y="185" width="120" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- Algorithm 2: Sliding Window Log -->
+        <mxCell id="algo2-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="380" width="600" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="algo2-title" value="2️⃣ SLIDING WINDOW LOG (Most accurate but expensive)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#b8860b" vertex="1" parent="1">
+          <mxGeometry x="50" y="390" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo2-log" value="STORED IN REDIS ZSET (score = timestamp):&#xa;&#xa;┌────────────────────────────────────┐&#xa;│ 10:00:05  request_abc              │&#xa;│ 10:00:12  request_def              │&#xa;│ 10:00:30  request_ghi  ← 85 total  │&#xa;│ 10:00:44  request_jkl              │&#xa;└────────────────────────────────────┘&#xa;&#xa;Window: [10:00:45 - 60sec] to [10:00:45]&#xa;Count: ZCOUNT(now-60, now) = 85 &lt; 100 → ALLOW" style="text;html=1;strokeColor=none;fillColor=#ffe6cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="435" width="420" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo2-stats" value="Memory: ⭐ (100M users&#xa;× 100 req = 10B entries!)&#xa;Accuracy: ⭐⭐⭐⭐⭐ Perfect&#xa;Burst: ❌ No&#xa;&#xa;Use when: Fraud detection,&#xa;login attempts (low traffic)" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="510" y="435" width="120" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- Algorithm 3: Token Bucket (RECOMMENDED) -->
+        <mxCell id="algo3-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="50" y="630" width="600" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="algo3-title" value="3️⃣ TOKEN BUCKET ⭐ (RECOMMENDED - Production Standard)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#006600" vertex="1" parent="1">
+          <mxGeometry x="50" y="640" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo3-visual" value="🪣 BUCKET STATE (Capacity=100, Refill=10 tokens/sec):&#xa;&#xa;t=0:  [████████████████████] 100 tokens (full)&#xa;&#xa;t=0:  100 requests arrive instantly&#xa;      [                    ]   0 tokens  ← ALL ALLOWED (burst!)&#xa;&#xa;t=5s: Refilled: 5 × 10 = 50 tokens&#xa;      [██████████          ]  50 tokens&#xa;&#xa;t=5s: 50 more requests&#xa;      [                    ]   0 tokens  ← ALL ALLOWED&#xa;&#xa;t=1s: Only 1 token refilled (10/sec)&#xa;      [█                   ]   1 token&#xa;      1 request → ALLOW, 2nd → 429 REJECT" style="text;html=1;strokeColor=none;fillColor=#e1f5e1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="685" width="420" height="210" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo3-stats" value="Memory: ⭐⭐⭐⭐&#xa;(2 ints per user)&#xa;Accuracy: ⭐⭐⭐⭐ Good&#xa;Burst: ✅ Natural support&#xa;&#xa;✅ AWS API Gateway&#xa;✅ Stripe&#xa;✅ GitHub REST API&#xa;&#xa;Use when: Production!&#xa;This is THE algorithm" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="510" y="685" width="120" height="210" as="geometry" />
+        </mxCell>
+
+        <!-- Algorithm 4: Leaky Bucket -->
+        <mxCell id="algo4-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="940" width="600" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="algo4-title" value="4️⃣ LEAKY BUCKET (For traffic shaping, not user limits)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#0066cc" vertex="1" parent="1">
+          <mxGeometry x="50" y="950" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo4-visual" value="🚰 FUNNEL MODEL (Capacity=100, Leak=10/sec):&#xa;&#xa;Requests      ┌─────────────────┐&#xa;arriving  ───►│■■■■■■■■■■■■■■■■■│───► Backend (10/sec, steady)&#xa;(burst)       │  Queue (100)    │&#xa;              └─────────────────┘&#xa;&#xa;KEY DIFFERENCE vs Token Bucket:&#xa;• Token Bucket: burst of 100 hits backend INSTANTLY&#xa;• Leaky Bucket: burst queued, exits at 10/sec (smooth)" style="text;html=1;strokeColor=none;fillColor=#e6f2ff;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="995" width="420" height="150" as="geometry" />
+        </mxCell>
+
+        <mxCell id="algo4-stats" value="Memory: ⭐⭐⭐&#xa;Accuracy: ⭐⭐⭐⭐&#xa;Burst: ❌ Smoothed out&#xa;&#xa;Use when: Traffic shaping&#xa;to protect downstream&#xa;(e.g., 3rd-party API)" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="510" y="995" width="120" height="150" as="geometry" />
+        </mxCell>
+
+        <!-- Comparison Table on Right Side -->
+        <mxCell id="table-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="700" y="130" width="650" height="400" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-title" value="📊 QUICK COMPARISON TABLE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="700" y="140" width="650" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-headers" value="Algorithm            Memory  Accuracy  Burst  Production Use" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="720" y="190" width="610" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-row1" value="Fixed Window       Very Low   Low      Yes    Internal APIs only" style="text;html=1;strokeColor=none;fillColor=#f8cecc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="720" y="235" width="610" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-row2" value="Sliding Win Log    Very High  Perfect  No     Fraud / Low traffic" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="720" y="275" width="610" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-row3" value="Token Bucket ⭐    Low        Good     Yes    AWS, Stripe, GitHub" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="720" y="315" width="610" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-row4" value="Leaky Bucket       Medium     Good     No     Traffic shaping" style="text;html=1;strokeColor=none;fillColor=#dae8fc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="720" y="355" width="610" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table-note" value="⭐ = Industry Standard for API Rate Limiting" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="720" y="410" width="610" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="interview-tip" value="💡 INTERVIEW TIP:&#xa;&#xa;&quot;I recommend Token Bucket because:&#xa;1. Low memory (just 2 integers per user)&#xa;2. Handles bursts naturally (users can save up tokens)&#xa;3. Production-proven (AWS, Stripe use it)&#xa;4. Simple to implement with Redis Lua script&quot;" style="text;html=1;strokeColor=#9673a6;fillColor=#e1d5e7;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="720" y="460" width="610" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- WHY Box at Bottom -->
+        <mxCell id="why-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="700" y="560" width="650" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why-title" value="❓ WHY TOKEN BUCKET WINS FOR PRODUCTION?" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="700" y="570" width="650" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why1" value="✅ REAL BURST SUPPORT:&#xa;Mobile apps often fire 10-20 requests when opening (load profile, feed, notifications).&#xa;Token Bucket allows this burst if tokens saved up. Fixed Window would reject.&#xa;Leaky Bucket would queue them (adds latency)." style="text;html=1;strokeColor=none;fillColor=#e1f5e1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="720" y="615" width="610" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why2" value="✅ LOW MEMORY:&#xa;At 50M users × 3 endpoints = 150M buckets. Fixed Window: same. Sliding Log: 10B timestamps!&#xa;Token Bucket: 150M × 2 ints × 8 bytes = 2.4GB Redis. Sliding Log: 80GB Redis!" style="text;html=1;strokeColor=none;fillColor=#e1f5e1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="720" y="680" width="610" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why3" value="✅ NO BOUNDARY EXPLOITATION:&#xa;Fixed Window: user can time requests at window edges to get 2× quota.&#xa;Token Bucket: smooth refill, no sudden resets. No gaming possible." style="text;html=1;strokeColor=none;fillColor=#e1f5e1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="720" y="735" width="610" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why4" value="✅ TWO KNOBS:&#xa;Capacity = max instant burst (e.g., 100 tokens).&#xa;Refill rate = sustained throughput (e.g., 10 tokens/sec = 600/min sustained).&#xa;You can tune both independently!" style="text;html=1;strokeColor=none;fillColor=#e1f5e1;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="720" y="785" width="610" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Implementation -->
+        <mxCell id="redis-impl-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="700" y="870" width="650" height="290" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-impl-title" value="🔧 TOKEN BUCKET REDIS IMPLEMENTATION" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="700" y="880" width="650" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-impl-code" value="Key: rate_limit:user123:/api/users&#xa;Type: HASH&#xa;  tokens      → 95&#xa;  last_refill → 1706270445 (unix timestamp)&#xa;&#xa;LUA SCRIPT (ATOMIC):&#xa;1. current_time = now()&#xa;2. elapsed = current_time - last_refill&#xa;3. tokens_to_add = elapsed × refill_rate&#xa;4. new_tokens = min(capacity, tokens + tokens_to_add)&#xa;5. if new_tokens &gt;= 1:&#xa;     HMSET tokens=(new_tokens-1), last_refill=current_time&#xa;     return 1  ← ALLOW&#xa;   else:&#xa;     return 0  ← REJECT 429&#xa;&#xa;WHY LUA? All steps happen ATOMICALLY in Redis.&#xa;No race condition: two API gateways can't both see 1 token and both allow." style="text;html=1;strokeColor=none;fillColor=#fff9e6;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="720" y="925" width="610" height="220" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,194 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Social Media Data Model - BEGINNER" id="data-model">
+    <mxGraphModel dx="1422" dy="950" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1400" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="SOCIAL MEDIA DATA MODEL — PostgreSQL, Cassandra, Redis Schemas" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="20" width="1700" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="💾 Denormalization strategy • Partition keys • Redis cache patterns • Why each DB choice?" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="100" y="70" width="1700" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- PostgreSQL Section -->
+        <mxCell id="postgres-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3f51b5;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="50" y="120" width="850" height="500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="postgres-header" value="📊 POSTGRESQL — Users, Followers, Comments (ACID, Relational Integrity)" style="text;html=1;strokeColor=none;fillColor=#3f51b5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="830" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Users Table -->
+        <mxCell id="users-table" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="70" y="185" width="380" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="users-title" value="👤 users" style="text;html=1;strokeColor=none;fillColor=#1976d2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="80" y="195" width="360" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="users-fields" value="user_id          UUID PRIMARY KEY&#xa;username         VARCHAR(50) UNIQUE, INDEXED&#xa;email            VARCHAR(255) UNIQUE, INDEXED&#xa;password_hash    VARCHAR(255)  -- bcrypt cost=12&#xa;bio              TEXT  -- max 500 chars&#xa;profile_pic_url  VARCHAR(500)&#xa;&#xa;followers_count  BIGINT DEFAULT 0  -- DENORMALIZED&#xa;following_count  BIGINT DEFAULT 0  -- DENORMALIZED&#xa;posts_count      BIGINT DEFAULT 0  -- DENORMALIZED&#xa;&#xa;created_at       TIMESTAMPTZ&#xa;updated_at       TIMESTAMPTZ" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="90" y="235" width="340" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Followers Table -->
+        <mxCell id="followers-table" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="480" y="185" width="400" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="followers-title" value="👥 followers" style="text;html=1;strokeColor=none;fillColor=#1976d2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="490" y="195" width="380" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="followers-fields" value="follower_id   UUID  -- who follows&#xa;followee_id   UUID  -- who is followed&#xa;status        ENUM('pending','accepted')&#xa;created_at    TIMESTAMPTZ&#xa;&#xa;PRIMARY KEY (follower_id, followee_id)&#xa;INDEX ON followee_id  -- reverse lookup&#xa;&#xa;WHY THIS INDEX?&#xa;  When Alice posts, we need:&#xa;  SELECT follower_id WHERE followee_id='alice'&#xa;  → finds all her followers instantly&#xa;  Without index = full table scan (slow!)&#xa;&#xa;CONSTRAINT UNIQUE (follower_id, followee_id)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="500" y="235" width="360" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Comments Table -->
+        <mxCell id="comments-table" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="70" y="405" width="810" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="comments-title" value="💬 comments (Nested Threads)" style="text;html=1;strokeColor=none;fillColor=#1976d2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="80" y="415" width="790" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="comments-fields" value="comment_id          UUID PRIMARY KEY&#xa;post_id             UUID INDEXED&#xa;user_id             UUID&#xa;parent_comment_id   UUID NULL  -- NULL = top-level; UUID = reply to another comment&#xa;content             TEXT  -- max 2000 chars&#xa;likes_count         BIGINT DEFAULT 0  -- DENORMALIZED (background job syncs from like DB)&#xa;reply_count         BIGINT DEFAULT 0  -- DENORMALIZED for 'Show 5 replies' UI&#xa;created_at          TIMESTAMPTZ&#xa;is_deleted          BOOLEAN DEFAULT false  -- soft delete&#xa;&#xa;INDEX ON (post_id, parent_comment_id, created_at)  -- efficient nested query&#xa;&#xa;NESTED COMMENTS QUERY:&#xa;  SELECT * FROM comments WHERE post_id='123' AND parent_comment_id IS NULL ORDER BY created_at;  -- top-level&#xa;  SELECT * FROM comments WHERE parent_comment_id='comment_456' ORDER BY created_at;            -- replies" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="90" y="455" width="770" height="140" as="geometry" />
+        </mxCell>
+
+        <!-- Cassandra Section -->
+        <mxCell id="cassandra-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="950" y="120" width="900" height="500" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cassandra-header" value="🗄️ CASSANDRA — Posts, Likes (High Write Volume, No JOINs)" style="text;html=1;strokeColor=none;fillColor=#7b1fa2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="960" y="130" width="880" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Posts Table -->
+        <mxCell id="posts-table" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8bbd0;strokeColor=#c2185b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="970" y="185" width="860" height="240" as="geometry" />
+        </mxCell>
+
+        <mxCell id="posts-title" value="📝 posts" style="text;html=1;strokeColor=none;fillColor=#c2185b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="980" y="195" width="840" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="posts-fields" value="PRIMARY KEY: (user_id, created_at DESC, post_id)&#xa;              ↑ partition   ↑ clustering (newest first)&#xa;&#xa;post_id         uuid&#xa;content         text  -- max 5000 chars&#xa;media_urls      list&lt;text&gt;  -- S3 URLs ['s3://bucket/img1.jpg', 's3://bucket/vid1.mp4']&#xa;visibility      text  -- 'public', 'friends', 'private'&#xa;likes_count     bigint  -- DENORMALIZED (background job syncs from like DB every 5 min)&#xa;comments_count  bigint  -- DENORMALIZED&#xa;hashtags        set&lt;text&gt;  -- ['#travel', '#food']&#xa;is_deleted      boolean DEFAULT false  -- soft delete&#xa;created_at      timestamp&#xa;&#xa;WHY THIS PRIMARY KEY?&#xa;  • Partition by user_id = all posts by one user live together (efficient)&#xa;  • Clustering by created_at DESC = newest posts first (Instagram profile timeline)&#xa;  • Queries: 'SELECT * FROM posts WHERE user_id='alice' ORDER BY created_at DESC LIMIT 100' → instant!&#xa;&#xa;WHY CASSANDRA?&#xa;  • 100M posts/day = 1.2K writes/sec → Cassandra excels at high write throughput&#xa;  • No JOINs needed (denormalized counts, media URLs as list)&#xa;  • Linear scalability: add nodes → spread partitions → more write capacity" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="990" y="235" width="820" height="180" as="geometry" />
+        </mxCell>
+
+        <!-- Likes Table -->
+        <mxCell id="likes-table" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8bbd0;strokeColor=#c2185b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="970" y="445" width="860" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="likes-title" value="❤️ likes" style="text;html=1;strokeColor=none;fillColor=#c2185b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="980" y="455" width="840" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="likes-fields" value="PRIMARY KEY: (post_id, user_id)  -- enforces uniqueness (user can like post once)&#xa;&#xa;reaction_type  text  -- 'like', 'love', 'haha', 'wow', 'sad', 'angry' (Facebook reactions)&#xa;created_at     timestamp&#xa;&#xa;WHY CASSANDRA FOR LIKES?&#xa;  • Viral post = 50,000 likes in 1 minute → massive write spike&#xa;  • PostgreSQL row locking would queue all writes → slow&#xa;  • Cassandra partitions by post_id → distributed writes across cluster → fast&#xa;  • Composite PK (post_id, user_id) prevents duplicate likes (built-in idempotency)&#xa;&#xa;LIKE COUNT SYNCING:&#xa;  • Redis INCR likes_count:{post_id} on every like (instant, no lock)&#xa;  • Background job every 5 min: COUNT(*) FROM likes WHERE post_id='X' → sync to posts.likes_count&#xa;  • Trade-off: Counter may lag 5 min, but prevents write hotspot on single row" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="990" y="495" width="820" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Section -->
+        <mxCell id="redis-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="50" y="650" width="1800" height="320" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-header" value="⚡ REDIS — Feed Cache, Counters, Idempotency Keys (In-Memory, &lt;10ms Reads)" style="text;html=1;strokeColor=none;fillColor=#f57f17;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="60" y="660" width="1780" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Feed Cache Pattern -->
+        <mxCell id="redis-feed" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="70" y="715" width="540" height="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-feed-title" value="📰 Feed Cache (LIST)" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="80" y="725" width="520" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-feed-text" value="Key: feed:{user_id}&#xa;Type: LIST&#xa;Value: [post_id_123, post_id_122, post_id_121, ...]&#xa;&#xa;Operations:&#xa;  • LPUSH feed:bob {post_id}     -- prepend new post&#xa;  • LTRIM feed:bob 0 999         -- keep latest 1000&#xa;  • LRANGE feed:bob 0 19         -- read first 20&#xa;&#xa;Example:&#xa;  feed:bob = ['post_456', 'post_455', 'post_454', ...]&#xa;  ↑ Latest post at index 0&#xa;&#xa;WHY LIST NOT SORTED SET?&#xa;  • Sorted set needs score (timestamp) → 16 bytes overhead per entry&#xa;  • List is simple append/prepend → 8 bytes overhead&#xa;  • At 500M users × 1K posts avg = 50GB saved memory&#xa;  • List LRANGE is &lt;1ms for 20 entries&#xa;&#xa;TTL: None (ephemeral, safe to lose — rebuild from DB)&#xa;Memory: ~50 bytes × 500M users × 1000 posts = 25 GB" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="90" y="765" width="500" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- Counter Cache Pattern -->
+        <mxCell id="redis-counters" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="640" y="715" width="540" height="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-counters-title" value="🔢 Counters (STRING)" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="650" y="725" width="520" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-counters-text" value="Keys:&#xa;  likes_count:{post_id}       → STRING (integer)&#xa;  comments_count:{post_id}    → STRING (integer)&#xa;  followers_count:{user_id}   → STRING (integer)&#xa;&#xa;Operations:&#xa;  • INCR likes_count:post_123      -- atomic increment&#xa;  • DECR likes_count:post_123      -- atomic decrement&#xa;  • MGET likes_count:post_123      -- batch read 20 posts&#xa;        likes_count:post_124&#xa;        ...&#xa;&#xa;Example:&#xa;  likes_count:post_123 = '10234'&#xa;  INCR → '10235' (atomic, no race condition)&#xa;&#xa;WHY REDIS INCR NOT DATABASE UPDATE?&#xa;  • Viral post = 50K likes/min&#xa;  • DB row update needs lock → queue → slow&#xa;  • Redis INCR is lock-free, 100K ops/sec per key&#xa;  • Background job syncs to DB every 5 min (source of truth)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="660" y="765" width="500" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- Idempotency Pattern -->
+        <mxCell id="redis-idempotency" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="715" width="620" height="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-idempotency-title" value="🔐 Idempotency Keys (STRING)" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1220" y="725" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-idempotency-text" value="Key: like:{user_id}:{post_id}&#xa;Type: STRING&#xa;Value: '1' (exists = already liked)&#xa;TTL: 24 hours&#xa;&#xa;Operations:&#xa;  • SETNX like:bob:post_123 '1' EX 86400&#xa;    → If returns 1: first like, proceed&#xa;    → If returns 0: already liked, ignore&#xa;&#xa;WHY THIS PATTERN?&#xa;  • User double-clicks like button (network lag)&#xa;  • Client sends 2 identical requests&#xa;  • First SETNX succeeds → like recorded&#xa;  • Second SETNX fails → duplicate ignored&#xa;  • No duplicate likes in database!&#xa;&#xa;Example Flow:&#xa;  1. Bob clicks like → SETNX like:bob:post_123 → 1 (success)&#xa;  2. INSERT INTO likes (post_id, user_id) VALUES (...)&#xa;  3. Bob clicks again (accident) → SETNX → 0 (key exists)&#xa;  4. Return 200 OK (already liked, no DB write)&#xa;&#xa;TTL = 24hr: Old keys expire, saves memory" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=13;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1230" y="765" width="580" height="170" as="geometry" />
+        </mxCell>
+
+        <!-- Denormalization Strategy Box -->
+        <mxCell id="denorm-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1000" width="880" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="denorm-title" value="📈 DENORMALIZATION STRATEGY — Why Store Counts in Multiple Places?" style="text;html=1;strokeColor=none;fillColor=#01579b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="60" y="1010" width="860" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="denorm-text" value="Problem: COUNT(*) is slow at scale&#xa;  SELECT COUNT(*) FROM likes WHERE post_id='123';  ← scans entire partition, 50ms+ on viral post&#xa;&#xa;Solution: Store counters in 3 places (trade consistency for speed):&#xa;&#xa;1. Redis (real-time, &lt;1ms)&#xa;   • likes_count:post_123 → INCR on every like&#xa;   • Read by Feed Service when displaying posts&#xa;   • May be slightly off (e.g., 10,234 vs true 10,241)&#xa;&#xa;2. Cassandra posts.likes_count (batch-synced, eventual consistency)&#xa;   • Background job every 5 min: COUNT(*) from likes table → UPDATE posts&#xa;   • Used when rebuilding Redis cache after crash&#xa;&#xa;3. PostgreSQL users.followers_count (batch-synced)&#xa;   • Shown on user profile page&#xa;   • Background job hourly: COUNT(*) from followers → UPDATE users&#xa;&#xa;Trade-off: Counter may lag 5 min, but system handles 100K writes/sec without slowdown&#xa;Perfect for social apps (lag acceptable); NOT for banking (balance must be exact)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1050" width="840" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Database Choice Rationale -->
+        <mxCell id="choice-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="970" y="1000" width="880" height="180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="choice-title" value="🤔 WHY 3 DIFFERENT DATABASES?" style="text;html=1;strokeColor=none;fillColor=#7b1fa2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="980" y="1010" width="860" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="choice-text" value="PostgreSQL (Users, Followers, Comments):&#xa;  ✅ ACID transactions (follow/unfollow must be atomic)&#xa;  ✅ Relational integrity (foreign keys, JOIN on user profiles)&#xa;  ✅ Complex queries (nested comments, friend-of-friend recommendations)&#xa;  ❌ Slow at high write volume (row-level locking)&#xa;&#xa;Cassandra (Posts, Likes):&#xa;  ✅ High write throughput (1.2K posts/sec, 50K likes/min on viral posts)&#xa;  ✅ Partition key distribution (user_id spreads load evenly)&#xa;  ✅ No JOINs needed (denormalized data model)&#xa;  ❌ Eventually consistent (acceptable for social feeds)&#xa;&#xa;Redis (Feed Cache, Counters):&#xa;  ✅ Sub-10ms reads (all data in RAM)&#xa;  ✅ Atomic operations (INCR, LPUSH without race conditions)&#xa;  ✅ Ephemeral data (safe to lose, rebuild from DB)&#xa;  ❌ Not durable (crashes lose data — OK for this use case)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="990" y="1050" width="840" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Memory Calculation -->
+        <mxCell id="memory-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1210" width="1800" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="memory-title" value="💾 MEMORY &amp; STORAGE ESTIMATES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="1220" width="1800" height="20" as="geometry" />
+        </mxCell>
+
+        <mxCell id="memory-line1" value="Redis: 50 bytes/entry × 500M users × 1K posts = 25 GB feed cache | Counters: 100M posts × 50 bytes = 5 GB | Total: ~30 GB" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1245" width="1780" height="15" as="geometry" />
+        </mxCell>
+
+        <mxCell id="memory-line2" value="Cassandra: 100M posts/day × 365 days × 2KB avg = 73 TB/year | Likes: 1B likes × 100 bytes = 100 GB | Total: ~75 TB" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1265" width="1780" height="15" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

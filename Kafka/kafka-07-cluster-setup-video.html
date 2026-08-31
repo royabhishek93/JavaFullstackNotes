@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Cluster Setup — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Cluster Setup — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 22</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:6.67%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🏗️</div>
+  <h1 class="gradient-text">Kafka Cluster Setup — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Cluster Topology</span><span class="badge">Binary Folder Structure</span><span class="badge">Process Roles</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Cluster Topology, Folder Structure, Process Roles, Listeners, Controller Config, Broker Config, advertised.listeners, Cluster ID, Bootstrap Sequence, Leader Election, Topic Creation</p>
+</div>
+<div class="slide" id="s3" data-title="Cluster Topology — What We Are Building">
+<h2>Cluster Topology — What We Are Building</h2>
+<p>We are creating a cluster of four dedicated nodes: two controllers (manage metadata and leader elections) and two brokers (store data and serve producers/consumers). No node does both jobs.</p>
+<div class="dia">              KAFKA CLUSTER
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│   CONTROLLERS (metadata plane)                      │
+│   ┌─────────────────┐   ┌─────────────────┐         │
+│   │  Controller 1   │   │  Controller 2   │         │
+│   │  node.id = 1    │◄──►  node.id = 2    │         │
+│   │  port 9093      │   │  port 9193      │         │
+│   └─────────────────┘   └─────────────────┘         │
+│          ▲                      ▲                   │
+│          │  brokers register    │                   │
+│          │  on startup          │                   │
+│   BROKERS (data plane)          │                   │
+│   ┌─────────────────┐   ┌─────────────────┐         │
+│   │   Broker 1      │   │   Broker 2      │         │
+│   │  node.id = 3    │   │  node.id = 4    │         │
+│   │  port 9092      │   │  port 9192      │         │
+│   └─────────────────┘   └─────────────────┘         │
+│         ▲  ▲                   ▲  ▲                 │
+│         │  │                   │  │                 │
+│      Producer              Consumer                 │
+└─────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s4" data-title="Kafka Binary Folder Structure">
+<h2>Kafka Binary Folder Structure</h2>
+<p>When you download and unzip the Kafka binary (e.g. kafka_4.2.0), you get several folders. The two that matter most for setup are <code>bin</code> (executable scripts) and <code>config</code> (properties files).</p>
+<div class="dia">kafka_4.2.0/
+├── bin/                   ← executable shell scripts (wrappers around Kafka Java API)
+│   ├── kafka-server-start.sh       start a controller or broker node
+│   ├── kafka-storage.sh            generate cluster ID, format node storage
+│   ├── kafka-topics.sh             create / delete / describe topics
+│   ├── kafka-console-producer.sh   publish messages from CLI
+│   ├── kafka-console-consumer.sh   consume messages from CLI
+│   ├── kafka-metadata-quorum.sh    check cluster status
+│   └── ... (many more)
+│
+├── config/                ← .properties config files (default templates)
+│   ├── broker.properties           template for a broker-only node
+│   ├── controller.properties       template for a controller-only node
+│   ├── server.properties           template for a combined broker+controller node
+│   └── consumer.properties         template for consumer settings
+│
+├── libs/                  ← Kafka JAR files and dependencies
+│                            (bin scripts call the code inside here)
+│
+└── logs/                  ← INFO / WARN / ERROR log output
+                             (written when you start any server)</div>
+</div>
+<div class="slide" id="s5" data-title="Process Roles — Three Modes a Node Can Run In">
+<h2>Process Roles — Three Modes a Node Can Run In</h2>
+<p>Every node declares its role using the <code>process.roles</code> property. In production, controllers and brokers are always separated (dedicated roles). A combined node is only useful for quick local experiments.</p>
+<div class="dia">process.roles = controller
+──────────────────────────────────────────────────
+  ┌─────────────────────────────────┐
+  │         CONTROLLER NODE         │
+  │  - manages cluster metadata     │
+  │  - runs leader elections        │
+  │  - no data storage              │
+  │  - NOT reachable by producers   │
+  └─────────────────────────────────┘
+
+process.roles = broker
+──────────────────────────────────────────────────
+  ┌─────────────────────────────────┐
+  │           BROKER NODE           │
+  │  - stores topic partitions      │
+  │  - serves producers/consumers   │
+  │  - no cluster metadata logic    │
+  └─────────────────────────────────┘
+
+process.roles = controller,broker   ← combined (dev/test only)
+──────────────────────────────────────────────────
+  ┌─────────────────────────────────┐
+  │       COMBINED NODE             │
+  │  - does both jobs above         │
+  │  - NOT recommended in prod      │
+  └─────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s6" data-title="Listener — What It Is">
+<h2>Listener — What It Is</h2>
+<p>A listener is a TCP socket that the node opens to accept connections. You give each listener a logical name (a label). The same node can open many ports; each port gets its own name. These names matter because other config properties reference them by name.</p>
+<div class="dia">Node with ONE listener:
+──────────────────────────────────────────────────────────
+  listeners = CONTROLLER://0.0.0.0:9093
+
+              CONTROLLER NODE
+              ┌────────────────────────────────────┐
+              │                                    │
+              │  new ServerSocket(9093)             │
+              │         │                          │
+              │         ▼  waiting for TCP connect │
+              │   ┌─────────────┐                  │
+              │   │  port 9093  │  label: CONTROLLER│
+              │   └─────────────┘                  │
+              └────────────────────────────────────┘
+
+Node with TWO listeners:
+──────────────────────────────────────────────────────────
+  listeners = BROKER://0.0.0.0:9092,INTERNAL://0.0.0.0:9098
+
+              BROKER NODE
+              ┌───────────────────────────────────────┐
+              │                                       │
+              │   ┌────────────┐  label: BROKER       │
+              │   │  port 9092 │  ← for producers     │
+              │   └────────────┘    and consumers     │
+              │                                       │
+              │   ┌────────────┐  label: INTERNAL     │
+              │   │  port 9098 │  ← for broker-to-    │
+              │   └────────────┘    broker sync       │
+              └───────────────────────────────────────┘
+
+  inter.broker.listener.name = INTERNAL   ← use this port for broker sync</div>
+</div>
+<div class="slide" id="s7" data-title="Controller Configuration — Key Properties">
+<h2>Controller Configuration — Key Properties</h2>
+<p>Each controller node gets its own <code>.properties</code> file placed inside the <code>config/</code> folder. Controller 1 and Controller 2 are nearly identical — only <code>node.id</code> and the port number differ.</p>
+<div class="dia">controller1.properties                controller2.properties
+─────────────────────────────         ─────────────────────────────
+process.roles=controller              process.roles=controller
+node.id=1                             node.id=2
+                                      ▲
+                                      └─ unique in the whole cluster
+
+listeners=CONTROLLER://               listeners=CONTROLLER://
+  0.0.0.0:9093                          0.0.0.0:9193
+         ▲                                       ▲
+         └── TCP socket opened here              └── different port
+
+controller.listener.names=CONTROLLER  controller.listener.names=CONTROLLER
+         ▲                                       ▲
+         └─ "use the CONTROLLER listener         └─ same name must match
+            for controller-to-controller            across both nodes
+            communication"
+
+controller.quorum.voters=             controller.quorum.voters=
+  1@localhost:9093,                     1@localhost:9093,
+  2@localhost:9193                      2@localhost:9193
+         ▲                                       ▲
+         └─ static list of ALL                   └─ both controllers keep
+            controllers in the cluster              the same full list
+
+listener.security.protocol.map=       listener.security.protocol.map=
+  CONTROLLER:PLAINTEXT                  CONTROLLER:PLAINTEXT
+         ▲                                       ▲
+         └─ no TLS/auth (dev mode)               └─ must match each other
+
+log.dirs=/tmp/controller1-logs        log.dirs=/tmp/controller2-logs
+num.partitions=3                      num.partitions=3
+default.replication.factor=2          default.replication.factor=2
+         ▲
+         └─ controller decides partition layout and replication
+            using these defaults when no value is given at topic creation</div>
+</div>
+<div class="slide" id="s8" data-title="Broker Configuration — Key Properties">
+<h2>Broker Configuration — Key Properties</h2>
+<p>Each broker also gets its own <code>.properties</code> file in <code>config/</code>. Brokers carry some extra properties that controllers do not have: <code>advertised.listeners</code>, <code>inter.broker.listener.name</code>, and consumer offset settings.</p>
+<div class="dia">broker1.properties
+──────────────────────────────────────────────────────────────────
+process.roles=broker
+node.id=3                           ← IDs 1 and 2 are taken by controllers
+
+listeners=BROKER://0.0.0.0:9092     ← port this broker opens
+
+advertised.listeners=               ← "tell the controller to store
+  BROKER://localhost:9092              THIS address in cluster metadata
+                                       so producers/consumers can reach me"
+
+inter.broker.listener.name=BROKER   ← brokers sync with each other
+                                       on this same port (can be separate)
+
+controller.listener.names=CONTROLLER ← when talking to any controller,
+                                       use the listener named CONTROLLER
+                                       (must match the name used in
+                                        controller.properties)
+
+listener.security.protocol.map=
+  BROKER:PLAINTEXT,
+  CONTROLLER:PLAINTEXT              ← both channels use no encryption
+
+log.dirs=/tmp/broker1-logs
+log.retention.hours=168             ← keep data for 7 days
+log.segment.bytes=1073741824        ← max 1 GB per segment file
+
+offsets.topic.replication.factor=2  ← consumer offset topic replication
+                                       (broker manages consumer offsets,
+                                        NOT the controller)</div>
+</div>
+<div class="slide" id="s9" data-title="advertised.listeners — How Producers Find the Right Broker">
+<h2>advertised.listeners — How Producers Find the Right Broker</h2>
+<p>When a producer wants to publish to a topic, it does not know which broker holds the leader partition. This diagram shows the full journey that <code>advertised.listeners</code> enables.</p>
+<div class="dia">STARTUP (broker registers itself)
+──────────────────────────────────────────────────────────────
+  Broker 1 starts
+       │
+       ▼
+  Sends its advertised.listeners (localhost:9092) to Controller
+       │
+       ▼
+  Controller stores it in Cluster Metadata:
+  ┌───────────────────────────────────────────────────────┐
+  │  Cluster Metadata                                     │
+  │  topic: order-events                                  │
+  │    partition-0:  leader=Broker1  address=localhost:9092│
+  │    partition-1:  leader=Broker2  address=localhost:9192│
+  └───────────────────────────────────────────────────────┘
+
+PUBLISH TIME (producer connects)
+──────────────────────────────────────────────────────────────
+  Producer
+    │  1. connect to any broker (bootstrap)
+    ▼
+  Broker 1
+    │  2. fetch metadata from active controller
+    ▼
+  Controller
+    │  3. return cluster metadata
+    ▼
+  Broker 1 → returns metadata to Producer
+    │
+    ▼
+  Producer now knows:  partition-0 leader = Broker 1 @ localhost:9092
+    │  4. send records directly to Broker 1:9092
+    ▼
+  Broker 1   ✓</div>
+</div>
+<div class="slide" id="s10" data-title="Cluster Bootstrap — Generate ID and Format Nodes">
+<h2>Cluster Bootstrap — Generate ID and Format Nodes</h2>
+<p>Before starting any server you must tie all four nodes to the same cluster. This is a two-step one-time operation per cluster: generate one UUID, then stamp every node with it.</p>
+<div class="dia">STEP 1 — Generate cluster ID (run once)
+──────────────────────────────────────────────────────────────
+  $ bin/kafka-storage.sh random-uuid
+  → xAb3Kz9pQmNrLuVwYtCiDe   (example UUID)
+
+STEP 2 — Format each node's storage (run once per node)
+──────────────────────────────────────────────────────────────
+  $ bin/kafka-storage.sh format \
+      -t xAb3Kz9pQmNrLuVwYtCiDe \
+      -c config/controller1.properties
+
+  Repeat for controller2, broker1, broker2
+
+RESULT — meta.properties written to each node's log.dirs
+──────────────────────────────────────────────────────────────
+  /tmp/controller1-logs/meta.properties
+    cluster.id=xAb3Kz9pQmNrLuVwYtCiDe
+    node.id=1
+
+  /tmp/controller2-logs/meta.properties
+    cluster.id=xAb3Kz9pQmNrLuVwYtCiDe
+    node.id=2
+
+  /tmp/broker1-logs/meta.properties
+    cluster.id=xAb3Kz9pQmNrLuVwYtCiDe
+    node.id=3
+
+  /tmp/broker2-logs/meta.properties
+    cluster.id=xAb3Kz9pQmNrLuVwYtCiDe
+    node.id=4
+                    ▲
+                    └─ all four nodes share the same cluster.id
+                       → they form ONE cluster</div>
+</div>
+<div class="slide" id="s11" data-title="Startup Order — Controllers First, Then Brokers">
+<h2>Startup Order — Controllers First, Then Brokers</h2>
+<p>Brokers must find an active controller the moment they start (to load cluster metadata). If you start a broker before any controller is up, the broker has nowhere to register and will fail.</p>
+<div class="dia">CORRECT startup order
+──────────────────────────────────────────────────────────────
+
+  Terminal 1                      Terminal 2
+  ─────────────────────────────   ─────────────────────────────
+  bin/kafka-server-start.sh       bin/kafka-server-start.sh
+    config/controller1.properties   config/controller2.properties
+  [controller1 STARTED]           [controller2 STARTED]
+        │                               │
+        └───────────┬───────────────────┘
+                    │  quorum forms, leader elected
+                    ▼
+  Terminal 3                      Terminal 4
+  ─────────────────────────────   ─────────────────────────────
+  bin/kafka-server-start.sh       bin/kafka-server-start.sh
+    config/broker1.properties       config/broker2.properties
+  [broker1 STARTED, node.id=3]    [broker2 STARTED, node.id=4]
+
+
+WRONG startup order   ✗
+──────────────────────────────────────────────────────────────
+  Start broker1 first
+       │
+       ▼  tries to contact controller → no controller up → ERROR</div>
+</div>
+<div class="slide" id="s12" data-title="Controller Leader Election">
+<h2>Controller Leader Election</h2>
+<p>When multiple controllers start, they run a Raft-based quorum election to choose one leader. The leader is the <strong>active controller</strong> — the single source of truth for cluster metadata. You can inspect who won by checking the quorum-state file.</p>
+<div class="dia">QUORUM ELECTION AFTER STARTUP
+──────────────────────────────────────────────────────────────
+  Controller 1          Controller 2
+  ┌──────────────┐       ┌──────────────┐
+  │  starts up   │◄─────►│  starts up   │
+  │              │       │              │
+  │  I want to   │       │  I want to   │
+  │  be leader!  │       │  be leader!  │
+  └──────┬───────┘       └──────┬───────┘
+         │   Raft vote           │
+         └──────────┬────────────┘
+                    ▼
+          Leader = Controller 1 (node.id=1)
+          Follower = Controller 2 (node.id=2)
+
+VERIFY via quorum-state file:
+──────────────────────────────────────────────────────────────
+  /tmp/controller2-logs/
+  └── quorum-state
+        {
+          "leaderId": 1,        ← node.id 1 won the election
+          "epoch": 1
+        }
+
+VERIFY via CLI:
+──────────────────────────────────────────────────────────────
+  $ bin/kafka-metadata-quorum.sh \
+      --bootstrap-server localhost:9092 describe --status
+
+  Output:
+  LeaderId:          1               ← active controller
+  CurrentVoters:     [1, 2]          ← the two controllers
+  CurrentObservers:  [3, 4]          ← the two brokers
+  ClusterId:         xAb3Kz9pQmNrLuVwYtCiDe</div>
+</div>
+<div class="slide" id="s13" data-title="Topic Creation and Partition Distribution">
+<h2>Topic Creation and Partition Distribution</h2>
+<p>Creating a topic requires calling a broker (not the controller directly). The controller then decides which broker holds which partition and which replicas are followers.</p>
+<div class="dia">TOPIC CREATION COMMAND
+──────────────────────────────────────────────────────────────
+  $ bin/kafka-topics.sh \
+      --bootstrap-server localhost:9092 \
+      --create \
+      --topic order-events
+
+  (no --partitions or --replication-factor given →
+   controller uses defaults from config: 3 partitions, RF=2)
+
+RESULT — partition layout decided by controller
+──────────────────────────────────────────────────────────────
+  Topic: order-events
+  ┌────────────────────────────────────────────────────┐
+  │  Partition 0   Leader=4   Replicas=[4,3]  ISR=[4,3]│
+  │  Partition 1   Leader=3   Replicas=[3,4]  ISR=[3,4]│
+  │  Partition 2   Leader=4   Replicas=[4,3]  ISR=[4,3]│
+  └────────────────────────────────────────────────────┘
+              │                    │
+              ▼                    ▼
+        node.id=4             node.id=3
+        Broker 2              Broker 1
+
+  Replication factor = 2 → every partition stored on 2 brokers
+  ISR = In-Sync Replicas (followers caught up with leader)
+
+DESCRIBE command to verify:
+──────────────────────────────────────────────────────────────
+  $ bin/kafka-topics.sh \
+      --bootstrap-server localhost:9092 \
+      --describe \
+      --topic order-events</div>
+</div>
+<div class="slide" id="s14" data-title="CLI Testing — Producer and Consumer">
+<h2>CLI Testing — Producer and Consumer</h2>
+<p>Once the cluster is running you can test it without writing any Java application by using the console scripts that ship with Kafka.</p>
+<div class="dia">PRODUCER (publish messages from terminal)
+──────────────────────────────────────────────────────────────
+  $ bin/kafka-console-producer.sh \
+      --bootstrap-server localhost:9092 \
+      --topic order-events
+
+  &gt; hello
+  &gt; this is a test message
+  &gt; how are you
+                    ▲
+                    type a line and hit Enter to publish one event
+
+CONSUMER (read messages in another terminal)
+──────────────────────────────────────────────────────────────
+  $ bin/kafka-console-consumer.sh \
+      --bootstrap-server localhost:9092 \
+      --topic order-events \
+      --from-beginning
+
+  hello                  ← reads all events from the start
+  this is a test message
+  how are you
+
+FLOW
+──────────────────────────────────────────────────────────────
+  Producer terminal           Kafka Cluster           Consumer terminal
+  ┌──────────────┐   publish  ┌──────────────┐  read  ┌──────────────┐
+  │ console-     │──────────► │  order-events│──────► │ console-     │
+  │ producer.sh  │            │  (3 partitions│        │ consumer.sh  │
+  └──────────────┘            └──────────────┘        └──────────────┘
+                                      ▲
+                              note: producer connects to any broker,
+                              metadata lookup routes to correct leader</div>
+</div>
+<div class="slide" id="s15" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                         What it does                              Key rule
+──────────────────────────────  ────────────────────────────────────────  ────────────────────────────────────
+process.roles                   Declares node type (controller/broker)    Set once; no overlap in production
+node.id                         Unique integer for each node in cluster   Must be unique across ALL nodes
+listeners                       TCP sockets this node opens               Each port gets a logical label/name
+controller.listener.names       Which listener to use for ctrl↔ctrl talk  Label must match across all controllers
+advertised.listeners            Address broker advertises to controller   Stored in cluster metadata for clients
+inter.broker.listener.name      Which listener brokers use to sync        Can be same or different from client port
+controller.quorum.voters        Static list of all controller nodes       format: id@host:port, comma-separated
+listener.security.protocol.map  Encryption mode per listener label        PLAINTEXT (dev) or SSL (production)
+log.dirs                        Where node persists its data files        Each node must have its own directory
+kafka-storage.sh random-uuid    Generates the cluster ID                  Run once per cluster lifetime
+kafka-storage.sh format         Stamps a node with the cluster ID         Run for every node before first start
+meta.properties                 Written to log.dirs after format step     Holds cluster.id + node.id
+kafka-server-start.sh           Starts a node (controller or broker)      Start controllers before brokers
+kafka-metadata-quorum.sh        Shows leader, voters, observers           Voters = controllers, Observers = brokers
+kafka-topics.sh --create        Creates a topic via a broker              Cannot create directly on controller
+num.partitions                  Default partition count for new topics     Set in controller config
+default.replication.factor      Default replica count for new topics       Set in controller config
+offsets.topic.replication.factor Replication for consumer offset topic    Set in broker config, NOT controller
+log.retention.hours             How long segments are kept (default 7d)   Deletes whole segments, not individual events
+log.segment.bytes               Max size of one log segment file          Default cap is 1 GB</div>
+</div>
+<div class="slide" id="s16" data-title="Architecture — Provisioning the Notification System's Cluster">
+<h2>Architecture — Standing Up the 3-Broker Cluster</h2>
+<p>"Here's how I'd actually stand up the cluster the Notification System runs on — 3 nodes, each acting as both controller voter and broker, KRaft mode."</p>
+<div class="dia">  Node-1 (process.roles=controller,broker, node.id=1)
+  Node-2 (process.roles=controller,broker, node.id=2)
+  Node-3 (process.roles=controller,broker, node.id=3)
+
+  controller.quorum.voters=1@node1:9093,2@node2:9093,3@node3:9093
+
+  Provisioning order:
+    1. kafka-storage.sh random-uuid           → one shared cluster ID
+    2. kafka-storage.sh format (on EACH node) → stamps meta.properties
+    3. Start controllers/brokers on all 3 nodes (combined role, any order
+       is fine since each node IS both)
+    4. kafka-topics.sh --create notifications.critical.sms --partitions 100
+       --replication-factor 3</div>
+<p><strong>Scenario-first:</strong> "Running combined controller+broker roles on all 3 nodes is the pragmatic small-cluster choice — dedicated controller-only nodes matter once you're running dozens of brokers, where controller and data-plane resource contention becomes real."</p>
+</div>
+<div class="slide" id="s17" data-title="ER + Sequence — Bootstrap and Topic Creation">
+<h2>ER Relationship + Sequence — From Empty Disk to Live Topic</h2>
+<div class="dia">ER: Cluster (1) ──has ID from──> kafka-storage.sh random-uuid
+    Node (N) ──formatted with──> meta.properties (cluster.id, node.id)
+    Node ──votes in──> controller.quorum.voters (if process.roles includes controller)
+
+SEQUENCE:
+Admin       Node-1        Node-2        Node-3        ActiveController
+  │ storage format (all 3, same cluster ID)               │
+  │──────────►│─────────────►│─────────────►│              │
+  │ start all 3 nodes                                       │
+  │───────────────────────────────────────────────────────►│ quorum forms,
+  │                                                          │ Node-1 elected active
+  │ kafka-topics.sh --create notifications.critical.sms     │
+  │──────────────────────────────────────────────────────►│ assigns partition
+  │                                                          │ leaders across all 3</div>
+<p><strong>Scenario-first:</strong> "Notice topic creation always routes through the active controller, even though the admin CLI can technically contact any broker — that broker just forwards the request. This is the same pattern as everything else in KRaft: brokers serve data, only the controller decides metadata."</p>
+</div>
+<div class="slide" id="s18" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why must every node run kafka-storage.sh format with the SAME cluster ID?
+A: The cluster ID is how nodes recognize they belong together — mismatched
+   IDs would mean nodes reject each other's Raft messages, effectively
+   forming separate, disconnected clusters.
+
+Q: Why separate advertised.listeners from the internal listener a broker binds to?
+A: The bind address (0.0.0.0 internally, say) is often different from what
+   external clients or other brokers should actually connect to (a DNS name
+   or public IP) — advertised.listeners is the "here's how to reach me" address
+   published in cluster metadata.
+
+Q: Why start controllers before brokers in a dedicated-role cluster?
+A: Brokers need a quorum to register with and fetch initial metadata from —
+   starting them before any controller exists just means they retry/fail
+   until one comes up.</div>
+</div>
+<div class="slide" id="s19" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision              Choice                  Alternative            Why ours                          When to flip
+──────────────────────  ──────────────────────  ─────────────────────  ────────────────────────────────  ─────────────────────
+Node roles               Combined (controller+   Dedicated controller-  Simpler ops for a small cluster    Dozens of brokers,
+                          broker) on all 3 nodes  only + broker-only     (3 nodes total)                    controller resource
+                                                  nodes                                                     contention becomes real
+Replication factor       3                        2                     Tolerates 1 broker loss without    Non-critical/dev topics
+                                                                          blocking writes                   where cost matters more</div>
+</div>
+<div class="slide" id="s20" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "You ran kafka-storage.sh format on Node-1 and Node-2 with the same
+  cluster ID, but Node-3 was formatted separately months earlier with a
+  different random UUID by mistake. What happens when all 3 start together?"
+  Answer: "Node-3 will refuse to join the quorum — its stamped cluster ID
+  in meta.properties doesn't match what Node-1/Node-2 are advertising, so
+  from Node-3's perspective it thinks it's a member of a DIFFERENT cluster.
+  You'd see it fail to form quorum or reject Raft messages, and the fix is
+  re-running format on Node-3 with the correct shared cluster ID (which
+  wipes its local data — a real operational gotcha if it already held data)."
+
+Trap 2 — "advertised.listeners on Node-2 points to an internal-only hostname
+  that external producers can't resolve. What symptom would you actually see,
+  and where would you look first?"
+  Answer: "Producers can successfully fetch initial metadata from ANY broker,
+  but when the metadata says 'partition 7's leader is at that unresolvable
+  hostname,' the actual produce call to Node-2 times out or fails DNS
+  resolution — intermittent, partition-specific failures rather than a
+  clean, obvious full outage. I'd check advertised.listeners on the specific
+  broker leading the failing partitions first, not assume it's a network-wide issue."</div>
+</div>
+<div class="slide" id="s21" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why 3 nodes with combined controller+broker roles: matches the actual
+  scale of the Notification System's cluster without unnecessary node count.
+- Why a shared cluster ID via kafka-storage.sh: gives every node a single,
+  unambiguous identity to agree on before any Raft consensus can happen.
+- Why start controllers before brokers (conceptually, even in combined-role
+  clusters): brokers need a quorum to register against from their first moment up.
+- Why RF=3 across all critical topics: tolerates one broker failure without
+  blocking writes or losing acknowledged data.</div>
+</div>
+<div class="slide" id="s22" data-title="Top 2 Technologies — Cluster Topology Choice">
+<h2>Top 2 Technologies — Combined vs Dedicated Node Roles</h2>
+<div class="dia">Combined Controller+Broker Nodes  vs  Dedicated Controller-Only Nodes
+
+Why pick Combined (our choice at this scale): fewer total machines to
+  provision and patch, adequate for a 3-node cluster where controller
+  workload is genuinely light.
+Why pick Dedicated: at large broker counts, controller metadata operations
+  (topic creation, leader elections) can contend with data-plane I/O on
+  the same node — isolating them protects both workloads' latency.
+
+Example 1 (Combined): Notification System's 3-node cluster — controller
+  work is a tiny fraction of total load, no reason to isolate it.
+Example 2 (Dedicated): A 50-broker cluster at a large e-commerce platform
+  running thousands of topics — controller-only nodes are isolated so a
+  burst of topic creation activity never competes with live traffic I/O.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 22;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Cluster Setup — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

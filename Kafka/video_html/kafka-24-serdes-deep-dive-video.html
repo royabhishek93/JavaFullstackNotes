@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Streams SerDes Deep Dive — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Streams SerDes Deep Dive — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 11</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:9.09%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">⏱️</div>
+  <h1 class="gradient-text">Kafka Streams SerDes Deep Dive — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">SerDes</span><span class="badge">5 Places SerDes Is Needed</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: SerDes, Serializer, Deserializer, built-in SerDes, custom SerDes, default SerDes, per-operation SerDes, deserialization error handler, serialization error handler, DeserializationExceptionHandler</p>
+</div>
+<div class="slide" id="s3" data-title="What Is SerDes?">
+<h2>What Is SerDes?</h2>
+<p>SerDes is short for <strong>Ser</strong>ializer + <strong>De</strong>serializer — two things packaged into one object that handles both converting Java objects into raw bytes (for writing) and converting raw bytes back into Java objects (for reading).</p>
+<div class="dia">Kafka topics and RocksDB always store data as raw bytes.
+Your Java code works with typed objects: String, Long, Order, etc.
+SerDes bridges the gap in both directions.
+
+  Java object  ──[ Serializer ]──►  bytes      (write to Kafka / RocksDB)
+  bytes        ──[ Deserializer ]──► Java object (read from Kafka / RocksDB)
+
+  Serdes = Serializer + Deserializer bundled together:
+
+  Serdes.String() contains:
+  ┌──────────────────────────────────────────────────┐
+  │  StringSerializer    (String ──► bytes)          │
+  │  StringDeserializer  (bytes  ──► String)         │
+  └──────────────────────────────────────────────────┘
+
+  When reading  → framework calls Deserializer internally
+  When writing  → framework calls Serializer internally</div>
+</div>
+<div class="slide" id="s4" data-title="Five Places SerDes Is Needed in a Topology">
+<h2>Five Places SerDes Is Needed in a Topology</h2>
+<p>Every time data crosses the boundary between a Java object and raw bytes, SerDes is required. A typical topology has five such boundaries.</p>
+<div class="dia">┌──────────────────────────────────────────────────────────────────────┐
+│                           TOPOLOGY                                   │
+│                                                                      │
+│  [1] SOURCE                                                          │
+│  Read from Kafka topic                                               │
+│  bytes ──► Java object          needs DESERIALIZER                  │
+│         │                                                            │
+│         ▼                                                            │
+│  PROCESSOR PIPELINE                                                  │
+│  (filter, map, groupBy, join, count …)                               │
+│         │                                                            │
+│         ├──────────────────────────────────────────────────────┐    │
+│         │                                                       │    │
+│         ▼                                                       ▼    │
+│  [4] ROCKSDB WRITE                                   [5] ROCKSDB READ│
+│  Java object ──► bytes                               bytes ──► Java  │
+│  (KTable, count, aggregate)                          (join, lookup)  │
+│  needs SERIALIZER                                    needs DESERIALIZER│
+│         │                                                            │
+│         ▼                                                            │
+│  [3] REPARTITION (if present)                                        │
+│  Write to internal repartition topic                                 │
+│  Java object ──► bytes          needs SERIALIZER                    │
+│         │                                                            │
+│         ▼                                                            │
+│  [2] SINK                                                            │
+│  Write to output Kafka topic                                         │
+│  Java object ──► bytes          needs SERIALIZER                    │
+└──────────────────────────────────────────────────────────────────────┘
+
+Simple rule:
+  Reading  (from topic or RocksDB)  ──► Deserializer
+  Writing  (to topic or RocksDB)    ──► Serializer</div>
+</div>
+<div class="slide" id="s5" data-title="Built-In SerDes">
+<h2>Built-In SerDes</h2>
+<p>Kafka Streams ships with ready-made SerDes for all common Java primitive types — no custom code needed for these.</p>
+<div class="dia">┌──────────────────┬──────────────────────┬──────────────────────────┐
+│  SerDes object   │  Java type           │  Typical use             │
+├──────────────────┼──────────────────────┼──────────────────────────┤
+│ Serdes.String()  │  String              │  keys, names, JSON text  │
+│ Serdes.Long()    │  Long                │  counts, timestamps      │
+│ Serdes.Integer() │  Integer             │  IDs, quantities         │
+│ Serdes.Double()  │  Double              │  prices, scores          │
+│ Serdes.Float()   │  Float               │  measurements            │
+│ Serdes.Short()   │  Short               │  small integers          │
+│ Serdes.Boolean() │  Boolean             │  flags                   │
+│ Serdes.Bytes()   │  byte[]              │  raw bytes pass-through  │
+└──────────────────┴──────────────────────┴──────────────────────────┘
+
+For custom Java objects (Order, Customer, Payment):
+  → use the built-in JSON SerDes already provided by the framework, or
+  → write your own (covered in section 6)</div>
+</div>
+<div class="slide" id="s6" data-title="Default SerDes — Set Once in application.properties">
+<h2>Default SerDes — Set Once in application.properties</h2>
+<p>You can declare a default SerDes in application.properties so you do not have to repeat it on every builder call. This only works well when every step in the topology uses the same key and value type throughout.</p>
+<div class="dia">application.properties:
+  spring.kafka.streams.properties.default.key.serde=
+      org.apache.kafka.common.serialization.Serdes$StringSerde
+  spring.kafka.streams.properties.default.value.serde=
+      org.apache.kafka.common.serialization.Serdes$StringSerde
+
+
+WITHOUT default SerDes — must specify on every call:
+──────────────────────────────────────────────────────────────────
+  builder.stream("orders", Consumed.with(Serdes.String(), Serdes.String()))
+      .to("output", Produced.with(Serdes.String(), Serdes.String()));
+
+  Materialized.as("store")
+      .withKeySerde(Serdes.String())
+      .withValueSerde(Serdes.String());
+
+
+WITH default SerDes — minimal:
+──────────────────────────────────────────────────────────────────
+  builder.stream("orders")
+      .to("output");   ← no SerDes needed, defaults apply
+
+
+WHY default SerDes is rarely useful in practice:
+──────────────────────────────────────────────────────────────────
+  Source:           key=String, value=String  ← default works  ✓
+  After count():    key=String, value=Long    ← default breaks ✗
+
+  The moment your value type changes mid-pipeline (e.g. after a
+  count, aggregate, or map), the default no longer fits.
+  Explicit per-operation SerDes is safer and clearer.</div>
+</div>
+<div class="slide" id="s7" data-title="Per-Operation SerDes — Explicit and Highest Priority">
+<h2>Per-Operation SerDes — Explicit and Highest Priority</h2>
+<p>Providing SerDes directly on each operation overrides any default. This is the recommended approach for production pipelines.</p>
+<div class="dia">KStream (source — reading, so Consumed.with):
+  builder.stream(
+      "order-events",
+      Consumed.with(Serdes.String(), Serdes.String())
+  )
+
+KTable (source + RocksDB — both Consumed and Materialized):
+  builder.table(
+      "order-events",
+      Consumed.with(Serdes.String(), Serdes.String()),
+      Materialized
+          .&lt;String, String, KeyValueStore&lt;Bytes, byte[]&gt;&gt;as("order-store")
+          .withKeySerde(Serdes.String())
+          .withValueSerde(Serdes.String())
+  )
+
+Sink (writing to topic — Produced.with):
+  .to("output-topic", Produced.with(Serdes.String(), Serdes.String()))
+
+
+Priority order (highest wins):
+  ┌──────────────────────────────────────────────────────────────┐
+  │  [1] Per-operation SerDes (explicit on each call) ← HIGHEST  │
+  │  [2] Default SerDes       (application.properties) ← lowest  │
+  └──────────────────────────────────────────────────────────────┘
+
+Always use per-operation SerDes when the key or value type
+changes at any point in the pipeline.</div>
+</div>
+<div class="slide" id="s8" data-title="Custom SerDes — Handling Your Own Java Objects">
+<h2>Custom SerDes — Handling Your Own Java Objects</h2>
+<p>For domain objects like Order or Customer you create three classes: a Serializer, a Deserializer, and a Serdes wrapper that combines them.</p>
+<div class="dia">STEP 1 — Serializer  (Java object ──► bytes)
+──────────────────────────────────────────────────────────────────
+  class JsonSerializer&lt;T&gt; implements Serializer&lt;T&gt; {
+      byte[] serialize(String topic, T data) {
+          return objectMapper.writeValueAsBytes(data);
+      }           ↑
+  }               Jackson converts any object to JSON bytes
+
+
+STEP 2 — Deserializer  (bytes ──► Java object)
+──────────────────────────────────────────────────────────────────
+  class JsonDeserializer&lt;T&gt; implements Deserializer&lt;T&gt; {
+      Class&lt;T&gt; targetClass;   ← must know the target type
+
+      T deserialize(String topic, byte[] data) {
+          return objectMapper.readValue(data, targetClass);
+      }           ↑
+  }               Jackson converts JSON bytes back to typed object
+                  Serializer does NOT need targetClass (it already has
+                  the object); Deserializer DOES (bytes have no type info)
+
+
+STEP 3 — Serdes wrapper  (combines both into one)
+──────────────────────────────────────────────────────────────────
+  class JsonSerde&lt;T&gt; implements Serde&lt;T&gt; {
+      ┌────────────────────────────────────────────┐
+      │  JsonSerializer&lt;T&gt;    ← used when writing  │
+      │  JsonDeserializer&lt;T&gt;  ← used when reading  │
+      └────────────────────────────────────────────┘
+      Serializer&lt;T&gt;   serializer()   { return jsonSerializer;   }
+      Deserializer&lt;T&gt; deserializer() { return jsonDeserializer; }
+  }
+
+
+USAGE — pass the custom Serdes just like a built-in one:
+──────────────────────────────────────────────────────────────────
+  builder.stream(
+      "order-events",
+      Consumed.with(
+          Serdes.String(),              ← key is a plain String
+          new JsonSerde&lt;&gt;(Order.class)  ← value is an Order object
+      )
+  )
+  .to("output", Produced.with(
+      Serdes.String(),
+      new JsonSerde&lt;&gt;(Order.class)
+  ));</div>
+</div>
+<div class="slide" id="s9" data-title="Deserialization Error Handling">
+<h2>Deserialization Error Handling</h2>
+<p>A deserialization error occurs when bytes in a topic cannot be converted to the expected Java type — for example, reading a JSON blob as a Long. Three strategies are available.</p>
+<div class="dia">COMMON CAUSES OF DESERIALIZATION FAILURE
+──────────────────────────────────────────────────────────────────
+  Type mismatch:   topic has JSON string, you read it as Long      ✗
+  Corrupted bytes: garbage bytes, not valid JSON at all            ✗
+  Schema change:   new required field added, old consumer breaks   ✗
+
+
+THREE HANDLERS
+──────────────────────────────────────────────────────────────────
+
+  [1] LogAndFailExceptionHandler  (DEFAULT — nothing to configure)
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Bad record arrives                                          │
+  │  → log the error                                             │
+  │  → throw exception → stream thread dies                      │
+  │  → if all threads die → application shuts down              │
+  └──────────────────────────────────────────────────────────────┘
+  Safest option: nothing is silently lost.
+  application.properties (explicit):
+    default.deserialization.exception.handler=
+        org.apache.kafka.streams.errors.LogAndFailExceptionHandler
+
+
+  [2] LogAndContinueExceptionHandler
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Bad record arrives                                          │
+  │  → log the error                                             │
+  │  → skip the bad record, continue with next  ✓               │
+  │  → bad record is LOST FOREVER               ✗               │
+  └──────────────────────────────────────────────────────────────┘
+  application.properties:
+    default.deserialization.exception.handler=
+        org.apache.kafka.streams.errors.LogAndContinueExceptionHandler
+
+
+  [3] Custom handler  (RECOMMENDED for production)
+  ┌──────────────────────────────────────────────────────────────┐
+  │  class MyHandler implements DeserializationExceptionHandler  │
+  │      Handle(context, record, exception) {                    │
+  │          errorCount++;                                       │
+  │          if (errorCount &gt; MAX_ERRORS)  return FAIL;          │
+  │          else                          return CONTINUE;      │
+  │      }   ↑ or route bad record to a dead-letter topic        │
+  │  }                                                           │
+  └──────────────────────────────────────────────────────────────┘
+  You decide: fail fast, skip, or send bad records elsewhere.
+  application.properties:
+    default.deserialization.exception.handler=
+        com.example.MyHandler</div>
+</div>
+<div class="slide" id="s10" data-title="Serialization Error Handling">
+<h2>Serialization Error Handling</h2>
+<p>A serialization error occurs when a Java object cannot be converted to bytes — for example, an object with a circular reference that Jackson cannot traverse. Two strategies are available.</p>
+<div class="dia">COMMON CAUSES OF SERIALIZATION FAILURE
+──────────────────────────────────────────────────────────────────
+  Type mismatch:      sending Order object but SerDes expects Long ✗
+  Circular reference: A → B → A → B → … (infinite loop in object) ✗
+  Record too large:   object exceeds topic's max.message.bytes     ✗
+
+
+TWO HANDLERS
+──────────────────────────────────────────────────────────────────
+
+  [1] DefaultProductionExceptionHandler  (DEFAULT)
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Serialization fails                                         │
+  │  → always fail                                               │
+  │  → stream thread dies                                        │
+  │  → if all threads die → application shuts down              │
+  └──────────────────────────────────────────────────────────────┘
+  application.properties (explicit):
+    default.production.exception.handler=
+        org.apache.kafka.streams.errors.DefaultProductionExceptionHandler
+
+
+  [2] Custom handler  (RECOMMENDED for production)
+  ┌──────────────────────────────────────────────────────────────┐
+  │  class MyProdHandler implements ProductionExceptionHandler   │
+  │      Handle(producerRecord, exception) {                     │
+  │          if (exception is RecordTooLargeException)           │
+  │              return CONTINUE;  ← skip oversized, keep going  │
+  │          else                                                │
+  │              return FAIL;      ← crash on unexpected errors  │
+  │      }                                                       │
+  │  }                                                           │
+  └──────────────────────────────────────────────────────────────┘
+  Inspect the exception type and decide per case.
+  application.properties:
+    default.production.exception.handler=
+        com.example.MyProdHandler</div>
+</div>
+<div class="slide" id="s11" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                           What it is                              Key point
+────────────────────────────────  ──────────────────────────────────────  ───────────────────────────────────
+SerDes                            Serializer + Deserializer in one object  Read → deserialize; Write → serialize
+Built-in SerDes                   String, Long, Integer, Double, etc.      Covers all Java primitives out of box
+Custom SerDes                     3 classes: Ser + Deser + Serde wrapper   Use JsonSerde for domain objects
+5 SerDes boundaries               Source, Sink, Repartition, RocksDB W/R  Every read/write crossing needs SerDes
+Default SerDes (app.properties)   Applied when no explicit SerDes given    Lowest priority; breaks when type changes
+Per-operation SerDes              Set directly on each builder call        Highest priority; always recommended
+LogAndFail (default deser)        Log + crash the thread on bad record     Nothing silently lost; safest default
+LogAndContinue (deser)            Skip bad record and keep going           Bad record lost forever — use carefully
+Custom deser handler              Your logic: FAIL / CONTINUE / DLQ        Route bad records to dead-letter topic
+DefaultProductionHandler          Always fail on serialization error       Thread dies on any serialization issue
+Custom production handler         Inspect exception, decide per case       Can CONTINUE on RecordTooLarge etc.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 11;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Streams SerDes Deep Dive — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

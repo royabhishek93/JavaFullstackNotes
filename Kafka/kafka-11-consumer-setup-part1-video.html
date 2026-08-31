@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Consumer Setup Part 1 — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Consumer Setup Part 1 — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 19</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:7.69%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">📥</div>
+  <h1 class="gradient-text">Kafka Consumer Setup Part 1 — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">5 Required Properties</span><span class="badge">Group Coordinator Discovery</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: @KafkaListener, bootstrap servers, group.id, key/value deserializer, default type, group coordinator discovery, partition assignment, rebalance, poll loop, ConsumerRecord, heartbeat, auto offset reset, Spring Boot abstraction layers</p>
+</div>
+<div class="slide" id="s3" data-title="The 5 Required Properties">
+<h2>The 5 Required Properties</h2>
+<p>These five properties are the bare minimum to start a consumer. Everything else has a sensible default.</p>
+<div class="dia">application.properties — minimum consumer config
+────────────────────────────────────────────────────────────────────
+
+  spring.kafka.bootstrap-servers=broker1:9092,broker2:9092
+        │
+        └─► Entry point to fetch cluster metadata (first contact only)
+
+  spring.kafka.consumer.group-id=order-consumer-group
+        │
+        └─► Which consumer group this consumer belongs to
+
+  spring.kafka.consumer.key-deserializer=StringDeserializer
+  spring.kafka.consumer.value-deserializer=JsonDeserializer
+        │
+        └─► Producer serialized key+value → consumer must deserialize back
+
+  spring.kafka.consumer.properties.spring.json.value-default-type=
+        com.eda.consumer.model.Order
+        │
+        └─► Required only when value-deserializer is JSON
+            "If you don't know which class to map to, use this one"</div>
+</div>
+<div class="slide" id="s4" data-title="Group Coordinator Discovery">
+<h2>Group Coordinator Discovery</h2>
+<p>Before reading a single message, the consumer must find the broker that manages its group. This is a hash calculation using the group ID and the <code>__consumer_offsets</code> topic.</p>
+<div class="dia">Kafka cluster: __consumer_offsets topic has 50 partitions
+
+  hash("order-consumer-group") % 50  →  partition 23
+
+  Broker 1 holds partitions  1–25   ← leader of partition 23
+  Broker 2 holds partitions 26–50
+
+  ┌─────────────────────────────────────────────────────┐
+  │  __consumer_offsets                                 │
+  │  ┌───┬───┬───┬───┬───┬──────┬───┬───┬───┬───┐      │
+  │  │ 1 │ 2 │...│23 │...│ 25  │26 │...│50 │   │      │
+  │  └───┴───┴───┴─┬─┴───┴──────┴───┴───┴───┴───┘      │
+  │                │ leader = Broker 1                   │
+  └────────────────┼────────────────────────────────────┘
+                   │
+                   ▼
+            GROUP COORDINATOR = Broker 1
+            (manages "order-consumer-group")</div>
+</div>
+<div class="slide" id="s5" data-title="Consumer Joins the Group — Rebalance">
+<h2>Consumer Joins the Group — Rebalance</h2>
+<p>When a new consumer joins, the group coordinator triggers a rebalance to redistribute topic partitions fairly among all consumers.</p>
+<div class="dia">BEFORE: 2 consumers in group, topic has 3 partitions
+────────────────────────────────────────────────────────────────────
+  order-events topic
+  ┌──────┬──────┬──────┐
+  │  P0  │  P1  │  P2  │
+  └──┬───┴──┬───┴──────┘
+     │      │      └──────────────────── no owner yet
+     ▼      ▼
+  Consumer1  Consumer2
+  (P0, P1)   (P2)    ← previous assignment
+
+
+AFTER: 3rd consumer joins → rebalance triggered
+────────────────────────────────────────────────────────────────────
+  Consumer sends to Group Coordinator:
+    "I want to join group: order-consumer-group
+     I am interested in topic: order-events"
+
+  Group Coordinator reassigns:
+  ┌──────┬──────┬──────┐
+  │  P0  │  P1  │  P2  │
+  └──┬───┴──┬───┴──┬───┘
+     ▼      ▼      ▼
+   Con-1   Con-2   Con-3   ← new balanced assignment</div>
+</div>
+<div class="slide" id="s6" data-title="The Minimal Consumer Code">
+<h2>The Minimal Consumer Code</h2>
+<p>Three things is all you write. Spring Boot handles the rest.</p>
+<div class="dia">Step 1: pom.xml
+────────────────────────────────────────────────────────────────────
+  &lt;dependency&gt;
+    &lt;groupId&gt;org.springframework.kafka&lt;/groupId&gt;
+    &lt;artifactId&gt;spring-kafka&lt;/artifactId&gt;
+  &lt;/dependency&gt;
+
+
+Step 2: application.properties  (the 5 properties from section 1)
+
+
+Step 3: @KafkaListener on a method
+────────────────────────────────────────────────────────────────────
+
+  @Component
+  public class OrderEventListener {
+
+      @KafkaListener(topics = "order-events")
+      public void consume(Order order) {
+          // your business logic — called once per event
+      }
+  }
+
+  ┌─────────────────────────────────────────────────────┐
+  │  What you wrote:  application.properties            │
+  │                 + @KafkaListener                    │
+  │                                                     │
+  │  What Spring Boot does: everything else             │
+  └─────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s7" data-title="ConsumerRecord — What Each Event Looks Like">
+<h2>ConsumerRecord — What Each Event Looks Like</h2>
+<p>When you need more than just the value, accept a <code>ConsumerRecord</code> in your listener method. It contains the full event envelope.</p>
+<div class="dia">  ConsumerRecord&lt;String, Order&gt;
+  ┌──────────────────────────────────────────────────────┐
+  │  topic     : "order-events"                          │
+  │  partition : 2                                       │
+  │  offset    : 101                                     │
+  │  key       : "order-332700"           ← String       │
+  │  value     : Order { id:332700, ... } ← deserialized │
+  │  headers   : [ type-id: "com.eda.producer.Order" ]   │
+  │  timestamp : 1700000000000                           │
+  └──────────────────────────────────────────────────────┘
+
+  Method signature to receive the full record:
+    public void consume(ConsumerRecord&lt;String, Order&gt; record)</div>
+</div>
+<div class="slide" id="s8" data-title="Spring Boot Abstraction Layers">
+<h2>Spring Boot Abstraction Layers</h2>
+<p>Spring Boot auto-creates three components so you never have to. Understanding them helps you configure advanced scenarios.</p>
+<div class="dia">  Spring Boot startup
+  │
+  ├─► 1. ConsumerFactory bean
+  │        │  reads application.properties
+  │        │  knows how to create KafkaConsumer objects
+  │        └─► DefaultKafkaConsumerFactory
+  │
+  ├─► 2. ConcurrentKafkaListenerContainerFactory bean
+  │        │  wraps ConsumerFactory
+  │        └─► used to create KafkaListenerContainers
+  │
+  └─► 3. @EnableKafka  (auto-added by Spring Boot)
+           │  triggers KafkaListenerAnnotationBeanPostProcessor
+           │  scans your classes for @KafkaListener
+           │
+           └─► For EACH @KafkaListener found:
+                 ┌──────────────────────────────────────┐
+                 │  KafkaListenerContainer              │
+                 │  ┌────────────────────────────────┐  │
+                 │  │  KafkaConsumer (1 per listener)│  │
+                 │  │  ┌──────────────────────────┐  │  │
+                 │  │  │  poll loop + commit logic │  │  │
+                 │  │  └──────────────────────────┘  │  │
+                 │  └────────────────────────────────┘  │
+                 │  your @KafkaListener method          │
+                 └──────────────────────────────────────┘
+
+  Rule: 2 @KafkaListeners → 2 KafkaListenerContainers → 2 KafkaConsumers</div>
+</div>
+<div class="slide" id="s9" data-title="The Poll Loop Internals">
+<h2>The Poll Loop Internals</h2>
+<p>The KafkaListenerContainer runs an infinite loop. On the very first call, it performs group join and offset setup. Every call after that just fetches new data.</p>
+<div class="dia">  while (true) {
+      records = consumer.poll(...)
+  }
+
+  FIRST POLL CALL:
+  ──────────────────────────────────────────────────────
+  ① Send JoinGroup request → Group Coordinator
+       ↓ receives: partition assignment (e.g. P2)
+
+  ② Request last committed offset for assigned partition
+       Group Coordinator checks __consumer_offsets
+       ↓ returns: offset 100 (last processed)
+
+  ③ Send fetch request to partition leader broker
+       "Give me order-events P2 starting at offset 101"
+       ↓ receives: records 101–150
+
+  SUBSEQUENT POLL CALLS:
+  ──────────────────────────────────────────────────────
+  ③ only — just fetch next batch, no group coordination
+
+  AFTER RECEIVING RECORDS:
+  ──────────────────────────────────────────────────────
+  ┌─────────────────────────────────────────────────────┐
+  │  if auto-commit=true AND commit-interval passed:    │
+  │      commit offset NOW  ← before processing!        │
+  │      ⚠ risk: offset committed before processing,    │
+  │        crash → data loss                            │
+  │                                                     │
+  │  for each record:                                   │
+  │      invoke @KafkaListener method (business logic)  │
+  │                                                     │
+  │  if auto-commit=false (manual):                     │
+  │      commitSync()   ← blocks until broker confirms  │
+  │      commitAsync()  ← fire and forget               │
+  └─────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s10" data-title="Heartbeat and Rebalance on Crash">
+<h2>Heartbeat and Rebalance on Crash</h2>
+<p>A background thread in the consumer sends heartbeats to the group coordinator. If heartbeats stop, the coordinator assumes the consumer is dead and triggers a rebalance.</p>
+<div class="dia">  HEALTHY CONSUMER:
+  ──────────────────────────────────────────────────────
+  Consumer                        Group Coordinator
+     │  ── heartbeat ──────────►  │  "alive"
+     │  ── heartbeat ──────────►  │  "alive"
+     │  ── heartbeat ──────────►  │  "alive"
+     │                            │
+
+  CONSUMER CRASHES / LEAVES:
+  ──────────────────────────────────────────────────────
+  Consumer                        Group Coordinator
+     │  [crash / leave group]     │
+     │                            │  ← heartbeat timeout
+     │                            │  session.timeout exceeded
+     │                            │  ↓
+     │                            │  REBALANCE triggered
+     │                            │  remaining consumers
+     │                            │  get reassigned partitions
+
+  Key config:
+    heartbeat.interval.ms    — how often heartbeat is sent
+    session.timeout.ms       — how long before declared dead</div>
+</div>
+<div class="slide" id="s11" data-title="Auto Offset Reset — Latest vs Earliest">
+<h2>Auto Offset Reset — Latest vs Earliest</h2>
+<p>When a consumer starts for the first time with no previously committed offset, this setting determines where it begins reading.</p>
+<div class="dia">  Topic: order-events, Partition P2
+  ┌─────────────────────────────────────────────────────┐
+  │  offset:  0   1   2   3   4 ... 98  99  100         │
+  │           ●───●───●───●───●─...─●───●───●  ◄ latest │
+  │           ▲                                         │
+  │         earliest                                    │
+  └─────────────────────────────────────────────────────┘
+
+  auto-offset-reset = latest   (DEFAULT)
+  ──────────────────────────────────────────────────────
+  Consumer starts → no previous offset found
+  → start from offset 100 (the next new message)
+  → all past messages are SKIPPED
+
+  auto-offset-reset = earliest
+  ──────────────────────────────────────────────────────
+  Consumer starts → no previous offset found
+  → start from offset 0 (the very beginning)
+  → reads ALL historical messages
+
+  Practical impact:
+    consumer already running + new event arrives   → reads it (both modes)
+    consumer starts AFTER events were published    → latest misses them ✗
+                                                   → earliest reads them ✓</div>
+</div>
+<div class="slide" id="s12" data-title="Complete Consumer Startup Flow">
+<h2>Complete Consumer Startup Flow</h2>
+<div class="dia">  Step 1:  @KafkaListener found → KafkaListenerContainer created
+  Step 2:  KafkaConsumer object created via ConsumerFactory
+  Step 3:  Connect to bootstrap server → fetch cluster metadata
+  Step 4:  hash(group.id) % 50 → find partition of __consumer_offsets
+  Step 5:  Connect to leader of that partition → Group Coordinator found
+  Step 6:  Send JoinGroup request to Group Coordinator
+  Step 7:  Group Coordinator runs rebalance → assigns partitions
+  Step 8:  Consumer receives partition assignment (e.g. P2)
+  Step 9:  Ask Group Coordinator for last committed offset of P2
+  Step 10: Send fetch request to partition P2 leader broker
+  Step 11: Receive records → process → commit offset
+  Step 12: Repeat step 10–11 forever ↺
+
+  Background thread running in parallel:
+  Step B:  Send heartbeat to Group Coordinator every N ms
+           If heartbeat stops → Group Coordinator triggers rebalance</div>
+</div>
+<div class="slide" id="s13" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                   What it is                              Key point
+────────────────────────  ──────────────────────────────────────  ─────────────────────────────────────
+bootstrap-servers         Entry-point brokers                     Only used for first metadata fetch
+group.id                  Consumer group name                     hash(group.id) % 50 → coordinator
+key-deserializer          Undoes producer's key serialization     Must match what producer used
+value-deserializer        Undoes producer's value serialization   JSON → need default-type too
+default-type              Fallback class for JSON deserialization  Required when value-deserializer=JSON
+ConsumerRecord            Full event envelope                     topic, partition, offset, key, value
+@KafkaListener            Marks method as event handler           One listener = one KafkaConsumer
+ConsumerFactory           Creates KafkaConsumer objects           Auto-created by Spring Boot
+KafkaListenerContainer    Owns the poll loop                      One per @KafkaListener
+Group Coordinator         Broker managing the consumer group       Hosts the relevant __consumer_offsets partition
+Rebalance                 Redistribute partitions among consumers  Triggered on join/leave/crash
+Heartbeat                 Proof-of-life signal to coordinator     Stops → session timeout → rebalance
+auto-offset-reset=latest  Start from newest message (default)     Skips past messages
+auto-offset-reset=earliest Start from oldest message             Reads all historical data
+auto-commit               Commit offset automatically every N ms  ⚠ commits before processing — avoid in prod
+commitSync()              Manual commit, waits for confirmation   Safe, but blocks
+commitAsync()             Manual commit, fire and forget          Faster, no guarantee</div>
+</div>
+<div class="slide" id="s14" data-title="Architecture — Consumer Setup for Email Delivery Workers">
+<h2>Architecture — Wiring Up the email-workers Consumer</h2>
+<p>"This is the actual consumer setup behind the Notification System's email delivery workers — 20 instances, one group, manual commit."</p>
+<div class="dia">  spring.kafka.consumer.group-id=email-workers
+  spring.kafka.consumer.bootstrap-servers=broker-1:9092,broker-2:9092,broker-3:9092
+  spring.kafka.consumer.key-deserializer=StringDeserializer
+  spring.kafka.consumer.value-deserializer=ErrorHandlingDeserializer (delegate: Avro)
+  spring.kafka.consumer.enable-auto-commit=false
+  spring.kafka.consumer.auto-offset-reset=earliest   ← never skip queued notifications
+
+  @KafkaListener(topics="notifications.standard.email", groupId="email-workers",
+                 concurrency="20")
+  void onMessage(ConsumerRecord&lt;String,NotificationEvent&gt; record, Acknowledgment ack) {
+      // idempotency check → rate limit → call SendGrid → write delivery_status
+      ack.acknowledge();  ← commit AFTER the side effect succeeds
+  }</div>
+<p><strong>Scenario-first:</strong> "auto-offset-reset=earliest is deliberate here, not the default 'latest.' If this consumer group has never run before (first deploy, or __consumer_offsets was purged), starting from 'latest' would silently skip every notification already queued — earliest guarantees we never drop a backlog on first startup."</p>
+</div>
+<div class="slide" id="s15" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why does group.id determine which broker (group coordinator) a
+   consumer talks to?
+A: hash(group.id) % 50 picks a partition of __consumer_offsets, and whichever
+   broker leads that partition becomes this group's coordinator — all
+   membership and offset operations for the group route through it.
+
+Q: Why is auto-commit dangerous even though it's the simplest option?
+A: It commits on a fixed timer regardless of whether processing actually
+   finished — a crash between "auto-commit fired" and "side effect
+   completed" silently marks unsent work as done, forever.
+
+Q: Why does @KafkaListener with concurrency=20 create 20 separate
+   KafkaConsumer instances, not one shared consumer?
+A: Kafka's consumer client isn't thread-safe for concurrent poll() calls
+   — Spring creates one full consumer per concurrency thread, each getting
+   its own subset of the group's assigned partitions.</div>
+</div>
+<div class="slide" id="s16" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision                Choice          Alternative      Why ours                            When to flip
+────────────────────────  ──────────────  ───────────────  ──────────────────────────────────  ─────────────────────
+Offset reset              earliest         latest           Never silently skip queued work on    Genuinely fine to
+                                                                first startup                        skip pre-existing backlog
+Commit mode                Manual (ack)     Auto-commit      Ties "done" to actual completion      Low-stakes internal
+                                                                                                       analytics consumers
+Concurrency                20 instances     100 (1:1 with    Matches SendGrid's throughput ceiling  Downstream API can
+                                              partitions)                                              absorb more parallelism</div>
+</div>
+<div class="slide" id="s17" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "You deployed a brand-new consumer group to an existing topic
+  with 6 months of history, using auto-offset-reset=earliest, expecting
+  it to 'catch up quickly.' It's still processing a day later. Why?"
+  Answer: "earliest means literally start from the beginning of retained
+  history — 6 months of events at normal processing speed can take far
+  longer than expected to churn through. For a NEW consumer group joining
+  an old topic where historical backlog isn't actually needed, 'latest' or
+  a specific timestamp-based seek is usually the right choice — earliest
+  is for 'never miss anything since this group's own inception,' not
+  'replay all history.'"
+
+Trap 2 — "Two @KafkaListener methods in the same class both set
+  groupId='email-workers' but subscribe to different topics. What actually happens?"
+  Answer: "They're two independent members of the SAME consumer group,
+  each with their own subscription — Kafka's group protocol allows this,
+  but it means partition assignment logic now has to reconcile two
+  different topic subscriptions within one group, which most assignors
+  handle by giving each listener its own dedicated partition set. It works,
+  but it's an unusual pattern that surprises most engineers reading the code later."</div>
+</div>
+<div class="slide" id="s18" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why manual commit (Acknowledgment.acknowledge()) instead of auto-commit:
+  ties offset progress to actual side-effect completion, not a timer.
+  - Why earliest as the reset policy: guarantees no silent skip of queued
+  notifications on a fresh consumer group's first startup.
+- Why concurrency=20 specifically: matches the real downstream bottleneck
+  (SendGrid's rate limit), not an arbitrary "more is better" guess.
+- Why ErrorHandlingDeserializer wraps the value deserializer: the only
+  interception point that prevents a poison pill from causing an infinite loop.</div>
+</div>
+<div class="slide" id="s19" data-title="Top 2 Technologies — Commit Strategy">
+<h2>Top 2 Technologies — Offset Commit Strategy</h2>
+<div class="dia">Manual Commit (Acknowledgment)  vs  Auto-Commit (enable.auto.commit=true)
+
+Why pick Manual (our choice): commit only fires after the side effect
+  (SendGrid call, delivery_status write) genuinely succeeds — no
+  timer-based false "done" markers.
+Why pick Auto-commit: zero code needed, acceptable when occasional
+  reprocessing or occasional loss on crash is a non-issue.
+
+Example 1 (Manual): Notification System's email-workers — a missed
+  commit-after-send would silently lose a real customer notification.
+Example 2 (Auto-commit): An internal metrics-tailing consumer that just
+  logs event counts for a dashboard — losing a few counts on crash is
+  imperceptible and not worth the extra code.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 19;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Consumer Setup Part 1 — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

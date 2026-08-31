@@ -1,0 +1,998 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Likes &amp; Comment System Design</title>
+<link rel="stylesheet" href="../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Likes &amp; Comments — Facebook/Instagram Scale</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <div class="slide active" id="s1" data-title="Title — Likes &amp; Comments System Design">
+      <h1>❤️ Likes &amp; Comments System Design</h1>
+      <h2>Facebook / Instagram Scale</h2>
+      <div class="badges">
+        <span class="badge badge-red">Redis INCR</span>
+        <span class="badge badge-blue">Idempotency</span>
+        <span class="badge badge-purple">Sharding</span>
+        <span class="badge badge-green">Cassandra</span>
+        <span class="badge badge-orange">Kafka</span>
+        <span class="badge badge-teal">Counter Cache</span>
+      </div>
+      <div class="key-insight">
+        <strong>Core Insight:</strong> Likes and comments look trivially simple — until a viral post
+        receives 100,000 likes/sec on a single counter. The like count is NOT stored in the posts table.
+        These two decisions drive the entire design:
+      </div>
+      <ul>
+        <li><strong>Redis counters</strong> — atomic INCR, sub-millisecond, handles 1M ops/sec per key</li>
+        <li><strong>Cassandra comment partitions</strong> — partition key = postId, all comments in one scan</li>
+        <li><strong>Kafka async notifications</strong> — decouple like action from push delivery</li>
+        <li><strong>Bloom filter for liked-by</strong> — O(1) check, constant memory regardless of likers</li>
+        <li><strong>Write-back pattern</strong> — Redis = hot layer, Cassandra = durable cold layer</li>
+      </ul>
+      <div class="two-col">
+        <div><strong>Scale Target:</strong> Instagram — 500M DAU</div>
+        <div><strong>Likes/Day:</strong> 4.2 billion (48,600/sec avg)</div>
+      </div>
+    </div>
+
+    <div class="slide" id="s2" data-title="Opening — The Counter Problem">
+      <h2>Opening: The Counter Problem</h2>
+      <div class="scenario-box">
+        <strong>Scenario:</strong> Cristiano Ronaldo posts a World Cup celebration photo.
+        Within 24 hours: <em>50 million likes</em>. Peak rate: <strong>100,000 likes/sec</strong>
+        in the first 10 minutes — all hitting a single post ID.
+      </div>
+      <h3>Why This Is Hard</h3>
+      <pre>
+Naive approach:
+  UPDATE posts SET like_count = like_count + 1 WHERE post_id = ?
+
+At 100K likes/sec this means:
+  → 100K concurrent UPDATE statements on ONE row
+  → Database acquires row lock for each UPDATE
+  → All 100K requests queue behind the lock
+  → Average wait: hundreds of milliseconds
+  → Database throughput collapses → 503 errors
+      </pre>
+      <h3>What Actually Happens at Scale</h3>
+      <ul>
+        <li>Row-level locking serializes all like writes — throughput limited to ~1,000/sec</li>
+        <li>Connection pool exhaustion — threads pile up waiting on the lock</li>
+        <li>Timeout cascade — likes start failing, retry storms make it worse</li>
+        <li>The posts table is also serving reads for feed — it's completely overwhelmed</li>
+      </ul>
+      <div class="key-insight">
+        <strong>Key Insight:</strong> The like count must NOT live in the posts table.
+        It must live in a structure built for atomic counters: <strong>Redis INCR</strong>.
+      </div>
+    </div>
+
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <h2>Functional Requirements</h2>
+      <div class="two-col">
+        <div>
+          <h3>Likes</h3>
+          <ul>
+            <li>User can like / unlike a post (idempotent)</li>
+            <li>Like count displayed on post (approximate OK)</li>
+            <li>Has-user-liked check before rendering heart icon</li>
+            <li>Notification to post owner on like (async)</li>
+            <li>List of users who liked a post (paginated)</li>
+            <li>Like / unlike a comment</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Comments</h3>
+          <ul>
+            <li>Post, edit, delete a comment on a post</li>
+            <li>Reply to a comment (2-level threading)</li>
+            <li>Paginate comments (cursor-based, 20/page)</li>
+            <li>Load more replies per comment (10/page)</li>
+            <li>Sort: most recent (default) + top by likes</li>
+            <li>Async toxicity filtering on submit</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Clarifying Questions (Ask the Interviewer)</h3>
+      <table>
+        <tr><th>Question</th><th>Answer / Assumption</th></tr>
+        <tr><td>Which product closest to?</td><td>Instagram-style: 2-level comments + like counts</td></tr>
+        <tr><td>Comment threading depth?</td><td>2 levels: top-level + replies (no reply-to-reply)</td></tr>
+        <tr><td>Comment editing?</td><td>Yes, within 15 minutes of posting</td></tr>
+        <tr><td>Exact like count or approximate?</td><td>Approximate is fine ("1.2M"), 5-second lag OK</td></tr>
+        <tr><td>Toxicity filtering?</td><td>Yes, async (doesn't block comment submit)</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s4" data-title="Non-Functional Requirements &amp; Scale">
+      <h2>Non-Functional Requirements &amp; Scale</h2>
+      <div class="two-col">
+        <div>
+          <h3>NFRs</h3>
+          <table>
+            <tr><th>Requirement</th><th>Target</th></tr>
+            <tr><td>Availability</td><td>99.99% uptime</td></tr>
+            <tr><td>Like write latency</td><td>&lt; 50ms p99</td></tr>
+            <tr><td>Comment read latency</td><td>&lt; 100ms p99</td></tr>
+            <tr><td>Like count consistency</td><td>Eventual, 5-sec lag OK</td></tr>
+            <tr><td>Idempotent likes</td><td>100% — one like per user/post</td></tr>
+            <tr><td>Data durability</td><td>99.999999999%</td></tr>
+          </table>
+        </div>
+        <div>
+          <h3>Capacity Numbers</h3>
+          <ul>
+            <li><strong>Likes/day:</strong> 4.2 billion</li>
+            <li><strong>Avg like write rate:</strong> 48,600/sec</li>
+            <li><strong>Peak (viral post):</strong> 100,000 likes/sec on one postId</li>
+            <li><strong>Like read rate:</strong> 100:1 ratio → ~4.86M reads/sec</li>
+            <li><strong>Comments/day:</strong> 500 million</li>
+            <li><strong>Avg comment write rate:</strong> 5,787/sec</li>
+            <li><strong>Comment data/day:</strong> ~100 GB (500M × 200 bytes)</li>
+            <li><strong>Like storage (Redis):</strong> 8 bytes × 1B posts = 8 GB</li>
+          </ul>
+        </div>
+      </div>
+      <div class="key-insight">
+        <strong>Scale Guidepost:</strong> 500M DAU, Instagram-scale. Redis INCR handles 1M ops/sec.
+        100K likes/sec on one key is 10% of Redis single-thread capacity — trivially handled.
+      </div>
+    </div>
+
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <h2>High-Level Architecture</h2>
+      <pre>
+  ┌─────────────────────────────────────────┐
+  │   Clients: iOS / Android / Web          │
+  └──────────────────┬──────────────────────┘
+                     │ HTTPS
+                     ▼
+  ┌──────────────────────────────────────────┐
+  │       API Gateway / Load Balancer        │
+  │  (JWT auth, rate limit 100 req/sec/user) │
+  └────────┬───────────────┬────────────────┘
+           │               │
+  ┌────────▼──────┐  ┌──────▼────────────┐
+  │  Like Service │  │  Comment Service  │
+  │ (stateless)   │  │  (stateless)      │
+  └────────┬──────┘  └──────┬────────────┘
+           │                │
+  ┌────────▼──────────┐  ┌──▼──────────────────┐
+  │   Redis Cluster   │  │     Cassandra        │
+  │ likes:{postId}    │  │  comments table      │
+  │ liked_by:{postId} │  │  (partition=postId)  │
+  │ comment_likes:{}  │  │  like_counts table   │
+  └────────┬──────────┘  └─────────────────────┘
+           │
+  ┌────────▼──────────┐   ┌──────────────────────┐
+  │  Write-back Job   │   │    Kafka Cluster      │
+  │  (every 5 min)    │   │  like-events topic    │
+  │  Redis→Cassandra  │   │  comment-events topic │
+  └───────────────────┘   └──────────┬───────────┘
+                                     │
+                          ┌──────────▼───────────┐
+                          │  Notification Svc    │
+                          │  ML Toxicity Svc     │
+                          │  → FCM / APNs        │
+                          └──────────────────────┘
+      </pre>
+    </div>
+
+    <div class="slide" id="s6" data-title="Like Idempotency — One Like Per User">
+      <h2>Like Idempotency — One Like Per User</h2>
+      <div class="key-insight">
+        <strong>Problem:</strong> User double-taps, network retry, or malicious client sends multiple
+        POST /like requests. Each must result in exactly one like — never double-counting.
+      </div>
+      <h3>Implementation: Redis SET + NX</h3>
+      <pre>
+-- Check membership before incrementing (Lua script, atomic):
+local key = "liked_by:" .. KEYS[1] .. ":" .. (tonumber(ARGV[1]) % 100)
+local already = redis.call('SISMEMBER', key, ARGV[1])
+
+if already == 1 then
+  return {0, redis.call('GET', 'likes:' .. KEYS[1])}  -- ALREADY_LIKED
+end
+
+redis.call('SADD', key, ARGV[1])
+local newCount = redis.call('INCR', 'likes:' .. KEYS[1])
+return {1, newCount}  -- SUCCESS
+      </pre>
+      <h3>Why Lua Script?</h3>
+      <ul>
+        <li>Redis executes Lua scripts atomically — no other command can interleave</li>
+        <li>SISMEMBER + SADD + INCR as one unit prevents TOCTOU race condition</li>
+        <li>If two simultaneous like requests arrive, only one succeeds — the other returns ALREADY_LIKED</li>
+      </ul>
+      <h3>API Response</h3>
+      <pre>
+POST /v1/posts/{postId}/like
+→ 200 OK:       { "likeCount": 843, "hasLiked": true }
+→ 409 Conflict: { "error": "ALREADY_LIKED", "likeCount": 843 }
+      </pre>
+    </div>
+
+    <div class="slide" id="s7" data-title="Redis Like Counter Design">
+      <h2>Redis Like Counter Design</h2>
+      <h3>Key Schema</h3>
+      <pre>
+likes:{postId}              → STRING  (integer counter, INCR/DECR)
+liked_by:{postId}:{n}       → SET     (n = userId % 100, sharded)
+comment_likes:{commentId}   → STRING  (integer counter)
+comment_count:{postId}      → STRING  (integer counter)
+comment_rate:{userId}:{postId} → STRING (rate limit, EX 60 seconds)
+      </pre>
+      <h3>Atomic Like Toggle — Lua Script</h3>
+      <pre>
+-- LIKE operation (called on POST /like):
+EVAL """
+  local liked = redis.call('SISMEMBER', KEYS[2], ARGV[1])
+  if liked == 1 then return {-1, redis.call('GET', KEYS[1])} end
+  redis.call('SADD', KEYS[2], ARGV[1])
+  return {1, redis.call('INCR', KEYS[1])}
+""" 2 likes:{postId} liked_by:{postId}:{userId%100} {userId}
+
+-- UNLIKE operation (called on DELETE /like):
+EVAL """
+  local liked = redis.call('SISMEMBER', KEYS[2], ARGV[1])
+  if liked == 0 then return {-1, redis.call('GET', KEYS[1])} end
+  redis.call('SREM', KEYS[2], ARGV[1])
+  local count = tonumber(redis.call('GET', KEYS[1]))
+  if count > 0 then redis.call('DECR', KEYS[1]) end
+  return {1, redis.call('GET', KEYS[1])}
+""" 2 likes:{postId} liked_by:{postId}:{userId%100} {userId}
+      </pre>
+      <div class="key-insight">
+        <strong>Why Redis over DB counter:</strong> Redis INCR = atomic, single-threaded, sub-ms.
+        SQL UPDATE with row lock = serialized writes, kills throughput at 100K likes/sec.
+      </div>
+    </div>
+
+    <div class="slide" id="s8" data-title="Counter Persistence — Write-Back Pattern">
+      <h2>Counter Persistence — Write-Back Pattern</h2>
+      <div class="two-col">
+        <div>
+          <h3>The Problem</h3>
+          <ul>
+            <li>Redis stores live counts — sub-ms reads and writes</li>
+            <li>Redis can lose data on crash (without persistence)</li>
+            <li>Cassandra is durable but slower for counter updates</li>
+            <li>Solution: Redis = hot cache, Cassandra = durable cold store</li>
+          </ul>
+          <h3>Write-Back Job (every 5 min)</h3>
+          <pre>
+1. SCAN Redis for keys: likes:*
+2. For each key: GETDEL (atomic get + delete)
+3. ADD delta to Cassandra counter:
+   UPDATE like_counts
+   SET count = count + delta
+   WHERE post_id = ?
+4. Any likes arriving after GETDEL
+   go into a fresh Redis key
+          </pre>
+        </div>
+        <div>
+          <h3>Better: Kafka Double-Write</h3>
+          <pre>
+On each LIKE action:
+  INCR likes:{postId}      ← Redis sync
+  publish like-event       ← Kafka async
+
+Kafka consumer
+(like-count-persister):
+  Batch 1000 events
+  → single Cassandra write
+  ~ flush every 100ms
+          </pre>
+          <h3>Recovery on Redis Crash</h3>
+          <ul>
+            <li>Enable Redis AOF persistence (fsync=everysec) — max 1 sec data loss</li>
+            <li>Kafka topic retained 7 days — replay last 5 min to recompute exact count</li>
+            <li>Cassandra = ground truth; Redis = rebuildable cache</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s9" data-title="Unlike Race Condition &amp; TOCTOU Fix">
+      <h2>Unlike Race Condition &amp; TOCTOU Fix</h2>
+      <h3>Problem: Double-Unlike Goes Negative</h3>
+      <pre>
+Timeline: counter = 1
+  Thread A: GET likes:{postId} → 1   (checks > 0, OK to decrement)
+  Thread B: GET likes:{postId} → 1   (checks > 0, OK to decrement)
+  Thread A: DECR likes:{postId} → 0
+  Thread B: DECR likes:{postId} → -1  ← WRONG!
+      </pre>
+      <h3>Fix: Atomic Lua Script — Guard Before Decrement</h3>
+      <pre>
+EVAL """
+  -- Guard 1: Check user actually liked this post
+  local shard = tonumber(ARGV[1]) % 100
+  local liked = redis.call('SISMEMBER',
+    'liked_by:' .. KEYS[1] .. ':' .. shard, ARGV[1])
+  if liked == 0 then
+    return {-1, redis.call('GET', 'likes:' .. KEYS[1])}
+  end
+
+  -- Guard 2: Only decrement if counter > 0
+  local count = tonumber(redis.call('GET', 'likes:' .. KEYS[1]))
+  if count and count > 0 then
+    redis.call('DECR', 'likes:' .. KEYS[1])
+  end
+  redis.call('SREM',
+    'liked_by:' .. KEYS[1] .. ':' .. shard, ARGV[1])
+  return {1, redis.call('GET', 'likes:' .. KEYS[1])}
+""" 1 {postId} {userId}
+      </pre>
+      <div class="key-insight">
+        <strong>Idempotency key for out-of-order requests:</strong> Store
+        <code>like_ts:{userId}:{postId}</code> in Redis. Reject any request
+        with timestamp older than stored value — prevents network-reordered unlike/like from corrupting state.
+      </div>
+    </div>
+
+    <div class="slide" id="s10" data-title="Threaded Comments Design">
+      <h2>Threaded Comments Design</h2>
+      <div class="two-col">
+        <div>
+          <h3>Data Model</h3>
+          <pre>
+Comment {
+  post_id          UUID  ← partition key
+  comment_id       TIMEUUID ← clustering key
+  user_id          BIGINT
+  parent_comment_id TIMEUUID  ← NULL = top-level
+  content          TEXT
+  is_deleted       BOOLEAN  ← soft delete only
+  is_hidden        BOOLEAN  ← toxicity flag
+  like_count       (Redis counter)
+  created_at       TIMESTAMP
+}
+          </pre>
+          <h3>Depth Limit: 2 Levels</h3>
+          <ul>
+            <li>Top-level comment: parent_comment_id = NULL</li>
+            <li>Reply: parent_comment_id = comment_id of parent</li>
+            <li>No reply-to-reply (Instagram model, not Reddit)</li>
+            <li>Simplifies queries: no recursive CTE needed</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Sort Modes</h3>
+          <h4>Recent First (default)</h4>
+          <pre>
+SELECT * FROM comments
+WHERE post_id = ?
+  AND parent_comment_id = NULL
+  AND comment_id &gt; {cursor}
+ORDER BY comment_id DESC
+LIMIT 20
+          </pre>
+          <h4>Top Comments</h4>
+          <ul>
+            <li>Cassandra cannot sort by dynamic like_count</li>
+            <li>Read top 500 recent from Cassandra</li>
+            <li>Fetch comment_likes:{id} for each (Redis pipeline)</li>
+            <li>Sort in application layer by like count</li>
+            <li>Cache result: <code>top_comments:{postId}</code> TTL 5 min</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s11" data-title="Comment Pagination — Cursor-Based">
+      <h2>Comment Pagination — Cursor-Based</h2>
+      <h3>Why NOT OFFSET Pagination</h3>
+      <pre>
+Problem with OFFSET:
+  User loads page 2 (OFFSET 20). Meanwhile 3 new comments inserted.
+  Page 2 now starts at what was page 1's last 3 → user sees DUPLICATES.
+  Or comments shift → user MISSES comments between pages.
+  Also: OFFSET N = scan and discard N rows → O(N) cost, gets slower with depth.
+      </pre>
+      <h3>Cursor-Based Pagination</h3>
+      <pre>
+First page:
+  GET /v1/posts/{postId}/comments?sort=recent&amp;limit=20
+  → Returns 20 comments + nextCursor: "7234891234559999"
+
+Next page:
+  GET /v1/posts/{postId}/comments?cursor=7234891234559999&amp;limit=20
+  Cassandra query:
+    SELECT * FROM comments
+    WHERE post_id = ? AND comment_id &lt; {cursor}
+    ORDER BY comment_id DESC LIMIT 20
+
+Load replies for a comment:
+  GET /v1/posts/{postId}/comments/{commentId}/replies?cursor=&amp;limit=10
+  SELECT * FROM comments
+  WHERE post_id = ? AND parent_comment_id = {commentId}
+  AND comment_id &gt; {cursor}
+  ORDER BY comment_id ASC LIMIT 10
+      </pre>
+      <div class="key-insight">
+        <strong>TIMEUUID as cursor:</strong> time-ordered, globally unique, stable under concurrent inserts.
+        New comments on page 1 never shift existing cursors. Infinite scroll works correctly.
+      </div>
+      <h3>Response Shape</h3>
+      <pre>
+{
+  "comments": [{ "commentId": "...", "content": "...", "replyCount": 3 }],
+  "nextCursor": "7234891234559990"
+}
+      </pre>
+    </div>
+
+    <div class="slide" id="s12" data-title="Notifications — Like &amp; Comment Events">
+      <h2>Notifications — Like &amp; Comment Events</h2>
+      <h3>Flow: Async via Kafka</h3>
+      <pre>
+Like Service
+  → INCR Redis counter (sync, fast path)
+  → publish like.created to Kafka (async, fire-and-forget)
+
+Kafka: like-events topic (retention 7 days)
+
+Notification Service (Kafka consumer):
+  → reads like.created event
+  → checks throttle: notifications:{postId}:{ownerId} EX 600 (10 min)
+  → if not throttled: send push via FCM / APNs
+  → if throttled: batch count, send "and 9,999 more liked" after TTL
+      </pre>
+      <h3>Notification Throttle — Celebrity Problem</h3>
+      <pre>
+Problem: Ronaldo post gets 1M likes in 10 min = 1M push notifications.
+         Post owner's phone explodes, notification service overloaded.
+
+Solution:
+  Redis key: notif_throttle:{postId}:{ownerUserId} EX 600
+  If key not set: send notification immediately, SET key = 1
+  If key is set: INCR key (batch count only, no push)
+  After TTL (10 min): send batched "X more people liked your post"
+      </pre>
+      <h3>@Mention Notifications</h3>
+      <ul>
+        <li>Parse comment text for @username patterns on comment submit</li>
+        <li>Resolve usernames → user_ids via User Service</li>
+        <li>Publish mention.created events for each mentioned user</li>
+        <li>Dedup: if same user mentioned multiple times in same comment → one notification</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s13" data-title="Like Aggregation for Feed Ranking">
+      <h2>Like Aggregation for Feed Ranking</h2>
+      <h3>Engagement Score for Feed Algorithm</h3>
+      <pre>
+Engagement Score = (likes × 1.0)
+                 + (comments × 1.5)
+                 + (shares × 2.0)
+                 + (saves × 2.5)
+                 × time_decay_factor
+
+time_decay_factor = e^(-λ × hours_since_post)
+  where λ controls how fast freshness decays
+      </pre>
+      <h3>Like Velocity Signal</h3>
+      <pre>
+like_velocity:{postId} → Redis Sorted Set (timestamp → count)
+
+On each like:
+  ZADD like_velocity:{postId} {timestamp} {userId}
+  ZREMRANGEBYSCORE like_velocity:{postId} 0 (now - 3600)
+  → keep only likes in last 1 hour
+
+Velocity = ZCARD like_velocity:{postId}
+  → "likes per last hour" feeds ranking algorithm
+      </pre>
+      <h3>Feed Ranking Service</h3>
+      <ul>
+        <li>Reads like count from Redis: <code>likes:{postId}</code></li>
+        <li>Reads velocity: <code>like_velocity:{postId}</code> ZCARD</li>
+        <li>Combines with comment count, share count, save count</li>
+        <li>Applies user affinity score (how much does this user interact with this author?)</li>
+        <li>Updates feed ranking every 1 minute for active posts, 10 minutes for older</li>
+      </ul>
+      <div class="key-insight">
+        <strong>Instagram Insight:</strong> A post with 10K likes in 1 hour outranks a post with 50K likes
+        that received them over 3 days. Velocity is more valuable than raw count for ranking.
+      </div>
+    </div>
+
+    <div class="slide" id="s14" data-title="ER Diagram — Entity Relationships">
+      <h2>ER Diagram — Entity Relationships</h2>
+      <pre>
+┌──────────────────────────────────────────────────────┐
+│          LIKES &amp; COMMENTS — ENTITY RELATIONSHIP      │
+└──────────────────────────────────────────────────────┘
+
+┌────────────────┐        ┌──────────────────────────┐
+│    users       │        │         posts             │
+│   (MySQL)      │        │       (Cassandra)         │
+├────────────────┤        ├──────────────────────────┤
+│ PK user_id     │───1:N──│ PK post_id (Snowflake)   │
+│    username    │        │ FK user_id               │
+│    email       │        │    caption TEXT          │
+│    created_at  │        │    media_urls LIST       │
+└───────┬────────┘        └───────────┬──────────────┘
+        │ N                           │ 1
+        │                             │ N
+        │              ┌──────────────▼──────────────┐
+        │              │          comments             │
+        │              │         (Cassandra)           │
+        │              ├─────────────────────────────┤
+        └──────────────│ PK(1) post_id  (PARTITION)  │
+                       │ PK(2) comment_id (TIMEUUID) │
+                       │ FK    user_id               │
+                       │       parent_comment_id     │
+                       │       content TEXT          │
+                       │       is_deleted BOOL       │
+                       │       is_hidden  BOOL       │
+                       └─────────────────────────────┘
+
+  likes (Redis + Cassandra write-back):
+  ┌──────────────────────────────────────────────────────┐
+  │ likes:{postId}         → INT counter (Redis)         │
+  │ liked_by:{postId}:{n}  → SET of userIds (Redis)      │
+  │ like_counts (Cassandra)→ post_id PK, like_count BIGINT│
+  │ post_likes (Cassandra) → (post_id, user_id) PK       │
+  │ comment_likes:{id}     → INT counter (Redis)         │
+  └──────────────────────────────────────────────────────┘
+      </pre>
+    </div>
+
+    <div class="slide" id="s15" data-title="Database Schema — DDL">
+      <h2>Database Schema — DDL</h2>
+      <h3>Cassandra — Comments Table</h3>
+      <pre>
+CREATE TABLE comments (
+    post_id           UUID,
+    comment_id        TIMEUUID,
+    user_id           BIGINT,
+    parent_comment_id TIMEUUID,   -- NULL for top-level comments
+    content           TEXT,
+    is_deleted        BOOLEAN,    -- soft delete; never hard delete
+    is_hidden         BOOLEAN,    -- async toxicity classifier flag
+    created_at        TIMESTAMP,
+    PRIMARY KEY (post_id, comment_id)
+) WITH CLUSTERING ORDER BY (comment_id DESC);
+      </pre>
+      <h3>Cassandra — Like Existence Records</h3>
+      <pre>
+CREATE TABLE post_likes (
+    post_id    UUID,
+    user_id    BIGINT,
+    created_at TIMESTAMP,
+    PRIMARY KEY (post_id, user_id)
+);
+-- NOT used for counting — count lives in Redis
+-- Used only for "who liked this post" queries
+      </pre>
+      <h3>Cassandra — Like Counts (Write-Back Target)</h3>
+      <pre>
+CREATE TABLE like_counts (
+    post_id    UUID PRIMARY KEY,
+    like_count BIGINT,
+    updated_at TIMESTAMP
+);
+-- Written by write-back job every 5 minutes
+-- Redis is source of truth for live counts
+      </pre>
+    </div>
+
+    <div class="slide" id="s16" data-title="Redis Key Schema &amp; API Design">
+      <h2>Redis Key Schema &amp; API Design</h2>
+      <div class="two-col">
+        <div>
+          <h3>Redis Keys</h3>
+          <pre>
+likes:{postId}
+  → STRING INT counter
+  → INCR on like, DECR on unlike
+
+liked_by:{postId}:{n}
+  → SET of userIds
+  → n = userId % 100 (sharded)
+  → SADD on like, SREM on unlike
+  → SISMEMBER for has-user-liked
+
+comment_likes:{commentId}
+  → STRING INT counter
+
+top_comments:{postId}
+  → STRING (JSON cached result)
+  → TTL 5 minutes
+
+comment_rate:{userId}:{postId}
+  → STRING INT (rate limiter)
+  → EX 60 seconds (1-min window)
+  → max 3 comments/min/post
+
+notif_throttle:{postId}:{userId}
+  → STRING INT
+  → EX 600 (10-minute window)
+          </pre>
+        </div>
+        <div>
+          <h3>Likes API</h3>
+          <pre>
+POST /v1/posts/{postId}/like
+→ { likeCount, hasLiked: true }
+
+DELETE /v1/posts/{postId}/like
+→ { likeCount, hasLiked: false }
+
+GET /v1/posts/{postId}/likes
+  ?cursor=&amp;limit=20
+→ { likers: [...], nextCursor }
+          </pre>
+          <h3>Comments API</h3>
+          <pre>
+POST /v1/posts/{postId}/comments
+  body: { content, parent_comment_id? }
+→ { commentId, content, createdAt }
+
+GET /v1/posts/{postId}/comments
+  ?sort=recent|top&amp;cursor=&amp;limit=20
+→ { comments: [...], nextCursor }
+
+GET /v1/posts/{postId}/comments
+  /{commentId}/replies
+  ?cursor=&amp;limit=10
+
+PUT    /v1/posts/{postId}/comments/{id}
+DELETE /v1/posts/{postId}/comments/{id}
+POST   /v1/comments/{commentId}/like
+          </pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s17" data-title="Sequence Diagram — Like a Post">
+      <h2>Sequence Diagram — Like a Post</h2>
+      <pre>
+  User App     Like Service    Redis (Lua)      Cassandra       Kafka
+     │               │               │               │             │
+     │ POST /posts/  │               │               │             │
+     │ {id}/like     │               │               │             │
+     │──────────────▶│               │               │             │
+     │               │ Lua (atomic): │               │             │
+     │               │ SISMEMBER liked_by?           │             │
+     │               │ if yes → 409 ALREADY_LIKED    │             │
+     │               │ else: SADD + INCR likes:{id}  │             │
+     │               │──────────────▶│               │             │
+     │               │◀──────────────│               │             │
+     │               │ [newCount=843]│               │             │
+     │◀──────────────│ 200 OK        │               │             │
+     │ {likeCount:843│ {hasLiked:true}               │             │
+     │               │               │               │             │
+     │               │ publish like.created (async)  │             │
+     │               │──────────────────────────────────────────▶  │
+     │               │               │               │             │
+     │               │ [every 5 min: write-back job] │             │
+     │               │               │ UPSERT        │             │
+     │               │               │ like_counts   │             │
+     │               │               │ SET count=843 │             │
+     │               │──────────────────────────────▶│             │
+     │               │               │               │             │
+     │               │               │               │ Notification│
+     │               │               │               │◀────────────│
+     │               │               │               │ FCM/APNs    │
+      </pre>
+      <div class="key-insight">
+        <strong>Hot Path:</strong> User sees 200 OK in ~10ms. Redis Lua script is the only synchronous
+        work. Kafka publish and DB write-back are fully async — never on the critical path.
+      </div>
+    </div>
+
+    <div class="slide" id="s18" data-title="Sequence Diagram — Add Comment">
+      <h2>Sequence Diagram — Add Comment</h2>
+      <pre>
+  User App  Comment Service  Redis (rate limit)   Cassandra    Kafka
+     │               │               │                  │          │
+     │ POST /posts/  │               │                  │          │
+     │ {id}/comments │               │                  │          │
+     │ {text, parent}│               │                  │          │
+     │──────────────▶│               │                  │          │
+     │               │ INCR comment_rate:{uid}:{postId} │          │
+     │               │ EX 60 (1-min sliding window)     │          │
+     │               │──────────────▶│                  │          │
+     │               │◀──────────────│                  │          │
+     │               │  count=1 (&lt; 3 limit, OK)         │          │
+     │               │               │                  │          │
+     │               │ INSERT comment │                  │          │
+     │               │ (post_id, TIMEUUID, uid, text)    │          │
+     │               │──────────────────────────────────▶          │
+     │               │◀──────────────────────────────────          │
+     │               │               │                  │          │
+     │◀──────────────│ 201 Created   │                  │          │
+     │ {commentId,   │               │                  │          │
+     │  createdAt}   │               │                  │          │
+     │               │               │                  │          │
+     │               │ publish comment.created (async)  │          │
+     │               │─────────────────────────────────────────────▶
+     │               │               │                  │          │
+     │               │ Kafka consumers:                 │          │
+     │               │   Notification Service → push    │          │
+     │               │   ML Toxicity Service → classify │          │
+     │               │   (if toxic: SET is_hidden=true) │          │
+      </pre>
+    </div>
+
+    <div class="slide" id="s19" data-title="Scaling — Celebrity Post (50M Likes)">
+      <h2>Scaling — Celebrity Post (50M Likes)</h2>
+      <h3>Bottleneck 1: liked_by SET Hot Key</h3>
+      <pre>
+Problem:
+  100K SADD/sec to liked_by:{postId}
+  At 10M likers: SET = 10M × 8 bytes = 80MB in ONE Redis key
+  Redis is single-threaded per key → contention at 100K SADD/sec
+
+Solution 1 — Shard the SET (100 sub-keys):
+  liked_by:{postId}:{userId % 100}
+  → 100 keys, each handles 1K SADD/sec (100K / 100)
+  → has-user-liked: SISMEMBER liked_by:{postId}:{userId % 100}  ← O(1)
+  → list all likers: SUNION liked_by:{postId}:0 .. :99  ← avoid, expensive
+
+Solution 2 — Bloom Filter (probabilistic):
+  10M users, 1% false positive rate → ~12MB (vs 80MB for exact SET)
+  "Has user liked?" → no false negatives (99% accuracy for "has liked")
+  Use case: rendering the heart icon state  ← Bloom filter ideal here
+  Trade-off: 1% of users incorrectly see filled heart (phantom like)
+             Acceptable for social media
+      </pre>
+      <h3>Bottleneck 2: Redis Cluster Sharding</h3>
+      <pre>
+Shard by postId mod N (where N = number of Redis shards):
+  Shard 0 handles posts: 0, N, 2N, ...
+  Shard 1 handles posts: 1, N+1, 2N+1, ...
+
+Use consistent hashing to avoid resharding all keys on cluster resize.
+Redis Cluster built-in: hash slot = CRC16(key) % 16384
+      </pre>
+    </div>
+
+    <div class="slide" id="s20" data-title="Deep Dive — Top Comments Sort">
+      <h2>Deep Dive — Top Comments Sort</h2>
+      <div class="key-insight">
+        <strong>Problem:</strong> Cassandra sorts by clustering key (TIMEUUID = time-ordered).
+        It CANNOT sort by like_count because like_count is dynamic and not a clustering key.
+      </div>
+      <h3>Solution: Application-Layer Sort with Redis Cache</h3>
+      <pre>
+GET /comments?sort=top flow:
+
+Step 1: Check Redis cache
+  GET top_comments:{postId}
+  → Cache HIT (TTL 5 min): return cached JSON immediately
+
+Step 2: Cache MISS — compute top comments
+  a. Read top 500 recent comments from Cassandra (fast: one partition scan)
+     SELECT * FROM comments WHERE post_id=? LIMIT 500
+
+  b. Pipeline Redis: for each of 500 comments:
+     GET comment_likes:{commentId}
+     → Returns 500 like counts in one round trip
+
+  c. Sort 500 comments by like_count in application layer (in-memory)
+
+  d. Take top 20, serialize to JSON
+
+  e. SET top_comments:{postId} {json} EX 300  (5-min cache)
+
+  f. Return top 20 comments
+
+Step 3: Cache Invalidation
+  On new comment inserted: DEL top_comments:{postId}
+  On comment liked: DEL top_comments:{postId}  (or lazy invalidation via TTL)
+      </pre>
+      <div class="key-insight">
+        <strong>This is exactly what YouTube does:</strong> "Top comments" = periodically computed,
+        not real-time. A 5-minute staleness is acceptable for social media comment ranking.
+      </div>
+    </div>
+
+    <div class="slide" id="s21" data-title="Scalability Bottlenecks">
+      <h2>Scalability Bottlenecks</h2>
+      <h3>Bottleneck 3: Comment Write Amplification</h3>
+      <pre>
+Problem: 5,787 comments/sec; viral post → millions of comments.
+         One Cassandra partition per postId → partition grows very large.
+
+Solution:
+  - Cassandra handles large partitions well (not a HOT partition, just LARGE)
+  - If comment_count &gt; 10M: introduce bucket sub-partition
+    PRIMARY KEY ((post_id, bucket), comment_id)
+    where bucket = comment_count / 1_000_000
+  - Compaction strategy: TWCS (TimeWindowCompactionStrategy)
+    → comments are write-heavy, time-ordered → minimizes write amplification
+      </pre>
+      <h3>Bottleneck 4: Read Amplification on Viral Post</h3>
+      <pre>
+Problem: 10M users load a viral post simultaneously.
+         Each load fetches top 20 comments → 10M Cassandra reads for same data.
+
+Solution:
+  - Redis cache: top_comments:{postId} TTL 5 min (L1 cache)
+  - CDN caching: top-20 comments cached at edge, TTL 30 seconds (L0 cache)
+  - For ultra-viral posts: pre-compute + push to CDN edge nodes proactively
+  - Cache key invalidation: DEL top_comments:{postId} on new comment
+      </pre>
+      <h3>Bottleneck 5: API Gateway Rate Limiting</h3>
+      <pre>
+Per-user rate limits:
+  Like actions:   100/min per user
+  Comments:       3/min per user per post (Redis INCR with EX 60)
+  Comment reads:  1000/min per user
+
+Redis sliding window: comment_rate:{userId}:{postId} INCR EX 60
+  → 429 Too Many Requests if count &gt;= 3
+      </pre>
+    </div>
+
+    <div class="slide" id="s22" data-title="Trade-Offs — Key Decisions">
+      <h2>Trade-Offs — Key Decisions</h2>
+      <table>
+        <tr><th>Decision</th><th>Choice Made</th><th>Trade-Off</th></tr>
+        <tr>
+          <td>Like count storage</td>
+          <td>Redis INCR</td>
+          <td>Atomic, sub-ms, 1M ops/sec vs. NOT durable (5-min write-back, ~5 min data loss on crash)</td>
+        </tr>
+        <tr>
+          <td>Like existence check</td>
+          <td>Redis SET (liked_by sharded)</td>
+          <td>O(1) SISMEMBER vs. at 10M likers SET uses ~500MB per viral post — mitigated by Bloom filter</td>
+        </tr>
+        <tr>
+          <td>Comment storage</td>
+          <td>Cassandra, partition by post_id</td>
+          <td>Single partition scan for all post comments vs. hot partition for viral posts with 10M+ comments</td>
+        </tr>
+        <tr>
+          <td>Comment sort (recent)</td>
+          <td>TIMEUUID clustering key</td>
+          <td>Free time-ordered sort vs. top-first requires separate Redis cache of top-N updated every 5 min</td>
+        </tr>
+        <tr>
+          <td>Toxicity detection</td>
+          <td>Async ML via Kafka</td>
+          <td>Non-blocking, doesn't slow submit vs. toxic comments visible for seconds before hidden</td>
+        </tr>
+        <tr>
+          <td>Threading depth</td>
+          <td>2-level max (Instagram)</td>
+          <td>Simple query (parent_comment_id filter) vs. Reddit-style deep nesting needs recursive queries</td>
+        </tr>
+        <tr>
+          <td>Notifications</td>
+          <td>Async Kafka → FCM/APNs</td>
+          <td>Non-blocking, batched efficiently vs. slight delay (seconds) before notification arrives</td>
+        </tr>
+        <tr>
+          <td>Like count accuracy</td>
+          <td>Eventual consistency (~5 sec)</td>
+          <td>High throughput, no distributed locking vs. count may show slightly stale value</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s23" data-title="What NOT to Say (Anti-Patterns)">
+      <h2>What NOT to Say (Anti-Patterns)</h2>
+      <div class="two-col">
+        <div>
+          <h3>Anti-Pattern 1</h3>
+          <div class="antipattern">Store like count in the posts table</div>
+          <p>100K likes/sec all hitting <code>UPDATE posts SET like_count = like_count + 1 WHERE id = ?</code> — row lock serializes all writes. Database melts at ~1,000/sec throughput.</p>
+
+          <h3>Anti-Pattern 2</h3>
+          <div class="antipattern">Use MySQL for comments at scale</div>
+          <p>500M inserts/day on a single MySQL table. No natural sharding strategy. Cassandra's partition-per-post model is architecturally correct here.</p>
+
+          <h3>Anti-Pattern 3</h3>
+          <div class="antipattern">Hard delete comments</div>
+          <p>Breaks reply chains (orphaned replies still reference deleted parent). Breaks notification deep-links. Breaks audit trail. Always soft delete (<code>is_deleted = true</code>).</p>
+        </div>
+        <div>
+          <h3>Anti-Pattern 4</h3>
+          <div class="antipattern">Sync ML toxicity check on comment submit</div>
+          <p>ML inference = 50–200ms added to every comment POST. Use Kafka to make it async. Comment shows immediately; if toxic, hidden within seconds.</p>
+
+          <h3>Anti-Pattern 5</h3>
+          <div class="antipattern">OFFSET pagination for comments</div>
+          <p>OFFSET N scans and discards N rows. Unstable under concurrent inserts — new comment shifts all pages → users see duplicates/gaps. Use cursor-based pagination.</p>
+
+          <h3>Anti-Pattern 6</h3>
+          <div class="antipattern">Redis pub/sub for notifications</div>
+          <p>Redis pub/sub doesn't persist messages. If Notification Service is down when event fires, notification is lost forever. Use Kafka for durability (7-day retention).</p>
+
+          <h3>Anti-Pattern 7</h3>
+          <div class="antipattern">Exact like count with strong consistency</div>
+          <p>Requires distributed locking, kills throughput. Approximate counts ("1.2M") with 5-sec lag are completely acceptable for social media.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s24" data-title="Senior Q&amp;As — 15 YOE Level">
+      <h2>Senior Q&amp;As — 15 YOE Level</h2>
+      <h3>Q1: Redis crashes before write-back runs. How do you handle?</h3>
+      <p><strong>A:</strong> Two approaches. Enable Redis AOF persistence (fsync=everysec) — limits data loss to 1 second. Kafka like-event topic has 7-day retention — replay last 5 minutes to recompute exact count. Cassandra is ground truth; Redis is a cache always rebuildable from Kafka.</p>
+
+      <h3>Q2: User likes then immediately unlikes. Unlike arrives BEFORE like due to network jitter. Out-of-order requests?</h3>
+      <p><strong>A:</strong> Idempotency key + timestamp. Redis key <code>like_ts:{userId}:{postId}</code> stores timestamp of last accepted action. If incoming request timestamp &lt; stored timestamp → reject as stale. Client generates timestamp at action time, not at network delivery time.</p>
+
+      <h3>Q3: Write-back job reads counter then new likes arrive before the reset. TOCTOU race?</h3>
+      <p><strong>A:</strong> Use GETDEL (atomic get-and-delete). Any likes after GETDEL go into a fresh counter key. In Cassandra: <code>UPDATE like_counts SET count = count + delta</code> (ADD delta, not SET absolute) so multiple write-back jobs are safe without coordination.</p>
+
+      <h3>Q4: Add reaction types (love, haha, wow, sad, angry) like Facebook?</h3>
+      <p><strong>A:</strong> Redis keys become <code>reaction:{postId}:{reactionType}</code> — 6 keys per post. <code>reacted_by:{postId}:{userId}</code> stores which reaction type (STRING, not SET). Switching reactions: DECR old type + INCR new type in one Lua script. Write-back job writes 6 counter values per post to Cassandra.</p>
+
+      <h3>Q5: "3 mutual friends liked this" annotation — how to implement?</h3>
+      <p><strong>A:</strong> At post render time: fetch following:{userId} from Social Graph Service (cached in Redis SET). Intersect with recent likers of the post. SINTERSTORE into temp key, SRANDMEMBER to pick 3 names. Expensive per post — precompute at feed generation time and cache per-user.</p>
+    </div>
+
+    <div class="slide" id="s25" data-title="Key Numbers &amp; Closing">
+      <h2>Key Numbers &amp; Closing</h2>
+      <div class="two-col">
+        <div>
+          <h3>Quick Numbers (Memorize These)</h3>
+          <table>
+            <tr><th>Metric</th><th>Number</th></tr>
+            <tr><td>Instagram likes/day</td><td>4.2 billion</td></tr>
+            <tr><td>Avg likes/sec</td><td>48,600</td></tr>
+            <tr><td>Peak likes/sec (viral)</td><td>100,000 on one postId</td></tr>
+            <tr><td>Comments/day</td><td>500 million</td></tr>
+            <tr><td>Avg comments/sec</td><td>5,787</td></tr>
+            <tr><td>Redis INCR throughput</td><td>~1M ops/sec (single key)</td></tr>
+            <tr><td>liked_by SET at 10M likers</td><td>~80 MB (exact) vs 12 MB (Bloom)</td></tr>
+            <tr><td>Write-back interval</td><td>Every 5 minutes</td></tr>
+            <tr><td>Like count lag</td><td>Up to 5 seconds (acceptable)</td></tr>
+            <tr><td>Comment data/day</td><td>~100 GB (500M × 200 bytes)</td></tr>
+            <tr><td>liked_by shard count</td><td>100 sub-keys (userId % 100)</td></tr>
+            <tr><td>Max comments before sub-partition</td><td>10 million per post</td></tr>
+          </table>
+        </div>
+        <div>
+          <h3>The 60-Second Summary</h3>
+          <ul>
+            <li><strong>Like counts</strong> → Redis INCR (atomic, 1M ops/sec), write-back to Cassandra every 5 min</li>
+            <li><strong>Idempotency</strong> → Lua script: SISMEMBER check before SADD + INCR</li>
+            <li><strong>liked_by at scale</strong> → Shard SET into 100 sub-keys, or Bloom filter (12 MB vs 80 MB)</li>
+            <li><strong>Comments</strong> → Cassandra, partition=postId, clustering=TIMEUUID</li>
+            <li><strong>Pagination</strong> → cursor-based (TIMEUUID), never OFFSET</li>
+            <li><strong>Top comments</strong> → app-layer sort of top 500, cached in Redis TTL 5 min</li>
+            <li><strong>Notifications</strong> → async Kafka → FCM/APNs, throttle to 1 notif/10 min per post</li>
+            <li><strong>Toxicity</strong> → async ML via Kafka, never blocks comment submit</li>
+            <li><strong>Unlike safety</strong> → Lua script guards: SISMEMBER + count &gt; 0 before DECR</li>
+          </ul>
+          <div class="key-insight">
+            <strong>The single most important insight:</strong> The like counter cannot live in the posts
+            table. Redis INCR is the only structure that handles 100K atomic increments/sec on one key
+            without contention. Everything else follows from this.
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

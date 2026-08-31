@@ -1,0 +1,1117 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Chat Application System Design</title><link rel="stylesheet" href="../../sd-player.css"></head><body>
+<div id="player"><div id="topbar"><span id="slide-title">Chat Application — WhatsApp Scale</span><span id="counter">1 / 25</span></div><div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div><div id="slide-area">
+
+<div class="slide" id="s1" data-title="Chat Application System Design">
+  <h1>💬 Chat Application System Design</h1>
+  <h2>Like WhatsApp / Messenger — Billion-User Scale</h2>
+  <p>Design a real-time, durable, globally distributed messaging system with delivery guarantees at billion-user scale.</p>
+  <div class="badge-row">
+    <span class="badge">WebSocket</span>
+    <span class="badge">Cassandra</span>
+    <span class="badge">E2E Encryption</span>
+    <span class="badge">Presence</span>
+    <span class="badge">Signal Protocol</span>
+    <span class="badge">Fan-out</span>
+  </div>
+  <div class="key-insight">
+    <strong>Core Challenge:</strong> Messages must be delivered <em>at least once</em>, in per-conversation order,
+    in real time when online — and reliably when offline. Idempotency + client deduplication
+    provide an exactly-once user experience without the overhead of true EOS transport.
+  </div>
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num">2B</div><div class="stat-label">Registered Users</div></div>
+    <div class="stat-box"><div class="stat-num">100B</div><div class="stat-label">Messages / Day</div></div>
+    <div class="stat-box"><div class="stat-num">&lt;100ms</div><div class="stat-label">P99 Delivery</div></div>
+    <div class="stat-box"><div class="stat-num">500M</div><div class="stat-label">Daily Active Users</div></div>
+  </div>
+</div>
+
+<div class="slide" id="s2" data-title="Scale & Opening Statement">
+  <h1>Scale &amp; Opening Statement</h1>
+  <p>State your framing in the first 30 seconds of the interview.</p>
+  <div class="quote-block">
+    "WhatsApp is a messaging system where users send text, media, and voice to individuals or groups.
+    Key challenges: real-time delivery via persistent connections, offline message buffering,
+    media storage at scale, end-to-end encryption, and group fanout."
+  </div>
+  <div class="stat-row">
+    <div class="stat-box"><div class="stat-num">2B</div><div class="stat-label">Registered Users</div></div>
+    <div class="stat-box"><div class="stat-num">500M</div><div class="stat-label">DAU</div></div>
+    <div class="stat-box"><div class="stat-num">100B</div><div class="stat-label">Messages / Day</div></div>
+    <div class="stat-box"><div class="stat-num">~1.2M</div><div class="stat-label">Peak msg/sec</div></div>
+  </div>
+  <div class="two-col">
+    <div>
+      <h3>Six major components</h3>
+      <ul>
+        <li><strong>Connection layer</strong> — WebSocket servers, persistent client connections</li>
+        <li><strong>Chat service</strong> — validates, persists, routes messages</li>
+        <li><strong>Message store</strong> — Cassandra: high-write, time-ordered, TTL</li>
+        <li><strong>Presence service</strong> — online/offline via Redis Pub/Sub</li>
+        <li><strong>Media service</strong> — S3 + CDN, pre-signed URLs</li>
+        <li><strong>Notification service</strong> — APNs / FCM for offline users</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Key design decisions</h3>
+      <ul>
+        <li>Sequence IDs per conversation for ordering</li>
+        <li>ACK-based delivery: ✓ received, ✓✓ delivered, ✓✓ blue = read</li>
+        <li>Redis Streams for hot delivery path (&lt;1ms)</li>
+        <li>Kafka for durable async integrations (search, analytics)</li>
+        <li>Write-fanout for groups ≤ 256 members</li>
+        <li>WebSocket with consistent hashing (sticky sessions)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s3" data-title="Functional Requirements">
+  <h1>Functional Requirements</h1>
+  <p>Clarify these in the first 2 minutes — scope drives every subsequent trade-off.</p>
+  <div class="two-col">
+    <div>
+      <h3>Core Messaging</h3>
+      <ul>
+        <li>1:1 real-time messaging</li>
+        <li>Group messaging (up to 256 members)</li>
+        <li>Media: text, images, video, voice notes, documents</li>
+        <li>Message history — persistent, unlimited scroll-back</li>
+        <li>Offline message delivery — buffer &amp; deliver on reconnect</li>
+        <li>Message deletion (for me / for everyone)</li>
+      </ul>
+      <h3>User Features</h3>
+      <ul>
+        <li>User registration (phone number based)</li>
+        <li>Contact discovery</li>
+        <li>Group creation, admin, membership management</li>
+        <li>Message forwarding</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Real-Time Features</h3>
+      <ul>
+        <li>Delivery receipts (sent / delivered / read)</li>
+        <li>Typing indicators</li>
+        <li>Online presence ("last seen")</li>
+        <li>Push notifications for offline users</li>
+      </ul>
+      <h3>Security</h3>
+      <ul>
+        <li>End-to-end encryption (Signal Protocol)</li>
+        <li>Key management per device</li>
+        <li>Ephemeral messages (disappearing)</li>
+        <li>Blocked user enforcement</li>
+      </ul>
+    </div>
+  </div>
+  <div class="key-insight">
+    <strong>Scope decision:</strong> We design for 1:1 + group ≤ 256 with E2EE, offline delivery, and media.
+    We exclude: broadcast channels, payments, call/video (separate microservices).
+  </div>
+</div>
+
+<div class="slide" id="s4" data-title="Non-Functional Requirements">
+  <h1>Non-Functional Requirements</h1>
+  <div class="two-col">
+    <div>
+      <h3>Latency Targets</h3>
+      <table class="data-table">
+        <tr><th>Metric</th><th>Target</th></tr>
+        <tr><td>Message delivery (online)</td><td>&lt;100ms P99</td></tr>
+        <tr><td>Message delivery (offline)</td><td>&lt;5s on reconnect</td></tr>
+        <tr><td>Media upload</td><td>&lt;500ms P95</td></tr>
+        <tr><td>Presence update lag</td><td>&lt;1 second</td></tr>
+        <tr><td>WebSocket reconnect</td><td>&lt;2–5 seconds</td></tr>
+        <tr><td>Message history load</td><td>&lt;200ms</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Scale &amp; Reliability</h3>
+      <table class="data-table">
+        <tr><th>Metric</th><th>Target</th></tr>
+        <tr><td>Availability</td><td>99.99% (52 min/year downtime)</td></tr>
+        <tr><td>Peak throughput</td><td>1.2M messages/sec</td></tr>
+        <tr><td>Concurrent WS connections</td><td>400M peak</td></tr>
+        <tr><td>Message durability</td><td>Zero loss after server ACK</td></tr>
+        <tr><td>Storage / year</td><td>~1.6 PB text + 70 PB media</td></tr>
+        <tr><td>Replication factor</td><td>3× Cassandra, 3× Kafka</td></tr>
+      </table>
+    </div>
+  </div>
+  <div class="two-col" style="margin-top:8px">
+    <div>
+      <h3>Consistency Model</h3>
+      <ul>
+        <li><strong>Messages:</strong> At-least-once delivery; idempotent dedup on client</li>
+        <li><strong>Ordering:</strong> Per-conversation sequence IDs; client reorder buffer</li>
+        <li><strong>Presence:</strong> Eventually consistent (stale by seconds is acceptable)</li>
+        <li><strong>User accounts:</strong> Strong consistency (phone uniqueness)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Security &amp; Compliance</h3>
+      <ul>
+        <li>E2EE: server stores only ciphertext</li>
+        <li>TLS 1.3 for all transport</li>
+        <li>GDPR: data deletion within 30 days of request</li>
+        <li>Cassandra TTL: 30 days undelivered, 1 year delivered</li>
+        <li>Media: pre-signed URLs expire in 15 minutes</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s5" data-title="High-Level Architecture">
+  <h1>High-Level Architecture</h1>
+  <pre class="arch-diagram">
+┌──────────────────────────────────────────────────────────────┐
+│                        CLIENTS                                │
+│          iOS App       Android App       Web App              │
+└──────────────────────────┬───────────────────────────────────┘
+                           │ WSS (WebSocket Secure)
+            ┌──────────────▼──────────────────┐
+            │      API Gateway / LB (Nginx)    │
+            │   Consistent hashing by user_id  │
+            └──────┬──────────────────┬────────┘
+                   │                  │
+      ┌────────────▼────┐    ┌────────▼────────┐
+      │  WebSocket Srvr  │    │  REST API Server │
+      │ (stateful conn)  │    │ (profile, auth)  │
+      └────────┬─────────┘    └─────────────────┘
+               │
+   ┌───────────▼───────────────────┐
+   │         Chat Service           │
+   │  1. Persist → Cassandra        │
+   │  2. Enqueue → Redis Streams    │
+   │  3. Publish → Kafka            │
+   └───┬──────────┬─────────────┬──┘
+       │          │             │
+  ┌────▼───┐ ┌────▼─────┐ ┌────▼──────────────┐
+  │Cassandra│ │  Redis    │ │      Kafka         │
+  │messages │ │  Streams  │ │  (search,CDC,audit)│
+  └─────────┘ └────┬──────┘ └────────────────────┘
+                   │
+         ┌─────────▼──────────────────────┐
+         │  Online: WS delivery           │
+         │  Offline: Notification Service │
+         │           (FCM / APNs)         │
+         └────────────────────────────────┘
+
+  ┌──────────────────┐    ┌──────────────────────┐
+  │  Presence Service│    │    Media Service       │
+  │  Redis Pub/Sub   │    │  Pre-signed S3 URL     │
+  │  SETEX heartbeat │    │  + CloudFront CDN      │
+  └──────────────────┘    └──────────────────────┘</pre>
+</div>
+
+<div class="slide" id="s6" data-title="Connection Management — WebSocket">
+  <h1>Connection Management — WebSocket</h1>
+  <div class="two-col">
+    <div>
+      <h3>Why WebSocket over HTTP polling?</h3>
+      <ul>
+        <li>Full-duplex TCP — client and server both push at any time</li>
+        <li>Single persistent connection handles send + receive + ACKs</li>
+        <li>No HTTP header overhead on every message (~800 bytes saved per msg)</li>
+        <li>Better on mobile — fewer connections, saves battery</li>
+        <li>At 500M users × 40 polls/min = crushes servers without WS</li>
+      </ul>
+      <h3>WebSocket Lifecycle</h3>
+      <ul>
+        <li><code>HTTP GET /ws</code> → <code>101 Switching Protocols</code></li>
+        <li>Heartbeat ping every 30 seconds</li>
+        <li>Server closes dead connections after 90s with no ping</li>
+        <li>Client reconnects with exponential backoff + jitter (2–5s)</li>
+        <li>On reconnect: fetch pending messages from Cassandra</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Sticky Sessions via Consistent Hashing</h3>
+      <div class="key-insight">
+        User A always connects to WebSocket Server #3.
+        Consistent hashing on <code>user_id</code> → same server node.
+        Redis registry maps: <code>user_id → ws_server_id</code>
+      </div>
+      <h3>Why sticky sessions?</h3>
+      <ul>
+        <li>Chat Service needs to know <em>which</em> WS server holds a user's connection</li>
+        <li>Redis lookup: <code>GET user:{id}:ws_server</code> → server address</li>
+        <li>Message delivery goes to <em>that</em> server's Redis Stream inbox</li>
+        <li>On disconnect, Redis key expires (TTL = 60s heartbeat)</li>
+      </ul>
+      <h3>Scale</h3>
+      <ul>
+        <li>64-core server with 256 GB RAM → ~640K concurrent WS connections</li>
+        <li>400M peak connections → ~625 WS servers needed</li>
+        <li>Tune: <code>SO_REUSEPORT</code>, ulimit, multiple ports per machine</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s7" data-title="Message Flow Sequence">
+  <h1>Message Flow — Send &amp; Receive</h1>
+  <pre class="arch-diagram">
+Client A      WS Server      Chat Service    Redis Streams  Cassandra   Client B (online)
+   │               │               │               │             │              │
+   │─ send(msg) ──▶│               │               │             │              │
+   │               │─ route_msg ──▶│               │             │              │
+   │               │               │─ persist ─────────────────▶│              │
+   │               │               │  (conv_id, ts, content)    │              │
+   │               │               │◀─ ACK ─────────────────────│              │
+   │               │               │─ XADD ───────▶│             │              │
+   │               │               │  server inbox  │             │              │
+   │◀─ ✓ sent ─────│               │               │             │              │
+   │               │               │               │─ deliver ─────────────────▶│
+   │               │               │◀──────────────│             │              │
+   │               │               │               │             │◀─ ACK ───────│
+   │◀─ ✓✓ delivered│◀──────────────│               │             │              │
+   │               │               │               │             │◀─ READ ──────│
+   │◀─ ✓✓ blue ────│               │               │             │              │</pre>
+  <div class="two-col" style="margin-top:8px">
+    <div>
+      <h3>Online Path (happy path)</h3>
+      <ol>
+        <li>Client sends message over WebSocket</li>
+        <li>Chat Service persists to Cassandra first</li>
+        <li>Chat Service publishes to recipient's Redis Stream inbox</li>
+        <li>Sender receives single tick (server ACK)</li>
+        <li>Recipient's WS server delivers; client ACKs back</li>
+        <li>Sender gets double tick (delivered)</li>
+      </ol>
+    </div>
+    <div>
+      <h3>Offline Path</h3>
+      <ol>
+        <li>Cassandra stores message with status = PENDING</li>
+        <li>Notification Service fires FCM/APNs push</li>
+        <li>On reconnect, client fetches PENDING from Cassandra</li>
+        <li>Delivered in order by sequence ID</li>
+        <li>Client ACKs each; status advances to DELIVERED</li>
+      </ol>
+      <div class="key-insight"><strong>Guarantee:</strong> Cassandra write completes before sender ACK — zero message loss after single tick.</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s8" data-title="Delivery Receipts">
+  <h1>Delivery Receipts — Three-Tick System</h1>
+  <div class="two-col">
+    <div>
+      <h3>The Three States</h3>
+      <table class="data-table">
+        <tr><th>Symbol</th><th>State</th><th>Meaning</th><th>Triggered by</th></tr>
+        <tr><td>✓</td><td>SENT</td><td>Server received &amp; persisted</td><td>Chat Service writes to Cassandra</td></tr>
+        <tr><td>✓✓ grey</td><td>DELIVERED</td><td>Recipient device got message</td><td>Client device sends DELIVERY_ACK</td></tr>
+        <tr><td>✓✓ blue</td><td>READ</td><td>Recipient opened conversation</td><td>Client sends READ_ACK on screen display</td></tr>
+      </table>
+      <div class="key-insight">
+        <strong>Why not exactly-once?</strong> ACKs can be lost in transit.
+        Re-sending ACK with same message_id is idempotent — state transitions
+        (PENDING → DELIVERED → READ) are monotonic, never go backward.
+      </div>
+    </div>
+    <div>
+      <h3>Implementation Details</h3>
+      <ul>
+        <li><strong>SENT tick:</strong> Returned immediately when Chat Service ACKs the Cassandra write</li>
+        <li><strong>DELIVERED tick:</strong> Recipient device sends <code>DELIVERY_ACK{message_id}</code> over WS</li>
+        <li><strong>READ tick:</strong> Sent when conversation is scrolled into view on recipient screen</li>
+        <li><strong>Batch ACKs:</strong> Read receipt can batch multiple message IDs (load conversation = bulk READ_ACK)</li>
+        <li><strong>Privacy:</strong> User can disable read receipts (blue tick blocked) — WhatsApp supports this</li>
+      </ul>
+      <h3>Group Read Receipts</h3>
+      <ul>
+        <li>Show "Delivered to N / Read by N" count</li>
+        <li>Store per-member delivery record in Cassandra</li>
+        <li>Sender queries aggregated delivery state on demand (not pushed)</li>
+        <li>Avoids N×M real-time events flooding the sender</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s9" data-title="Message Ordering — Cassandra Schema">
+  <h1>Message Ordering — Cassandra Partition Design</h1>
+  <div class="two-col">
+    <div>
+      <h3>Partition Key = conversation_id</h3>
+      <pre class="code-block">-- Cassandra table
+CREATE TABLE messages (
+  conv_id    TEXT,
+  seq_id     BIGINT,   -- server-assigned sequence
+  message_id UUID,     -- client idempotency key
+  sender_id  TEXT,
+  content    BLOB,     -- ciphertext
+  msg_type   TEXT,     -- TEXT | IMAGE | VIDEO
+  status     TEXT,     -- PENDING | DELIVERED | READ
+  created_at TIMESTAMP,
+  PRIMARY KEY ((conv_id), seq_id, message_id)
+) WITH CLUSTERING ORDER BY (seq_id DESC);
+
+-- Fetch last 50 messages
+SELECT * FROM messages
+WHERE conv_id = '123'
+ORDER BY seq_id DESC
+LIMIT 50;</pre>
+    </div>
+    <div>
+      <h3>Why this partition design?</h3>
+      <ul>
+        <li><strong>Partition by conv_id:</strong> All messages in one conversation stored together → fast range reads</li>
+        <li><strong>Cluster by seq_id DESC:</strong> Newest messages first without client-side sorting</li>
+        <li><strong>seq_id not timestamp:</strong> Two messages at same millisecond won't collide; seq_id is monotonic per conversation</li>
+        <li><strong>message_id UUID:</strong> Client-generated; deduplication key for retries</li>
+      </ul>
+      <h3>Hot partition mitigation</h3>
+      <ul>
+        <li>Add time-bucket to partition key for very active conversations:</li>
+        <li><code>PRIMARY KEY ((conv_id, bucket), seq_id)</code></li>
+        <li>bucket = YYYYMM → max ~30 days of messages per partition</li>
+        <li>Keep partition size &lt; 100MB (Cassandra recommendation)</li>
+      </ul>
+      <div class="key-insight">Discord publicly migrated MongoDB → Cassandra for exactly this pattern — 1B+ messages/day on this schema design.</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s10" data-title="Snowflake ID Design">
+  <h1>Snowflake ID — Distributed Sequence Generation</h1>
+  <div class="two-col">
+    <div>
+      <h3>Snowflake ID Structure (64-bit)</h3>
+      <pre class="code-block">Bit layout (64 bits total):
+┌────────────┬──────────┬───────────┬─────────┐
+│  41 bits   │ 10 bits  │  12 bits  │  1 bit  │
+│ timestamp  │ node_id  │ sequence  │  sign   │
+│ (ms since  │(data ctr │ (per-ms   │  (0)    │
+│  epoch)    │ + worker)│  counter) │         │
+└────────────┴──────────┴───────────┴─────────┘
+
+Properties:
+- Monotonically increasing per node
+- ~4096 IDs/ms per worker node
+- 1024 worker nodes supported
+- ~69 years of timestamps
+- Sortable by time globally (approximately)</pre>
+      <div class="key-insight">
+        Twitter, Discord, Instagram all use Snowflake variants.
+        seq_id in Cassandra = Snowflake ID → ordering + deduplication in one value.
+      </div>
+    </div>
+    <div>
+      <h3>Why not UUID v4 for ordering?</h3>
+      <ul>
+        <li>UUID v4 is random — no temporal ordering</li>
+        <li>Cassandra secondary index on timestamp is expensive</li>
+        <li>Snowflake embeds time → range queries work on primary key</li>
+      </ul>
+      <h3>Why not auto-increment (MySQL)?</h3>
+      <ul>
+        <li>Single point of failure for ID generation</li>
+        <li>Doesn't scale across distributed Chat Service instances</li>
+        <li>Requires a round-trip to DB before message is persisted</li>
+      </ul>
+      <h3>Per-conversation sequence (alternative)</h3>
+      <ul>
+        <li>Redis INCR on key <code>seq:{conv_id}</code> → atomic per-conversation counter</li>
+        <li>Guarantees strict per-conversation ordering (no gaps)</li>
+        <li>Trade-off: Redis INCR is a synchronous bottleneck per message</li>
+        <li>At WhatsApp scale: shard counters by conv_id hash</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s11" data-title="Group Chat Fan-out">
+  <h1>Group Chat Fan-out — Write vs Read</h1>
+  <div class="two-col">
+    <div>
+      <h3>Fan-out on Write (WhatsApp approach)</h3>
+      <ul>
+        <li>One message → push copy to each member's inbox immediately</li>
+        <li>256 members → 256 Cassandra writes + 256 Redis Stream entries</li>
+        <li>Simple delivery: each user has their own queue</li>
+        <li>Low read latency: no membership lookup on read path</li>
+        <li>Works great for groups ≤ 256 members</li>
+      </ul>
+      <div class="pro-con">
+        <div class="pro">✅ Simple delivery logic</div>
+        <div class="pro">✅ Low read latency</div>
+        <div class="pro">✅ Easy per-member delivery state</div>
+        <div class="con">❌ 256× write amplification</div>
+        <div class="con">❌ Expensive for large groups</div>
+      </div>
+    </div>
+    <div>
+      <h3>Fan-out on Read (Twitter/YouTube approach)</h3>
+      <ul>
+        <li>Store message once; each member fetches when they open chat</li>
+        <li>Must compute group membership on every read</li>
+        <li>O(1) write cost regardless of group size</li>
+        <li>Higher read latency (membership join + message fetch)</li>
+        <li>Better for 100K+ follower broadcast channels</li>
+      </ul>
+      <div class="pro-con">
+        <div class="pro">✅ Single write per message</div>
+        <div class="pro">✅ Scales to huge groups</div>
+        <div class="con">❌ Complex read path</div>
+        <div class="con">❌ Higher read latency</div>
+      </div>
+    </div>
+  </div>
+  <div class="key-insight">
+    <strong>Recommendation:</strong> Fan-out on WRITE for groups ≤ 256 (WhatsApp/Messenger model).
+    Fan-out on READ or hybrid for Telegram channels (100K+ members).
+    The product constraint (256 member limit) makes write-fanout tractable.
+  </div>
+</div>
+
+<div class="slide" id="s12" data-title="Online Presence — Redis Heartbeat">
+  <h1>Online Presence — Redis Heartbeat Design</h1>
+  <div class="two-col">
+    <div>
+      <h3>Presence Data Model (Redis)</h3>
+      <pre class="code-block">-- On WebSocket connect:
+HSET user:{id}:presence
+  status "online"
+  ws_server "ws-node-42"
+  last_seen 1700000000
+EXPIRE user:{id}:presence 60
+
+-- Heartbeat every 30s (client ping):
+EXPIRE user:{id}:presence 60
+
+-- On disconnect:
+HSET user:{id}:presence
+  status "offline"
+  last_seen {now}
+
+-- Broadcast to interested parties:
+PUBLISH presence:{id} "offline:{timestamp}"</pre>
+      <div class="key-insight">
+        Key TTL = 60s. If client crashes without disconnect, presence auto-expires.
+        No zombie "online" users after network failure.
+      </div>
+    </div>
+    <div>
+      <h3>Presence Fan-out</h3>
+      <ul>
+        <li>User A goes online → PUBLISH to <code>presence:{A}</code> channel</li>
+        <li>All WebSocket servers subscribed to contacts of A receive the event</li>
+        <li>Those servers push presence update to connected contacts</li>
+        <li>Rate limit: max 1 presence update/sec per user (avoid flapping)</li>
+      </ul>
+      <h3>Privacy &amp; "Last Seen"</h3>
+      <ul>
+        <li>Store <code>last_seen_at</code> timestamp on disconnect in Redis + PostgreSQL</li>
+        <li>User can hide last seen (privacy setting in DB)</li>
+        <li>If hidden: always return <code>"last seen recently"</code></li>
+        <li>Mutual privacy: if you hide yours, you can't see others'</li>
+      </ul>
+      <h3>Why Redis over ZooKeeper?</h3>
+      <ul>
+        <li>Sub-millisecond pub/sub — presence changes in &lt;1ms</li>
+        <li>Simple HSET/EXPIRE pattern; no ZK node lifecycle complexity</li>
+        <li>Redis doubles as cache — no second system needed</li>
+        <li>Eventually consistent presence is acceptable (stale by seconds)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s13" data-title="End-to-End Encryption — Signal Protocol">
+  <h1>End-to-End Encryption — Signal Protocol</h1>
+  <div class="two-col">
+    <div>
+      <h3>Key Components</h3>
+      <ul>
+        <li><strong>X3DH (Extended Triple Diffie-Hellman):</strong> Initial key agreement without both parties online simultaneously</li>
+        <li><strong>Double Ratchet Algorithm:</strong> Generates new encryption key per message — forward secrecy &amp; break-in recovery</li>
+        <li><strong>Curve25519:</strong> Elliptic curve for key generation (fast, secure)</li>
+        <li><strong>AES-256-CBC + HMAC-SHA256:</strong> Symmetric encryption of message content</li>
+      </ul>
+      <h3>1:1 Message Encryption Flow</h3>
+      <pre class="code-block">1. Alice uploads public keys to server:
+   - Identity Key (IK): long-term
+   - Signed Prekey (SPK): medium-term
+   - One-Time Prekeys (OPKs): single-use
+
+2. Bob fetches Alice's keys from server
+3. Bob computes shared secret via X3DH
+4. Bob encrypts message with shared secret
+5. Server stores ciphertext only
+6. Alice decrypts with her private keys</pre>
+    </div>
+    <div>
+      <h3>Group Chat Encryption — Sender Key</h3>
+      <ul>
+        <li>Each device has a <strong>Sender Key</strong> per group</li>
+        <li>On joining group: receive all members' Sender Keys via 1:1 encrypted messages</li>
+        <li>Encrypt group message with <em>your own</em> Sender Key — O(1) not O(n)</li>
+        <li>Each recipient decrypts using the sender's distributed key</li>
+      </ul>
+      <h3>Implications for System Design</h3>
+      <ul>
+        <li>Server stores only ciphertext — cannot read messages</li>
+        <li>No server-side search (Elasticsearch can't index ciphertext)</li>
+        <li>Push notifications use generic text: "You have a new message"</li>
+        <li>Key rotation: new Sender Key when member leaves group (forward secrecy)</li>
+        <li>New member cannot read historical messages (by design)</li>
+      </ul>
+      <div class="key-insight">
+        <strong>Trade-off:</strong> E2EE prevents content moderation, spam detection, and search on server side.
+        Must be called out in interview as an explicit design constraint.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s14" data-title="Media Sharing — S3 + CDN">
+  <h1>Media Sharing — Pre-signed S3 + CloudFront CDN</h1>
+  <div class="two-col">
+    <div>
+      <h3>Upload Flow (Direct-to-S3)</h3>
+      <pre class="code-block">1. Client → Chat Service:
+   POST /media/upload-url
+   {type: "image", size: 2MB}
+
+2. Chat Service → S3:
+   generate_presigned_url(
+     bucket="whatsapp-media",
+     key="media/{conv_id}/{uuid}.jpg",
+     expiry=900  # 15 minutes
+   )
+
+3. Chat Service → Client:
+   {upload_url: "https://s3.amazonaws.com/...?sig=..."}
+
+4. Client → S3 directly:
+   PUT {upload_url} (image bytes)
+   -- Chat Service never touches media bytes --
+
+5. Client → Chat Service:
+   Send message with media_key reference only</pre>
+      <div class="key-insight">Media bytes never flow through Chat Service. Reduces load and egress cost.</div>
+    </div>
+    <div>
+      <h3>Download via CDN</h3>
+      <ul>
+        <li>CloudFront CDN with 400+ edge locations globally</li>
+        <li>Image served from node &lt;20ms away vs 200ms to origin</li>
+        <li>Target cache hit ratio: &gt;90% for popular media</li>
+        <li>S3 bucket is private — CDN uses signed cookies</li>
+      </ul>
+      <h3>Media Processing Pipeline</h3>
+      <ul>
+        <li>Upload triggers Lambda → compress thumbnail (100px)</li>
+        <li>Store: original + thumbnail in S3</li>
+        <li>Message contains: thumbnail_url + full_url (both pre-signed)</li>
+        <li>Chat loads thumbnail; user taps → fetch full resolution</li>
+      </ul>
+      <h3>Scale &amp; Cost</h3>
+      <ul>
+        <li>10% of messages have media → 10B media/day</li>
+        <li>Avg 100KB compressed → 1 PB/day (!) → S3 Intelligent-Tiering</li>
+        <li>Media older than 90 days → Glacier (10× cheaper)</li>
+        <li>S3 durability: 99.999999999% (11 nines)</li>
+        <li>Multi-region replication for DR</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s15" data-title="Push Notifications for Offline Users">
+  <h1>Push Notifications — Offline Delivery</h1>
+  <div class="two-col">
+    <div>
+      <h3>Offline Detection</h3>
+      <ul>
+        <li>Redis lookup: <code>GET user:{id}:presence</code></li>
+        <li>If key missing or status = "offline" → send push notification</li>
+        <li>If key exists and status = "online" → deliver via WebSocket only</li>
+        <li>Race condition: user goes offline between check and WS delivery → client fetches missed messages on reconnect from Cassandra</li>
+      </ul>
+      <h3>Push Notification Flow</h3>
+      <pre class="code-block">Chat Service:
+  if recipient.isOffline():
+    NotificationService.send({
+      device_token: user.fcm_token,
+      title: "New message",      # generic (E2EE)
+      body: "You have a message",
+      data: {conv_id, message_id}
+    })
+
+Device wakes:
+  → Opens app → WebSocket reconnects
+  → Fetches pending messages from Cassandra
+  → Sends DELIVERY_ACK for each</pre>
+    </div>
+    <div>
+      <h3>Multi-Platform Push</h3>
+      <table class="data-table">
+        <tr><th>Platform</th><th>Service</th><th>Notes</th></tr>
+        <tr><td>iOS</td><td>APNs</td><td>Requires Apple certificate rotation</td></tr>
+        <tr><td>Android</td><td>FCM</td><td>Firebase Cloud Messaging</td></tr>
+        <tr><td>Web</td><td>Web Push API</td><td>Works even when tab closed</td></tr>
+        <tr><td>Desktop</td><td>FCM/WNS</td><td>Windows Notification Service</td></tr>
+      </table>
+      <h3>Reliability Concerns</h3>
+      <ul>
+        <li><strong>Notification ≠ delivery:</strong> Push is best-effort; message is durably in Cassandra</li>
+        <li><strong>Deduplication:</strong> Client checks local DB before rendering — prevents duplicate on retry</li>
+        <li><strong>Silent push:</strong> iOS background refresh can pre-fetch without showing banner</li>
+        <li><strong>Rate limiting:</strong> FCM has per-device quotas — batch notifications when possible</li>
+        <li><strong>7-day offline:</strong> Messages still in Cassandra (TTL = 30 days); delivered on reconnect</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s16" data-title="ER Diagram">
+  <h1>Entity-Relationship Diagram</h1>
+  <pre class="arch-diagram">
+┌──────────────┐        ┌────────────────────┐        ┌─────────────────┐
+│    USER       │        │   CONVERSATION      │        │    MESSAGE       │
+│──────────────│        │────────────────────│        │─────────────────│
+│ user_id (PK) │──┐     │ conv_id (PK)        │───────▶│ message_id (PK) │
+│ phone_number │  │     │ type: 1:1 | GROUP   │        │ conv_id (FK)    │
+│ name         │  │     │ created_at          │        │ sender_id (FK)  │
+│ avatar_url   │  └────▶│ last_message_at     │        │ content (blob)  │
+│ status       │        │ group_name (null:1:1│        │ type: TEXT|IMG  │
+│ created_at   │        └────────────────────┘        │ seq_id (order)  │
+└──────────────┘                 │                    │ status          │
+       │                         │                    │ created_at      │
+       │                  ┌──────▼──────────┐         └─────────────────┘
+       └─────────────────▶│ CONV_MEMBERS     │
+                          │─────────────────│         ┌─────────────────┐
+                          │ conv_id (FK)    │         │   MEDIA          │
+                          │ user_id (FK)    │         │─────────────────│
+                          │ joined_at       │         │ media_id (PK)   │
+                          │ role: ADMIN|MBR │         │ conv_id (FK)    │
+                          │ last_read_seq   │         │ uploader_id (FK)│
+                          └─────────────────┘         │ s3_key          │
+                                                      │ thumbnail_key   │
+                          ┌─────────────────┐         │ size_bytes      │
+                          │  DEVICE          │         │ mime_type       │
+                          │─────────────────│         │ created_at      │
+                          │ device_id (PK)  │         └─────────────────┘
+                          │ user_id (FK)    │
+                          │ platform        │
+                          │ push_token      │
+                          │ public_key      │
+                          └─────────────────┘</pre>
+  <div class="key-insight">
+    <strong>PostgreSQL</strong> stores: users, conversations, conv_members, devices (strong schema, ACID).
+    <strong>Cassandra</strong> stores: messages (append-only, time-series, massive scale).
+    <strong>S3</strong> stores: media blobs. <strong>Redis</strong> caches: user profiles, group member lists, presence.
+  </div>
+</div>
+
+<div class="slide" id="s17" data-title="Cassandra Schema Details">
+  <h1>Cassandra Schema — Production-Grade Design</h1>
+  <div class="two-col">
+    <div>
+      <h3>Messages Table</h3>
+      <pre class="code-block">CREATE TABLE messages (
+  conv_id    TEXT,
+  bucket     INT,     -- YYYYMM (hot partition fix)
+  seq_id     BIGINT,  -- Snowflake or Redis INCR
+  message_id UUID,    -- client dedup key
+  sender_id  TEXT,
+  content    BLOB,    -- AES-256 ciphertext
+  msg_type   TEXT,
+  media_key  TEXT,    -- S3 reference if media
+  status     TEXT,
+  created_at TIMESTAMP,
+  PRIMARY KEY ((conv_id, bucket), seq_id, message_id)
+) WITH CLUSTERING ORDER BY (seq_id DESC)
+  AND default_time_to_live = 31536000; -- 1 year</pre>
+      <h3>Pending Messages Index</h3>
+      <pre class="code-block">CREATE TABLE pending_messages (
+  recipient_id TEXT,
+  seq_id       BIGINT,
+  conv_id      TEXT,
+  message_id   UUID,
+  PRIMARY KEY ((recipient_id), seq_id)
+) WITH CLUSTERING ORDER BY (seq_id ASC)
+  AND default_time_to_live = 2592000; -- 30 days</pre>
+    </div>
+    <div>
+      <h3>Why this design works at scale</h3>
+      <ul>
+        <li><strong>Partition by (conv_id, bucket):</strong> Bounds partition size to ~1 month of messages</li>
+        <li><strong>Cluster by seq_id DESC:</strong> Latest messages retrieved without full scan</li>
+        <li><strong>TTL on table level:</strong> Auto-purge old messages — no manual cleanup jobs</li>
+        <li><strong>pending_messages table:</strong> Separate table for O(1) offline fetch per recipient</li>
+        <li><strong>Replication factor 3:</strong> ONE for writes (fast), QUORUM for reads (consistent)</li>
+      </ul>
+      <h3>Write Consistency Strategy</h3>
+      <table class="data-table">
+        <tr><th>Operation</th><th>Consistency</th><th>Why</th></tr>
+        <tr><td>Write message</td><td>LOCAL_QUORUM</td><td>Durable, fast</td></tr>
+        <tr><td>Read history</td><td>LOCAL_ONE</td><td>Speed over freshness</td></tr>
+        <tr><td>Read pending</td><td>LOCAL_QUORUM</td><td>Must not miss messages</td></tr>
+        <tr><td>Update status</td><td>LOCAL_ONE</td><td>Eventual is fine for ticks</td></tr>
+      </table>
+      <div class="key-insight">Discord publicly confirmed this schema scales to 100B+ messages in production.</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s18" data-title="Scaling Strategy">
+  <h1>Scaling Strategy</h1>
+  <div class="two-col">
+    <div>
+      <h3>WebSocket Layer</h3>
+      <ul>
+        <li>64-core server with tuned Linux → 640K concurrent connections</li>
+        <li>400M peak connections ÷ 640K = <strong>~625 WS servers</strong></li>
+        <li>Stateless behind load balancer (consistent hashing by user_id)</li>
+        <li>Redis registry: <code>user:{id} → ws_server_id</code></li>
+        <li>Auto-scale by monitoring connection count + CPU</li>
+        <li>Multi-region: route user to nearest datacenter</li>
+      </ul>
+      <h3>Kafka Partitioning</h3>
+      <ul>
+        <li>Partition key = <code>conversation_id</code> → ordering preserved per conv</li>
+        <li>Each partition processed by one Chat Service instance (ordering guarantee)</li>
+        <li>700K events/sec ÷ 100K/broker = <strong>~7 Kafka brokers minimum</strong></li>
+        <li>Replication factor 3 for fault tolerance</li>
+        <li>Retention: 7 days (covers long offline periods)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Cassandra Cluster</h3>
+      <ul>
+        <li>Write throughput: 10K–50K writes/sec per node</li>
+        <li>700K msg/sec ÷ 30K = <strong>~24 nodes minimum</strong> (add margin → 200 nodes for storage)</li>
+        <li>RF=3: 1.6 PB text × 3 = 4.8 PB raw storage</li>
+        <li>Add nodes: Cassandra re-balances automatically via vnodes</li>
+        <li>Hot partition detection: monitor partition size metrics</li>
+      </ul>
+      <h3>Chat Service (Stateless)</h3>
+      <ul>
+        <li>100 stateless instances → horizontal scale trivially</li>
+        <li>Each instance consumes from Kafka partition(s)</li>
+        <li>Circuit breaker (Hystrix) prevents cascading failures</li>
+      </ul>
+      <h3>Redis Streams</h3>
+      <ul>
+        <li>One stream per WebSocket server (not per user)</li>
+        <li>Consumer groups + XACK for at-least-once delivery tracking</li>
+        <li>Pending entries claimed after 30s timeout (crash recovery)</li>
+        <li>Stream MAXLEN cap to bound memory usage</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s19" data-title="Trade-offs Table">
+  <h1>Key Trade-offs</h1>
+  <table class="data-table">
+    <tr>
+      <th>Decision</th>
+      <th>Choice Made</th>
+      <th>Pros</th>
+      <th>Cons</th>
+      <th>Alternative</th>
+    </tr>
+    <tr>
+      <td>Real-time transport</td>
+      <td>WebSocket</td>
+      <td>Bidirectional, low overhead, mobile-efficient</td>
+      <td>Sticky sessions complexity, harder LB</td>
+      <td>SSE (simpler, server-only push)</td>
+    </tr>
+    <tr>
+      <td>Message store</td>
+      <td>Cassandra</td>
+      <td>High write throughput, time-series native, TTL</td>
+      <td>No JOIN, no ad-hoc query, ops overhead</td>
+      <td>DynamoDB (managed, zero ops)</td>
+    </tr>
+    <tr>
+      <td>Hot delivery path</td>
+      <td>Redis Streams</td>
+      <td>&lt;1ms latency, consumer groups, retries</td>
+      <td>Not durable source of truth, memory-bound</td>
+      <td>Kafka (durable but higher latency)</td>
+    </tr>
+    <tr>
+      <td>Group fanout strategy</td>
+      <td>Fan-out on Write (≤256)</td>
+      <td>Simple delivery, low read latency</td>
+      <td>256× write amplification per group message</td>
+      <td>Fan-out on Read (for 100K+ groups)</td>
+    </tr>
+    <tr>
+      <td>Message ordering</td>
+      <td>Per-conversation seq_id</td>
+      <td>No global lock, fast writes</td>
+      <td>Client must buffer and reorder</td>
+      <td>Global ordering (requires distributed lock, very expensive)</td>
+    </tr>
+    <tr>
+      <td>Delivery guarantee</td>
+      <td>At-least-once + idempotent</td>
+      <td>Simple, resilient, proven at scale</td>
+      <td>Duplicates possible; client must dedup</td>
+      <td>Exactly-once (huge coordination overhead)</td>
+    </tr>
+    <tr>
+      <td>Presence consistency</td>
+      <td>Eventually consistent</td>
+      <td>Fast, no coordination, Redis TTL handles cleanup</td>
+      <td>Stale "online" by seconds possible</td>
+      <td>Strong consistency (too expensive, unnecessary)</td>
+    </tr>
+    <tr>
+      <td>Encryption</td>
+      <td>E2EE Signal Protocol</td>
+      <td>Privacy, even from WhatsApp itself</td>
+      <td>No server search, no content moderation</td>
+      <td>Transport-only TLS (server can read, enables search)</td>
+    </tr>
+  </table>
+</div>
+
+<div class="slide" id="s20" data-title="Typing Indicators & Last Seen">
+  <h1>Typing Indicators &amp; Last Seen</h1>
+  <div class="two-col">
+    <div>
+      <h3>Typing Indicators — Ephemeral Design</h3>
+      <div class="key-insight warning">
+        <strong>NEVER persist typing events to Cassandra!</strong>
+        Typing fires every keystroke — 10+ events/sec per active user.
+        At 500M users, that's billions of writes/sec to the DB. Catastrophic.
+      </div>
+      <h3>Correct Implementation</h3>
+      <pre class="code-block">1. User A starts typing:
+   WS Server A receives TYPING_START{conv_id}
+
+2. WS Server A:
+   PUBLISH conv:{conv_id}:events "typing:A:start"
+
+3. User B's WS Server:
+   Subscribed to conv:{conv_id}:events
+   Pushes typing indicator to B's client
+
+4. Client-side timer: 3 seconds no new TYPING_START
+   → auto-stop indicator (no TYPING_STOP needed)
+
+5. Rate limit: client sends TYPING_START max 1/2s
+   → prevents flooding on fast typists</pre>
+    </div>
+    <div>
+      <h3>Last Seen</h3>
+      <ul>
+        <li>On disconnect: <code>HSET user:{id}:presence last_seen {ts}</code></li>
+        <li>PostgreSQL: persist <code>last_seen_at</code> for durability (Redis may flush)</li>
+        <li>Client requests: <code>GET /users/{id}/last-seen</code></li>
+        <li>Privacy check: if target has hidden last seen → return <code>"last seen recently"</code></li>
+        <li>Mutual privacy rule: cannot see others' if yours is hidden</li>
+      </ul>
+      <h3>Other Ephemeral Events</h3>
+      <table class="data-table">
+        <tr><th>Event</th><th>Storage</th><th>TTL</th></tr>
+        <tr><td>Typing indicator</td><td>Redis Pub/Sub only</td><td>None (in-flight)</td></tr>
+        <tr><td>Online presence</td><td>Redis HSET</td><td>60 seconds</td></tr>
+        <tr><td>Last seen</td><td>Redis + PostgreSQL</td><td>Permanent</td></tr>
+        <tr><td>Read receipts</td><td>Cassandra</td><td>Message TTL</td></tr>
+        <tr><td>Push token</td><td>PostgreSQL (device)</td><td>Until changed</td></tr>
+      </table>
+      <div class="key-insight">Rule of thumb: if it's ephemeral + high-frequency → Redis or WebSocket-only. Never the message DB.</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s21" data-title="Senior Q&A — Ordering in Group Chats">
+  <h1>Senior Q&amp;A — Ordering in Group Chats</h1>
+  <div class="qa-block">
+    <div class="question">Q: "How do you guarantee message ordering when multiple Chat Service instances write to the same group conversation concurrently?"</div>
+    <div class="answer">
+      <p><strong>The trap:</strong> Saying "we use Cassandra timestamps" — wall-clock timestamps from different servers can collide or be out of order due to clock skew.</p>
+      <p><strong>Strong answer:</strong></p>
+      <ul>
+        <li><strong>Kafka partition = ordering unit:</strong> Partition by <code>conversation_id</code> → all messages for conv123 go to the same Kafka partition → processed by exactly one Chat Service instance at a time → no concurrent writes for same conversation</li>
+        <li><strong>Single logical writer per conversation:</strong> The Kafka consumer for that partition is the sequencer — it assigns monotonically increasing seq_id before writing to Cassandra</li>
+        <li><strong>Client reorder buffer:</strong> If client receives seq 5 before seq 4 (two delivery paths racing), buffer for 500ms then request resync for gap</li>
+        <li><strong>Cassandra clustering key = seq_id (not timestamp):</strong> seq_id is assigned by the sequencer, not the clock</li>
+      </ul>
+      <div class="key-insight">Ordering guarantee: per-conversation, not global. Kafka partition = sequencer. This is the industry-standard approach (Slack, Discord use variants of this).</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s22" data-title="Senior Q&A — Large Group Fan-out">
+  <h1>Senior Q&amp;A — 1000-Member Group Fan-out</h1>
+  <div class="qa-block">
+    <div class="question">Q: "WhatsApp limits groups to 256 members, but your design has to support Telegram-style groups of 1000+ members. How do you handle fanout?"</div>
+    <div class="answer">
+      <p><strong>The trap:</strong> Saying "just scale up write-fanout" — 1000 Cassandra writes + 1000 Redis Stream entries per message × 700K msg/sec = catastrophic write amplification.</p>
+      <p><strong>Strong answer — Hybrid Fanout:</strong></p>
+      <ul>
+        <li><strong>For online members (active in last 5 min):</strong> Fan-out on write — push to their Redis Stream inbox immediately. Bounded by "active" subset, not full 1000</li>
+        <li><strong>For offline members:</strong> Store one message in Cassandra. On reconnect, client reads from group message log (fan-out on read) — fetch messages since <code>last_read_seq</code></li>
+        <li><strong>Cassandra stores message once:</strong> <code>conv_messages</code> table has one row. <code>member_cursors</code> table tracks <code>(conv_id, user_id) → last_read_seq</code></li>
+        <li><strong>Write amplification now:</strong> 1 Cassandra write + N_online Redis entries (N_online ≪ 1000 for large groups)</li>
+        <li><strong>Thundering herd protection:</strong> If all 1000 members reconnect simultaneously (post-outage), jitter reconnect delay + rate-limit history fetches + serve from Cassandra replicas</li>
+      </ul>
+      <div class="key-insight">Telegram uses this hybrid model. The key insight: write fanout only to the hot (online) subset; let offline members pull from durable store on reconnect.</div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s23" data-title="Senior Q&A — Offline 7 Days & Message TTL">
+  <h1>Senior Q&amp;A — Offline 7 Days &amp; Message TTL</h1>
+  <div class="qa-block">
+    <div class="question">Q: "A user is offline for 7 days, then reconnects. How do you deliver their 500 pending messages? What if they're offline for 31 days — do messages get lost?"</div>
+    <div class="answer">
+      <p><strong>Strong answer:</strong></p>
+      <div class="two-col">
+        <div>
+          <h3>7-Day Offline Reconnect</h3>
+          <ol>
+            <li>User reconnects → WebSocket established</li>
+            <li>Client sends <code>SYNC{last_seq_id_seen}</code></li>
+            <li>Chat Service queries Cassandra: <code>SELECT * FROM pending_messages WHERE recipient_id=? AND seq_id &gt; ? LIMIT 100</code></li>
+            <li>Deliver in batches of 100, wait for client ACK before next batch</li>
+            <li>After all delivered: send bulk DELIVERY_ACK</li>
+            <li>Redis Streams: expired after 7 days (TTL), but Cassandra is source of truth — this is fine</li>
+          </ol>
+        </div>
+        <div>
+          <h3>31-Day Offline (Beyond TTL)</h3>
+          <ul>
+            <li>Cassandra TTL = 30 days on <code>pending_messages</code></li>
+            <li>Messages in <code>messages</code> table: TTL = 1 year (delivered) or 30 days (undelivered)</li>
+            <li>After 30 days: undelivered messages are purged — <strong>by design, not a bug</strong></li>
+            <li>Notify user on reconnect: "Some messages from over 30 days ago may not be available"</li>
+            <li>WhatsApp does the same: messages stored on server 30 days max</li>
+          </ul>
+          <div class="key-insight">
+            <strong>State this clearly:</strong> "Our SLA guarantees delivery if the user reconnects within 30 days.
+            Beyond that, messages are expired by TTL as a storage cost and privacy trade-off."
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s24" data-title="Quick Reference Numbers">
+  <h1>Quick Reference Numbers — Memorize These</h1>
+  <div class="two-col">
+    <div>
+      <h3>Scale</h3>
+      <table class="data-table">
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Registered users</td><td>2 billion</td></tr>
+        <tr><td>Daily Active Users</td><td>500 million</td></tr>
+        <tr><td>Messages per day</td><td>100 billion</td></tr>
+        <tr><td>Peak messages/sec</td><td>~1.2 million</td></tr>
+        <tr><td>Avg message size</td><td>&lt;1 KB (text + metadata)</td></tr>
+        <tr><td>Group size limit</td><td>256 (WhatsApp), 100K (Telegram)</td></tr>
+        <tr><td>Concurrent WS conns</td><td>400M peak</td></tr>
+      </table>
+      <h3>Storage</h3>
+      <table class="data-table">
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Text storage/day</td><td>~4.4 TB</td></tr>
+        <tr><td>Text storage/year</td><td>~1.6 PB</td></tr>
+        <tr><td>Media storage/day</td><td>~200 TB</td></tr>
+        <tr><td>Cassandra raw (RF=3)</td><td>~4.8 PB</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>Infrastructure (500M DAU)</h3>
+      <table class="data-table">
+        <tr><th>Component</th><th>Count</th><th>Spec</th></tr>
+        <tr><td>WebSocket servers</td><td>~625</td><td>64-core, 256 GB RAM</td></tr>
+        <tr><td>Chat service instances</td><td>~100</td><td>Stateless, horizontal</td></tr>
+        <tr><td>Cassandra nodes</td><td>~200</td><td>For 5 PB storage</td></tr>
+        <tr><td>Kafka brokers</td><td>~50</td><td>At 1M events/sec</td></tr>
+      </table>
+      <h3>Latency &amp; Throughput</h3>
+      <table class="data-table">
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Redis read/write</td><td>&lt;1ms</td></tr>
+        <tr><td>WS heartbeat interval</td><td>30 seconds</td></tr>
+        <tr><td>Presence TTL</td><td>60 seconds</td></tr>
+        <tr><td>Pre-signed URL TTL</td><td>15 minutes</td></tr>
+        <tr><td>Message TTL (undelivered)</td><td>30 days</td></tr>
+        <tr><td>CDN cache hit ratio</td><td>&gt;90% for media</td></tr>
+        <tr><td>S3 durability</td><td>11 nines</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="slide" id="s25" data-title="Closing — Final Recommendation">
+  <h1>Closing — Final Recommendation</h1>
+  <div class="quote-block">
+    "For a WhatsApp-scale system with 500M DAU and 100B messages/day, here's my final stack:
+    WebSocket for real-time bidirectional transport, Cassandra for durable time-ordered message history,
+    Redis Streams for sub-millisecond hot delivery, Kafka for replayable integrations, S3+CDN for media —
+    handling 700K msg/sec peak with &lt;100ms P99 delivery latency."
+  </div>
+  <div class="two-col">
+    <div>
+      <h3>Final Technology Stack</h3>
+      <table class="data-table">
+        <tr><th>Concern</th><th>Technology</th></tr>
+        <tr><td>Transport</td><td>WebSocket (WSS)</td></tr>
+        <tr><td>Message store</td><td>Cassandra (RF=3)</td></tr>
+        <tr><td>Hot delivery</td><td>Redis Streams</td></tr>
+        <tr><td>Async integrations</td><td>Kafka</td></tr>
+        <tr><td>Presence</td><td>Redis Pub/Sub</td></tr>
+        <tr><td>Media</td><td>S3 + CloudFront CDN</td></tr>
+        <tr><td>Push (offline)</td><td>FCM + APNs</td></tr>
+        <tr><td>User data</td><td>PostgreSQL + Redis cache</td></tr>
+        <tr><td>Search</td><td>Elasticsearch (via Kafka)</td></tr>
+        <tr><td>Encryption</td><td>Signal Protocol (X3DH + Double Ratchet)</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>What NOT to Say in Interview</h3>
+      <ul>
+        <li>❌ "MySQL for messages" — can't handle 700K writes/sec</li>
+        <li>❌ "HTTP polling for real-time" — crushes servers at scale</li>
+        <li>❌ "Store typing indicators in Cassandra" — would be billions of writes/sec</li>
+        <li>❌ "Global strong consistency for messages" — impossible at this scale without huge latency</li>
+        <li>❌ "Synchronous fanout in request path" — user waits for all 256 writes</li>
+        <li>❌ "No CDN for media" — S3 egress alone would be $100M+/year</li>
+      </ul>
+      <div class="key-insight">
+        <strong>Proven in production:</strong> Discord (Cassandra for messages),
+        Slack (WebSocket + Kafka), WhatsApp (Signal Protocol),
+        Netflix (Cassandra time-series), LinkedIn (Kafka backbone).
+      </div>
+      <div class="badge-row" style="margin-top:12px">
+        <span class="badge">WebSocket</span>
+        <span class="badge">Cassandra</span>
+        <span class="badge">Redis Streams</span>
+        <span class="badge">Kafka</span>
+        <span class="badge">Signal Protocol</span>
+        <span class="badge">S3 + CDN</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><div id="controls"><button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button><div id="slide-dots"></div><div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div></div></div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

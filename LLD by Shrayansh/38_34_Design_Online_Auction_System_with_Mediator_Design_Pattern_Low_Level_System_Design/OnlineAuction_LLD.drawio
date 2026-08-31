@@ -1,0 +1,90 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Online Auction LLD" id="auction">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="ONLINE AUCTION SYSTEM - Mediator Design Pattern (Loose Coupling)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1840" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 1-3: CLASS DIAGRAM -->
+        <mxCell id="subtitle1" value="SECTION 1-3: CLASS DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="900" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="colleague_interface" value="&lt;&lt;interface&gt;&gt;&#xa;Colleague&#xa;&#xa;+ placeBid(bidAmount): void&#xa;+ receiveNotification(bidderName, amount): void&#xa;+ getName(): String" style="swimlane;fontStyle=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="320" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="bidder_class" value="Bidder (implements Colleague)&#xa;&#xa;- name: String&#xa;- auctionMediator: AuctionMediator&#xa;&#xa;+ Bidder(name, mediator)&#xa;  // Constructor sets name&#xa;  // Calls mediator.addBidder(this)&#xa;+ placeBid(amount)&#xa;  // mediator.placeBid(this, amount)&#xa;+ receiveNotification(name, amount)&#xa;  // Print: '{name} bid ₹{amount}'&#xa;+ getName(): String" style="swimlane;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="400" y="120" width="320" height="240" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mediator_interface" value="&lt;&lt;interface&gt;&gt;&#xa;AuctionMediator&#xa;&#xa;+ addBidder(Colleague): void&#xa;+ placeBid(Colleague, amount): void" style="swimlane;fontStyle=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="760" y="120" width="300" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="auction_class" value="Auction (implements AuctionMediator)&#xa;&#xa;- colleagues: List&lt;Colleague&gt;&#xa;&#xa;+ addBidder(Colleague bidder)&#xa;  // colleagues.add(bidder)&#xa;&#xa;+ placeBid(Colleague bidder, amount)&#xa;  // Iterate colleagues list&#xa;  // For each colleague:&#xa;    // if (colleague != bidder)&#xa;      // colleague.receiveNotification(&#xa;          bidder.getName(), amount)" style="swimlane;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="120" width="380" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Mediator Pattern Explanation -->
+        <mxCell id="pattern_explanation" value="MEDIATOR PATTERN STRUCTURE:&#xa;&#xa;PROBLEM WITHOUT MEDIATOR:&#xa;- Bidder1 knows Bidder2, Bidder3, ..., BidderN&#xa;- Tight coupling: each bidder references all others&#xa;- Adding new bidder → update ALL existing bidders&#xa;- Scaling nightmare: N bidders = N × (N-1) connections&#xa;&#xa;SOLUTION WITH MEDIATOR:&#xa;- Bidders DON'T know each other&#xa;- Bidders ONLY know the Mediator&#xa;- Bidder places bid → Mediator notifies others&#xa;- Loose coupling: each bidder has ONE connection (to mediator)&#xa;- Adding new bidder → just register with mediator&#xa;- Scaling: N bidders = N connections (linear)&#xa;&#xa;KEY PARTICIPANTS:&#xa;1. COLLEAGUE (Interface) - Objects that need to communicate&#xa;2. CONCRETE COLLEAGUE (Bidder) - Actual communicating objects&#xa;3. MEDIATOR (Interface) - Communication protocol&#xa;4. CONCRETE MEDIATOR (Auction) - Routes messages between colleagues&#xa;&#xa;COMMUNICATION FLOW:&#xa;Bidder1.placeBid(1000)&#xa;  → mediator.placeBid(Bidder1, 1000)&#xa;    → Iterate all colleagues except Bidder1&#xa;      → Bidder2.receiveNotification('Bidder1', 1000)&#xa;      → Bidder3.receiveNotification('Bidder1', 1000)&#xa;&#xa;NO DIRECT CALLS:&#xa;✗ Bidder1 → Bidder2 (NEVER happens!)&#xa;✓ Bidder1 → Mediator → Bidder2 (ALWAYS through mediator)&#xa;&#xa;BENEFITS:&#xa;✓ Loose coupling (bidders independent)&#xa;✓ Centralized control (all logic in mediator)&#xa;✓ Easy to add new bidders (register only)&#xa;✓ Easy to change communication logic (modify mediator only)&#xa;&#xa;UML RELATIONSHIP:&#xa;Colleague ←HAS─ Mediator (bidder has mediator reference)&#xa;Mediator ─HAS→ List&lt;Colleague&gt; (mediator has all colleagues)" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="400" width="680" height="600" as="geometry" />
+        </mxCell>
+        
+        <!-- Example Flow -->
+        <mxCell id="example_title" value="EXAMPLE: AUCTION FLOW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="760" y="400" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="example_flow" value="SETUP:&#xa;Auction auction = new Auction();  // Mediator created&#xa;&#xa;Bidder bidder1 = new Bidder('Alice', auction);&#xa;// Constructor calls: auction.addBidder(this)&#xa;// auction.colleagues = [bidder1]&#xa;&#xa;Bidder bidder2 = new Bidder('Bob', auction);&#xa;// auction.colleagues = [bidder1, bidder2]&#xa;&#xa;Bidder bidder3 = new Bidder('Charlie', auction);&#xa;// auction.colleagues = [bidder1, bidder2, bidder3]&#xa;&#xa;&#xa;BID FLOW:&#xa;&#xa;bidder1.placeBid(1000);&#xa;  → auction.placeBid(bidder1, 1000)&#xa;    → for (Colleague c : colleagues):&#xa;        if (c != bidder1):  // Skip sender&#xa;          c.receiveNotification('Alice', 1000)&#xa;    → bidder2.receiveNotification('Alice', 1000)&#xa;        Print: 'Alice bid ₹1000'&#xa;    → bidder3.receiveNotification('Alice', 1000)&#xa;        Print: 'Alice bid ₹1000'&#xa;&#xa;bidder2.placeBid(1500);&#xa;  → auction.placeBid(bidder2, 1500)&#xa;    → bidder1.receiveNotification('Bob', 1500)&#xa;        Print: 'Bob bid ₹1500'&#xa;    → bidder3.receiveNotification('Bob', 1500)&#xa;        Print: 'Bob bid ₹1500'&#xa;&#xa;bidder3.placeBid(2000);&#xa;  → auction.placeBid(bidder3, 2000)&#xa;    → bidder1.receiveNotification('Charlie', 2000)&#xa;        Print: 'Charlie bid ₹2000'&#xa;    → bidder2.receiveNotification('Charlie', 2000)&#xa;        Print: 'Charlie bid ₹2000'&#xa;&#xa;&#xa;OUTPUT CONSOLE:&#xa;Alice bid ₹1000  (seen by Bob &amp; Charlie)&#xa;Alice bid ₹1000&#xa;Bob bid ₹1500    (seen by Alice &amp; Charlie)&#xa;Bob bid ₹1500&#xa;Charlie bid ₹2000  (seen by Alice &amp; Bob)&#xa;Charlie bid ₹2000&#xa;&#xa;&#xa;BIDDER PERSPECTIVE:&#xa;- Alice doesn't know Bob or Charlie exist&#xa;- Bob doesn't know Alice or Charlie exist&#xa;- Charlie doesn't know Alice or Bob exist&#xa;- All communication through auction mediator&#xa;- Bidders are DECOUPLED from each other" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="760" y="440" width="720" height="720" as="geometry" />
+        </mxCell>
+        
+        <!-- Other Examples -->
+        <mxCell id="other_examples_title" value="OTHER MEDIATOR PATTERN EXAMPLES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="1040" width="1440" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="other_examples" value="EXAMPLE 2: AIRLINE MANAGEMENT SYSTEM&#xa;&#xa;Colleague: Airplane&#xa;Mediator: AirTrafficControl&#xa;&#xa;Problem: Multiple planes want to land/takeoff simultaneously&#xa;Solution: Planes communicate with ATC (mediator), not each other&#xa;- Plane1: 'Request to land'&#xa;- ATC checks if runway free, notifies Plane1: 'Clear to land'&#xa;- Plane2: 'Request to land'&#xa;- ATC: 'Hold position, runway occupied by Plane1'&#xa;&#xa;Planes NEVER talk directly. ATC coordinates all.&#xa;&#xa;&#xa;EXAMPLE 3: CHAT APPLICATION&#xa;&#xa;Colleague: User&#xa;Mediator: ChatRoom&#xa;&#xa;- User1.sendMessage('Hello')&#xa;  → chatRoom.sendMessage(User1, 'Hello')&#xa;    → User2.receiveMessage(User1, 'Hello')&#xa;    → User3.receiveMessage(User1, 'Hello')&#xa;&#xa;Users don't have references to each other.&#xa;ChatRoom routes all messages.&#xa;Group chat, private chat, broadcast - all through mediator.&#xa;&#xa;&#xa;EXAMPLE 4: UI DIALOG COMPONENTS&#xa;&#xa;Colleague: Button, TextBox, CheckBox, RadioButton&#xa;Mediator: Dialog&#xa;&#xa;- CheckBox checked → Dialog notifies TextBox to enable/disable&#xa;- Button clicked → Dialog validates TextBox, shows message&#xa;- Components don't know about each other&#xa;- Dialog coordinates all interactions&#xa;&#xa;&#xa;MEDIATOR vs OBSERVER:&#xa;&#xa;OBSERVER PATTERN:&#xa;- One-to-many dependency&#xa;- Observable state change → notify all observers&#xa;- Observers CAN be aware of observable&#xa;- Intent: Notify dependents of state changes&#xa;&#xa;MEDIATOR PATTERN:&#xa;- Many-to-many communication&#xa;- Colleagues DON'T know each other&#xa;- Mediator routes messages between colleagues&#xa;- Intent: Decouple objects that communicate&#xa;&#xa;&#xa;MEDIATOR vs PROXY:&#xa;&#xa;PROXY PATTERN:&#xa;- Controls access to ONE object&#xa;- Client → Proxy → RealObject&#xa;- Intent: Lazy loading, access control, logging&#xa;- Proxy has SAME interface as RealObject&#xa;&#xa;MEDIATOR PATTERN:&#xa;- Coordinates MULTIPLE objects&#xa;- Colleague1 → Mediator → Colleague2/3/N&#xa;- Intent: Centralize complex communication&#xa;- Mediator has DIFFERENT interface than colleagues" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1080" width="1440" height="680" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1520" y="20" width="360" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_auction" value="Auction&#xa;&#xa;PK  auctionId: INT&#xa;    auctionName: VARCHAR(200)&#xa;    item: VARCHAR(500)&#xa;    startingBid: DECIMAL&#xa;    currentHighestBid: DECIMAL&#xa;FK  currentWinnerId: INT (nullable)&#xa;    status: ENUM (ACTIVE/CLOSED)&#xa;    startTime: DATETIME&#xa;    endTime: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="80" width="280" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_bidder" value="Bidder&#xa;&#xa;PK  bidderId: INT&#xa;    bidderName: VARCHAR(100)&#xa;    email: VARCHAR(100)&#xa;    phone: VARCHAR(20)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="340" width="220" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_bid" value="Bid&#xa;&#xa;PK  bidId: INT&#xa;FK  auctionId: INT&#xa;FK  bidderId: INT&#xa;    bidAmount: DECIMAL&#xa;    bidTime: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="500" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_registration" value="AuctionRegistration (M:N)&#xa;&#xa;PK  registrationId: INT&#xa;FK  auctionId: INT&#xa;FK  bidderId: INT&#xa;    registeredAt: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="680" width="260" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1520" y="840" width="360" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="scenario" value="Q1: Why not have Bidder1 directly call Bidder2.receiveNotification()?&#xa;A1: Tight coupling. Bidder1 must know ALL other bidders. Adding Bidder4 → modify ALL existing bidders to reference it. Scaling issue: 10 bidders = 90 connections (N×(N-1)). Mediator: 10 bidders = 10 connections. Loose coupling → add/remove bidders without touching others.&#xa;&#xa;Q2: Mediator seems like a bottleneck. How to scale for 10,000 bidders?&#xa;A2: Async messaging: Mediator publishes to message queue (Kafka/RabbitMQ), bidders subscribe. Event-driven: placeBid() → publish BidEvent → consumers process. Sharding: multiple auction mediators by category/region. WebSocket broadcasting for real-time notifications.&#xa;&#xa;Q3: How to extend mediator for 'Buy Now' feature (instant purchase, skip bidding)?&#xa;A3: Add buyNow(Colleague, price) to AuctionMediator. Auction.buyNow() checks if price ≥ reservePrice, immediately closes auction, notifies ALL bidders: 'Auction closed, {bidder} won via Buy Now'. Existing placeBid() unchanged. Mediator centralizes logic.&#xa;&#xa;Q4: Bidder wants to bid only if current bid < maxBudget. Where to implement this logic?&#xa;A4: TWO options: (1) Bidder logic (recommended): Bidder.placeBid() checks budget BEFORE calling mediator.placeBid(). Keeps mediator simple. (2) Mediator logic: Bidder passes maxBudget to mediator, mediator checks before broadcasting. Violates SRP — bidder's business rule shouldn't be in mediator.&#xa;&#xa;Q5: How does Mediator pattern differ from Observer in auction context?&#xa;A5: OBSERVER: Auction (subject) state changes → notify bidders (observers). Bidders passively listen. ONE-WAY notification. MEDIATOR: Bidders actively communicate through auction (mediator). Auction routes messages between bidders. TWO-WAY coordination. Intent differs: Observer = state change notification, Mediator = decoupled communication." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1520" y="900" width="360" height="620" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

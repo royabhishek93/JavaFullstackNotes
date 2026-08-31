@@ -1,0 +1,133 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Car Rental System LLD" id="carrental">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (Template Pattern + Separation of Concerns)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1000" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- User Class -->
+        <mxCell id="user_class" value="User&#xa;&#xa;- userId: String&#xa;- userName: String&#xa;- drivingLicense: String&#xa;&#xa;+ createReservation()&#xa;+ viewReservations()" style="swimlane;fontStyle=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Vehicle Hierarchy (Template Pattern) -->
+        <mxCell id="vehicle_class" value="&lt;&lt;abstract&gt;&gt;&#xa;Vehicle&#xa;&#xa;- vehicleId: String&#xa;- vehicleNumber: String&#xa;- vehicleType: VehicleType&#xa;- companyName: String&#xa;- modelName: String&#xa;- kmDriven: int&#xa;- manufacturingDate: Date&#xa;- status: VehicleStatus&#xa;&#xa;+ getVehicleDetails()&#xa;+ updateStatus(VehicleStatus)" style="swimlane;fontStyle=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="280" y="80" width="240" height="260" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="car_class" value="Car&#xa;&#xa;- numberOfSeats: int&#xa;- fuelType: FuelType&#xa;&#xa;+ getCarSpecificDetails()" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="80" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="bike_class" value="Bike&#xa;&#xa;- engineCapacity: int&#xa;- hasSidecar: boolean&#xa;&#xa;+ getBikeSpecificDetails()" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="200" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Enums -->
+        <mxCell id="vehicle_type_enum" value="&lt;&lt;enum&gt;&gt;&#xa;VehicleType&#xa;&#xa;CAR&#xa;BIKE&#xa;// Extensible" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="800" y="80" width="140" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="vehicle_status_enum" value="&lt;&lt;enum&gt;&gt;&#xa;VehicleStatus&#xa;&#xa;ACTIVE&#xa;INACTIVE" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="800" y="200" width="140" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Store & Inventory Management -->
+        <mxCell id="store_class" value="Store&#xa;&#xa;- storeId: String&#xa;- location: Location&#xa;- inventoryManagement: VehicleInventoryManagement&#xa;- reservations: List&lt;Reservation&gt;&#xa;&#xa;+ getVehicles(VehicleType)&#xa;+ createReservation(User, Vehicle, dateFrom, dateTo)&#xa;+ completeReservation(Reservation)" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="380" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="inventory_class" value="VehicleInventoryManagement&#xa;&#xa;- vehicles: List&lt;Vehicle&gt;&#xa;&#xa;+ addVehicle(Vehicle)&#xa;+ removeVehicle(String vehicleId)&#xa;+ getAvailableVehicles(VehicleType)&#xa;+ updateVehicle(Vehicle)" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="460" y="360" width="300" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="location_class" value="Location&#xa;&#xa;- address: String&#xa;- city: String&#xa;- state: String&#xa;- pinCode: String&#xa;&#xa;+ getLocationDetails()" style="swimlane;fontStyle=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="800" y="360" width="200" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Reservation & Billing -->
+        <mxCell id="reservation_class" value="Reservation&#xa;&#xa;- reservationId: String&#xa;- user: User&#xa;- vehicle: Vehicle&#xa;- bookingDate: Date&#xa;- dateBookedFrom: Date&#xa;- dateBookedTo: Date&#xa;- pickupLocation: Location&#xa;- dropLocation: Location&#xa;- reservationStatus: ReservationStatus&#xa;&#xa;+ updateStatus(ReservationStatus)" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="280" height="260" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="bill_class" value="Bill&#xa;&#xa;- billId: String&#xa;- reservation: Reservation&#xa;- isPaid: boolean&#xa;- amount: double&#xa;- computedFrom: Date&#xa;- computedTo: Date&#xa;&#xa;+ computeBill()&#xa;+ markAsPaid()" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="360" y="560" width="220" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payment_class" value="Payment&#xa;&#xa;- paymentId: String&#xa;- bill: Bill&#xa;- amount: double&#xa;- paymentDate: Date&#xa;&#xa;+ processPayment()" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="620" y="600" width="180" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="reservation_status_enum" value="&lt;&lt;enum&gt;&gt;&#xa;ReservationStatus&#xa;&#xa;SCHEDULED&#xa;IN_PROGRESS&#xa;COMPLETED&#xa;CANCELLED" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="840" y="560" width="160" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM (Database Schema)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="800" width="900" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- User Table -->
+        <mxCell id="er_user" value="User&#xa;&#xa;PK  userId: INT&#xa;    userName: VARCHAR(100)&#xa;    drivingLicense: VARCHAR(50)&#xa;    email: VARCHAR(100)&#xa;    phone: VARCHAR(15)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="860" width="220" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Vehicle Table -->
+        <mxCell id="er_vehicle" value="Vehicle&#xa;&#xa;PK  vehicleId: INT&#xa;    vehicleNumber: VARCHAR(20)&#xa;    vehicleType: ENUM&#xa;    companyName: VARCHAR(100)&#xa;    modelName: VARCHAR(100)&#xa;    kmDriven: INT&#xa;    manufacturingDate: DATE&#xa;    status: ENUM" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="860" width="240" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Store Table -->
+        <mxCell id="er_store" value="Store&#xa;&#xa;PK  storeId: INT&#xa;FK  locationId: INT&#xa;    storeName: VARCHAR(100)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="580" y="860" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- StoreInventory Table (Many-to-Many) -->
+        <mxCell id="er_inventory" value="StoreInventory&#xa;&#xa;PK  id: INT&#xa;FK  storeId: INT&#xa;FK  vehicleId: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="820" y="860" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Location Table -->
+        <mxCell id="er_location" value="Location&#xa;&#xa;PK  locationId: INT&#xa;    address: VARCHAR(500)&#xa;    city: VARCHAR(100)&#xa;    state: VARCHAR(100)&#xa;    pinCode: VARCHAR(10)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="580" y="1000" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Reservation Table -->
+        <mxCell id="er_reservation" value="Reservation&#xa;&#xa;PK  reservationId: INT&#xa;FK  userId: INT&#xa;FK  vehicleId: INT&#xa;FK  storeId: INT&#xa;    bookingDate: DATETIME&#xa;    dateBookedFrom: DATETIME&#xa;    dateBookedTo: DATETIME&#xa;FK  pickupLocationId: INT&#xa;FK  dropLocationId: INT&#xa;    reservationStatus: ENUM" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1040" width="240" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Bill Table -->
+        <mxCell id="er_bill" value="Bill&#xa;&#xa;PK  billId: INT&#xa;FK  reservationId: INT&#xa;    amount: DECIMAL(10,2)&#xa;    isPaid: BOOLEAN&#xa;    createdDate: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="320" y="1100" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Payment Table -->
+        <mxCell id="er_payment" value="Payment&#xa;&#xa;PK  paymentId: INT&#xa;FK  billId: INT&#xa;    amount: DECIMAL(10,2)&#xa;    paymentDate: DATETIME&#xa;    paymentMethod: VARCHAR(50)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="820" y="1000" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS (Availability, Conflicts, Extensions)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1060" y="80" width="820" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: User books car for tomorrow. Another user tries to book same car same time. What happens?&#xa;A1: First booking creates Reservation (status=SCHEDULED). When second user searches, VehicleInventoryManagement checks existing reservations. Car shows as unavailable for that time slot. Date range overlap check: (dateFrom2 &lt;= dateTo1) AND (dateTo2 &gt;= dateFrom1).&#xa;&#xa;Q2: User picks up car but doesn't return by expected date. How to handle?&#xa;A2: Reservation status = IN_PROGRESS. Set expected return date. Background scheduler checks overdue reservations every hour. Send notifications to user (Day 1: reminder, Day 2: warning, Day 3: charge penalty). After grace period (e.g., 2 days), charge penalty per day, mark as LATE. Continue charging until car returned.&#xa;&#xa;Q3: User cancels reservation before pickup. Refund policy?&#xa;A3: Update Reservation status = CANCELLED. Refund policy depends on cancellation time: (&gt;24h before pickup: 100% refund) (12-24h: 50% refund) (&lt;12h: No refund). Bill.isPaid = false or create refund record. Payment refund initiated based on policy. Vehicle becomes available again (remove from reserved list).&#xa;&#xa;Q4: Store runs out of cars. User already has confirmed reservation. What to do?&#xa;A4: Guaranteed reservation (SCHEDULED status = commitment). Store must honor it. Options: (1) Transfer car from nearby store (update StoreInventory) (2) Upgrade user to better vehicle at same price (3) If impossible, compensate user and cancel with full refund + bonus. Prevent overbooked reservations with proper availability check.&#xa;&#xa;Q5: User returns car at different store than pickup. How to handle?&#xa;A5: Reservation has pickupLocation and dropLocation. If different stores: (1) Update inventory: Remove vehicle from pickup store inventory (2) Add vehicle to drop store inventory (3) May charge extra fee for one-way rental (4) Bill computation includes one-way fee if applicable. Update Vehicle location in system." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="140" width="820" height="500" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS & PRINCIPLES:&#xa;&#xa;1. Template Method Pattern - Vehicle abstract class, Car/Bike concrete implementations&#xa;2. Separation of Concerns - Store handles location ops, VehicleInventoryManagement handles CRUD&#xa;3. Single Responsibility - Each class has one clear purpose&#xa;4. Open-Closed Principle - Easy to add new vehicle types (Truck, Scooter) without changing existing code&#xa;&#xa;INTERVIEW TIP (CRITICAL - from transcript):&#xa;'Design as SIMPLE as possible. Don't add features unless interviewer asks.'&#xa;&#xa;When unsure about including a feature, ASK: 'Do you want me to include X?'&#xa;Most likely interviewer will say NO. Adding too many features can backfire if you can't implement them.&#xa;&#xa;WORKFLOW:&#xa;User → Search by Location → Get Stores → Select Store → View Vehicles → Select Vehicle → &#xa;Create Reservation → Generate Bill → Make Payment → Pickup (status=IN_PROGRESS) → &#xa;Use → Return → Complete Reservation (status=COMPLETED)&#xa;&#xa;EXTENSIBILITY:&#xa;- New vehicle types: Create new class extending Vehicle&#xa;- New pricing models: Strategy pattern for bill computation&#xa;- New payment methods: Factory pattern for payment processors" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="680" width="820" height="400" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

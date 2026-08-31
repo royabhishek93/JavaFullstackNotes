@@ -1,0 +1,1012 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>News Feed System Design</title>
+<link rel="stylesheet" href="../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">News Feed / Instagram System Design</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active" id="s1" data-title="News Feed / Instagram System Design">
+      <h1>📰 News Feed / Instagram<br>System Design</h1>
+      <p style="text-align:center;font-size:1.1rem;color:#94a3b8;margin-bottom:1.5rem;">Design Facebook Feed · Instagram · Twitter Timeline</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-bottom:1.8rem;">
+        <span class="badge">Push Model</span>
+        <span class="badge">Pull Model</span>
+        <span class="badge">Hybrid Fan-out</span>
+        <span class="badge">Redis ZSET</span>
+        <span class="badge">Kafka Fan-out</span>
+        <span class="badge">CDN</span>
+        <span class="badge">Cassandra</span>
+        <span class="badge">Feed Ranking</span>
+      </div>
+      <div class="key-insight">
+        <strong>The Single Most Important Question:</strong><br>
+        "Cristiano Ronaldo posts. He has 200M followers.<br>
+        Do you write to all 200M Redis caches?"<br><br>
+        <strong>Answer: NO — that's the Celebrity Problem.</strong><br>
+        Hybrid fan-out solves it: push for regular users, pull for celebrities.
+      </div>
+      <div class="two-col" style="margin-top:1.5rem;">
+        <div class="col-box">
+          <div class="col-label">Core Challenge</div>
+          Reads are 100× writes. Pre-compute feeds in Redis. Merge celebrity posts at read time.
+        </div>
+        <div class="col-box">
+          <div class="col-label">Scale</div>
+          500M DAU · 2B users · 100M posts/day · 115K feed reads/sec
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Opening Script -->
+    <div class="slide" id="s2" data-title="Opening Script">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Opening Script — Say This First</h2>
+      <div class="script-block">
+        "Great. Instagram is a social feed platform — its core challenge is different from most systems I'd design. The hard part isn't storage or media — it's <strong>feed generation</strong>. Specifically: how do you pre-compute feeds for 500M users when a single celebrity can have 200M followers? Let me ask a few questions first."
+      </div>
+      <h3 style="margin-top:1.2rem;">Clarifying Questions to Ask</h3>
+      <table>
+        <thead><tr><th>You Ask</th><th>Interviewer Says</th></tr></thead>
+        <tbody>
+          <tr><td>Create posts with images/videos?</td><td>Yes — like Instagram</td></tr>
+          <tr><td>Follow/unfollow — mutual or one-way?</td><td>One-way (asymmetric)</td></tr>
+          <tr><td>Feed chronological or ranked?</td><td>Ranked</td></tr>
+          <tr><td>Likes and comments?</td><td>Yes</td></tr>
+          <tr><td>Push notifications?</td><td>Yes</td></tr>
+          <tr><td>Stories or Reels?</td><td>Out of scope — feed only</td></tr>
+          <tr><td>How many users?</td><td>500M DAU, 2B total</td></tr>
+          <tr><td>Posts per day?</td><td>100M posts/day</td></tr>
+        </tbody>
+      </table>
+      <div class="key-insight" style="margin-top:1rem;">
+        <strong>Frame the core insight early:</strong> "Reads are 100× writes. Every design decision optimizes for reads. The design-defining constraint is the celebrity problem."
+      </div>
+    </div>
+
+    <!-- SLIDE 3: Functional Requirements -->
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Functional Requirements</h2>
+      <div class="two-col">
+        <div class="col-box">
+          <div class="col-label">Core Features (In Scope)</div>
+          <ul>
+            <li>Create posts — images + videos</li>
+            <li>Follow / unfollow users (asymmetric — no mutual required)</li>
+            <li>Home feed — ranked, not chronological</li>
+            <li>Like posts (with idempotency)</li>
+            <li>Comment on posts</li>
+            <li>Push notifications (new follower, like, comment)</li>
+            <li>Profile page — user's own posts</li>
+            <li>Cursor-based feed pagination</li>
+          </ul>
+        </div>
+        <div class="col-box">
+          <div class="col-label">Extensions (Out of Scope for Now)</div>
+          <ul>
+            <li>Stories (24hr TTL)</li>
+            <li>Reels / short videos</li>
+            <li>Search / hashtag explore</li>
+            <li>DMs / messaging</li>
+            <li>Live video</li>
+            <li>Shopping / ads</li>
+          </ul>
+        </div>
+      </div>
+      <h3 style="margin-top:1.2rem;">Core API Endpoints</h3>
+      <pre class="code-block">POST   /api/v1/posts                      → create post, get S3 presigned URL
+GET    /api/v1/feed?cursor={postId}&limit=20  → home feed
+POST   /api/v1/follow/{userId}             → follow user
+DELETE /api/v1/follow/{userId}             → unfollow user
+POST   /api/v1/posts/{postId}/like         → like post
+POST   /api/v1/posts/{postId}/comments     → add comment
+GET    /api/v1/users/{userId}/posts        → profile page</pre>
+    </div>
+
+    <!-- SLIDE 4: Non-Functional Requirements -->
+    <div class="slide" id="s4" data-title="Non-Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Non-Functional Requirements &amp; Capacity</h2>
+      <div class="two-col">
+        <div class="col-box">
+          <div class="col-label">Scale &amp; Performance Targets</div>
+          <ul>
+            <li>500M DAU, 2B registered users</li>
+            <li>100M posts/day → ~1,160 posts/sec</li>
+            <li>Read:Write = 100:1</li>
+            <li>Feed reads: 115,000/sec (peak 345K/sec)</li>
+            <li>Feed load target: <strong>&lt; 200ms</strong></li>
+            <li>Consistency: eventual OK (&lt;5 sec for feed updates)</li>
+            <li>High availability required</li>
+          </ul>
+        </div>
+        <div class="col-box">
+          <div class="col-label">Storage Estimates</div>
+          <ul>
+            <li>Social graph: 2B × 500 follows = 1 trillion relationships = <strong>16 TB</strong></li>
+            <li>Media: 100M posts × 70% images × 200KB = 14 TB/day</li>
+            <li>Videos: 100M × 30% × 5MB = 150 TB/day</li>
+            <li>Total new media: <strong>~165 TB/day</strong></li>
+            <li>Redis feed cache: 500M users × 500 postIds × 8B = <strong>2 TB</strong> (active users)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="key-insight" style="margin-top:1rem;">
+        <strong>The critical number:</strong> Cristiano Ronaldo posts → naive fan-out = 200M Redis ZADD operations.
+        At 1ms each with 1000 parallel workers = <strong>200 seconds of lag</strong>. This is why hybrid fan-out is mandatory.
+      </div>
+    </div>
+
+    <!-- SLIDE 5: HLD -->
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <div class="section-label">🏛 HLD</div>
+      <h2>High-Level Architecture</h2>
+      <pre class="code-block">                CLIENTS (Mobile / Web)
+                        │ HTTPS
+                        ▼
+           ┌────────────────────────────┐
+           │  CDN (CloudFront)          │  ← 90%+ of media reads served here
+           │  images, videos, thumbs    │
+           └──────────┬─────────────────┘
+                      │ cache miss → origin
+                      ▼
+           ┌────────────────────────────┐
+           │  API GATEWAY               │  ← Auth, rate limit, route
+           └────┬────────────────┬──────┘
+                │                │
+     ┌──────────▼──┐     ┌───────▼─────────┐
+     │ POST SERVICE│     │  FEED SERVICE    │
+     │             │     │                  │
+     │ Save post → │     │ ZRANGE Redis     │
+     │ Cassandra   │     │ feed:{userId}    │
+     │ Presign S3  │     │ + pull celeb     │
+     │ Kafka event │     │   posts (Redis)  │
+     └──────┬──────┘     │ Merge + Rank     │
+            │            │ Return top 20    │
+            │ Kafka       └─────────────────┘
+     ┌──────┴──────┬──────────────────────┐
+     ▼             ▼                      ▼
+┌─────────┐ ┌──────────┐       ┌──────────────────┐
+│Fan-out  │ │Notif.    │       │  Media Pipeline  │
+│Worker   │ │Worker    │       │  Resize→WebP     │
+│&lt;10K→PUSH│ │FCM/APNs  │       │  Video transcode │
+│≥10K→SKIP│ └──────────┘       │  Upload S3/CDN   │
+└────┬────┘                    └──────────────────┘
+     │ ZADD feed:{userId}
+     ▼
+ Redis: feed ZSET · like counters · celeb cache
+ Cassandra: posts · follows · comments
+ MySQL: users (auth, ACID profile data)
+ S3 + CDN: all media</pre>
+    </div>
+
+    <!-- SLIDE 6: Push vs Pull vs Hybrid — 3-way comparison -->
+    <div class="slide" id="s6" data-title="Push vs Pull vs Hybrid Fan-out">
+      <div class="section-label">📰 Feed Generation</div>
+      <h2>Push vs Pull vs Hybrid Fan-out</h2>
+      <table>
+        <thead>
+          <tr><th>Approach</th><th>How It Works</th><th>Write Cost</th><th>Read Cost</th><th>Verdict</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Fan-out on Read</strong><br>(Pull)</td>
+            <td>On feed open: fetch posts from all 500 followees live from DB</td>
+            <td>Cheap — just INSERT post once</td>
+            <td>500 DB queries per user open × 500M DAU = 250B reads/sec</td>
+            <td>Simple writes. <span style="color:#f87171;">Catastrophically slow reads.</span></td>
+          </tr>
+          <tr>
+            <td><strong>Fan-out on Write</strong><br>(Push)</td>
+            <td>On post: ZADD postId to every follower's Redis cache immediately via Kafka</td>
+            <td>Expensive — N ZADD ops where N = follower count</td>
+            <td>Ultra fast — ZRANGE O(log N) sub-ms</td>
+            <td>Fast reads. <span style="color:#f87171;">Fatal celebrity problem at 200M followers.</span></td>
+          </tr>
+          <tr style="background:rgba(34,197,94,0.08);">
+            <td><strong>Hybrid</strong><br>(Instagram's approach ✓)</td>
+            <td>Push for &lt;10K followers. Skip fan-out for celebrities. Pull celeb posts at read time from hot Redis cache.</td>
+            <td>Moderate — push for 99% of users</td>
+            <td>Fast — ZRANGE + ~10 celeb GET ops at merge</td>
+            <td><span style="color:#4ade80;">Best of both. Solves celebrity problem.</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="key-insight" style="margin-top:1rem;">
+        <strong>Why hybrid works:</strong> 99% of users have &lt;10K followers (cheap push). Celebrities skip fan-out — their posts are cached in a hot Redis key. Users follow ≤10 celebrities on average → 10 Redis GETs at read time. Still under 200ms.
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Fan-out on Write — Deep Dive -->
+    <div class="slide" id="s7" data-title="Fan-out on Write — Push Model">
+      <div class="section-label">📰 Feed Generation</div>
+      <h2>Fan-out on Write — Push Model Deep Dive</h2>
+      <pre class="code-block">WRITE PATH (Post Creation):
+  1. User posts → Post Service saves to Cassandra, publishes to Kafka topic: post-created
+
+  2. Fan-out Worker consumes Kafka event:
+     ┌─────────────────────────────────────────────────────────┐
+     │  poster.followerCount &lt; 10K?                            │
+     │    YES → PUSH model:                                    │
+     │      Fetch ALL follower IDs from followers_by_user table │
+     │      For each followerId:                               │
+     │        ZADD feed:{followerId} score=rankScore postId    │
+     │      Score = recency estimate at write time             │
+     │      (likes/comments not known yet — use timestamp)     │
+     │                                                         │
+     │    NO (celebrity) → SKIP fan-out:                       │
+     │      LPUSH celeb_posts:{posterId} postId                │
+     │      LTRIM celeb_posts:{posterId} 0 99  ← keep latest 100│
+     └─────────────────────────────────────────────────────────┘
+
+  3. Fan-out happens AFTER "post-ready" event (not "post-created")
+     → ensures media is processed before post appears in feeds
+
+INACTIVE USER OPTIMIZATION:
+  Skip ZADD if feed:{followerId} does NOT exist in Redis
+  (means user is inactive — no point writing to their cold feed)
+  On their next login → cold rebuild from Cassandra (300-500ms once)</pre>
+      <div class="two-col" style="margin-top:1rem;">
+        <div class="col-box">
+          <div class="col-label">Throughput</div>
+          1,160 posts/sec × avg 300 followers = 348,000 ZADD/sec. Redis cluster handles this easily across 50 shards.
+        </div>
+        <div class="col-box">
+          <div class="col-label">Feed Size Cap</div>
+          Max 500 postIds per feed ZSET. ZREMRANGEBYRANK evicts oldest when cap exceeded. Prevents unbounded growth.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Celebrity Problem -->
+    <div class="slide" id="s8" data-title="The Celebrity Problem">
+      <div class="section-label">📰 Feed Generation</div>
+      <h2>The Celebrity Problem</h2>
+      <div class="key-insight">
+        <strong>Why pure push fan-out fails at scale:</strong><br>
+        Cristiano Ronaldo (200M followers) posts once.<br>
+        Naive approach: 200M × ZADD = 200M Redis writes.<br>
+        At 1ms/op with 1000 parallel workers → <strong>200 seconds of lag</strong>.<br>
+        His followers see the post 3+ minutes after he posted. Unacceptable.
+      </div>
+      <h3 style="margin-top:1.2rem;">Solution: Celebrity Pull Path</h3>
+      <pre class="code-block">CELEBRITY THRESHOLD: followerCount &gt;= 10,000
+
+On post creation by celebrity:
+  → NO fan-out. Just:
+     INSERT post to Cassandra posts table
+     LPUSH celeb_posts:{celebId} postId
+     LTRIM celeb_posts:{celebId} 0 99    ← hot cache of recent 100 posts
+
+At feed read time (hybrid merge):
+  1. GET celeb_followees:{userId}         ← which celebrities does this user follow?
+  2. For each celebrity (avg 5-10):
+       GET celeb_posts:{celebId}          ← their recent postIds (hot Redis key)
+  3. Merge with pre-pushed normal posts
+  4. Rank → return top 20</pre>
+      <h3 style="margin-top:1rem;">Threshold Transition (Senior Q)</h3>
+      <pre class="code-block">User grows from 9,999 to 15M followers:
+  Background job runs daily on follower milestones:
+    IF followerCount &gt;= 10K → flag as celebrity in Redis SET: celebrity_users
+  Transition is eventual — a few extra fan-out writes during transition are harmless.
+  Past fan-out writes age out naturally (ZADD evicts old posts when cap = 500 reached).
+  No retroactive cleanup needed. Eventual consistency — not a correctness issue.</pre>
+    </div>
+
+    <!-- SLIDE 9: Timeline Cache Design (Redis ZSET) -->
+    <div class="slide" id="s9" data-title="Timeline Cache — Redis ZSET Design">
+      <div class="section-label">📰 Feed Generation</div>
+      <h2>Timeline Cache — Redis ZSET Design</h2>
+      <pre class="code-block">KEY:   feed:{userId}
+TYPE:  Sorted Set (ZSET)
+VALUE: postId (Snowflake ID — encodes timestamp)
+SCORE: ranking score (recency + engagement estimate)
+
+WRITE (fan-out worker):
+  ZADD feed:{userId} NX score postId
+  ZREMRANGEBYRANK feed:{userId} 0 -501     ← trim to 500 entries (evict oldest)
+  EXPIRE feed:{userId} 604800              ← 7-day TTL if user inactive
+
+READ (feed service):
+  ZREVRANGEBYSCORE feed:{userId} +inf -inf WITHSCORES LIMIT 0 200
+  → returns top 200 candidate (postId, score) pairs for re-ranking
+
+OTHER REDIS KEYS:
+  celeb_posts:{userId}      LIST  LPUSH/LTRIM — recent 100 postIds (celebrities only)
+  celeb_followees:{userId}  SET   SADD — which of my followees are celebrities
+  likes:{postId}            INT   INCR/DECR — atomic like counter
+  liked_by:{postId}         SET   SADD/SISMEMBER — idempotency check
+  affinity:{uid}:{pid}      FLOAT ML affinity score, TTL=1hr
+
+SNOWFLAKE ID — WHY IT'S THE SCORE:
+  postId encodes creation timestamp (41-bit ms epoch + machine ID + sequence)
+  Sort by postId = sort by creation time
+  No separate created_at column needed in feed cache
+  Range queries: postIds older than cursor → ZREVRANGEBYSCORE</pre>
+      <div class="key-insight" style="margin-top:0.8rem;">
+        <strong>Memory math:</strong> 500M active users × 500 postIds × 8 bytes = 2 TB. Redis cluster on 50 shards = 40 GB per shard. Comfortable. Inactive user TTL (7 days) keeps actual footprint much lower.
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Feed Ranking -->
+    <div class="slide" id="s10" data-title="Feed Ranking Algorithm">
+      <div class="section-label">📰 Feed Generation</div>
+      <h2>Feed Ranking — Two-Level Algorithm</h2>
+      <div class="two-col">
+        <div class="col-box">
+          <div class="col-label">Level 1: Candidate Generation (Redis)</div>
+          <ul>
+            <li>ZREVRANGEBYSCORE feed:{userId} → top 200 postIds</li>
+            <li>Merge with celeb posts (~10 GET ops)</li>
+            <li>Total candidates: ~200-210 posts</li>
+            <li>Cost: sub-millisecond Redis ops</li>
+          </ul>
+        </div>
+        <div class="col-box">
+          <div class="col-label">Level 2: Re-ranking (200 → 20)</div>
+          <ul>
+            <li>Recency: hours since posted</li>
+            <li>Engagement: likes + comments + shares per unit time</li>
+            <li>Affinity: how often user interacts with this poster</li>
+            <li>Novelty: filter already-seen postIds</li>
+            <li>Return top 20</li>
+          </ul>
+        </div>
+      </div>
+      <h3 style="margin-top:1.2rem;">Ranking Score Formula</h3>
+      <pre class="code-block">             (likes × 1) + (comments × 3) + (shares × 5)
+  score  =  ────────────────────────────────────────────────
+                       (hours_since_posted + 2) ^ 1.5
+
+  → Gravity denominator ensures old posts sink over time
+  → Comment weight (3×) &gt; like weight (1×): deeper engagement valued more
+  → Share weight (5×) highest: viral signal
+  → Same gravity formula used by Hacker News — simple and explainable
+  → Affinity score (ML): affinity:{viewerId}:{posterId} cached in Redis (TTL=1h)</pre>
+      <div class="key-insight" style="margin-top:0.8rem;">
+        <strong>Why two levels?</strong> Can't run ML on all 500 cached postIds in real-time. Level 1 is O(log N) Redis — cheap. Level 2 runs ML re-ranking on just 200 items — small input = sub-100ms. Same pattern used by YouTube, TikTok, Twitter.
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Media Pipeline -->
+    <div class="slide" id="s11" data-title="Media Pipeline — S3 + CDN">
+      <div class="section-label">⚙️ Features &amp; LLD</div>
+      <h2>Media Pipeline — Photo/Video → S3 → CDN</h2>
+      <pre class="code-block">STEP 1: Client gets upload URL
+  POST /api/v1/posts { caption, mediaType }
+  → Response: { postId, mediaUploadUrl, uploadExpiresIn: 300 }
+  mediaUploadUrl = S3 presigned URL (expires in 5 minutes)
+  Client uploads DIRECTLY to S3 — app servers never see media bytes
+
+STEP 2: Client uploads to S3
+  PUT {presignedUrl}   ← raw image or video
+  S3 → triggers SNS event → SQS queue → Media Worker
+
+STEP 3: Media Worker processes
+  ┌──────────────────────────────────────────────────────┐
+  │  Images:                                             │
+  │    Resize: thumbnail (150×150), medium (600px wide)  │
+  │    Convert: WebP (50% smaller, same perceptual quality)│
+  │    Upload all 3 variants to S3 under CDN paths       │
+  │                                                      │
+  │  Videos:                                             │
+  │    Transcode: 1080p, 720p, 480p, 360p variants       │
+  │    Generate: HLS manifest (.m3u8) for adaptive bitrate│
+  │    Thumbnail: extract frame from first keyframe      │
+  │    Upload all variants + manifest to S3              │
+  └──────────────────────────────────────────────────────┘
+
+STEP 4: Worker publishes "post-ready" to Kafka
+  Fan-out worker starts ONLY after "post-ready" (not "post-created")
+  → ensures media is ready before post appears in feeds
+
+CDN (CloudFront):
+  ~250 global edge PoPs. Pull-through cache.
+  First request: CDN fetches from S3 (~100ms). Cached at edge.
+  Subsequent requests: served from PoP (~5ms). 90%+ of reads here.</pre>
+    </div>
+
+    <!-- SLIDE 12: Cursor-based Pagination -->
+    <div class="slide" id="s12" data-title="Cursor-Based Pagination">
+      <div class="section-label">⚙️ Features &amp; LLD</div>
+      <h2>Cursor-Based Pagination</h2>
+      <div class="two-col">
+        <div class="col-box" style="border-color:#f87171;">
+          <div class="col-label" style="color:#f87171;">Offset Pagination — Why It Fails</div>
+          <pre style="font-size:0.78rem;margin-top:0.5rem;">GET /feed?page=1&pageSize=20
+GET /feed?page=2&pageSize=20
+
+Problem:
+  Page 1 loads: posts [A, B, C, D ... T]
+  New post X arrives (at top of feed)
+  Page 2 loads: posts [B, C, D ... T, U]
+                        ↑ post B shown again!
+
+  Page drift: new arrivals shift everything down.
+  Users see duplicates across pages.
+  Also: OFFSET N in Cassandra = full scan to row N.
+  Catastrophically slow at large offsets.</pre>
+        </div>
+        <div class="col-box" style="border-color:#4ade80;">
+          <div class="col-label" style="color:#4ade80;">Cursor Pagination — The Right Way</div>
+          <pre style="font-size:0.78rem;margin-top:0.5rem;">GET /feed?cursor=&lt;lastSeenPostId&gt;&limit=20
+
+"Give me 20 posts OLDER than this postId"
+
+Redis: ZREVRANGEBYSCORE feed:{uid}
+  (lastSeenPostId-1) -inf LIMIT 0 20
+
+Why stable:
+  New posts arrive at top. Cursor points to
+  a specific postId in the middle of the feed.
+  Loading "next 20 older than cursor" is
+  unaffected by new posts at the top.
+  No duplicates. Efficient: Cassandra WHERE
+  post_id &lt; cursor ORDER BY post_id DESC.</pre>
+        </div>
+      </div>
+      <h3 style="margin-top:1rem;">API Response</h3>
+      <pre class="code-block">GET /api/v1/feed?cursor=7234891234560000&limit=20
+Response: {
+  "posts": [ { postId, author, caption, mediaUrls, likeCount, commentCount } ],
+  "nextCursor": "7234891234520000"  ← postId of last item returned
+}
+// nextCursor null = no more posts (end of feed)</pre>
+    </div>
+
+    <!-- SLIDE 13: Stories (24hr TTL) -->
+    <div class="slide" id="s13" data-title="Stories — 24hr TTL Design">
+      <div class="section-label">⚙️ Features &amp; LLD</div>
+      <h2>Stories — 24-Hour TTL Design</h2>
+      <div class="key-insight">
+        Stories are separate from the main feed — different TTL, different data model, different display order (chronological by followee, not ranked).
+      </div>
+      <h3 style="margin-top:1.2rem;">Data Model</h3>
+      <pre class="code-block">Redis key:  stories:{userId}
+Type:       ZSET  (score = expiry_timestamp)
+Value:      storyId
+TTL:        EXPIRE stories:{userId} 86400  ← 24 hours from first story
+            ZADD  stories:{userId}  (now + 86400) storyId
+
+Auto-expiry of individual stories:
+  On read: ZREMRANGEBYSCORE stories:{userId} 0 (now)  ← evict expired
+  → only shows stories where score (expiry) &gt; current_time
+  → no background job needed — lazy cleanup at read time
+
+Story media: same pipeline as posts (S3 → CDN)
+  But: CDN TTL set to 24 hours (matching story TTL)
+  After 24hr: CDN evicts + S3 lifecycle rule deletes media
+
+Stories feed (who has active stories?):
+  GET celeb_followees + GET followees_by_user
+  For each followee: ZCARD stories:{followeeId} &gt; 0?
+  → if yes: show story ring on their profile avatar
+
+Viewed stories:
+  story_views:{storyId}  SET of viewerIds  (TTL = 24hr)
+  Prevents re-showing already-viewed stories</pre>
+      <div class="two-col" style="margin-top:1rem;">
+        <div class="col-box">
+          <div class="col-label">Why ZSET (not simple key)?</div>
+          A user can post multiple stories. ZSET holds all storyIds for a user with individual expiry scores. Single key per user.
+        </div>
+        <div class="col-box">
+          <div class="col-label">No fan-out for stories</div>
+          Stories are pulled at open time. Simpler than feed. Users pull stories of everyone they follow — the set is small enough.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Like/Comment Counters -->
+    <div class="slide" id="s14" data-title="Like &amp; Comment Counters — Redis INCR">
+      <div class="section-label">⚙️ Features &amp; LLD</div>
+      <h2>Like &amp; Comment Counters — Redis INCR + Async DB Sync</h2>
+      <pre class="code-block">LIKE FLOW (must be idempotent — prevent double-likes):
+
+Redis data structures per post:
+  likes:{postId}       INT  → atomic INCR counter
+  liked_by:{postId}    SET  → set of userIds who liked
+
+On "like" request from Alice:
+  Lua script (atomic — runs as single Redis transaction):
+    IF SISMEMBER liked_by:{postId} aliceId:
+      return 0  (already liked → return 409 to client)
+    ELSE:
+      SADD liked_by:{postId} aliceId
+      INCR likes:{postId}
+      return 1  (success → return 200 to client)
+
+On "unlike" request:
+  Lua script:
+    IF NOT SISMEMBER liked_by:{postId} aliceId:
+      return 0  (not liked → return 409)
+    ELSE:
+      SREM liked_by:{postId} aliceId
+      DECR likes:{postId}
+      return 1</pre>
+      <div class="two-col" style="margin-top:1rem;">
+        <div class="col-box">
+          <div class="col-label">Async Write-back to Cassandra</div>
+          Batch job every 5 minutes:<br>
+          Reads likes:{postId} from Redis →<br>
+          UPDATE posts SET like_count=N WHERE post_id=?<br>
+          <br>
+          Why not per-like write: 100M likes/day = 1,157/sec write contention on single Cassandra row. Redis INCR handles 100K+/sec per key easily.
+        </div>
+        <div class="col-box">
+          <div class="col-label">Comment Counts</div>
+          Comments stored in Cassandra:<br>
+          comments table (partition=post_id)<br>
+          <br>
+          comment_count:{postId} INCR in Redis<br>
+          Same write-back pattern.<br>
+          Comment list: cursor pagination on comment_id TIMEUUID (time-ordered clustering key).
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: ER Diagram -->
+    <div class="slide" id="s15" data-title="Entity Relationship Diagram">
+      <div class="section-label">🗄 DB Schema</div>
+      <h2>Entity Relationship Diagram</h2>
+      <pre class="code-block">┌─────────────────┐          ┌───────────────────────────┐
+│     users        │          │          posts             │
+│     (MySQL)      │          │        (Cassandra)         │
+├─────────────────┤          ├───────────────────────────┤
+│ PK user_id UUID │──────────│ PK post_id  Snowflake      │
+│    username TEXT│ 1      N │ FK user_id  UUID           │
+│    bio TEXT     │          │    caption  TEXT           │
+│    profile_pic  │          │    media_urls LIST&lt;TEXT&gt;  │
+│    follower_cnt │          │    media_type ENUM         │
+│    followee_cnt │          │    hashtags  SET&lt;TEXT&gt;    │
+│    is_celebrity │          │    created_at TIMESTAMP    │
+└─────────────────┘          └───────────────────────────┘
+         │                                │ 1
+         │ N                              │ N
+         │                               │
+┌────────▼──────────────┐   ┌────────────▼───────────────┐
+│  followers_by_user    │   │         comments            │
+│     (Cassandra)       │   │       (Cassandra)           │
+├───────────────────────┤   ├────────────────────────────┤
+│ PK followee_id (PART) │   │ PK post_id UUID (PART)     │
+│    follower_id (CLUS) │   │    comment_id TIMEUUID     │
+│    followed_at TS     │   │ FK user_id UUID            │
+└───────────────────────┘   │    text TEXT               │
+                            │    is_deleted BOOL         │
+┌───────────────────────┐   └────────────────────────────┘
+│  followees_by_user    │
+│     (Cassandra)       │   Redis Keys:
+├───────────────────────┤   feed:{userId}       ZSET score→postId
+│ PK follower_id (PART) │   likes:{postId}       INT  INCR counter
+│    followee_id (CLUS) │   liked_by:{postId}   SET  userId set
+│    is_celebrity BOOL  │   celeb_posts:{userId} LIST recent postIds
+│    followed_at TS     │   stories:{userId}     ZSET expiry→storyId
+└───────────────────────┘</pre>
+    </div>
+
+    <!-- SLIDE 16: DB Schema Detail -->
+    <div class="slide" id="s16" data-title="Database Schema — Cassandra Tables">
+      <div class="section-label">🗄 DB Schema</div>
+      <h2>Database Schema — Full Detail</h2>
+      <div class="two-col">
+        <div class="col-box">
+          <div class="col-label">posts (Cassandra)</div>
+          <pre style="font-size:0.78rem;margin-top:0.5rem;">post_id     Snowflake (PK) → encodes timestamp
+user_id     UUID
+caption     TEXT
+media_urls  LIST&lt;TEXT&gt;  (CDN URLs)
+media_type  TEXT  IMAGE | VIDEO
+hashtags    SET&lt;TEXT&gt;
+created_at  TIMESTAMP (redundant — in postId)
+
+Partition key: post_id
+→ single-row lookups by postId are O(1)
+→ range queries: WHERE post_id &lt; cursor</pre>
+        </div>
+        <div class="col-box">
+          <div class="col-label">followers_by_user (Cassandra)</div>
+          <pre style="font-size:0.78rem;margin-top:0.5rem;">followee_id  UUID  (PARTITION KEY)
+follower_id  UUID  (CLUSTERING KEY)
+created_at   TIMESTAMP
+
+Query: SELECT follower_id
+  FROM followers_by_user
+  WHERE followee_id = ?
+→ returns ALL followers of X
+→ used by fan-out worker
+
+followees_by_user (Cassandra)
+follower_id  UUID  (PARTITION KEY)
+followee_id  UUID  (CLUSTERING KEY)
+is_celebrity BOOLEAN
+
+Query: SELECT followee_id, is_celebrity
+  FROM followees_by_user
+  WHERE follower_id = ?
+→ used by feed service at read time</pre>
+        </div>
+      </div>
+      <div class="key-insight" style="margin-top:1rem;">
+        <strong>Why TWO follow tables?</strong> Cassandra queries are partition-key bound. "Who follows X?" needs partition=followee. "Who does X follow?" needs partition=follower. You CANNOT efficiently answer both from one table. Two tables = two query patterns = perfect Cassandra fit.
+      </div>
+      <div class="two-col" style="margin-top:1rem;">
+        <div class="col-box">
+          <div class="col-label">comments (Cassandra)</div>
+          post_id (PARTITION), comment_id TIMEUUID (CLUSTERING — time-ordered), user_id, text, is_deleted
+        </div>
+        <div class="col-box">
+          <div class="col-label">users (MySQL)</div>
+          user_id, username, email, password_hash, bio, profile_pic_url, follower_cnt, is_celebrity. MySQL for ACID — auth, account security, settings.
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 17: Scaling -->
+    <div class="slide" id="s17" data-title="Scaling — Bottlenecks &amp; Solutions">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Scaling — Bottlenecks &amp; Solutions</h2>
+      <table>
+        <thead><tr><th>Bottleneck</th><th>Problem</th><th>Solution</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Feed Read Throughput</strong><br>345K reads/sec peak</td>
+            <td>Single Redis node saturates</td>
+            <td>Redis cluster: shard feed:{userId} by userId hash. 50 shards × 7K reads/sec each. Read replicas per shard for extra capacity.</td>
+          </tr>
+          <tr>
+            <td><strong>Inactive User Waste</strong><br>2 TB Redis if all 500M active</td>
+            <td>Most users not active daily — wasted memory</td>
+            <td>TTL on feed:{userId}: EXPIRE 7 days. Cold open → rebuild from Cassandra (300-500ms once, acceptable). Actual Redis footprint far below 2 TB.</td>
+          </tr>
+          <tr>
+            <td><strong>Unfollow Stale Data</strong></td>
+            <td>Unfollowed user's postIds remain in feed cache</td>
+            <td>Lazy filter at read time: check "still following poster?" for top 20 posts. O(20 checks). Instagram's approach. Simpler than active ZREM cleanup.</td>
+          </tr>
+          <tr>
+            <td><strong>Like Count Hotspot</strong><br>Viral post: 2,778 likes/sec</td>
+            <td>Write contention on single Cassandra row</td>
+            <td>Redis INCR likes:{postId}: atomic, O(1), handles 100K+/sec. Write-back to Cassandra every 5 min in batch.</td>
+          </tr>
+          <tr>
+            <td><strong>Media Bandwidth</strong><br>165 TB/day new media</td>
+            <td>App servers can't serve petabytes of bandwidth</td>
+            <td>CDN (CloudFront): 90%+ reads from 250 edge PoPs. S3 for origin. Presigned URL: client uploads directly — app servers never touch media bytes.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SLIDE 18: Trade-offs Table -->
+    <div class="slide" id="s18" data-title="Trade-offs — Push vs Pull, SQL vs NoSQL">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Trade-offs Table</h2>
+      <table>
+        <thead><tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Winner &amp; Why</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Fan-out model</strong></td>
+            <td>Push (fan-out on write)</td>
+            <td>Pull (fan-out on read)</td>
+            <td><strong>Hybrid</strong>: push for regular users, pull for celebrities. Best read performance without celebrity write storm.</td>
+          </tr>
+          <tr>
+            <td><strong>Timeline storage</strong></td>
+            <td>Redis ZSET (pre-computed feed)</td>
+            <td>Cassandra (query at read time)</td>
+            <td><strong>Redis</strong>: 115K reads/sec requires sub-ms. Cassandra is too slow for live feed queries at this scale.</td>
+          </tr>
+          <tr>
+            <td><strong>Posts table DB</strong></td>
+            <td>MySQL (relational)</td>
+            <td>Cassandra (NoSQL)</td>
+            <td><strong>Cassandra</strong>: 100M inserts/day, no JOINs needed, horizontal scale. MySQL for users table (ACID auth).</td>
+          </tr>
+          <tr>
+            <td><strong>Like counters</strong></td>
+            <td>Redis INCR (write-back)</td>
+            <td>UPDATE likes_count in DB</td>
+            <td><strong>Redis INCR</strong>: atomic, O(1), no contention. DB update on every like = write hotspot at 100M likes/day.</td>
+          </tr>
+          <tr>
+            <td><strong>Pagination</strong></td>
+            <td>Cursor-based (postId)</td>
+            <td>Offset/page-number</td>
+            <td><strong>Cursor</strong>: stable reference — no page drift as new posts arrive. Efficient on Cassandra (no OFFSET scan).</td>
+          </tr>
+          <tr>
+            <td><strong>Unfollow cleanup</strong></td>
+            <td>Lazy filter at read time</td>
+            <td>Active ZREM from all feeds</td>
+            <td><strong>Lazy filter</strong>: O(20 checks) per feed load. Active cleanup is expensive for users with large feeds.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SLIDE 19: Redis ZSET vs Cassandra Timeline -->
+    <div class="slide" id="s19" data-title="Redis ZSET vs Cassandra Timeline">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Redis ZSET vs Cassandra for Timeline</h2>
+      <div class="two-col">
+        <div class="col-box">
+          <div class="col-label">Redis Sorted Set (Production Choice)</div>
+          <pre style="font-size:0.78rem;margin-top:0.5rem;">Key: feed:{userId}
+ZADD feed:{userId} score postId
+ZREVRANGE feed:{userId} 0 199
+
+Latency: O(log N) — sub-ms per read
+Throughput: 100K+ ZRANGE ops/sec per shard
+Memory: ~2 TB for 500M users (with TTL)
+Cluster: shard by userId hash
+
+Pros:
+  Sub-millisecond reads
+  Built-in sorted order (by score)
+  ZREVRANGE = perfect for ranked feed
+  INCR, SET, LIST all in same cluster
+
+Cons:
+  RAM-only → expensive at full scale
+  No persistence without AOF/RDB overhead
+  Max 500 entries per feed (by design)</pre>
+        </div>
+        <div class="col-box">
+          <div class="col-label">Cassandra Timeline Table (Alternative)</div>
+          <pre style="font-size:0.78rem;margin-top:0.5rem;">Table: user_feed
+  user_id    UUID  (PARTITION)
+  post_id    Snowflake (CLUSTERING DESC)
+  score      FLOAT
+
+SELECT post_id FROM user_feed
+  WHERE user_id = ?
+  AND post_id &lt; cursor
+  LIMIT 20;
+
+Latency: ~5-20ms per read (disk + network)
+Throughput: 345K reads/sec needs 100s of nodes
+Storage: disk → much cheaper than RAM
+Persistence: built-in
+
+Cons:
+  10-100× slower than Redis for reads
+  At 345K feed reads/sec: needs massive cluster
+  Write amplification same as Redis fan-out</pre>
+        </div>
+      </div>
+      <div class="key-insight" style="margin-top:1rem;">
+        <strong>Verdict:</strong> Redis wins for the pre-computed feed cache because feed reads are latency-critical (target &lt;200ms including ranking + DB fetch for post details). Cassandra works as a cold-rebuild fallback when Redis key expires.
+        At 500M DAU scale, 5-20ms per Cassandra read × 345K reads/sec would require a massive cluster. Redis cluster is the correct production choice.
+      </div>
+    </div>
+
+    <!-- SLIDE 20: Senior Q&A 1 — Celebrity Transition -->
+    <div class="slide" id="s20" data-title="Senior Q&A — Celebrity Threshold Transition">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Q&amp;A 1 — Celebrity Threshold Transition</h2>
+      <div class="script-block">
+        Q: "You set the celebrity threshold at 10K followers. Cristiano Ronaldo gains a follower DURING a fan-out operation. Now you need to reclassify him. How do you handle the transition?"
+      </div>
+      <pre class="code-block">A: The threshold is NOT applied in real-time at exact follower counts.
+
+   We maintain a celebrity_users SET in Redis (or a flag in the users table).
+   A background job runs daily — OR triggered at follower milestones:
+     IF user.followerCount crosses 10K threshold:
+       SET is_celebrity = true in MySQL users table
+       SADD celebrity_users {userId} in Redis
+       Remove from push fan-out path going forward.
+     Keep historical push-fanned posts in followers' feeds (don't delete them).
+
+   During transition window (before job runs):
+     A few extra fan-out writes may occur. Acceptable.
+     Brief overlap is harmless — we don't need atomic instant reclassification.
+
+   Key insight: This is an EVENTUAL CONSISTENCY problem, not a correctness problem.
+   A few extra writes during transition &lt;&lt; building complex atomic reclassification logic.
+
+   Past fan-out writes age out naturally:
+     When feed:{followerId} reaches 500-entry cap → oldest entries evicted.
+     No active cleanup of historical fan-out writes needed.</pre>
+      <div class="key-insight" style="margin-top:1rem;">
+        <strong>What the interviewer is testing:</strong> Do you understand that eventual consistency is acceptable here? Can you avoid over-engineering a solution that doesn't need strong consistency?
+      </div>
+    </div>
+
+    <!-- SLIDE 21: Senior Q&A 2 — Race Conditions -->
+    <div class="slide" id="s21" data-title="Senior Q&A — Race Conditions (Double Like)">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Q&amp;A 2 — Race Conditions (Double Like)</h2>
+      <div class="script-block">
+        Q: "Alice likes a post. The request fails mid-flight. She taps like again. The post now shows 2 likes from Alice. How do you prevent this double-like?"
+      </div>
+      <pre class="code-block">A: Idempotency via Redis Lua script (atomic check-and-set).
+
+   Two data structures per post:
+     likes:{postId}     INT  → atomic INCR counter
+     liked_by:{postId}  SET  → set of userIds who liked
+
+   On LIKE action (Lua script — runs atomically on Redis):
+     if redis.call('SISMEMBER', 'liked_by:' .. postId, userId) == 1 then
+       return 0  -- already liked: return 409 CONFLICT to client
+     end
+     redis.call('SADD', 'liked_by:' .. postId, userId)
+     redis.call('INCR', 'likes:' .. postId)
+     return 1  -- success
+
+   On UNLIKE action (Lua script):
+     if redis.call('SISMEMBER', 'liked_by:' .. postId, userId) == 0 then
+       return 0  -- not liked: return 409
+     end
+     redis.call('SREM', 'liked_by:' .. postId, userId)
+     redis.call('DECR', 'likes:' .. postId)
+     return 1
+
+   WHY LUA SCRIPT: Redis executes Lua atomically — no other command
+   runs between SISMEMBER and SADD/INCR. Eliminates race condition.
+   Without Lua: two concurrent requests could both pass SISMEMBER
+   check before either writes SADD → double-like possible.</pre>
+    </div>
+
+    <!-- SLIDE 22: Senior Q&A 3 — Post Deletion -->
+    <div class="slide" id="s22" data-title="Senior Q&A — Post Deletion from Fan-out Feeds">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Q&amp;A 3 — Post Deletion</h2>
+      <div class="script-block">
+        Q: "User deletes a post. But their post was already fan-out pushed to 100,000 followers' Redis feed caches. How do you remove it?"
+      </div>
+      <pre class="code-block">A: Three options — Instagram uses Option 1 (lazy delete):
+
+   Option 1 — Lazy Delete (Instagram's approach) ✓
+     Mark post as DELETED in Cassandra (is_deleted = true).
+     When feed is rendered: filter out deleted postIds before returning to client.
+     Simple. No mass Redis cleanup. Deleted posts NEVER shown to users.
+     Cost: 1 extra Cassandra read per post in top-20 (trivial).
+
+   Option 2 — Active Cleanup (expensive, rarely needed)
+     On delete: scan all 100K followers' feed caches, ZREM postId from each.
+     100K ZREM operations per delete: expensive but fast if deletions are rare.
+     Too expensive at scale for the 99% of posts never deleted.
+
+   Option 3 — Tombstone TTL
+     SET deleted:{postId} 1 EX {feedTTL}    ← Redis key with expiry
+     Feed rendering: SISMEMBER deleted:{postId} → exclude if true.
+     Middle ground — still O(1) check per post.
+
+   RECOMMENDED ANSWER: Option 1 (lazy delete).
+     99% of posts are never deleted.
+     Adding a check for the 1% deletion case at read time:
+       ~1ms extra per 20-item feed. Trivial overhead.
+     Clean, simple logic. No background cleanup jobs.
+     Correctness: deleted post is never shown (Cassandra authoritative).</pre>
+    </div>
+
+    <!-- SLIDE 23: Quick Numbers -->
+    <div class="slide" id="s23" data-title="Key Numbers to Memorize">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Key Numbers — Memorize These</h2>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Registered users</td><td>2 billion</td></tr>
+          <tr><td>Daily Active Users</td><td>500 million</td></tr>
+          <tr><td>Posts per day</td><td>100 million</td></tr>
+          <tr><td>Posts per second</td><td>~1,160</td></tr>
+          <tr><td>Feed reads per second</td><td>~115,000 (peak 345,000)</td></tr>
+          <tr><td>Read : Write ratio</td><td>100 : 1</td></tr>
+          <tr><td>Follow relationships total</td><td>1 trillion</td></tr>
+          <tr><td>Follow graph storage</td><td>~16 TB</td></tr>
+          <tr><td>Media ingested per day</td><td>~165 TB</td></tr>
+          <tr><td>Celebrity threshold</td><td>10,000 followers</td></tr>
+          <tr><td>Redis feed cap per user</td><td>500 postIds</td></tr>
+          <tr><td>Feed inactive TTL (Redis)</td><td>7 days</td></tr>
+          <tr><td>Redis feed cluster size</td><td>~2 TB (active users only)</td></tr>
+          <tr><td>Feed load target latency</td><td>&lt; 200ms</td></tr>
+          <tr><td>Two-level ranking: candidates → returned</td><td>200 candidates → top 20</td></tr>
+          <tr><td>Score formula denominator gravity</td><td>(hours + 2) ^ 1.5</td></tr>
+          <tr><td>Celeb posts Redis cache size</td><td>100 recent postIds per celeb</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SLIDE 24: What NOT to Say -->
+    <div class="slide" id="s24" data-title="What NOT to Say — Common Mistakes">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>What NOT to Say — Common Mistakes</h2>
+      <table>
+        <thead><tr><th>Mistake</th><th>Why It's Wrong</th><th>Correct Answer</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>"Fan-out on write to ALL followers on every post"</td>
+            <td>Celebrity problem: 200M ZADD ops per post = minutes of lag</td>
+            <td>Hybrid fan-out: push for &lt;10K, pull for celebrities</td>
+          </tr>
+          <tr>
+            <td>"Query all followees' posts at read time for every feed load"</td>
+            <td>500M DAU × 500 queries each = 250B DB reads/sec. Impossible.</td>
+            <td>Pre-computed Redis feed cache + celebrity pull merge</td>
+          </tr>
+          <tr>
+            <td>"Use MySQL for the posts table"</td>
+            <td>100M inserts/day + 1 trillion social graph rows = MySQL can't handle it</td>
+            <td>Cassandra for posts + social graph. MySQL only for users (auth, ACID).</td>
+          </tr>
+          <tr>
+            <td>"Serve media files from app servers"</td>
+            <td>165 TB/day × 100:1 read ratio = petabytes bandwidth. Not viable.</td>
+            <td>S3 + CDN (CloudFront). Presigned URL: clients upload directly to S3.</td>
+          </tr>
+          <tr>
+            <td>"Use page numbers for feed pagination"</td>
+            <td>Page drift: new posts arrive between page 1 and page 2 loads → duplicates</td>
+            <td>Cursor pagination: "posts older than lastSeenPostId"</td>
+          </tr>
+          <tr>
+            <td>"One follow table is enough"</td>
+            <td>Fan-out needs partition=followee. Feed read needs partition=follower. Can't do both from one Cassandra table efficiently.</td>
+            <td>Two tables: followers_by_user + followees_by_user</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SLIDE 25: Closing -->
+    <div class="slide" id="s25" data-title="Closing Summary">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Closing Summary — The 5 Key Points</h2>
+      <div class="script-block">
+        "To summarize, Instagram's core design is driven by 5 decisions:
+
+        1. WRITE PATH: Post Service saves to Cassandra, publishes to Kafka. Client uploads media directly to S3 via presigned URL. Fan-out Worker is async — post creation is always fast.
+
+        2. HYBRID FAN-OUT: Push to Redis ZSET for users with &lt;10K followers. Skip fan-out for celebrities — store in celeb_posts:{id} Redis cache. This solves the celebrity problem.
+
+        3. READ PATH: Feed Service merges pre-pushed postIds (ZRANGE) with celebrity posts (10 Redis GETs). Ranks 200 candidates → returns top 20. Target: &lt;200ms.
+
+        4. FEED RANKING: Two-level. Level 1: ZRANGE → 200 candidates. Level 2: engagement score (likes×1 + comments×3 + shares×5) / (hours+2)^1.5 + affinity. Returns top 20.
+
+        5. STORAGE: Cassandra (posts, social graph — high write throughput, no JOINs). Redis (feed cache, like counters, celeb cache — sub-ms reads). MySQL (users — ACID). S3 + CDN (media — 165 TB/day, 90% reads from edge)."
+      </div>
+      <div class="two-col" style="margin-top:1.2rem;">
+        <div class="col-box">
+          <div class="col-label">Study Order (Recommended)</div>
+          <ol style="margin:0;padding-left:1.2rem;">
+            <li>Celebrity problem + hybrid fan-out (20 min)</li>
+            <li>Architecture diagram (15 min)</li>
+            <li>Feed ranking formula (10 min)</li>
+            <li>Media pipeline (5 min)</li>
+            <li>Rapid answer out loud (5 min)</li>
+          </ol>
+        </div>
+        <div class="col-box">
+          <div class="col-label">The One Question That Defines This Design</div>
+          "Cristiano Ronaldo posts. He has 200M followers.
+          Do you write to all 200M Redis caches?"<br><br>
+          <strong>Answer confidently: NO. Hybrid fan-out. Here's why...</strong>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'News Feed';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

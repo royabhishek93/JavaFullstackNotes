@@ -1,0 +1,129 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Chess Game LLD" id="chess">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1400">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (Strategy Pattern for Piece Movement)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1000" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Game Class -->
+        <mxCell id="game_class" value="Game&#xa;&#xa;- board: Board&#xa;- players: List&lt;Player&gt; (2 players)&#xa;- currentTurn: Player&#xa;- moves: List&lt;Move&gt;&#xa;- status: GameStatus&#xa;&#xa;+ makeMove(fromSpot, toSpot)&#xa;+ switchTurn()&#xa;+ checkmate(): boolean&#xa;+ stalemate(): boolean" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="240" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Board Class -->
+        <mxCell id="board_class" value="Board&#xa;&#xa;- boxes: Box[8][8]&#xa;&#xa;+ getBox(int x, int y): Box&#xa;+ initializeBoard()&#xa;+ resetBoard()" style="swimlane;fontStyle=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="320" y="80" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Box/Spot Class -->
+        <mxCell id="box_class" value="Box (Spot)&#xa;&#xa;- x: int (0-7)&#xa;- y: int (0-7)&#xa;- piece: Piece&#xa;&#xa;+ getPiece(): Piece&#xa;+ setPiece(Piece)&#xa;+ isEmpty(): boolean" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="560" y="80" width="180" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Piece Hierarchy -->
+        <mxCell id="piece_class" value="&lt;&lt;abstract&gt;&gt;&#xa;Piece&#xa;&#xa;- color: Color (WHITE/BLACK)&#xa;- killed: boolean&#xa;&#xa;+ canMove(Board, fromSpot, toSpot): boolean&#xa;+ move(Board, fromSpot, toSpot)&#xa;+ isValidMove(): boolean" style="swimlane;fontStyle=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="780" y="80" width="280" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Concrete Pieces -->
+        <mxCell id="king_class" value="King&#xa;&#xa;- castlingDone: boolean&#xa;&#xa;+ canMove(Board, from, to)&#xa;  // 1 square any direction&#xa;+ canCastle(): boolean" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="80" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="queen_class" value="Queen&#xa;&#xa;+ canMove(Board, from, to)&#xa;  // Any direction, any distance&#xa;  // Combines Rook + Bishop" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="80" width="220" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rook_class" value="Rook&#xa;&#xa;+ canMove(Board, from, to)&#xa;  // Horizontal or Vertical&#xa;  // Any distance" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="220" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="bishop_class" value="Bishop&#xa;&#xa;+ canMove(Board, from, to)&#xa;  // Diagonal only&#xa;  // Any distance" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="200" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="knight_class" value="Knight&#xa;&#xa;+ canMove(Board, from, to)&#xa;  // L-shape: 2+1 or 1+2&#xa;  // Can jump over pieces" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="340" width="220" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pawn_class" value="Pawn&#xa;&#xa;- firstMove: boolean&#xa;&#xa;+ canMove(Board, from, to)&#xa;  // Forward 1 (or 2 if first)&#xa;  // Capture diagonally&#xa;+ promote(): Piece" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="320" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Player Class -->
+        <mxCell id="player_class" value="Player&#xa;&#xa;- playerName: String&#xa;- color: Color&#xa;- account: Account&#xa;&#xa;+ makeMove(Move)&#xa;+ resign()&#xa;+ offerDraw()" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="320" width="180" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Move Class -->
+        <mxCell id="move_class" value="Move&#xa;&#xa;- player: Player&#xa;- pieceMoved: Piece&#xa;- fromSpot: Box&#xa;- toSpot: Box&#xa;- pieceCaptured: Piece&#xa;- timestamp: DateTime&#xa;&#xa;+ isCastlingMove(): boolean&#xa;+ isPromotion(): boolean" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="260" y="240" width="200" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Enums -->
+        <mxCell id="color_enum" value="&lt;&lt;enum&gt;&gt;&#xa;Color&#xa;&#xa;WHITE&#xa;BLACK" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="500" y="280" width="120" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="gamestatus_enum" value="&lt;&lt;enum&gt;&gt;&#xa;GameStatus&#xa;&#xa;ACTIVE&#xa;BLACK_WIN&#xa;WHITE_WIN&#xa;STALEMATE&#xa;RESIGNATION&#xa;DRAW" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="500" y="400" width="140" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Special Moves -->
+        <mxCell id="special_title" value="SPECIAL MOVES &amp; RULES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="600" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="special_box" value="1. CASTLING:&#xa;   - King + Rook move together&#xa;   - Conditions: Neither moved before, no pieces between, &#xa;     King not in check, path not under attack&#xa;   - King moves 2 squares, Rook jumps over&#xa;&#xa;2. EN PASSANT:&#xa;   - Pawn captures pawn that just moved 2 squares&#xa;   - Must be done immediately after opponent's 2-square pawn move&#xa;&#xa;3. PAWN PROMOTION:&#xa;   - When pawn reaches opposite end (row 0 or 7)&#xa;   - Can promote to Queen, Rook, Bishop, or Knight&#xa;   - Usually Queen (most powerful)&#xa;&#xa;4. CHECK:&#xa;   - King under attack&#xa;   - Player MUST move to remove check&#xa;&#xa;5. CHECKMATE:&#xa;   - King in check AND no legal move to escape&#xa;   - Game ends, attacker wins&#xa;&#xa;6. STALEMATE:&#xa;   - No legal moves available BUT King not in check&#xa;   - Game ends in draw" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="600" height="420" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="680" y="520" width="800" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Game Table -->
+        <mxCell id="er_game" value="Game&#xa;&#xa;PK  gameId: INT&#xa;FK  whitePlayerId: INT&#xa;FK  blackPlayerId: INT&#xa;    startTime: DATETIME&#xa;    endTime: DATETIME&#xa;    status: ENUM&#xa;FK  winnerId: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="580" width="220" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Player Table -->
+        <mxCell id="er_player" value="Player&#xa;&#xa;PK  playerId: INT&#xa;    playerName: VARCHAR(100)&#xa;    rating: INT&#xa;    email: VARCHAR(100)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="940" y="580" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Move Table -->
+        <mxCell id="er_move" value="Move&#xa;&#xa;PK  moveId: INT&#xa;FK  gameId: INT&#xa;FK  playerId: INT&#xa;    fromX: INT&#xa;    fromY: INT&#xa;    toX: INT&#xa;    toY: INT&#xa;    pieceMoved: VARCHAR(20)&#xa;    pieceCaptured: VARCHAR(20)&#xa;    moveNumber: INT&#xa;    notation: VARCHAR(10) (e.g., e4, Nf3)&#xa;    timestamp: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="580" width="280" height="280" as="geometry" />
+        </mxCell>
+        
+        <!-- Board State Table (for replay/analysis) -->
+        <mxCell id="er_boardstate" value="BoardState&#xa;&#xa;PK  stateId: INT&#xa;FK  gameId: INT&#xa;FK  moveId: INT&#xa;    boardFEN: TEXT&#xa;      // Forsyth-Edwards Notation&#xa;      // Complete board state" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="800" width="220" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS (Complex Game Rules)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="680" y="1020" width="1200" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: Player tries to move King into check position. How to prevent?&#xa;A1: King.canMove() validates: (1) Basic King movement (1 square any direction) (2) Destination not under attack by opponent piece. Iterate all opponent pieces, check if any can attack destination box. If yes, return false (invalid move). Player must choose different move.&#xa;&#xa;Q2: How to implement Checkmate detection efficiently?&#xa;A2: After each move: (1) Check if opponent's King is in check (2) If YES, iterate ALL opponent's pieces (3) For each piece, try all possible legal moves (4) If ANY move removes check → Not checkmate, game continues (5) If NO move removes check → CHECKMATE, game ends. Optimization: Only check when King is in check (not every move).&#xa;&#xa;Q3: How to handle Castling validation (multiple conditions)?&#xa;A3: King.canCastle() checks: (1) King.castlingDone == false (2) Rook.moved == false (3) No pieces between King and Rook (iterate boxes) (4) King not currently in check (5) Path King travels (2 squares) not under attack (6) Destination not under attack. ALL must be true. If valid: Move King 2 squares, Rook jumps to other side.&#xa;&#xa;Q4: Pawn reaches end of board. How to handle promotion UI and validation?&#xa;A4: Pawn.move() checks: if (toSpot.y == 0 OR toSpot.y == 7): (1) Show promotion UI (choose Queen/Rook/Bishop/Knight) (2) User selects piece type (3) Remove Pawn from board (4) Create new selected piece at same position (5) Update board. Default to Queen if no selection in 30 sec (online chess rule).&#xa;&#xa;Q5: How to scale online chess for millions of concurrent games?&#xa;A5: &#xa;   - Stateless game sessions (store in Redis/PostgreSQL)&#xa;   - WebSocket for real-time move updates&#xa;   - Event sourcing: Store moves as events, replay to rebuild board&#xa;   - Database sharding by gameId&#xa;   - Microservices: Game service, Player service, Matchmaking service&#xa;   - CDN for static assets (board UI, piece images)&#xa;   - Cache hot games (tournaments, high-rated players)&#xa;   - Time-series DB for move history&#xa;   - AI opponent service (Stockfish integration) as separate microservice" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="680" y="1080" width="1200" height="480" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS & PRINCIPLES:&#xa;&#xa;1. Strategy Pattern - Each piece has different movement strategy (canMove implementation)&#xa;2. Template Method - Piece abstract class, concrete pieces override canMove()&#xa;3. Singleton - Board instance (only one board per game)&#xa;4. Command Pattern - Move as command object (for undo/redo, replay)&#xa;&#xa;MOVEMENT VALIDATION:&#xa;- King: 1 square any direction, cannot move into check&#xa;- Queen: Any direction, any distance (Rook + Bishop combined)&#xa;- Rook: Horizontal or Vertical, any distance&#xa;- Bishop: Diagonal only, any distance&#xa;- Knight: L-shape (2+1 or 1+2), can jump over pieces&#xa;- Pawn: Forward 1 (2 if first move), capture diagonally, promote at end&#xa;&#xa;COMPLEXITY:&#xa;- Chess has ~10^120 possible games (Shannon number)&#xa;- Average game: 40 moves per player = 80 total moves&#xa;- Each position: ~30-40 legal moves on average&#xa;- Checkmate detection: O(n * m) where n = pieces, m = possible moves&#xa;&#xa;NOTATION:&#xa;- Algebraic Notation: e4, Nf3, Qxd5, O-O (castle kingside)&#xa;- FEN (Forsyth-Edwards): Complete board state in single string&#xa;- PGN (Portable Game Notation): Standard for move recording&#xa;&#xa;ADVANCED FEATURES:&#xa;- Time control (blitz, rapid, classical)&#xa;- Move validation with chess engine (Stockfish)&#xa;- Opening book database&#xa;- Endgame tablebase&#xa;- Rating calculation (Elo, Glicko)&#xa;- Tournament management" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1040" width="600" height="520" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

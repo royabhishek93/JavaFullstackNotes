@@ -1,0 +1,162 @@
+<mxfile host="app.diagrams.net" modified="2026-08-30T12:00:00.000Z" agent="5.0" version="24.0.0">
+  <diagram name="Notification-System-Big-Picture" id="context">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="🔔 Notification System — THE BIG PICTURE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="20" width="1000" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Subtitle -->
+        <mxCell id="subtitle" value="Think of it as a restaurant: Order Service drops a ticket, walks away. The kitchen (Notification System) cooks it at its own pace." style="text;html=1;strokeColor=none;fillColor=#FFF3CD;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="350" y="80" width="1100" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Left: Producers Section -->
+        <mxCell id="producers-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F6F3;strokeColor=#1ABC9C;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="150" width="400" height="700" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="producers-title" value="📲 PRODUCERS&#xa;(App Services)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#117A65;" vertex="1" parent="1">
+          <mxGeometry x="80" y="170" width="340" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Producer 1 -->
+        <mxCell id="order-service" value="🛒 Order Service&#xa;&#xa;&quot;Order #12345 confirmed!&quot;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#A9DFBF;strokeColor=#1ABC9C;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="100" y="250" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Producer 2 -->
+        <mxCell id="payment-service" value="💳 Payment Service&#xa;&#xa;&quot;Payment received $99&quot;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#A9DFBF;strokeColor=#1ABC9C;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="100" y="360" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Producer 3 -->
+        <mxCell id="auth-service" value="🔐 Auth Service&#xa;&#xa;&quot;Your OTP: 123456&quot;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#A9DFBF;strokeColor=#1ABC9C;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="100" y="470" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Producer 4 -->
+        <mxCell id="marketing-service" value="📧 Marketing Service&#xa;&#xa;&quot;Black Friday sale 50% off!&quot;" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#A9DFBF;strokeColor=#1ABC9C;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="100" y="580" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="producers-note" value="❓ Why not call SendGrid directly?&#xa;&#xa;If SendGrid is down, order fails ❌&#xa;If app crashes, notification lost ❌&#xa;Can't prioritize OTP over ads ❌" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="690" width="300" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Center: Notification Platform -->
+        <mxCell id="platform-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF5FB;strokeColor=#2E86C1;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="500" y="150" width="700" height="700" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="platform-title" value="⚙️ NOTIFICATION PLATFORM (The Orchestrator)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#1B4F72;" vertex="1" parent="1">
+          <mxGeometry x="530" y="170" width="640" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- API Gateway -->
+        <mxCell id="api-gateway" value="🚪 API Gateway&#xa;&#xa;POST /api/v1/notifications&#xa;{&#xa;  &quot;templateId&quot;: &quot;order_confirm&quot;,&#xa;  &quot;userId&quot;: 12345,&#xa;  &quot;channels&quot;: [&quot;email&quot;, &quot;sms&quot;],&#xa;  &quot;priority&quot;: &quot;standard&quot;&#xa;}" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="550" y="240" width="600" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrow from producers to API -->
+        <mxCell id="producer-arrow1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1ABC9C;" edge="1" parent="1" source="order-service" target="api-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="producer-arrow2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1ABC9C;" edge="1" parent="1" source="payment-service" target="api-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="producer-arrow3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#E74C3C;" edge="1" parent="1" source="auth-service" target="api-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="producer-label3" value="🔥 CRITICAL" style="text;html=1;strokeColor=none;fillColor=#FADBD8;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="420" y="495" width="80" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="producer-arrow4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#95A5A6;" edge="1" parent="1" source="marketing-service" target="api-gateway">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="producer-label4" value="📉 LOW PRIORITY" style="text;html=1;strokeColor=none;fillColor=#EAECEE;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="390" y="605" width="100" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Notification Service Core -->
+        <mxCell id="notif-service" value="🧠 Notification Service (Does 4 things)&#xa;&#xa;① Fetch template: &quot;Hi {{name}}, order {{id}} confirmed&quot;&#xa;② Check user preferences: email=✅ sms=✅ dnd=❌&#xa;③ Render: &quot;Hi Alice, order 12345 confirmed&quot;&#xa;④ Outbox: Write to DB + Kafka (atomic)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#85C1E9;strokeColor=#1B4F72;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="550" y="390" width="600" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="api-to-service-arrow" value="1️⃣" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#2E86C1;" edge="1" parent="1" source="api-gateway" target="notif-service">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Kafka Topics -->
+        <mxCell id="kafka-section" value="📨 Kafka Topics (Priority Lanes)&#xa;&#xa;🔥 notifications.critical   → OTP, fraud alerts (20 workers)&#xa;✅ notifications.standard  → orders, shipping (30 workers)&#xa;📧 notifications.promotional → ads, newsletters (10 workers)&#xa;🔁 notifications.retry      → failed, exponential backoff" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="550" y="540" width="600" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="service-to-kafka-arrow" value="2️⃣ Fire &amp; forget" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#2E86C1;" edge="1" parent="1" source="notif-service" target="kafka-section">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Delivery Workers -->
+        <mxCell id="workers-section" value="👷 Delivery Workers (Per Channel)&#xa;&#xa;① Idempotency check (no duplicates)&#xa;② Rate limiter (token bucket in Redis)&#xa;③ Route to provider (SendGrid/Twilio/FCM)&#xa;④ Write delivery status" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#85C1E9;strokeColor=#1B4F72;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="550" y="690" width="600" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-to-workers-arrow" value="3️⃣ Async processing" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#2E86C1;" edge="1" parent="1" source="kafka-section" target="workers-section">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Right: Delivery Channels -->
+        <mxCell id="channels-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FDEDEC;strokeColor=#CB4335;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="150" width="500" height="700" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="channels-title" value="🌐 DELIVERY CHANNELS&#xa;(External Providers)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#922B21;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="170" width="440" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Email Provider -->
+        <mxCell id="email-provider" value="📧 Email&#xa;&#xa;SendGrid / SES&#xa;Rate limit: 10K/sec" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#F5B7B1;strokeColor=#CB4335;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="250" width="400" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- SMS Provider -->
+        <mxCell id="sms-provider" value="📱 SMS&#xa;&#xa;Twilio / MSG91&#xa;Rate limit: 100/sec (expensive!)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#F5B7B1;strokeColor=#CB4335;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="380" width="400" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Push Provider -->
+        <mxCell id="push-provider" value="🔔 Push Notifications&#xa;&#xa;FCM (Android) / APNS (iOS)&#xa;Rate limit: 5K/sec" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#F5B7B1;strokeColor=#CB4335;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="510" width="400" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- In-App Provider -->
+        <mxCell id="inapp-provider" value="💬 In-App&#xa;&#xa;WebSocket / Redis Pub-Sub&#xa;Real-time, no provider limit" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#F5B7B1;strokeColor=#CB4335;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1300" y="640" width="400" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrows to providers -->
+        <mxCell id="worker-to-email" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#CB4335;" edge="1" parent="1" source="workers-section" target="email-provider">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="worker-to-sms" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#CB4335;" edge="1" parent="1" source="workers-section" target="sms-provider">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="worker-to-push" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#CB4335;" edge="1" parent="1" source="workers-section" target="push-provider">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="worker-to-inapp" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#CB4335;" edge="1" parent="1" source="workers-section" target="inapp-provider">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Key Insight Box -->
+        <mxCell id="insight-box" value="💡 KEY DESIGN PRINCIPLES:&#xa;&#xa;① ASYNC: Order Service gets 200 OK in 5ms, walks away. Notification happens later (seconds/minutes OK).&#xa;② PRIORITY: OTP can't wait behind 10M promo emails. Separate Kafka topics = separate lanes.&#xa;③ RESILIENCE: Kafka retains messages. SendGrid down? Workers retry later. No notifications lost.&#xa;④ RATE LIMITING: SendGrid allows 10K/sec. Without rate limiter, Black Friday spike → account banned." style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=3;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="50" y="880" width="1700" height="110" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

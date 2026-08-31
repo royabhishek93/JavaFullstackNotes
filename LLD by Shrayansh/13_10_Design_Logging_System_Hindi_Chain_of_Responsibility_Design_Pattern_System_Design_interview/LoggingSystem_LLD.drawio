@@ -1,0 +1,108 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Logging System LLD" id="logging">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (Chain of Responsibility Pattern)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1000" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- LogProcessor Abstract Class -->
+        <mxCell id="logprocessor_class" value="&lt;&lt;abstract&gt;&gt;&#xa;LogProcessor&#xa;&#xa;# nextLoggerProcessor: LogProcessor&#xa;&#xa;+ LogProcessor(LogProcessor next)&#xa;+ log(int logLevel, String message)&#xa;  // If this level, process&#xa;  // Else forward to next" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="300" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- InfoLogProcessor -->
+        <mxCell id="info_processor" value="InfoLogProcessor&#xa;&#xa;+ InfoLogProcessor(LogProcessor next)&#xa;+ log(int logLevel, String message)&#xa;  // If logLevel == INFO:&#xa;  //   Print to console&#xa;  // Else:&#xa;  //   super.log(logLevel, message)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="380" y="80" width="280" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- DebugLogProcessor -->
+        <mxCell id="debug_processor" value="DebugLogProcessor&#xa;&#xa;+ DebugLogProcessor(LogProcessor next)&#xa;+ log(int logLevel, String message)&#xa;  // If logLevel == DEBUG:&#xa;  //   Print to console&#xa;  // Else:&#xa;  //   super.log(logLevel, message)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="700" y="80" width="280" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- ErrorLogProcessor -->
+        <mxCell id="error_processor" value="ErrorLogProcessor&#xa;&#xa;+ ErrorLogProcessor(LogProcessor next)&#xa;+ log(int logLevel, String message)&#xa;  // If logLevel == ERROR:&#xa;  //   Write to error.log file&#xa;  // Else:&#xa;  //   super.log(logLevel, message)" style="swimlane;fontStyle=1;align=left;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="80" width="280" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- LogLevel Constants -->
+        <mxCell id="loglevel_class" value="LogLevel&#xa;&#xa;public static final int INFO = 1;&#xa;public static final int DEBUG = 2;&#xa;public static final int ERROR = 3;" style="swimlane;fontStyle=1;align=left;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="80" width="260" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- LogSubject (Observer Pattern Extension) -->
+        <mxCell id="subject_class" value="LogSubject&#xa;&#xa;- observers: List&lt;LogObserver&gt;&#xa;&#xa;+ attach(LogObserver)&#xa;+ detach(LogObserver)&#xa;+ notifyObservers(int level, String msg)" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="280" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- LogObserver Interface -->
+        <mxCell id="observer_interface" value="&lt;&lt;interface&gt;&gt;&#xa;LogObserver&#xa;&#xa;+ update(int logLevel, String message)" style="swimlane;fontStyle=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="360" y="280" width="260" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Concrete Observers -->
+        <mxCell id="console_observer" value="ConsoleLogObserver&#xa;&#xa;+ update(int level, String msg)&#xa;  // Print to System.out" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="660" y="280" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="file_observer" value="FileLogObserver&#xa;&#xa;+ update(int level, String msg)&#xa;  // Write to log file" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="920" y="280" width="200" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db_observer" value="DatabaseLogObserver&#xa;&#xa;+ update(int level, String msg)&#xa;  // Insert to DB" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="280" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Chain Example -->
+        <mxCell id="chain_title" value="CHAIN OF RESPONSIBILITY FLOW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="460" width="500" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="chain_box" value="SETUP:&#xa;ErrorLogProcessor → DebugLogProcessor → InfoLogProcessor → null&#xa;&#xa;EXAMPLE 1: log(INFO, 'User logged in')&#xa;1. ErrorLogProcessor checks: logLevel != ERROR, forward to next&#xa;2. DebugLogProcessor checks: logLevel != DEBUG, forward to next&#xa;3. InfoLogProcessor checks: logLevel == INFO, PROCESS (print)&#xa;4. Done&#xa;&#xa;EXAMPLE 2: log(ERROR, 'Database connection failed')&#xa;1. ErrorLogProcessor checks: logLevel == ERROR, PROCESS (write to file)&#xa;2. Done (no forwarding needed)&#xa;&#xa;EXAMPLE 3: log(DEBUG, 'Variable value = 42')&#xa;1. ErrorLogProcessor checks: logLevel != ERROR, forward to next&#xa;2. DebugLogProcessor checks: logLevel == DEBUG, PROCESS (print)&#xa;3. Done&#xa;&#xa;KEY BENEFIT:&#xa;- Each processor handles ONLY its level&#xa;- Easy to add new log levels (WARNING, CRITICAL)&#xa;- Order determines priority (ERROR checked first)&#xa;- Can process at multiple levels (remove 'return' to continue chain)" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="500" width="700" height="460" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="780" y="460" width="600" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Log Table -->
+        <mxCell id="er_log" value="Log&#xa;&#xa;PK  logId: BIGINT&#xa;    logLevel: ENUM (INFO/DEBUG/ERROR)&#xa;    message: TEXT&#xa;    timestamp: DATETIME&#xa;    source: VARCHAR(200)&#xa;    userId: INT (nullable)&#xa;    sessionId: VARCHAR(100)&#xa;    ipAddress: VARCHAR(45)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="780" y="520" width="280" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- ErrorLog Table (Separate for critical errors) -->
+        <mxCell id="er_errorlog" value="ErrorLog&#xa;&#xa;PK  errorId: BIGINT&#xa;FK  logId: BIGINT&#xa;    errorType: VARCHAR(100)&#xa;    stackTrace: TEXT&#xa;    resolvedAt: DATETIME (nullable)&#xa;    assignedTo: INT (userId)&#xa;    severity: ENUM (LOW/MEDIUM/HIGH/CRITICAL)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="520" width="320" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- LogConfiguration Table -->
+        <mxCell id="er_config" value="LogConfiguration&#xa;&#xa;PK  configId: INT&#xa;    environment: VARCHAR(50)&#xa;    minLogLevel: ENUM&#xa;    consoleEnabled: BOOLEAN&#xa;    fileEnabled: BOOLEAN&#xa;    dbEnabled: BOOLEAN&#xa;    retentionDays: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="780" y="760" width="240" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1060" y="760" width="820" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: How to add new log level (WARNING) without modifying existing code?&#xa;A1: Chain of Responsibility benefit: (1) Create WarningLogProcessor extends LogProcessor (2) Implement log() method for WARNING level (3) Insert in chain: ERROR → WARNING → DEBUG → INFO → null. Zero changes to existing processors. Open-Closed Principle.&#xa;&#xa;Q2: Want ERROR logs to go to both file AND email. How to handle?&#xa;A2: Two approaches: (1) ErrorLogProcessor does both (simple but violates SRP) (2) Better: Remove 'return' after processing, let chain continue. ERROR → DEBUG → INFO all process the same log. Each does its job (file, email, console). (3) Best: Observer pattern - ErrorLogProcessor notifies all subscribers.&#xa;&#xa;Q3: Production environment should log only ERROR. Development should log all. How to configure?&#xa;A3: Configuration-based chain building: &#xa;   DEV: ERROR → DEBUG → INFO → null (all levels)&#xa;   PROD: ERROR → null (only errors)&#xa;   Load config from environment variable or config file. Build chain dynamically based on environment.&#xa;&#xa;Q4: Logging slowing down application. How to optimize?&#xa;A4: Async logging: (1) Log message added to BlockingQueue (2) Separate thread consumes queue and writes (3) Main thread doesn't wait for I/O (4) Batch writes (write 100 logs at once) (5) Circular buffer for high-throughput (6) Sample logs (log 1 in 100 DEBUG messages in PROD).&#xa;&#xa;Q5: How to scale logging for distributed system (microservices)?&#xa;A5: &#xa;   - Centralized logging: ELK Stack (Elasticsearch, Logstash, Kibana)&#xa;   - Each service logs to local file&#xa;   - Logstash agent collects and sends to Elasticsearch&#xa;   - Kibana for visualization and search&#xa;   - Add correlationId/traceId to track request across services&#xa;   - Structured logging (JSON format) for easier parsing&#xa;   - Log aggregation service (Splunk, Datadog)&#xa;   - Real-time alerting on ERROR/CRITICAL logs" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="820" width="820" height="540" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS:&#xa;&#xa;1. Chain of Responsibility - Log processors linked in chain, each handles its level&#xa;2. Observer Pattern (Extension) - Multiple outputs (console, file, DB) observe same log event&#xa;3. Singleton (Optional) - Logger instance (global access point)&#xa;&#xa;CHAIN STRUCTURE:&#xa;ErrorLogProcessor → DebugLogProcessor → InfoLogProcessor → null&#xa;&#xa;PROCESSING LOGIC:&#xa;- Each processor checks if logLevel matches its responsibility&#xa;- If YES: Process (print, write, insert)&#xa;- If NO: Forward to next processor in chain&#xa;- Last processor (or null) ends the chain&#xa;&#xa;BENEFITS:&#xa;- Easy to add/remove log levels&#xa;- Each processor has single responsibility&#xa;- Order determines priority (ERROR checked first)&#xa;- Can process at multiple levels (multi-cast)&#xa;&#xa;REAL-WORLD USAGE:&#xa;- Log4j, Logback, SLF4J use similar patterns&#xa;- Appenders (console, file, DB) = Chain nodes&#xa;- Filters = Pre-processing in chain&#xa;- Layouts = Formatting in each appender&#xa;&#xa;PERFORMANCE CONSIDERATIONS:&#xa;- Async logging for high-throughput&#xa;- Buffered I/O for file writes&#xa;- Batch inserts for DB&#xa;- Log sampling in production&#xa;- Lazy evaluation (don't construct message if level disabled)" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1000" width="980" height="360" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

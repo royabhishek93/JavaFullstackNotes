@@ -1,0 +1,227 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="System Context" id="context">
+    <mxGraphModel dx="1700" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1000" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="PAYMENT SYSTEM (Stripe/Razorpay) — System Context" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1660" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="ACID transactions + Idempotency + Double-entry ledger + Exactly-once money movement + Outbox pattern + Reconciliation" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="1400" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- System Boundary -->
+        <mxCell id="system-boundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ff6f00;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="300" y="120" width="1100" height="750" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="system-label" value="PAYMENT SYSTEM (Stripe/Razorpay)" style="text;html=1;strokeColor=none;fillColor=#ff6f00;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="310" y="130" width="320" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Core Services Inside System -->
+        <mxCell id="services-box" value="CORE SERVICES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="320" y="180" width="500" height="240" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="service-list" value="• Payment Service (idempotency check → MySQL transaction)&#xa;• Outbox Relay Service (polls unpublished events → Kafka)&#xa;• Payment Processor Service (consume Kafka → call bank API)&#xa;• Reconciliation Service (nightly bank statement vs ledger)&#xa;• Fraud Detection Service (async ML scoring, rule engine)&#xa;• Notification Service (email/SMS on payment status)&#xa;• Refund Service (creates reverse payment + ledger entries)&#xa;• Webhook Service (notify merchant on payment completion)&#xa;• Analytics Service (transaction volume, success rate dashboards)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="330" y="210" width="480" height="195" as="geometry" />
+        </mxCell>
+        
+        <!-- Data Stores -->
+        <mxCell id="data-stores-box" value="DATA STORES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="840" y="180" width="540" height="240" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="data-stores-list" value="• MySQL (ACID transactions — non-negotiable for money)&#xa;  tables: payments, accounts, ledger_entries, outbox_events&#xa;  Optimistic locking: accounts.version prevents race conditions&#xa;  Sharding: by account_id (all user data on same shard)&#xa;&#xa;• Redis (idempotency key cache)&#xa;  idempotencyKey → {paymentId, status} TTL 24hr&#xa;  If key exists → return cached response (no re-processing)&#xa;&#xa;• Kafka (event streaming)&#xa;  Topic: payment.commands (partition by from_account_id)&#xa;  Outbox relay publishes, Processor consumes&#xa;&#xa;• S3 (bank statement storage)&#xa;  Daily reconciliation CSV files, 7-year retention" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="850" y="210" width="520" height="195" as="geometry" />
+        </mxCell>
+        
+        <!-- Key Principles -->
+        <mxCell id="principles-box" value="KEY DESIGN PRINCIPLES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="320" y="440" width="1060" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="principles-list" value="1. IDEMPOTENCY: Client-generated UUID prevents double-charge on retry (Redis cache check before processing)&#xa;2. ACID TRANSACTIONS: payments + ledger_entries + outbox in ONE MySQL transaction (all-or-nothing)&#xa;3. DOUBLE-ENTRY BOOKKEEPING: Every payment = DEBIT source + CREDIT dest (sum of ledger always zero)&#xa;4. APPEND-ONLY LEDGER: Never UPDATE/DELETE ledger rows (immutable audit trail, regulatory requirement)&#xa;5. OUTBOX PATTERN: Write event to DB outbox in same TX as payment → relay publishes to Kafka (no event loss)&#xa;6. OPTIMISTIC LOCKING: accounts.version prevents race condition (two concurrent debits both seeing sufficient balance)&#xa;7. SAGA (not 2PC): Bank APIs don't support PREPARE phase → use saga with compensating transactions (refund on failure)&#xa;8. RECONCILIATION: Daily compare our ledger vs bank statement CSV → alert on mismatch (final safety net)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="330" y="470" width="1040" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Monitoring -->
+        <mxCell id="monitoring-box" value="MONITORING &amp; OBSERVABILITY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="320" y="620" width="1060" height="230" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="monitoring-list" value="• Transactions/sec (TPS) — avg ~12 TPS, peak ~100 TPS (1M/day)&#xa;• Success rate % (target: &gt;99.5% — failures only from bank rejections, not system bugs)&#xa;• Payment latency: API response &lt;500ms (202 Accepted), bank settlement avg 3s&#xa;• Idempotency hit rate (should be ~10-15% — retries due to network timeouts)&#xa;• Optimistic lock collision rate (&lt;0.1% — concurrent debits from same account)&#xa;• Outbox relay lag (unpublished events backlog — alert if &gt;1000 or age &gt;5 min)&#xa;• Ledger balance vs account balance mismatch (should be ZERO — alert immediately)&#xa;• Reconciliation mismatch count (bank statement vs our ledger — investigate if &gt;0)&#xa;• Fraud detection latency (&lt;5 sec for async scoring)&#xa;• Alert: if payment stuck in PROCESSING &gt;30 min → escalate to ops&#xa;• Alert: if MySQL replication lag &gt;5 sec → read replicas stale, risky for fraud checks&#xa;• Alert: if Redis idempotency cache down → all requests hit DB, massive load spike&#xa;• Dashboard: payment state funnel (INITIATED → PROCESSING → SUCCESS/FAILED %)&#xa;• Dashboard: top failure reasons (insufficient funds, bank timeout, invalid card)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="330" y="650" width="1040" height="190" as="geometry" />
+        </mxCell>
+        
+        <!-- EXTERNAL ACTORS -->
+        
+        <!-- Client/Merchant -->
+        <mxCell id="actor-client" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="220" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="client-title" value="💳 CLIENT / MERCHANT" style="text;html=1;strokeColor=none;fillColor=#1976d2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="210" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="client-actions" value="Actions:&#xa;• POST /payments with&#xa;  idempotencyKey&#xa;• Receive 202 Accepted&#xa;  immediately (async)&#xa;• Poll GET /payments/{id}&#xa;  for status updates&#xa;• Receive webhook on&#xa;  completion (merchant)&#xa;• Initiate refund if needed&#xa;• View transaction history" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="60" y="245" width="180" height="125" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-client" value="Initiate payment,&#xa;poll status" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#1976d2;fontSize=10;fontStyle=1;endArrow=classic;endFill=1;startArrow=classic;startFill=1" edge="1" parent="1" source="actor-client" target="system-boundary">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="290" as="sourcePoint" />
+            <mxPoint x="300" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Bank/Card Network -->
+        <mxCell id="actor-bank" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="220" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="bank-title" value="🏦 BANK / CARD NETWORK" style="text;html=1;strokeColor=none;fillColor=#388e3c;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="430" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="bank-actions" value="Actions:&#xa;• Receive payment request&#xa;  from Processor Service&#xa;• Validate card/account&#xa;• Check fraud rules&#xa;• Debit source account&#xa;• Credit destination&#xa;• Return SUCCESS/FAILED/&#xa;  TIMEOUT with ref ID&#xa;• Send daily statement CSV" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="60" y="465" width="180" height="125" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-bank" value="Charge request,&#xa;statement CSV" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#388e3c;fontSize=10;fontStyle=1;endArrow=classic;endFill=1;startArrow=classic;startFill=1" edge="1" parent="1" source="actor-bank" target="system-boundary">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="510" as="sourcePoint" />
+            <mxPoint x="300" y="510" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Admin/Ops -->
+        <mxCell id="actor-ops" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="640" width="220" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ops-title" value="👨‍💼 OPS / ADMIN" style="text;html=1;strokeColor=none;fillColor=#f57f17;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="650" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ops-actions" value="Actions:&#xa;• View dashboards (TPS,&#xa;  success rate, fraud)&#xa;• Investigate reconciliation&#xa;  mismatches&#xa;• Freeze suspicious accounts&#xa;• Manual refund approvals&#xa;• View audit logs" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="60" y="685" width="180" height="75" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-ops" value="Admin ops" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#f57f17;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="actor-ops" target="system-boundary">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="705" as="sourcePoint" />
+            <mxPoint x="300" y="705" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- EXTERNAL SYSTEMS -->
+        
+        <!-- Fraud Detection -->
+        <mxCell id="ext-fraud" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="200" width="220" height="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="fraud-title" value="🛡️ FRAUD DETECTION" style="text;html=1;strokeColor=none;fillColor=#01579b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="210" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="fraud-usage" value="• ML model: velocity&#xa;  checks, location anomaly&#xa;• Rule engine: blacklist&#xa;• Async scoring &lt;5 sec&#xa;• Block high-risk txn" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1460" y="245" width="180" height="55" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-fraud" value="Score txn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#01579b;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="system-boundary" target="ext-fraud">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="255" as="sourcePoint" />
+            <mxPoint x="1440" y="255" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Email/SMS Gateway -->
+        <mxCell id="ext-notify" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="330" width="220" height="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="notify-title" value="📧 EMAIL/SMS GATEWAY" style="text;html=1;strokeColor=none;fillColor=#2e7d32;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="340" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="notify-usage" value="• SendGrid (email)&#xa;• Twilio (SMS)&#xa;• Notify customer:&#xa;  payment SUCCESS/FAILED&#xa;• Notify merchant: webhook" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1460" y="375" width="180" height="55" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-notify" value="Send notif" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#2e7d32;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="system-boundary" target="ext-notify">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="385" as="sourcePoint" />
+            <mxPoint x="1440" y="385" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- KYC Provider -->
+        <mxCell id="ext-kyc" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="460" width="220" height="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kyc-title" value="🆔 KYC/AML PROVIDER" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="470" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kyc-usage" value="• Identity verification&#xa;• AML screening&#xa;• Government ID check&#xa;• Sanctions list check" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1460" y="505" width="180" height="55" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-kyc" value="Verify user" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#e65100;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="system-boundary" target="ext-kyc">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="515" as="sourcePoint" />
+            <mxPoint x="1440" y="515" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Analytics/BI -->
+        <mxCell id="ext-analytics" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="590" width="220" height="90" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analytics-title" value="📊 ANALYTICS / BI" style="text;html=1;strokeColor=none;fillColor=#c2185b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="600" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analytics-usage" value="• Redshift / BigQuery&#xa;• Daily ETL from MySQL&#xa;• Revenue dashboards&#xa;• Fraud trends" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="1460" y="635" width="180" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-analytics" value="ETL data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#c2185b;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="system-boundary" target="ext-analytics">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="635" as="sourcePoint" />
+            <mxPoint x="1440" y="635" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- KEY CHALLENGES BOX -->
+        <mxCell id="challenges-box" value="🎯 KEY TECHNICAL CHALLENGES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="800" width="1620" height="90" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="challenges-list" value="1. **Exactly-once money movement**: Client retries due to timeout → idempotency key prevents double-charge. 2. **ACID guarantees**: Payment + ledger + outbox in ONE transaction (partial writes = money creation/loss). 3. **Race conditions**: Two concurrent debits from same account → optimistic locking prevents overdraft. 4. **Event loss prevention**: App crashes after DB write but before Kafka publish → outbox pattern guarantees delivery. 5. **Bank API failures**: Timeout/network error → saga pattern with compensating transactions (not 2PC). 6. **Immutable audit trail**: Ledger never updated/deleted → regulatory compliance, fraud investigation. 7. **Reconciliation**: Our ledger vs bank statement CSV mismatch → final safety net catches what automation missed. 8. **Cross-shard transactions**: User transfers between accounts on different shards → distributed saga or 2PC within our system only." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="50" y="830" width="1600" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Real-World Analogy -->
+        <mxCell id="analogy-box" value="🏪 REAL-WORLD ANALOGY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="910" width="1620" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analogy-text" value="Traditional cash register: Cashier takes money, puts in till, gives receipt. If cashier drops money before reaching till, customer loses. **Payment system automates this with guarantees**: You swipe card (payment initiated, idempotency key = receipt number). System writes to ledger book (MySQL transaction = till record). Bank approves (async, like manager checking safe). Ledger shows two lines: -Rs.100 from your account (DEBIT), +Rs.100 to merchant (CREDIT). These cancel to zero. If manager doesn't respond in 30 sec, we ask again (retry). If register crashes mid-write, outbox relay picks up and finishes. Nightly reconciliation = manager counts safe vs ledger book. The hard part: all this coordination must be bulletproof — no money created, lost, or moved twice, even when network/DB/bank fails mid-operation." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="50" y="940" width="1600" height="40" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

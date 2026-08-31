@@ -1,0 +1,136 @@
+<mxfile host="app.diagrams.net" modified="2026-08-30T12:00:00.000Z" agent="5.0" version="24.0.0">
+  <diagram name="Notification-Detailed-Flow" id="flow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1600" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="🔬 Notification System — DETAILED FLOW (Layer by Layer)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="350" y="20" width="1100" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Subtitle -->
+        <mxCell id="subtitle" value="This is the interview-winning diagram. Shows EXACTLY what happens at each layer and WHY." style="text;html=1;strokeColor=none;fillColor=#FFF3CD;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="400" y="80" width="1000" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 1: Request Entry -->
+        <mxCell id="layer1-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8F6F3;strokeColor=#1ABC9C;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="150" width="1600" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer1-title" value="LAYER 1 — REQUEST ENTRY" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#117A65;" vertex="1" parent="1">
+          <mxGeometry x="120" y="160" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer1-content" value="Order Service → POST /api/v1/notifications&#xa;{&#xa;  &quot;templateId&quot;: &quot;order_confirm&quot;,&#xa;  &quot;userId&quot;: 12345,&#xa;  &quot;variables&quot;: { &quot;name&quot;: &quot;Alice&quot;, &quot;orderId&quot;: &quot;ORD-999&quot; },&#xa;  &quot;channels&quot;: [&quot;email&quot;, &quot;sms&quot;],&#xa;  &quot;priority&quot;: &quot;standard&quot;&#xa;}&#xa;&#xa;API Gateway checks:&#xa;✅ JWT valid? ✅ Rate limit OK? (100 req/min per client)&#xa;⏱️ 2ms → Route to Notification Service" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#A9DFBF;strokeColor=#1ABC9C;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="200" width="1560" height="90" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 2: Notification Service Core -->
+        <mxCell id="layer2-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF5FB;strokeColor=#2E86C1;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="340" width="1600" height="420" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer2-title" value="LAYER 2 — NOTIFICATION SERVICE (The Brain — 6 Steps)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#1B4F72;" vertex="1" parent="1">
+          <mxGeometry x="120" y="350" width="700" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 1: Fetch Template -->
+        <mxCell id="step1-box" value="STEP 1: Fetch Template&#xa;&#xa;Redis GET template:order_confirm:v2 (1h TTL, 95% hit rate)&#xa;Cache miss → SELECT * FROM templates WHERE id='order_confirm' AND is_active=true&#xa;&#xa;Template content:&#xa;Subject: &quot;Order {{orderId}} confirmed!&quot;&#xa;Body: &quot;Hi {{name}}, your order {{orderId}} is on the way...&quot;&#xa;&#xa;⏱️ 0.5ms (cache hit) or 5ms (cache miss)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="390" width="750" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step1-why" value="❓ WHY Templates?&#xa;&#xa;Marketing wants to change wording?&#xa;Just update template, no code deploy.&#xa;&#xa;Version control: v1 still in Kafka&#xa;can't change mid-flight." style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=1;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="900" y="390" width="250" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 2: Validate Variables -->
+        <mxCell id="step2-box" value="STEP 2: Validate Variables&#xa;&#xa;Template needs: {{name}}, {{orderId}}&#xa;Request has: &quot;name&quot;: &quot;Alice&quot;, &quot;orderId&quot;: &quot;ORD-999&quot; ✅&#xa;&#xa;Missing variable? → 400 Bad Request&#xa;⏱️ 0.1ms (in-memory check)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="390" width="480" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 3: Fetch User Preferences -->
+        <mxCell id="step3-box" value="STEP 3: Fetch User Preferences&#xa;&#xa;Redis GET user_pref:12345 (24h TTL)&#xa;Cache miss → SELECT * FROM user_preferences WHERE user_id=12345&#xa;&#xa;Preferences:&#xa;{ &quot;channels&quot;: { &quot;email&quot;: true, &quot;sms&quot;: true, &quot;push&quot;: false },&#xa;  &quot;types&quot;: { &quot;promotional&quot;: false },&#xa;  &quot;do_not_disturb&quot;: false }&#xa;&#xa;⏱️ 0.5ms (cache hit) or 5ms (cache miss)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="530" width="750" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step3-why" value="❓ WHY User Preferences?&#xa;&#xa;User clicked 'unsubscribe from ads'&#xa;at 8pm. At 8:01pm, marketing sends&#xa;1M promo emails. Without this check,&#xa;user still gets spam → GDPR violation.&#xa;&#xa;ANALOGY: Hotel Do Not Disturb sign.&#xa;Check BEFORE knocking." style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=1;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="900" y="530" width="250" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 4: Check Opt-in -->
+        <mxCell id="step4-box" value="STEP 4: Check Opt-in (BEFORE publishing to Kafka!)&#xa;&#xa;channels.email = true ✅ → Keep email&#xa;channels.sms = true ✅ → Keep SMS&#xa;do_not_disturb = false ✅ → Proceed&#xa;&#xa;If promotional &amp;&amp; types.promotional = false → SKIP ENTIRELY&#xa;⏱️ 0.1ms (in-memory check)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="530" width="480" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 5: Render Template -->
+        <mxCell id="step5-box" value="STEP 5: Render Template&#xa;&#xa;Replace {{name}} → &quot;Alice&quot;&#xa;Replace {{orderId}} → &quot;ORD-999&quot;&#xa;&#xa;Result:&#xa;Subject: &quot;Order ORD-999 confirmed!&quot;&#xa;Body: &quot;Hi Alice, your order ORD-999 is on the way...&quot;&#xa;&#xa;⏱️ 0.5ms (string replacement)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="670" width="530" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 6: Outbox Transaction -->
+        <mxCell id="step6-box" value="STEP 6: Outbox Transaction (ATOMIC — Most Important!)&#xa;&#xa;BEGIN TRANSACTION&#xa;  INSERT INTO notifications (id, user_id, template_id, status='PENDING', ...)&#xa;  INSERT INTO notifications_outbox (notification_id, published=false)&#xa;COMMIT&#xa;&#xa;Both succeed or both fail. No gap = No lost notifications.&#xa;Return 200 OK { &quot;notificationId&quot;: &quot;uuid-123&quot;, &quot;status&quot;: &quot;PENDING&quot; }&#xa;&#xa;⏱️ 3ms (DB write)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="680" y="670" width="730" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step6-why" value="❓ WHY Outbox Pattern?&#xa;&#xa;Crash between DB write and Kafka publish&#xa;= notification lost forever.&#xa;&#xa;With outbox: CDC poller retries every 100ms&#xa;until Kafka accepts it. Kafka down?&#xa;Notification waits in DB. Never lost." style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=1;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="670" width="240" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 3: Kafka Topics -->
+        <mxCell id="layer3-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FADBD8;strokeColor=#E74C3C;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="790" width="1600" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer3-title" value="LAYER 3 — KAFKA TOPICS (Priority Lanes — The Key Innovation)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#922B21;" vertex="1" parent="1">
+          <mxGeometry x="120" y="800" width="800" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-lanes" value="CDC poller reads outbox every 100ms, publishes to Kafka topics:&#xa;&#xa;🔥 notifications.critical.email     ← OTP, fraud alerts, security    (20 workers, 5sec SLA)&#xa;✅ notifications.standard.email     ← orders, shipping, payments      (30 workers, 1min SLA)&#xa;📧 notifications.promotional.email  ← marketing, newsletters           (10 workers, 1hr SLA)&#xa;🔁 notifications.retry.email        ← failed, exponential backoff (1m → 5m → 15m)&#xa;💀 notifications.dlq                ← 3 retries exhausted → ops alert&#xa;&#xa;Similar topics for .sms, .push, .inapp&#xa;&#xa;⏱️ Async — Order Service already got 200 OK and moved on" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#F5B7B1;strokeColor=#E74C3C;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="840" width="1070" height="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-why" value="❓ WHY Priority Lanes?&#xa;&#xa;Black Friday: 10M promo emails queued.&#xa;User tries to login → OTP needed.&#xa;&#xa;Single queue: OTP waits 20min behind ads.&#xa;Separate queue: OTP processes in 5 sec,&#xa;never touches promo queue.&#xa;&#xa;ANALOGY: Hospital ER has separate&#xa;lanes for critical vs routine." style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=1;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="840" width="460" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 4: Delivery Worker -->
+        <mxCell id="layer4-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8DAEF;strokeColor=#8E44AD;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1000" width="1600" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer4-title" value="LAYER 4 — DELIVERY CONSUMER (Per Channel — The Executor)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#6C3483;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1010" width="800" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="consumer-steps" value="Each Kafka consumer does 4 things:&#xa;&#xa;① Idempotency Check:&#xa;   SELECT COUNT(*) FROM delivery_status WHERE notification_id='uuid-123' AND channel='email'&#xa;   If count > 0 → SKIP (Kafka at-least-once may redeliver)&#xa;   ⏱️ 2ms&#xa;&#xa;② Rate Limiter (Token Bucket in Redis, atomic Lua script):&#xa;   EVAL &quot;if redis.call('get', 'rate:sendgrid') > 0 then redis.call('decr', 'rate:sendgrid'); return 1 else return 0 end&quot;&#xa;   10,000 tokens/sec for SendGrid. If tokens = 0 → backpressure, wait 100ms.&#xa;   ⏱️ 0.5ms&#xa;&#xa;③ Route to Provider:&#xa;   EMAIL → POST https://api.sendgrid.com/v3/mail/send (with circuit breaker, fallback to SES)&#xa;   SMS → POST https://api.twilio.com/2010-04-01/Accounts/.../Messages&#xa;   PUSH → POST https://fcm.googleapis.com/fcm/send&#xa;   ⏱️ 50-200ms (network call to external provider)&#xa;&#xa;④ Write Delivery Record:&#xa;   INSERT INTO delivery_status (notification_id, channel, provider='sendgrid', status='SENT', sent_at=NOW())&#xa;   ⏱️ 3ms" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#D5A6D1;strokeColor=#8E44AD;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1050" width="1200" height="210" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="consumer-why" value="❓ WHY Idempotency Check?&#xa;&#xa;Kafka at-least-once: if consumer crashes&#xa;mid-processing, Kafka replays message.&#xa;Without check: user gets 2 emails.&#xa;With check: duplicate silently skipped.&#xa;&#xa;❓ WHY Rate Limiter?&#xa;&#xa;SendGrid allows 10K/sec. 30 pods restart&#xa;after 2hr backlog → all fire at 3am.&#xa;SendGrid sees 300K req/sec → bans account.&#xa;Rate limiter = shared Redis counter,&#xa;all pods respect same limit." style="rounded=1;whiteSpace=wrap;html=1;fontSize=9;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=1;align=left;spacingLeft=5;" vertex="1" parent="1">
+          <mxGeometry x="1350" y="1050" width="330" height="210" as="geometry" />
+        </mxCell>
+        
+        <!-- LAYER 5: Delivery Confirmation -->
+        <mxCell id="layer5-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5F4E6;strokeColor=#27AE60;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1310" width="1600" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="layer5-title" value="LAYER 5 — DELIVERY CONFIRMATION (Async Webhooks)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#145A32;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1320" width="800" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="webhook-flow" value="Provider Webhook → POST /webhooks/sendgrid&#xa;{ &quot;event&quot;: &quot;delivered&quot;, &quot;message_id&quot;: &quot;...&quot;, &quot;timestamp&quot;: ... }&#xa;&#xa;Respond 200 OK immediately (NEVER block webhook, or provider retries)&#xa;Queue event → batch update (every 10sec):&#xa;  UPDATE delivery_status SET status='DELIVERED', delivered_at=NOW() WHERE provider_msg_id IN (...)&#xa;&#xa;Failure Path:&#xa;  Temporary (timeout, 429 Too Many Requests) → notifications.retry topic → 1m → 5m → 15m → DLQ&#xa;  Permanent (bounce, invalid email, 410 Gone) → status='FAILED', no retry" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#ABEBC6;strokeColor=#27AE60;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1360" width="1560" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Bottom Summary -->
+        <mxCell id="summary-box" value="📊 TOTAL LATENCY BREAKDOWN:&#xa;&#xa;Layer 1 (API Gateway): 2ms&#xa;Layer 2 (Notification Service): 0.5ms (cache) + 0.5ms (cache) + 0.5ms (render) + 3ms (DB) = ~5ms&#xa;→ TOTAL: ~7ms → Order Service gets 200 OK&#xa;&#xa;Layer 3 (Kafka): Async, doesn't block&#xa;Layer 4 (Delivery): 50-200ms per provider → User receives notification&#xa;Layer 5 (Confirmation): Async, batched&#xa;&#xa;💡 KEY INSIGHT: Decouple fast path (respond to caller) from slow path (external provider)." style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=3;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1520" width="1600" height="150" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

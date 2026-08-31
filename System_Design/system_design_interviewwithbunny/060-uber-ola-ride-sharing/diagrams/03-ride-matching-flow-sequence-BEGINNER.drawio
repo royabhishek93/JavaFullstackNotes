@@ -1,0 +1,401 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Ride Matching Flow" id="sequence">
+    <mxGraphModel dx="1600" dy="950" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="950" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="UBER/OLA — Complete Ride Flow (Request → Matching → Tracking → Payment → Rating)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1560" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="From &quot;Request Ride&quot; tap → driver assigned in &lt;1 second → real-time tracking → trip completion → instant payment &amp; rating" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="1300" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Timeline Background -->
+        <mxCell id="timeline-bg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#757575;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="1520" height="800" as="geometry" />
+        </mxCell>
+        
+        <!-- Swim Lanes Headers -->
+        <mxCell id="lane-rider" value="📱 RIDER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-api" value="🚪 API GATEWAY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="190" y="110" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-ride-svc" value="🚗 RIDE SERVICE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="350" y="110" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-match-svc" value="🎯 MATCHING SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="510" y="110" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-redis" value="⚡ REDIS GEO" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="670" y="110" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-zookeeper" value="🔒 ZOOKEEPER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="810" y="110" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-driver" value="🚕 DRIVER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="950" y="110" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-location" value="📍 LOCATION SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1090" y="110" width="130" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-payment" value="💳 PAYMENT SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1240" y="110" width="130" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-rating" value="⭐ RATING SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1390" y="110" width="130" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Vertical Lifelines -->
+        <mxCell id="lifeline-rider" value="" style="line;strokeWidth=2;strokeColor=#1976d2;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="110" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-api" value="" style="line;strokeWidth=2;strokeColor=#e65100;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="260" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-ride" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="420" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-match" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="580" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-redis" value="" style="line;strokeWidth=2;strokeColor=#d84315;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="730" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-zk" value="" style="line;strokeWidth=2;strokeColor=#e65100;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="870" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-driver" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-loc" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1155" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-payment" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1305" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-rating" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1455" y="150" width="0" height="720" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 1: FARE ESTIMATION (0-100ms) -->
+        <mxCell id="phase1-label" value="PHASE 1: FARE ESTIMATION (0-100ms)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="170" width="1500" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step1-input" value="Enter pickup&#xa;&amp; drop location" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="210" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow1" value="POST /fare/estimate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=9;fontStyle=1" edge="1" parent="1" source="step1-input" target="step1-api">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="110" y="230" as="sourcePoint" />
+            <mxPoint x="260" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-api" value="Route to&#xa;Ride Svc" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe0b2;strokeColor=#e65100;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="190" y="210" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1" source="step1-api" target="step1-ride">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="230" as="sourcePoint" />
+            <mxPoint x="420" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-ride" value="Google Maps&#xa;Distance Matrix API&#xa;{distance, duration}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="350" y="210" width="140" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step1-calc" value="Calculate:&#xa;base + distance×rate&#xa;+ time×rate&#xa;× surge_multiplier" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="350" y="270" width="140" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow3" value="Cache 5min TTL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d84315;fontSize=9;dashed=1" edge="1" parent="1" source="step1-calc" target="step1-redis">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="300" as="sourcePoint" />
+            <mxPoint x="730" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-redis" value="SET&#xa;fare_estimate:{id}&#xa;EX 300" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="670" y="270" width="120" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow4" value="{estimated_fare: $20.85,&#xa;breakdown, vehicle_options,&#xa;eta_min: 5}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=8;dashed=1" edge="1" parent="1" target="step1-response">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="335" as="sourcePoint" />
+            <mxPoint x="110" y="335" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="420" y="345" />
+              <mxPoint x="110" y="345" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-response" value="Show fare&#xa;estimate + ETA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="360" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 2: RIDE REQUEST &amp; DRIVER MATCHING (100ms-1.5s) -->
+        <mxCell id="phase2-label" value="PHASE 2: RIDE REQUEST &amp; DRIVER MATCHING (100ms-1.5s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="420" width="1500" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step2-request" value="Tap&#xa;&quot;Request Sedan&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=10;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="460" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow5" value="POST /ride/request" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=9;fontStyle=1" edge="1" parent="1" source="step2-request">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="170" y="480" as="sourcePoint" />
+            <mxPoint x="420" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step2-validate" value="Validate request&#xa;INSERT ride_requests&#xa;status: PENDING" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="350" y="455" width="140" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow6" value="Kafka:&#xa;ride.requested" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=9;fontStyle=1" edge="1" parent="1" source="step2-validate" target="step2-match">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="480" as="sourcePoint" />
+            <mxPoint x="580" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step2-match" value="Consume event&#xa;Start matching" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="510" y="455" width="140" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow7" value="GEORADIUS&#xa;pickup 5km&#xa;WITHDIST ASC" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#d84315;fontSize=9;fontStyle=1" edge="1" parent="1" source="step2-match" target="step2-geo">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="650" y="480" as="sourcePoint" />
+            <mxPoint x="730" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step2-geo" value="Return 10&#xa;nearest drivers:&#xa;[(D1,0.8km),&#xa;(D2,1.2km),...]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="670" y="450" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step2-filter" value="Filter by&#xa;vehicle_type:&#xa;SEDAN" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="510" y="525" width="140" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow8" value="Try D1 (closest)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#e65100;fontSize=9;fontStyle=1" edge="1" parent="1" source="step2-filter" target="step2-lock">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="650" y="545" as="sourcePoint" />
+            <mxPoint x="870" y="545" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step2-lock" value="CREATE&#xa;/locks/drivers/D1/&#xa;request_R1_seq0001&#xa;(ephemeral node)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="810" y="515" width="120" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step2-lock-acquired" value="✅ LOCK&#xa;ACQUIRED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#2e7d32;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="810" y="600" width="120" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step2-update-driver" value="SET driver:D1:status&#xa;'BUSY' EX 900&#xa;GEOREM D1 from&#xa;drivers:available" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="670" y="590" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow9" value="Notify driver" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=9;dashed=1" edge="1" parent="1" target="step2-driver-notif">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="870" y="635" as="sourcePoint" />
+            <mxPoint x="1010" y="635" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="870" y="660" />
+              <mxPoint x="1010" y="660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step2-driver-notif" value="🔔 FCM/APN&#xa;&quot;New ride request!&#xa;0.8km away&quot;&#xa;30s to respond" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="950" y="675" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 3: DRIVER ACCEPTANCE -->
+        <mxCell id="step3-accept" value="Driver taps&#xa;&quot;ACCEPT&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="950" y="755" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow10" value="POST /ride/rides&#xa;{action: accept}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=9;fontStyle=1" edge="1" parent="1" source="step3-accept">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="950" y="775" as="sourcePoint" />
+            <mxPoint x="420" y="775" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step3-create-trip" value="INSERT trips&#xa;status: MATCHED&#xa;UPDATE ride_requests" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="350" y="750" width="140" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow11" value="Release lock" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#e65100;fontSize=9;dashed=1" edge="1" parent="1" source="step3-create-trip">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="490" y="775" as="sourcePoint" />
+            <mxPoint x="870" y="775" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="500" y="775" />
+              <mxPoint x="500" y="800" />
+              <mxPoint x="870" y="800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step3-delete-lock" value="DELETE&#xa;ephemeral node" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="810" y="775" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow12" value="🔔 Driver matched!&#xa;{name, photo, vehicle,&#xa;rating, ETA 5 min}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=8;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="795" as="sourcePoint" />
+            <mxPoint x="110" y="820" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="280" y="795" />
+              <mxPoint x="280" y="820" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step3-rider-notif" value="See driver on map&#xa;+ live tracking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="815" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- RIGHT SIDE: Concurrent Location Tracking -->
+        <mxCell id="tracking-label" value="📍 REAL-TIME TRACKING (concurrent)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1090" y="420" width="260" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ws-connect" value="Driver WebSocket:&#xa;WS /v1/driver/location" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="950" y="460" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-ws" value="Persistent&#xa;connection" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=9" edge="1" parent="1" source="ws-connect" target="ws-stream">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1070" y="480" as="sourcePoint" />
+            <mxPoint x="1155" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="ws-stream" value="Every 3-5s:&#xa;{lat, lon, timestamp}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="1090" y="460" width="130" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="loc-update-1" value="GEOADD&#xa;drivers:available" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="1090" y="515" width="130" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="loc-update-2" value="SET location:{id}&#xa;EX 60" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="1090" y="565" width="130" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="loc-update-3" value="Kafka:&#xa;driver.location_updated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="1090" y="615" width="130" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="loc-pubsub" value="Redis Pub/Sub:&#xa;driver_location:{id}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="1090" y="665" width="130" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-to-rider" value="WebSocket&#xa;to rider" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=8;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1090" y="682" as="sourcePoint" />
+            <mxPoint x="110" y="715" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1050" y="682" />
+              <mxPoint x="1050" y="710" />
+              <mxPoint x="110" y="710" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="rider-track" value="Animate driver&#xa;marker on map" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="50" y="710" width="120" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="geofence" value="🎯 Geofence:&#xa;distance &lt; 50m →&#xa;&quot;Driver arrived!&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="1090" y="720" width="130" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Bottom Timeline Labels -->
+        <mxCell id="time-0" value="t=0ms" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=1;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="50" y="870" width="50" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="time-100" value="t=100ms&#xa;(Fare returned)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontStyle=1;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="300" y="870" width="90" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="time-1000" value="t=1.0s&#xa;(Driver matched)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontStyle=1;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="520" y="870" width="90" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="time-ongoing" value="Ongoing (every 3-5s)&#xa;Location updates" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontStyle=1;fontColor=#01579b" vertex="1" parent="1">
+          <mxGeometry x="1090" y="870" width="130" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Key Insights Box -->
+        <mxCell id="insights-box" value="🔑 KEY INSIGHTS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1240" y="460" width="310" height="310" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight1" value="✅ GEOSEARCH: GEORADIUS queries 1M drivers in ~10ms" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="490" width="290" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight2" value="🔒 NO RACE CONDITIONS: Zookeeper ephemeral locks&#xa;ensure one driver gets one ride. Auto-delete on crash." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="520" width="290" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight3" value="📍 WEBSOCKET EFFICIENCY: Persistent connection&#xa;vs HTTP polling saves 10× bandwidth. &lt;100ms updates." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="560" width="290" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight4" value="⚡ REDIS TTL: Driver locations expire after 60s if&#xa;no updates → auto-cleanup of stale data." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="600" width="290" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight5" value="📈 SURGE SMOOTHING: 70% old + 30% new prevents&#xa;sudden price shocks. Max cap 3.0× anti-price-gouge." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="640" width="290" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight6" value="🎯 GEOFENCING: Haversine formula calculates&#xa;distance &lt; 50m → triggers &quot;driver arrived&quot; event." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="680" width="290" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight7" value="🔔 NOTIFICATIONS: FCM/APN for background,&#xa;WebSocket for foreground, SMS fallback on failure." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="720" width="290" height="30" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

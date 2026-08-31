@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Architecture Part 1 — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Architecture Part 1 — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 22</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:6.67%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🏗️</div>
+  <h1 class="gradient-text">Kafka Architecture Part 1 — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Controller</span><span class="badge">Cluster Metadata Log</span><span class="badge">Topic Creation Flow</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Controller, Cluster Metadata, Topic Creation Flow, KRaft, Zookeeper, Quorum, High Watermark, ISR, Acknowledge Settings, Min ISR</p>
+</div>
+<div class="slide" id="s3" data-title="What Is the Controller?">
+<h2>What Is the Controller?</h2>
+<p>The controller is just a regular broker with extra responsibilities — it acts as the coordinator and brain of the entire Kafka cluster, managing topic creation, leader election, and broker health tracking.</p>
+<div class="dia">  Kafka Cluster
+  ┌──────────────────────────────────────────────────────────┐
+  │                                                          │
+  │   ┌─────────────────────────────────────────────────┐   │
+  │   │              CONTROLLER (special broker)        │   │
+  │   │                                                 │   │
+  │   │  Responsibilities:                              │   │
+  │   │  ─ Create / delete topics                       │   │
+  │   │  ─ Elect partition leader and follower          │   │
+  │   │  ─ Detect broker failures (via heartbeats)      │   │
+  │   │  ─ Notify all brokers about any change          │   │
+  │   │  ─ Maintain cluster metadata log                │   │
+  │   └─────────────────────────────────────────────────┘   │
+  │                         │  ▲                             │
+  │              heartbeats │  │ heartbeats                  │
+  │                         ▼  │                             │
+  │  ┌──────────┐    ┌──────────┐    ┌──────────┐           │
+  │  │ Broker 1 │    │ Broker 2 │    │ Broker 3 │           │
+  │  └──────────┘    └──────────┘    └──────────┘           │
+  └──────────────────────────────────────────────────────────┘
+
+A broker can have dual responsibility:
+  Option A: controller only (single role)
+  Option B: controller + handle producer/consumer requests (dual role)</div>
+</div>
+<div class="slide" id="s4" data-title="Cluster Metadata Log">
+<h2>Cluster Metadata Log</h2>
+<p>The controller keeps a file called the <strong>cluster metadata log</strong> — a record of everything happening in the cluster: which broker holds which topic, which partition is the leader, which is the follower.</p>
+<div class="dia">  Cluster Metadata Log (held by controller)
+  ┌─────────────────────────────────────────────────────┐
+  │  Topic: order-events                                │
+  │    Partition 0 → Leader: Broker 1, Follower: Broker 2│
+  │    Partition 1 → Leader: Broker 2, Follower: Broker 3│
+  │    Partition 2 → Leader: Broker 3, Follower: Broker 1│
+  │                                                     │
+  │  Topic: payment-events                              │
+  │    Partition 0 → Leader: Broker 2, Follower: Broker 1│
+  │                                                     │
+  │  Brokers alive: Broker 1 ✓  Broker 2 ✓  Broker 3 ✓ │
+  └─────────────────────────────────────────────────────┘
+
+Controller pushes this info to ALL brokers so every broker
+stays up to date. Any change flows through the controller first.</div>
+</div>
+<div class="slide" id="s5" data-title="Topic Creation Flow">
+<h2>Topic Creation Flow</h2>
+<p>When you ask Kafka to create a topic (from code or the CLI), the request travels through a broker to the active controller, which decides all the leader/follower assignments.</p>
+<div class="dia">  Admin CLI / Producer
+        │
+        │  create topic: order-events
+        │  partitions: 3, replication factor: 2
+        ▼
+  ┌─────────────┐   forward    ┌──────────────────────────┐
+  │  Any Broker │─────────────►│  Active Controller       │
+  └─────────────┘              │                          │
+                               │  1. Create topic         │
+                               │  2. Decide leaders       │
+                               │     P0 leader → Broker 1 │
+                               │     P1 leader → Broker 2 │
+                               │     P2 leader → Broker 3 │
+                               │  3. Decide followers     │
+                               │     P0 follower → Broker 2│
+                               │     P1 follower → Broker 3│
+                               │     P2 follower → Broker 1│
+                               │  4. Write to metadata log│
+                               │  5. Push to all brokers  │
+                               └──────────────────────────┘
+                                           │
+                        ┌──────────────────┼──────────────────┐
+                        ▼                  ▼                  ▼
+                   Broker 1           Broker 2           Broker 3
+                (now knows        (now knows         (now knows
+                 their role)       their role)        their role)</div>
+</div>
+<div class="slide" id="s6" data-title="The Single-Controller Problem">
+<h2>The Single-Controller Problem</h2>
+<p>Having only one controller is a <strong>single point of failure</strong> — if it crashes, no one can create topics, detect broker failures, or recover lost partitions.</p>
+<div class="dia">  ┌───────────────────────────────────────────────────────────┐
+  │  SINGLE CONTROLLER PROBLEM                                │
+  │                                                           │
+  │  Controller fails ──►  cluster metadata: LOST            │
+  │                    ──►  new topic creation: IMPOSSIBLE    │
+  │                    ──►  broker failure detected by: NOBODY│
+  │                    ──►  partition leader election: STOPPED│
+  │                                                           │
+  │  = cluster becomes UNAVAILABLE                            │
+  └───────────────────────────────────────────────────────────┘
+
+  Naive fix:  add more controllers
+  New problem: who controls the controllers?
+
+  ┌───────────────────────────────────────────────────────────┐
+  │  Controller 1 ──► Controller 2 ──► another controller??  │
+  │                                                           │
+  │  Infinite loop problem — we need a different solution.   │
+  └───────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s7" data-title="KRaft — Kafka's Built-In Solution">
+<h2>KRaft — Kafka's Built-In Solution</h2>
+<p>KRaft (Kafka Raft) is Kafka's own consensus system built directly into the controller. It replaced the old external dependency called Zookeeper (deprecated in Kafka 3.x+).</p>
+<div class="dia">  OLD WAY — Zookeeper (legacy, deprecated in Kafka 3.x)
+  ┌───────────────────────────────────────────────────┐
+  │  Kafka Cluster         │  Zookeeper Cluster       │
+  │  ┌────────────────┐    │  ┌───────────────────┐   │
+  │  │ Broker 1       │◄──►│  │ Zookeeper Node 1  │   │
+  │  │ Broker 2       │◄──►│  │ Zookeeper Node 2  │   │
+  │  │ Controller     │◄──►│  │ Zookeeper Node 3  │   │
+  │  └────────────────┘    │  └───────────────────┘   │
+  │                        │  External system —        │
+  │                        │  deploy + monitor + maintain separately  │
+  └────────────────────────┴──────────────────────────┘
+
+  NEW WAY — KRaft (modern, built-in, no external dependency)
+  ┌───────────────────────────────────────────────────┐
+  │  Kafka Cluster                                    │
+  │  ┌─────────────────────────────────────────────┐ │
+  │  │ Controller 1 (active)  ← KRaft built-in     │ │
+  │  │ Controller 2 (standby) ← KRaft built-in     │ │
+  │  │ Controller 3 (standby) ← KRaft built-in     │ │
+  │  └─────────────────────────────────────────────┘ │
+  │  Broker 1    Broker 2    Broker 3                 │
+  └───────────────────────────────────────────────────┘
+
+KRaft uses the Raft consensus algorithm.
+Zookeeper used the ZAP consensus algorithm.</div>
+</div>
+<div class="slide" id="s8" data-title="Quorum — How Controllers Agree">
+<h2>Quorum — How Controllers Agree</h2>
+<p>Controllers never make decisions alone — every change must be approved by a <strong>majority (quorum)</strong> of controllers before it is committed. This prevents split-brain scenarios.</p>
+<div class="dia">  Quorum formula:  (n / 2) + 1   where n = number of controllers
+
+  With 3 controllers:  quorum = 2
+  With 5 controllers:  quorum = 3
+
+  Example: metadata change needs to be agreed upon
+  ────────────────────────────────────────────────────────
+  Controller 1 (active):  "Shall we commit this change?"
+        │
+        ├──► Controller 2 (standby): "YES, I agree" ✓
+        │
+        └──► Controller 3 (standby): "YES, I agree" ✓
+
+  Active controller got 2 votes out of 3 → quorum reached ✓
+  Decision: COMMITTED
+
+  ────────────────────────────────────────────────────────
+  Failure case:
+  Controller 1 (active):  "Shall we commit?"
+        │
+        ├──► Controller 2: "YES" ✓
+        │
+        └──► Controller 3: (no response — crashed) ✗
+
+  Still got 2 votes out of 3 → quorum still reached ✓
+  Cluster continues working even with one controller down.</div>
+</div>
+<div class="slide" id="s9" data-title="KRaft Topic Creation Flow (with Quorum)">
+<h2>KRaft Topic Creation Flow (with Quorum)</h2>
+<p>When KRaft is used, every metadata change goes through a quorum vote before being committed. Controllers store the change locally first, then commit only after the majority agrees.</p>
+<div class="dia">  1. Admin CLI sends: create topic order-events (3 partitions, RF=2)
+         │
+         ▼
+  2. Any broker receives the request
+         │
+         ▼
+  3. Broker forwards to ACTIVE CONTROLLER (Controller 1)
+         │
+         ▼
+  4. Controller 1 creates topic metadata (leader/follower assignments)
+         │
+         ▼
+  5. Controller 1 writes to its LOCAL metadata log at offset 100
+     (NOT committed yet — high watermark is still 99)
+         │
+         ├──► 6a. Controller 2 KRaft: writes offset 100 locally, replies YES ✓
+         │
+         └──► 6b. Controller 3 KRaft: writes offset 100 locally, replies YES ✓
+                              │
+                              ▼
+  7. Controller 1 receives majority (2/3) → COMMITS offset 100
+     High watermark advances: 99 → 100
+
+  8. Controller 1 sends committed heartbeat to standby controllers
+     → They commit offset 100 too (already have the record, just mark committed)
+
+  9. Controller 1 pushes updated metadata to ALL brokers
+     → Every broker now knows the new topic layout</div>
+</div>
+<div class="slide" id="s10" data-title="High Watermark — The Committed Offset">
+<h2>High Watermark — The Committed Offset</h2>
+<p>The <strong>high watermark</strong> is the last offset that has been committed — meaning a quorum of nodes agreed on it. Everything at or below the high watermark is safe and durable.</p>
+<div class="dia">  Controller's local metadata log:
+  ┌────────────────────────────────────────────────────────┐
+  │  Offset 98: [broker joined]          ← committed ✓    │
+  │  Offset 99: [partition leader change] ← committed ✓   │
+  │                                                        │
+  │  High Watermark = 99  (last committed offset)          │
+  │                                                        │
+  │  Offset 100: [new topic created]     ← NOT committed yet│
+  │              waiting for quorum...                     │
+  └────────────────────────────────────────────────────────┘
+
+  Once quorum is reached:
+  │  Offset 100: [new topic created]     ← committed ✓    │
+  │  High Watermark = 100                                  │
+
+  Think of it like a bookmark:
+  "Everything up to page 100 is confirmed and agreed upon."</div>
+</div>
+<div class="slide" id="s11" data-title="ISR — In-Sync Replicas">
+<h2>ISR — In-Sync Replicas</h2>
+<p>For every partition, the controller tracks the <strong>ISR list</strong> — the set of replicas (leader + followers) that are fully caught up with the leader's latest data.</p>
+<div class="dia">  Topic: order-events, Partition 1
+  Replication Factor: 3 (1 leader + 2 followers)
+
+  ┌──────────────┐    polls for updates    ┌──────────────┐
+  │   Broker 1   │◄───────────────────────►│   Broker 2   │
+  │  (LEADER)    │                         │  (follower)  │
+  │  offset: 9   │◄───────────────────────►│  offset: 9   │
+  └──────────────┘    polls for updates    └──────────────┘
+         ▲
+         │  polls for updates
+         ▼
+  ┌──────────────┐
+  │   Broker 3   │
+  │  (follower)  │
+  │  offset: 9   │
+  └──────────────┘
+
+  ISR list for this partition: [Broker 1, Broker 2, Broker 3]  ← all caught up
+
+  Now Broker 3 stops sending poll requests for 30+ seconds:
+
+  ┌──────────────┐                         ┌──────────────┐
+  │   Broker 1   │                         │   Broker 2   │
+  │  (LEADER)    │◄───────────────────────►│  (follower)  │
+  │  offset: 15  │      still polling      │  offset: 15  │
+  └──────────────┘                         └──────────────┘
+
+  ┌──────────────┐
+  │   Broker 3   │  ← no poll requests → lagging too far behind
+  │  (follower)  │
+  │  offset: 9   │
+  └──────────────┘
+
+  Leader updates ISR → passes to Controller → Controller updates metadata
+  ISR list for this partition: [Broker 1, Broker 2]  (Broker 3 removed)</div>
+</div>
+<div class="slide" id="s12" data-title="How the Leader Tracks Follower Lag">
+<h2>How the Leader Tracks Follower Lag</h2>
+<p>Followers are pull-based — they continuously send fetch/poll requests to the leader. If a follower goes silent for too long, the leader removes it from the ISR.</p>
+<div class="dia">  Normal state — follower stays in ISR:
+  ────────────────────────────────────────────────────────
+  Follower → "hey, any new data?"    (every few ms)
+  Leader   → "yes, here is offset 10, 11, 12"
+  Follower → "got it, any more?"
+  Leader   → "not yet"
+  Follower → "ok, I'll ask again"   (keeps asking)
+
+  Follower is within 30-second lag window → stays IN ISR ✓
+
+  Lagging state — follower removed from ISR:
+  ────────────────────────────────────────────────────────
+  Follower → [silent for &gt; 30 seconds]
+  Leader   → "Broker 3 hasn't called in 30s — it's lagging"
+           → Removes Broker 3 from ISR
+           → Notifies controller → controller updates metadata
+  
+  Config:  replica.lag.time.max.ms = 30000 (default ~30s)</div>
+</div>
+<div class="slide" id="s13" data-title="Acknowledge Settings (acks)">
+<h2>Acknowledge Settings (acks)</h2>
+<p>Producers can choose how much confirmation to wait for before considering a message successfully sent. This is a trade-off between speed and safety.</p>
+<div class="dia">  Producer publishes event to Broker 2 (leader of partition 1)
+  ISR = [Broker 1 (leader), Broker 2 (follower), Broker 3 (follower)]
+  Wait — in this example Broker 2 is leader:
+  ISR = [Broker 2 (leader), Broker 1 (follower), Broker 3 (follower)]
+
+  ─────────────────────────────────────────────────────────────────
+  acks = 0  (fire and forget)
+  ─────────────────────────────────────────────────────────────────
+  Producer ──► Broker 2: "here is the event"
+  Producer: doesn't even wait for response ← fastest, no guarantee
+
+  ─────────────────────────────────────────────────────────────────
+  acks = 1  (wait for leader only)
+  ─────────────────────────────────────────────────────────────────
+  Producer ──► Broker 2: "here is the event"
+               Broker 2 writes to its log
+               Broker 2 ──► Producer: "success"
+  Producer: happy ✓   (followers may not have it yet)
+
+  ─────────────────────────────────────────────────────────────────
+  acks = all  (wait for all ISR replicas)
+  ─────────────────────────────────────────────────────────────────
+  Producer ──► Broker 2 (leader): "here is the event"
+               Broker 2 writes to its log
+               Broker 2 waits for ISR followers...
+               Broker 1 polls → writes → "done" ✓
+               Broker 3 polls → writes → "done" ✓
+               All ISR confirmed ──► Producer: "success" ✓
+               Safest, but slowest</div>
+</div>
+<div class="slide" id="s14" data-title="Minimum In-Sync Replicas (min.insync.replicas)">
+<h2>Minimum In-Sync Replicas (min.insync.replicas)</h2>
+<p>This config sets a floor — the producer will fail rather than accept a write when too few replicas are available, preventing data loss in degraded conditions.</p>
+<div class="dia">  Config: min.insync.replicas = 2
+
+  Scenario A — 2 ISR replicas (meets the minimum):
+  ─────────────────────────────────────────────────────────
+  ISR = [Broker 1 (leader), Broker 2 (follower)]
+  Producer sends event with acks=all
+  Both write successfully → ✓  success
+
+  Scenario B — only 1 ISR replica (below minimum):
+  ─────────────────────────────────────────────────────────
+  Broker 2 and Broker 3 are both lagging / crashed
+  ISR = [Broker 1 (leader)]  ← only 1 replica
+  Producer sends event with acks=all
+  Leader checks: min.insync.replicas=2 but ISR has only 1
+  → Request REJECTED ✗  (NotEnoughReplicasException)
+
+  Why is this useful?
+  ┌─────────────────────────────────────────────────────────┐
+  │  Without min.insync.replicas:                           │
+  │  Leader writes alone → broker crashes → data LOST       │
+  │                                                         │
+  │  With min.insync.replicas = 2:                          │
+  │  System refuses to write → producer retries or alerts   │
+  │  No write is better than a write that gets lost         │
+  └─────────────────────────────────────────────────────────┘
+
+  Note: ISR can never be empty because the leader is ALWAYS in ISR.</div>
+</div>
+<div class="slide" id="s15" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                   What it is                                  Key point
+────────────────────────  ──────────────────────────────────────────  ───────────────────────────────────
+Controller                Special broker — cluster coordinator        Manages metadata, elections, health
+Cluster Metadata Log      File on controller storing all cluster info Pushed to all brokers after each change
+Topic Creation Flow       Admin → Any Broker → Active Controller      Controller decides leader/follower layout
+Zookeeper                 Old external consensus system (legacy)      Deprecated in Kafka 3.x
+KRaft                     Built-in consensus system inside controller No external dependency, uses Raft algorithm
+Quorum                    Majority vote among controllers             Formula: (n/2)+1  — with 3 controllers, need 2
+High Watermark            Last committed offset                       Everything below this is agreed and durable
+ISR                       List of replicas fully caught up to leader  Per-partition, maintained by the leader
+Follower lag              Follower too slow → removed from ISR        Config: replica.lag.time.max.ms (default ~30s)
+acks = 0                  Fire and forget                             Fastest, no durability guarantee
+acks = 1                  Wait for leader only                        Fast, follower may not have the data yet
+acks = all                Wait for all ISR replicas                   Safest, highest latency
+min.insync.replicas       Minimum ISR size for writes to succeed      Prevents writes when too few replicas are alive</div>
+</div>
+<div class="slide" id="s16" data-title="Architecture — Controller Quorum for the Notification System">
+<h2>Architecture — Controller Quorum Behind the Notification Pipeline</h2>
+<p>"Every topic decision my Notification Service depends on — which broker leads which partition, what happens when one dies — traces back to this controller quorum. Let me show where it actually sits."</p>
+<div class="dia">  3-broker KRaft cluster (all also serve as controller quorum voters)
+     Broker-1 (Active Controller) ◄──Raft consensus──► Broker-2, Broker-3
+              │
+              │ owns: topic metadata, partition leader assignment,
+              │       ISR membership, broker health
+              ▼
+  notifications.critical.sms (100 partitions, RF=3, min.insync.replicas=2)
+     Controller decided: P0 leader=Broker-2, followers=Broker-1,Broker-3</div>
+<p><strong>Scenario-first:</strong> "If Broker-2 (leading P0) dies, it's the ACTIVE CONTROLLER — not the producer, not the consumer — that notices via missed heartbeat and elects a new leader from the ISR. Producers/consumers just get a brief metadata refresh; they never talk to the controller for data, only for 'who do I talk to now.'"</p>
+</div>
+<div class="slide" id="s17" data-title="ER + Sequence — Leader Election on Failure">
+<h2>ER Relationship + Sequence — Controller-Driven Failover</h2>
+<div class="dia">ER: Controller (1, active) ──tracks──> Partition (N) ──has──> ISR (subset of replicas)
+    Partition ──elects new leader from──> ISR (never a lagging out-of-sync replica)
+
+SEQUENCE:
+Broker-2(leader,P0)   ActiveController      Broker-1(ISR)   Broker-3(ISR)   Producer
+    │  heartbeat missed      │                    │              │             │
+    │                        │  detect failure    │              │             │
+    │                        │──elect new leader──►│              │             │
+    │                        │  (from ISR only)    │              │             │
+    │                        │◄────becomes leader──│              │             │
+    │                        │  push updated metadata to ALL brokers            │
+    │                        │                    │              │──metadata──►│ producer refreshes,
+    │                        │                    │              │             │ resumes to Broker-1</div>
+<p><strong>Scenario-first:</strong> "The controller only ever picks from the ISR — never a replica that's fallen behind. That's the single guarantee that prevents 'the new leader is missing committed data' during a failover."</p>
+</div>
+<div class="slide" id="s18" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why can't a lagging follower become leader during failover?
+A: It may be missing recently committed messages — promoting it would mean
+   silently losing data that producers were already told was durable.
+
+Q: What's the actual difference KRaft made vs ZooKeeper here?
+A: Controller failover dropped from tens of seconds (ZK session timeout +
+   re-election) to single-digit seconds, because the Raft log lives inside
+   Kafka's own brokers — no separate system's failure detection to wait on.
+
+Q: Why 3 controller voters and not 2 or 5?
+A: 3 tolerates 1 voter failure while keeping majority quorum cheaply; 5
+   tolerates 2 failures but doubles network overhead for consensus — most
+   production clusters land on 3 unless failure tolerance requirements are unusually high.</div>
+</div>
+<div class="slide" id="s19" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision            Choice          Alternative        Why ours                              When to flip
+────────────────────  ──────────────  ─────────────────  ────────────────────────────────────  ─────────────────────────
+Consensus mechanism   KRaft            ZooKeeper           Fewer systems to operate, faster        Legacy pre-3.x clusters
+                                                            failover, industry direction            not yet migrated
+Controller voters     3                5                   Tolerates 1 failure at lower overhead    Extreme failure-tolerance
+                                                                                                       requirements
+acks (critical topic) all              1 (leader only)     Survives leader loss with zero data loss Loss-tolerant analytics streams</div>
+</div>
+<div class="slide" id="s20" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "Your 3 controller voters are all in the same AZ. What's the real risk,
+  even though all 3 brokers holding actual data are spread across 3 AZs?"
+  Answer: "An AZ-level network partition or outage takes out ALL 3 controller
+  voters simultaneously — quorum is lost entirely, no new leader elections or
+  metadata changes are possible, even though the data-holding brokers elsewhere
+  might be perfectly healthy. Controller voters must be spread across AZs
+  independently of where data replicas live."
+
+Trap 2 — "acks=all suddenly has 10x higher p99 latency, not the 2-3x you'd
+  expect from adding one more network round-trip. Why?"
+  Answer: "acks=all waits for the SLOWEST in-sync replica, not the average —
+  one broker under GC pressure or disk I/O contention drags every acks=all
+  write on that partition down to its pace. I check per-broker latency, not
+  cluster averages, before assuming Kafka itself is slow."</div>
+</div>
+<div class="slide" id="s21" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why a controller at all: someone must be the single source of truth for
+  "who leads this partition right now" — without it, brokers could disagree.
+- Why KRaft over ZooKeeper: one less system to run, faster failover, the
+  direction the whole Kafka ecosystem has moved.
+- Why elect only from the ISR: guarantees zero committed-data loss on failover.
+- Why acks=all for critical topics specifically: the latency cost is worth it
+  where losing a message means a lost OTP or order confirmation.</div>
+</div>
+<div class="slide" id="s22" data-title="Top 2 Technologies — Coordination Layer">
+<h2>Top 2 Technologies — Cluster Coordination</h2>
+<div class="dia">KRaft (built-in quorum)  vs  ZooKeeper (external coordination service)
+
+Why pick KRaft: one less cluster to run/patch/monitor, faster controller
+  failover (seconds vs tens of seconds), scales to millions of partitions.
+Why pick ZooKeeper: only relevant for legacy clusters not yet migrated, or
+  third-party tooling still hard-wired to it.
+
+Example 1 (KRaft): A 2026 fintech startup launches on Kafka 3.7+ in KRaft
+  mode from day one — no separate ZK cluster to provision or patch.
+Example 2 (ZooKeeper): A 2017-era e-commerce platform still on Kafka 2.x,
+  mid-migration plan to KRaft over the next two quarters.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 22;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Architecture Part 1 — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

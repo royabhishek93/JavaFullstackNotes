@@ -1,0 +1,111 @@
+<mxfile host="app.diagrams.net" modified="2026-08-30T12:00:00.000Z" agent="5.0" version="24.0.0">
+  <diagram name="TinyURL-Components-With-Why" id="components">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="🏗️ TinyURL Components — WHY Each Piece Exists" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1000" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Subtitle -->
+        <mxCell id="subtitle" value="Every component solves a specific problem. If you can't explain WHY it's there, you don't need it." style="text;html=1;strokeColor=none;fillColor=#FFF3CD;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="350" y="80" width="900" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Component 1: Zookeeper -->
+        <mxCell id="zk-box" value="🗂️ ZOOKEEPER&#xa;ID Range Coordinator" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fillColor=#E8F8F5;strokeColor=#1ABC9C;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="160" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="zk-why" value="WHY: Hands out non-overlapping integer ranges&#xa;Server A gets 1-1M, Server B gets 1M-2M&#xa;&#xa;SOLVES: Collision problem&#xa;Without this: Two servers generate same short code → wrong redirect&#xa;&#xa;ANALOGY: Lottery ticket dispenser" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#D1F2EB;strokeColor=#1ABC9C;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="250" width="300" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Component 2: Base62 Encoding -->
+        <mxCell id="base62-box" value="🔢 BASE62 ENCODING&#xa;Integer → Short Code" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fillColor=#FCF3CF;strokeColor=#F39C12;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="450" y="160" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="base62-why" value="WHY: Converts number to 7-character code&#xa;Example: 12345678 → aB3xY7z&#xa;&#xa;SOLVES: Compact URLs&#xa;7 chars = 3.5 trillion unique codes (100 years at 100M/day)&#xa;&#xa;ANALOGY: Like converting 1000 → 1K (compression)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FEF5E7;strokeColor=#F39C12;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="450" y="250" width="300" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Component 3: MySQL -->
+        <mxCell id="mysql-box" value="💾 MYSQL DATABASE&#xa;url_mappings Table" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fillColor=#EAF2F8;strokeColor=#2E86C1;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="800" y="160" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mysql-why" value="WHY: Stores short_code → long_url mapping&#xa;Primary key = short_code (O(log n) lookup)&#xa;&#xa;SOLVES: Permanent storage&#xa;Rows are tiny (~500 bytes). Pure point lookups.&#xa;Sharding by hash(short_code) for horizontal scale.&#xa;&#xa;WHY NOT Cassandra? We do random reads, not time-series" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#D6EAF8;strokeColor=#2E86C1;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="800" y="250" width="300" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Component 4: Redis Cache -->
+        <mxCell id="redis-box" value="🧊 REDIS CACHE&#xa;Hot URL Storage" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fillColor=#FADBD8;strokeColor=#E74C3C;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="160" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-why" value="WHY: Stores 20% of URLs that get 80% of traffic&#xa;0.1ms latency vs MySQL's 5ms&#xa;&#xa;SOLVES: Speed at scale&#xa;100K requests/sec hitting MySQL → server meltdown&#xa;100K requests/sec hitting Redis → easy&#xa;&#xa;ANALOGY: Fridge (Redis) vs Basement Freezer (MySQL)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FADBD8;strokeColor=#E74C3C;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="250" width="300" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Component 5: Kafka + ClickHouse -->
+        <mxCell id="kafka-box" value="📊 KAFKA + CLICKHOUSE&#xa;Analytics Pipeline" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fillColor=#E8DAEF;strokeColor=#8E44AD;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="440" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-why" value="WHY: Click events go here AFTER redirect (async)&#xa;ClickHouse stores billions of clicks for analytics&#xa;&#xa;SOLVES: Don't block redirect path&#xa;If we write to analytics DB before redirecting:&#xa;  5ms DB write → user waits 5ms → bad UX&#xa;&#xa;Fire-and-forget: Redirect in 0.5ms, track click later" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#EBDEF0;strokeColor=#8E44AD;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="530" width="300" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Component 6: 302 vs 301 -->
+        <mxCell id="redirect-box" value="🔀 302 REDIRECT&#xa;(Temporary, not cached)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fillColor=#D5F4E6;strokeColor=#27AE60;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="450" y="440" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redirect-why" value="WHY: Browser does NOT cache 302 redirects&#xa;Every click hits our server → we can count it&#xa;&#xa;SOLVES: Analytics tracking&#xa;301 (permanent): Browser caches, never calls us again&#xa;302 (temporary): Browser always asks us&#xa;&#xa;TRADEOFF: More server load, but we get click data" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#D5F4E6;strokeColor=#27AE60;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="450" y="530" width="300" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Component 7: Rate Limiter -->
+        <mxCell id="ratelimit-box" value="🚦 RATE LIMITER&#xa;(API Gateway)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fillColor=#FDEBD0;strokeColor=#E67E22;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="800" y="440" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ratelimit-why" value="WHY: Prevents abuse (spam bots creating 1M URLs/sec)&#xa;Token bucket: 100 requests/min per user&#xa;&#xa;SOLVES: DDoS protection&#xa;Without this: Attacker exhausts DB connections&#xa;&#xa;EXAMPLE: Free tier = 100/min, Paid = 10K/min" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FDEBD0;strokeColor=#E67E22;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="800" y="530" width="300" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Component 8: CDN Edge -->
+        <mxCell id="cdn-box" value="🌐 CDN EDGE CACHE&#xa;(CloudFront/Fastly)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=16;fillColor="#FFE6E6;strokeColor=#C0392B;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1150" y="440" width="300" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cdn-why" value="WHY: Popular URLs cached at edge (close to users)&#xa;Tweet goes viral → 1M clicks in 10 min&#xa;&#xa;SOLVES: Geographic latency&#xa;User in Tokyo gets redirect from Tokyo edge (20ms)&#xa;vs hitting our US server (200ms)&#xa;&#xa;VIRAL PROTECTION: CDN absorbs spike, not our servers" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FFE6E6;strokeColor=#C0392B;strokeWidth=1;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="530" width="300" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Flow diagram at bottom -->
+        <mxCell id="flow-title" value="📌 HOW THEY WORK TOGETHER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="740" width="1350" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="flow-diagram" value="User clicks → CDN (cache?) → Redis (cache?) → MySQL (source of truth) → Return URL&#xa;                ↓ (async)&#xa;              Kafka → ClickHouse (analytics: clicks, country, referrer)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#F4F6F7;strokeColor=#34495E;strokeWidth=2;align=left;spacingLeft=20;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="100" y="790" width="1350" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Bottom insight -->
+        <mxCell id="insight" value="💡 GOLDEN RULE: If you can't explain WHY a component exists and what problem it solves, remove it.&#xa;Interviewers test this by asking: 'Why not just use MySQL?' or 'Why not just hash the URL?'" style="rounded=1;whiteSpace=wrap;html=1;fontSize=14;fillColor=#FADBD8;strokeColor=#C0392B;strokeWidth=3;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="930" width="1350" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Common Trap -->
+        <mxCell id="trap-box" value="❌ COMMON TRAP: Using MD5 hash of URL as short code&#xa;&#xa;Problem: Collisions! hash(&quot;url1&quot;)[0:7] == hash(&quot;url2&quot;)[0:7] → Wrong redirect&#xa;Solution: Zookeeper + Base62 = Zero collisions, no DB roundtrip" style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#FFEBEE;strokeColor=#D32F2F;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1050" width="1350" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

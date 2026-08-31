@@ -1,0 +1,618 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Top-K Leaderboard System Design</title>
+<link rel="stylesheet" href="../../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Top-K Leaderboard — Trending System</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+<div class="slide active" id="s1" data-title="Top-K / Leaderboard / Trending System Design">
+  <h1>🏆 Top-K / Leaderboard / Trending System Design</h1>
+  <p>Design a real-time system to track top players, rank scores, and surface trending content across games, platforms, and time windows with instant updates.</p>
+  <div class="badges">
+    <span class="badge">Redis ZSET</span>
+    <span class="badge">Count-Min Sketch</span>
+    <span class="badge">HeavyKeeper</span>
+    <span class="badge">Lambda Arch</span>
+    <span class="badge">Kafka</span>
+    <span class="badge">Sharding</span>
+  </div>
+  <div class="key-insight">
+    <strong>Core Pattern:</strong> Score events → Kafka → Redis ZSET (real-time top-K) + DB (persistence) → Periodic batch jobs → Hybrid: Redis for reads, DB for historical consistency
+  </div>
+  <p><strong>Used by:</strong> Fortnite/PUBG (250M players), Spotify Top 50, YouTube Trending, Twitter Trends</p>
+</div>
+
+<div class="slide" id="s2" data-title="Opening — Why This Problem Matters">
+  <h1>Opening — Why This Problem Matters</h1>
+  <p>Every major platform needs real-time ranking. The challenge is not just sorting — it is sorting <em>continuously</em> at massive scale while keeping results fresh.</p>
+  <div class="key-insight">
+    <strong>Interviewer's real test:</strong> Can you navigate the exact-vs-approximate trade-off, explain time-decay, and design a Redis ZSET that handles millions of updates per second without becoming a bottleneck?
+  </div>
+  <ul>
+    <li><strong>Gaming:</strong> Fortnite kills leaderboard — 250M players, sub-10ms rank query</li>
+    <li><strong>Streaming:</strong> Spotify Top 50 — top songs by region, updated daily</li>
+    <li><strong>Social:</strong> Twitter trending — approximate counts, ~1h staleness acceptable</li>
+    <li><strong>Video:</strong> YouTube trending — time-decay score, hourly recompute</li>
+  </ul>
+  <p>This guide walks the full stack: requirements → HLD → deep-dive algorithms → scale → senior Q&amp;A.</p>
+</div>
+
+<div class="slide" id="s3" data-title="Functional Requirements">
+  <h1>Functional Requirements</h1>
+  <p>State these out loud, then confirm with the interviewer before drawing anything.</p>
+  <table>
+    <thead><tr><th>#</th><th>Requirement</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Insert / update / delete entries (video, song, player, post, product)</td></tr>
+      <tr><td>2</td><td>Query real-time top-K items by score, filterable by region and category</td></tr>
+      <tr><td>3</td><td>Time-windowed leaderboards: hourly / daily / weekly / monthly</td></tr>
+      <tr><td>4</td><td>All-time global rankings alongside time-bounded rankings</td></tr>
+      <tr><td>5</td><td>Trending detection — items rising fast, not just items with highest absolute count</td></tr>
+      <tr><td>6</td><td>Real-time push updates via WebSocket (optional but good to mention)</td></tr>
+    </tbody>
+  </table>
+  <div class="key-insight">
+    <strong>Key clarification questions:</strong> Is exact top-K required or is approximate OK? What is the freshness SLA — milliseconds or seconds? Are scores monotonically increasing or can they decrease?
+  </div>
+</div>
+
+<div class="slide" id="s4" data-title="Non-Functional Requirements">
+  <h1>Non-Functional Requirements</h1>
+  <table>
+    <thead><tr><th>Dimension</th><th>Target</th></tr></thead>
+    <tbody>
+      <tr><td>Ingestion scale</td><td>1M events/sec (billions of entities globally)</td></tr>
+      <tr><td>Read latency</td><td>≤ 100ms for top-K result (Redis: &lt;1ms typical)</td></tr>
+      <tr><td>Update lag</td><td>&lt; 1 second — soft real-time</td></tr>
+      <tr><td>Consistency</td><td>Availability &gt;&gt; Consistency — eventual OK</td></tr>
+      <tr><td>Accuracy</td><td>Minor rank errors tolerable (rank 100 vs 101 acceptable for trending)</td></tr>
+      <tr><td>Uptime</td><td>99.9% — leaderboard outage = bad user experience</td></tr>
+    </tbody>
+  </table>
+  <div class="key-insight">
+    <strong>CAP choice:</strong> AP system — during partition, serve slightly stale leaderboard rather than return errors. Eventual consistency via Kafka + periodic reconciliation.
+  </div>
+  <p><strong>Scale math:</strong> 100 Kafka partitions × 10K events/sec = 1M events/sec ingestion capacity</p>
+</div>
+
+<div class="slide" id="s5" data-title="High-Level Design">
+  <h1>High-Level Design</h1>
+  <pre>
+Event Producers (clients / game servers / CDN)
+        │
+        ▼
+  API Gateway &amp; Load Balancer
+  (Auth, rate limiting, routing)
+        │
+        ▼
+   Score Service   ←─ dedup check (Redis)
+        │  validates, deduplicates, publishes
+        ▼
+      Kafka  (topic: score.updated, 100 partitions, key=entity_id)
+        │
+   ┌────┼────────────────┐
+   ▼    ▼                ▼
+Redis  Score DB      Analytics Consumer
+Consumer (Spanner/    (Flink → InfluxDB /
+(ZINCRBY) Cassandra)   Aggregated DB)
+   │
+   ▼
+Redis Sorted Set  ←──  Ranking Service  ──→ API Responses
+(ZSET, hot path)         │ fallback if Redis miss
+                         ▼
+                     Score DB (cold path, ~100ms)
+  </pre>
+  <div class="key-insight">
+    <strong>Write path:</strong> async, &lt;100ms lag to Redis. <strong>Read path:</strong> Redis first (&lt;1ms), DB fallback (~100ms) on miss.
+  </div>
+</div>
+
+<div class="slide" id="s6" data-title="Naive Approach &amp; Why It Fails">
+  <h1>Naive Approach &amp; Why It Fails</h1>
+  <p>Most candidates start here — the interviewer expects you to identify all the failure modes.</p>
+  <pre>
+// Naive: global HashMap in application memory
+Map&lt;String, Long&gt; scores = new ConcurrentHashMap&lt;&gt;();
+
+// On each event:
+scores.merge(entityId, 1L, Long::sum);
+
+// Get top-K:
+scores.entrySet().stream()
+      .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+      .limit(K)
+      .collect(Collectors.toList());
+  </pre>
+  <table>
+    <thead><tr><th>Problem</th><th>Why It Fails</th></tr></thead>
+    <tbody>
+      <tr><td>Memory explosion</td><td>1B entities × 100 bytes = 100 GB in one JVM heap</td></tr>
+      <tr><td>Race conditions</td><td>ConcurrentHashMap merge ≠ atomic ZINCRBY under high write load</td></tr>
+      <tr><td>No time windows</td><td>Cannot expire hourly/daily buckets without full re-scan</td></tr>
+      <tr><td>O(N log N) on read</td><td>Full sort every query — 100ms at 10M items, unusable at 1B</td></tr>
+      <tr><td>No persistence</td><td>Pod restart wipes all data</td></tr>
+      <tr><td>Single node</td><td>Cannot scale horizontally — one machine bottleneck</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="slide" id="s7" data-title="Count-Min Sketch — Approximate Frequency">
+  <h1>Count-Min Sketch — Approximate Frequency</h1>
+  <p>When you have billions of distinct items and need approximate counts in constant space.</p>
+  <pre>
+Structure: 2D array of w×d counters
+  w = width (e.g. 1000 buckets)
+  d = depth (e.g. 5 hash functions)
+
+On event for item X:
+  for i in range(d):
+    col = hash_i(X) % w
+    table[i][col] += 1
+
+Query count(X):
+  return min(table[i][hash_i(X) % w] for i in range(d))
+  </pre>
+  <div class="key-insight">
+    <strong>Key property:</strong> Always overestimates — never underestimates. Bounded error: with 99% probability, estimate ≤ true_count + ε × N (where N = total events).
+  </div>
+  <table>
+    <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Memory</td><td>~1 MB for billions of items (vs 1 GB Redis ZSET for 10M items)</td></tr>
+      <tr><td>Accuracy</td><td>95%+ overlap with exact top-K at ε=0.001</td></tr>
+      <tr><td>Use case</td><td>Twitter trending, viral video detection, approximate top-K</td></tr>
+    </tbody>
+  </table>
+  <p>Pair with a Min-Heap of size K: if CMS estimate &gt; heap.min → replace heap entry. Result: approximate top-K in O(log K) per event.</p>
+</div>
+
+<div class="slide" id="s8" data-title="HeavyKeeper — Modern Top-K Algorithm">
+  <h1>HeavyKeeper — Modern Top-K Algorithm</h1>
+  <p>HeavyKeeper (2018) is the state-of-the-art for space-efficient approximate top-K, used in Redis Streams and network monitoring.</p>
+  <pre>
+Structure: d × w buckets, each bucket = (fingerprint, count)
+
+On event for item X:
+  fp = fingerprint(X)   ← short hash for identity check
+  for each row i:
+    j = hash_i(X) % w
+    if bucket[i][j].fp == fp:
+        bucket[i][j].count += 1   ← item already tracked
+    elif bucket[i][j].count == 0:
+        bucket[i][j] = (fp, 1)    ← empty slot, take it
+    else:
+        // Decay with probability 1/count^b  (b≈1.08)
+        if random() &lt; 1 / bucket[i][j].count^b:
+            bucket[i][j].count -= 1
+            if count == 0: bucket[i][j] = (fp, 1)
+  </pre>
+  <div class="key-insight">
+    <strong>Why better than Count-Min Sketch:</strong> exponential decay evicts low-frequency items, preserving slots for heavy hitters. Better recall for true top-K at same memory budget.
+  </div>
+  <p><strong>Redis Streams Top-K:</strong> uses HeavyKeeper internally for <code>TOPK.ADD</code> and <code>TOPK.LIST</code> commands.</p>
+</div>
+
+<div class="slide" id="s9" data-title="Redis Sorted Set (ZSET) Design">
+  <h1>Redis Sorted Set (ZSET) Design</h1>
+  <p>The workhorse for real-time leaderboards. Every entry is a (member, score) pair, always sorted by score.</p>
+  <pre>
+# Write — O(log N)
+ZINCRBY leaderboard:global:alltime 1 V123
+
+# Read top-K — O(log N + K)
+ZREVRANGE leaderboard:global:alltime 0 9 WITHSCORES
+→ [("V123", 1000000), ("V456", 950000), ...]
+
+# Get a user's rank — O(log N)
+ZREVRANK leaderboard:global:alltime V123
+→ 42  (0-indexed → rank #43)
+
+# Get score — O(1)
+ZSCORE leaderboard:global:alltime V123
+
+# Cursor-based pagination (stable during live updates)
+ZREVRANGEBYSCORE leaderboard:global:alltime {cursor} -inf LIMIT 0 10
+  </pre>
+  <div class="key-insight">
+    <strong>Score tie-breaking:</strong> store as float — <code>score + timestamp/1e12</code> — entity that reached the score first ranks higher. Deterministic and semantically correct.
+  </div>
+  <p><strong>Memory:</strong> ~100 bytes/entry → 10M entries ≈ 1 GB per ZSET</p>
+</div>
+
+<div class="slide" id="s10" data-title="Time-Windowed Leaderboards">
+  <h1>Time-Windowed Leaderboards</h1>
+  <p>Use separate ZSET keys per time bucket with TTL for automatic cleanup.</p>
+  <pre>
+# Key taxonomy
+leaderboard:global:alltime              → no TTL
+leaderboard:global:daily:2026-01-25    → TTL 7 days
+leaderboard:global:weekly:2026-W04     → TTL 90 days
+leaderboard:global:monthly:2026-01     → TTL 365 days
+leaderboard:trending                   → TTL 24h, rebuilt hourly
+
+# On each score event — update all relevant windows
+PIPELINE
+  ZINCRBY leaderboard:global:alltime     1 V123
+  ZINCRBY leaderboard:global:daily:{D}  1 V123
+  ZINCRBY leaderboard:global:weekly:{W} 1 V123
+  ZINCRBY leaderboard:music:US:alltime   1 V123
+EXEC   ← 1 network RTT, all atomic
+  </pre>
+  <div class="key-insight">
+    <strong>Weekly aggregation from daily ZSETs:</strong> <code>ZUNIONSTORE leaderboard:global:weekly:W04 7 leaderboard:daily:Mon ... leaderboard:daily:Sun WEIGHTS 1</code> — runs every Monday midnight, single atomic command.
+  </div>
+  <p><strong>Key explosion:</strong> 5 regions × 10 categories × 4 windows = 200 leaderboards × 1 GB = 200 GB. Fix: lazy init + expire unused after 30 days.</p>
+</div>
+
+<div class="slide" id="s11" data-title="Lambda Architecture for Leaderboards">
+  <h1>Lambda Architecture for Leaderboards</h1>
+  <pre>
+Raw events (Kafka)
+       │
+  ┌────┴────────────────────┐
+  ▼                         ▼
+Speed Layer              Batch Layer
+(Redis ZSET)             (Spark/Flink job)
+Real-time ZINCRBY        Runs hourly/nightly
+&lt;1s lag                  Full recompute from DB
+       │                         │
+       └──────────┬──────────────┘
+                  ▼
+           Serving Layer
+           (Ranking Service)
+           Redis first → DB fallback
+           Merges speed + batch results
+  </pre>
+  <table>
+    <thead><tr><th>Layer</th><th>Role</th><th>Freshness</th></tr></thead>
+    <tbody>
+      <tr><td>Speed</td><td>Redis ZSET — live increments from Kafka</td><td>&lt;1 second</td></tr>
+      <tr><td>Batch</td><td>Spark job — recomputes from DB, reconciles drift</td><td>Hourly</td></tr>
+      <tr><td>Serving</td><td>Merges layers, Redis = hot read, DB = fallback</td><td>&lt;1ms read</td></tr>
+    </tbody>
+  </table>
+  <div class="key-insight">
+    <strong>Why batch layer?</strong> Redis can drift (consumer lag, partial failure). Nightly reconciliation: compare Redis top-100 vs DB top-100 — mismatch &gt;5 items triggers alert + Redis rebuild.
+  </div>
+</div>
+
+<div class="slide" id="s12" data-title="Kafka Partitioning Strategy">
+  <h1>Kafka Partitioning Strategy</h1>
+  <p>Partition by <code>entity_id</code> hash — all events for the same item go to the same partition, preserving ordering.</p>
+  <pre>
+Topic: score.updated
+Partitions: 100
+Partition key: hash(entity_id) % 100
+
+Consumer groups:
+  redis-consumer      → 1 consumer per partition
+                        ZINCRBY on every event (&lt;100ms lag)
+  db-consumer         → batch INSERT to Score DB (~1s lag)
+  analytics-consumer  → Flink → InfluxDB / aggregated DB
+
+Message schema:
+  {
+    event_id:    uuid(),
+    entity_id:   "V123",
+    score_delta: +1,
+    timestamp:   epoch_ms,
+    region:      "US",
+    category:    "music"
+  }
+  </pre>
+  <div class="key-insight">
+    <strong>Why entity_id as partition key?</strong> Ensures ordering for dedup (same user, same video within 5 min). Prevents out-of-order ZINCRBY causing wrong total. 100 partitions × 10K/sec = 1M events/sec capacity.
+  </div>
+  <p><strong>Scaling trigger:</strong> if Kafka consumer lag &gt; 1 minute → add more consumer instances (auto-scale).</p>
+</div>
+
+<div class="slide" id="s13" data-title="Stream Processing with Flink">
+  <h1>Stream Processing with Flink</h1>
+  <p>Flink handles real-time aggregation for analytics layer and batch-style top-K computation.</p>
+  <pre>
+// Flink tumbling window — aggregate per 1-minute bucket
+DataStream&lt;ScoreEvent&gt; events = kafka.source("score.updated");
+
+events
+  .keyBy(e -&gt; e.entityId)
+  .window(TumblingProcessingTimeWindows.of(Time.seconds(60)))
+  .aggregate(new SumAggregator())
+  .addSink(new RedisZSetSink());   // ZINCRBY per window
+
+// Emit top-K every 1 second
+events
+  .keyBy(e -&gt; e.leaderboardId)
+  .process(new TopKProcessFunction(K=1000))
+  .addSink(new RedisSink());
+  </pre>
+  <table>
+    <thead><tr><th>Window Type</th><th>Use Case</th></tr></thead>
+    <tbody>
+      <tr><td>Tumbling (fixed)</td><td>Hourly/daily score aggregation — clean buckets</td></tr>
+      <tr><td>Sliding</td><td>"Last 24 hours" trending — overlapping windows</td></tr>
+      <tr><td>Session</td><td>Per-user engagement session scoring</td></tr>
+    </tbody>
+  </table>
+  <div class="key-insight">
+    <strong>Micro-batch trick:</strong> buffer 100 events → single ZADD with multiple members → 100× fewer Redis round trips vs one ZINCRBY per event.
+  </div>
+</div>
+
+<div class="slide" id="s14" data-title="Sharding Redis for Global Scale">
+  <h1>Sharding Redis for Global Scale</h1>
+  <p>A single Redis node handles ~10 GB and ~100K ops/sec. At scale you need a cluster.</p>
+  <pre>
+Redis Cluster (10 nodes: 5 masters + 5 replicas)
+  16384 hash slots distributed across masters
+  Shard key: leaderboard_id (CRC16 % 16384)
+
+Strategy A — Shard by leaderboard_id
+  leaderboard:US:alltime   → node 3
+  leaderboard:IN:alltime   → node 7
+  Problem: global top-K needs cross-shard merge
+
+Strategy B — Local top-K per shard → merge
+  Each Kafka consumer shard maintains local top-K
+  Ranking Service reads from all shards:
+    ZREVRANGE shard-1:leaderboard 0 99   (top 100 each)
+    ZREVRANGE shard-2:leaderboard 0 99
+    ...
+  Merge K lists → true global top-K
+  (K-way merge: O(K × shards × log shards))
+  </pre>
+  <div class="key-insight">
+    <strong>Separate cluster per region:</strong> each region (US, IN, EU) gets its own Redis cluster — isolates load, avoids cross-region latency. Global top-K merged at application layer on read.
+  </div>
+</div>
+
+<div class="slide" id="s15" data-title="Trending Detection — Rate of Change">
+  <h1>Trending Detection — Rate of Change</h1>
+  <p>Trending is not about the highest absolute count — it is about the fastest-rising items with recency bonus.</p>
+  <pre>
+Hacker News time-decay formula:
+  trending_score = engagement / (age_hours + 2)^1.8
+
+  engagement = views + (likes×10) + (comments×20) + (shares×30)
+
+Example:
+  Video A: 10M views, 7 days old
+    → 10,000,000 / (168 + 2)^1.8 ≈ 13,895
+
+  Video B: 500K views, 3 hours old
+    → 500,000 / (3 + 2)^1.8   ≈ 95,763
+
+  → Video B ranks HIGHER (trending, not popular)
+
+Batch recompute (recommended approach):
+  Cron hourly → compute for all videos &lt; 7 days old only
+  DEL leaderboard:trending
+  ZADD leaderboard:trending {score} {entity_id}   (top 1000)
+  EXPIRE leaderboard:trending 7200   ← 2h TTL safety net
+  ZREMRANGEBYSCORE leaderboard:trending -inf {threshold}
+  </pre>
+  <div class="key-insight">
+    <strong>Reddit Hot alternative:</strong> <code>log10(ups) + age_seconds / 45000</code> — logarithmic diminishing returns + linear decay. More stable front page, less spike-prone than Hacker News formula.
+  </div>
+</div>
+
+<div class="slide" id="s16" data-title="Gaming Prevention &amp; Fraud Detection">
+  <h1>Gaming Prevention &amp; Fraud Detection</h1>
+  <p>Without anti-gaming, bots and coordinated attacks will corrupt your leaderboard within hours of launch.</p>
+  <table>
+    <thead><tr><th>Attack Vector</th><th>Defense</th></tr></thead>
+    <tbody>
+      <tr><td>Same user double-counting</td><td>Redis dedup: <code>SET view_dedup:{user}:{entity} 1 EX 300</code> (5-min TTL)</td></tr>
+      <tr><td>IP-based bot farm</td><td>Rate limit per IP: max 60 events/min (sliding window counter in Redis)</td></tr>
+      <tr><td>Coordinated click fraud</td><td>Anomaly score: if entity goes 0→top-10 in &lt;60s → flag for review</td></tr>
+      <tr><td>Account farming</td><td>Require authenticated user_id; new accounts get reduced event weight</td></tr>
+      <tr><td>Score injection</td><td>Server-side validation only — never trust client-sent scores</td></tr>
+    </tbody>
+  </table>
+  <div class="key-insight">
+    <strong>Velocity anomaly detection:</strong> track event_rate per entity over 5-min sliding window. If rate &gt; mean + 3σ → increment anomaly counter. If anomaly_score &gt; threshold → quarantine (stop ZINCRBY) pending human/ML review.
+  </div>
+  <p><strong>Cheat-resistant game leaderboards:</strong> sign all score submissions with server-side HMAC. Replay-protected via monotonic sequence number per user session.</p>
+</div>
+
+<div class="slide" id="s17" data-title="Database Schema">
+  <h1>Database Schema</h1>
+  <pre>
+-- Raw score events (source of truth)
+CREATE TABLE scores (
+  score_id       UUID PRIMARY KEY,
+  entity_id      VARCHAR(100),   -- video_id / player_id / song_id
+  score_delta    INT,            -- +1 view, +10 like, +100 match win
+  leaderboard_id VARCHAR(100),   -- 'global', 'US', 'music'
+  region         VARCHAR(10),
+  category       VARCHAR(50),
+  timestamp      TIMESTAMPTZ,
+  metadata       JSONB           -- user_id, device, session
+);
+CREATE INDEX ON scores (leaderboard_id, timestamp);
+CREATE INDEX ON scores (entity_id);
+-- Shard by hash(entity_id) across 10 shards
+
+-- Pre-computed batch snapshots
+CREATE TABLE leaderboard_snapshots (
+  leaderboard_id VARCHAR(100),
+  rank           INT,
+  entity_id      VARCHAR(100),
+  score          BIGINT,
+  snapshot_date  DATE,
+  PRIMARY KEY (leaderboard_id, rank)
+);
+  </pre>
+  <div class="key-insight">
+    <strong>Shard by entity_id hash — not by score.</strong> Score-based sharding = hotspot: top entities all land on the same shard. Entity_id hash distributes evenly. Cross-shard aggregation handled by batch jobs.
+  </div>
+</div>
+
+<div class="slide" id="s18" data-title="Scaling Techniques">
+  <h1>Scaling Techniques</h1>
+  <table>
+    <thead><tr><th>Technique</th><th>How &amp; Impact</th></tr></thead>
+    <tbody>
+      <tr><td>Redis Cluster</td><td>16384 slots, 5 masters + 5 replicas = 10 GB total, auto-failover</td></tr>
+      <tr><td>Redis Pipelining</td><td><code>PIPELINE; ZINCRBY x3; EXEC</code> — 3 ZSETs in 1 RTT instead of 3</td></tr>
+      <tr><td>Batch ZADD</td><td><code>ZADD lb score1 id1 score2 id2...</code> 100 items — 100× fewer round trips</td></tr>
+      <tr><td>Kafka partitioning</td><td>100 partitions by entity_id → 100 parallel Redis consumers → 1M/sec</td></tr>
+      <tr><td>Read replicas</td><td>5 Redis replicas per master → 5× read throughput for leaderboard queries</td></tr>
+      <tr><td>App-level cache</td><td>Cache top-100 in app memory, refresh every 10s — serves 90% from RAM</td></tr>
+      <tr><td>CDN</td><td>Cache API responses at edge (1-min TTL) → &lt;50ms globally</td></tr>
+      <tr><td>Lua scripting</td><td><code>EVALSHA</code> — update multiple ZSETs atomically, all-or-nothing</td></tr>
+      <tr><td>Lazy init</td><td>Create leaderboard key on first score; EXPIRE after 30 days inactive</td></tr>
+    </tbody>
+  </table>
+  <div class="key-insight">
+    <strong>Disaster recovery:</strong> Redis RDB snapshots every 5 min + AOF enabled. On crash: serve DB fallback reads → rebuild Redis from DB (~10 min for 10M entries) → cut back to Redis.
+  </div>
+</div>
+
+<div class="slide" id="s19" data-title="Trade-offs Table">
+  <h1>Trade-offs — Approach Comparison</h1>
+  <table>
+    <thead><tr><th></th><th>Redis ZSET</th><th>Batch + InfluxDB</th><th>Hybrid (Best)</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Latency</strong></td><td>&lt;1ms</td><td>~100ms</td><td>&lt;1ms (Redis)</td></tr>
+      <tr><td><strong>Persistence</strong></td><td>No (in-memory)</td><td>Yes</td><td>Yes (DB)</td></tr>
+      <tr><td><strong>Historical</strong></td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td><strong>Real-time</strong></td><td>Yes</td><td>No</td><td>Yes</td></tr>
+      <tr><td><strong>Complexity</strong></td><td>Low</td><td>Medium</td><td>High</td></tr>
+      <tr><td><strong>Scale</strong></td><td>~10 GB/node</td><td>Very large</td><td>Unlimited</td></tr>
+      <tr><td><strong>Approximate OK?</strong></td><td>No (exact)</td><td>No (exact)</td><td>CMS = yes</td></tr>
+      <tr><td><strong>Use when</strong></td><td>Gaming, live sports</td><td>Analytics dashboards</td><td>Production at scale</td></tr>
+    </tbody>
+  </table>
+  <div class="key-insight">
+    <strong>Decision rule:</strong> &lt;10ms latency + small scale → Redis ZSET only. Historical analysis needed → add InfluxDB. Production millions of users → full Hybrid. Approximate OK at 1B items → Count-Min Sketch + Min-Heap.
+  </div>
+</div>
+
+<div class="slide" id="s20" data-title="Twitter vs YouTube vs Spotify — Architecture Differences">
+  <h1>Twitter vs YouTube vs Spotify — Architecture Differences</h1>
+  <table>
+    <thead><tr><th>Platform</th><th>Approach</th><th>Key Insight</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Twitter Trending</strong></td><td>Count-Min Sketch + approximate top-K; ~1h staleness OK</td><td>500M tweets/day — exact counting impractical. Topics not entities — CMS handles string keys naturally.</td></tr>
+      <tr><td><strong>YouTube Trending</strong></td><td>Time-decay score, hourly batch recompute, Redis top-100 cache</td><td>Human + ML moderation overlaid on top of score. Regional trending per country. Personalization: <code>score × (1 + category_affinity)</code>.</td></tr>
+      <tr><td><strong>Spotify Top 50</strong></td><td>Daily batch job, not real-time; Kafka → Spark → Redis cache</td><td>Updated once/day per region. Exact counts required (licensing/royalties). No time-decay — raw play count wins.</td></tr>
+      <tr><td><strong>Fortnite Leaderboard</strong></td><td>Hybrid Redis ZSET + Cassandra persistence</td><td>250M players, sub-10ms queries, 100+ Redis nodes. Score = composite (kills × 1M + placement × 1K + damage). Server-signed — no client trust.</td></tr>
+    </tbody>
+  </table>
+  <div class="key-insight">
+    <strong>Common pattern:</strong> All use Kafka as the backbone. Difference is the consumer: CMS for approx trending, ZSET for exact gaming rank, batch for daily charts.
+  </div>
+</div>
+
+<div class="slide" id="s21" data-title="Senior Q&amp;A 1 — Count-Min Sketch vs Exact Counting">
+  <h1>Senior Q&amp;A 1 — Count-Min Sketch vs Exact Counting</h1>
+  <p><strong>Q: When would you choose Count-Min Sketch over exact Redis ZSET counting? What are the failure modes?</strong></p>
+  <div class="key-insight">
+    <strong>Answer framework:</strong> Memory constraint → CMS. Accuracy requirement → exact. Consequence of error → determines threshold.
+  </div>
+  <table>
+    <thead><tr><th></th><th>Count-Min Sketch</th><th>Redis ZSET (Exact)</th></tr></thead>
+    <tbody>
+      <tr><td>Memory</td><td>~1 MB for billions of items</td><td>~1 GB for 10M items</td></tr>
+      <tr><td>Accuracy</td><td>95%+ overlap with exact top-K</td><td>100% exact</td></tr>
+      <tr><td>Failure mode</td><td>Hash collisions inflate counts (always overestimates)</td><td>Memory pressure → eviction → silent data loss</td></tr>
+      <tr><td>Use when</td><td>Trending (rank 100 vs 101 OK), 1B+ items, approximate fine</td><td>Gaming (prizes), financial (payouts), exact rank needed</td></tr>
+    </tbody>
+  </table>
+  <p><strong>CMS failure modes to mention:</strong> (1) heavily skewed distribution worsens error — most slots collide on popular items. (2) Deletion not supported — cannot remove items (use Count-Min-Mean for deletions). (3) No persistence — in-process memory only.</p>
+</div>
+
+<div class="slide" id="s22" data-title="Senior Q&amp;A 2 — Handling a Viral Item">
+  <h1>Senior Q&amp;A 2 — How to Handle a Viral Item at #1</h1>
+  <p><strong>Q: A music video goes from 0 views to #1 on the global leaderboard in 60 seconds. What happens in your system? What could go wrong?</strong></p>
+  <div class="key-insight">
+    <strong>This question tests:</strong> hot partition handling, anomaly detection, and whether you understand Redis ZINCRBY under write storm conditions.
+  </div>
+  <ul>
+    <li><strong>Kafka hot partition:</strong> all events for entity_id hash to the same partition → that partition's consumer becomes CPU-bound. Fix: detect hot partitions via lag monitoring → temporarily repartition or add sub-partitioning.</li>
+    <li><strong>Redis write amplification:</strong> 1M ZINCRBY/sec on one key → Redis single-threaded → latency spike. Fix: Redis pipelining + batch ZADD from consumer (batch 100 events → 1 command).</li>
+    <li><strong>Anomaly detection trigger:</strong> velocity check fires → item quarantined. Must tune threshold to distinguish genuine viral from bot. Use separate human-review queue for items exceeding 3σ velocity.</li>
+    <li><strong>Cache invalidation cascade:</strong> app-level top-100 cache becomes stale instantly. Short TTL (10s) limits staleness window. CDN cache must be purged via cache-key versioning.</li>
+  </ul>
+  <p><strong>Recovery:</strong> once confirmed genuine, drain quarantine queue and retroactively apply ZINCRBY. Idempotency key prevents double-counting.</p>
+</div>
+
+<div class="slide" id="s23" data-title="Senior Q&amp;A 3 — Cheat-Resistant Game Leaderboard">
+  <h1>Senior Q&amp;A 3 — Cheat-Resistant Leaderboard for 10M Concurrent Players</h1>
+  <p><strong>Q: Design a cheat-resistant game leaderboard for 10M concurrent players competing for real prizes.</strong></p>
+  <div class="key-insight">
+    <strong>Key constraint:</strong> prizes make fraud high-value — attackers are motivated. Never trust client-sent scores.
+  </div>
+  <ul>
+    <li><strong>Server-authoritative scoring:</strong> game server signs score events with HMAC-SHA256(secret, player_id + score + match_id + timestamp). Client cannot forge or replay.</li>
+    <li><strong>Replay prevention:</strong> include monotonic match_id. Score Service rejects duplicate match_id (Redis SET match_id EX 86400).</li>
+    <li><strong>Score validation:</strong> server checks score plausibility — if max possible score in match duration is 1000, reject score=9999.</li>
+    <li><strong>Anomaly detection:</strong> track score_velocity per player. P99.9 threshold = max physically possible improvement rate. Exceed → flag + suspend from leaderboard pending review.</li>
+    <li><strong>Segregate leaderboard writes:</strong> flagged players go to shadow leaderboard — they see themselves ranked but are excluded from prize leaderboard.</li>
+    <li><strong>Audit trail:</strong> every score event stored in append-only DB. Prize adjudication can replay full history.</li>
+  </ul>
+  <p><strong>Scale:</strong> 10M concurrent = ~500K score events/sec peak (50 events/player/session). Kafka 50 partitions + 50 Redis consumers handles this comfortably.</p>
+</div>
+
+<div class="slide" id="s24" data-title="Quick Numbers to Memorize">
+  <h1>Quick Numbers to Memorize</h1>
+  <table>
+    <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Redis ZSET memory per entry</td><td>~100 bytes</td></tr>
+      <tr><td>10M entries in Redis ZSET</td><td>~1 GB</td></tr>
+      <tr><td>ZINCRBY / ZREVRANGE / ZREVRANK complexity</td><td>O(log N)</td></tr>
+      <tr><td>ZSCORE complexity</td><td>O(1)</td></tr>
+      <tr><td>Top-100 Redis query at 10M entries</td><td>&lt;1ms</td></tr>
+      <tr><td>Kafka: 100 partitions × 10K/sec</td><td>= 1M events/sec</td></tr>
+      <tr><td>Redis rebuild after crash (10M entries)</td><td>~10 minutes</td></tr>
+      <tr><td>Twitter trending: tweets/day</td><td>500M tweets/day</td></tr>
+      <tr><td>Count-Min Sketch vs Redis ZSET (memory)</td><td>1 MB vs 1 GB — 1000× less, 95% accurate</td></tr>
+      <tr><td>Key explosion (5 regions × 10 categories × 4 windows)</td><td>200 leaderboards × 1 GB = 200 GB</td></tr>
+      <tr><td>Trending batch job frequency</td><td>Hourly, last 7 days eligible</td></tr>
+      <tr><td>Daily leaderboard TTL</td><td>7 days</td></tr>
+      <tr><td>Weekly leaderboard TTL</td><td>90 days</td></tr>
+      <tr><td>Score accuracy target</td><td>95% overlap with exact top-K</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="slide" id="s25" data-title="Closing — Interview Playbook">
+  <h1>Closing — Interview Playbook</h1>
+  <p>Walk into any top-K / leaderboard question with this mental model and you will cover the full depth the interviewer is probing for.</p>
+  <div class="key-insight">
+    <strong>4-step answer arc:</strong> Requirements (functional + NFR) → HLD (Kafka → Redis ZSET → DB) → Deep dive (ZSET commands, time windows, trending formula) → Trade-offs (exact vs approx, Redis vs DB).
+  </div>
+  <ul>
+    <li><strong>Always mention:</strong> eventual consistency, ZINCRBY atomicity, Kafka partition-by-entity_id, TTL for time windows</li>
+    <li><strong>Distinguish yourself:</strong> bring up HeavyKeeper vs Count-Min Sketch, time-decay formula, key explosion problem + lazy-init fix</li>
+    <li><strong>Scale story:</strong> 100 Kafka partitions → 100 Redis consumers → Redis Cluster (5 masters + 5 replicas) → CDN edge caching</li>
+    <li><strong>Failure story:</strong> Redis crash → serve DB fallback → rebuild in 10 min → nightly reconciliation prevents silent drift</li>
+    <li><strong>Anti-patterns to avoid:</strong> SELECT COUNT(*) WHERE score &gt; X (O(N) DB scan), single Redis node for global leaderboard, trusting client scores</li>
+  </ul>
+  <p><strong>Remember:</strong> Fortnite, Spotify, YouTube, Twitter — all use Kafka as backbone. Difference is what the consumer does with events. That is the system design answer.</p>
+</div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

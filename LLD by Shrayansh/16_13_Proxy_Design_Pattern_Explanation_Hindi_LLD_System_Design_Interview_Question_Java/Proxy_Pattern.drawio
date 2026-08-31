@@ -1,0 +1,73 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Proxy Pattern" id="proxy">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="PROXY DESIGN PATTERN - Intermediary for Access Control" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1520" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- CONCEPT -->
+        <mxCell id="concept_title" value="CORE CONCEPT: Proxy sits between Client and Real Object" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="1520" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="concept" value="FLOW:  Client  ──→  Proxy  ──→  Real Object&#xa;&#xa;PROXY INTERCEPTS ALL REQUESTS!&#xa;&#xa;Proxy can:&#xa;  ✓ Control access (authentication/authorization)&#xa;  ✓ Add preprocessing (logging, validation)&#xa;  ✓ Add postprocessing (caching, notification)&#xa;  ✓ Lazy initialization (create object only when needed)&#xa;  ✓ Remote proxy (network communication)&#xa;&#xa;CLIENT DOESN'T KNOW IT'S TALKING TO PROXY!&#xa;(Both Proxy and Real Object implement same interface)" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="1520" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- USE CASES -->
+        <mxCell id="usecases_title" value="REAL-WORLD USE CASES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="380" width="740" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="usecases" value="1. COLLEGE/CORPORATE INTERNET PROXY&#xa;   Client → Proxy Server → Internet&#xa;   Proxy has BLOCKLIST (filters blocked sites)&#xa;   If blocked → Access Denied (never reaches internet)&#xa;   If allowed → Forward request to real server&#xa;&#xa;2. CACHING PROXY&#xa;   Client → Proxy → Real Server&#xa;   Proxy checks: 'Do I have cached data?'&#xa;   If YES → Return from cache (no server call!)&#xa;   If NO → Fetch from server, cache it, return&#xa;&#xa;3. SPRING BOOT @Bean (Internal Usage!)&#xa;   Spring creates PROXY of every bean&#xa;   Proxy handles AOP, transactions, lazy loading&#xa;   Your code calls proxy, proxy calls real bean&#xa;&#xa;4. ACCESS CONTROL PROXY&#xa;   Admin → Proxy → Database&#xa;   User → Proxy → Database (limited access)&#xa;   Proxy checks role before allowing operations&#xa;   Admin: CREATE, DELETE, GET allowed&#xa;   User: Only GET allowed, CREATE/DELETE denied&#xa;&#xa;5. LAZY LOADING PROXY&#xa;   Expensive object (e.g., large image, DB connection)&#xa;   Proxy created immediately (lightweight)&#xa;   Real object created only when actually used&#xa;&#xa;6. LOGGING PROXY&#xa;   Before calling real method → Log request&#xa;   Call real method → Get result&#xa;   After calling → Log response&#xa;   Centralized logging without changing real class!" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="740" height="520" as="geometry" />
+        </mxCell>
+        
+        <!-- CLASS DIAGRAM -->
+        <mxCell id="class_title" value="CLASS DIAGRAM - Employee CRUD Example" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="820" y="380" width="740" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="interface_dao" value="&lt;&lt;interface&gt;&gt;&#xa;EmployeeDao&#xa;&#xa;+ create(emp: Employee): void&#xa;+ delete(id: int): void&#xa;+ get(id: int): Employee" style="swimlane;fontStyle=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1020" y="430" width="260" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="impl_dao" value="EmployeeDaoImpl&#xa;(Real Object)&#xa;&#xa;+ create(emp): void&#xa;  ▸ Insert into DB&#xa;&#xa;+ delete(id): void&#xa;  ▸ Delete from DB&#xa;&#xa;+ get(id): Employee&#xa;  ▸ Select from DB" style="swimlane;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="820" y="600" width="280" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="proxy_dao" value="EmployeeDaoProxy&#xa;(Proxy Object)&#xa;&#xa;- employeeDao: EmployeeDaoImpl  // HAS-A&#xa;- client: String  // 'ADMIN' or 'USER'&#xa;&#xa;+ create(emp): void&#xa;  if (client == 'ADMIN')&#xa;    employeeDao.create(emp);&#xa;  else&#xa;    throw 'Access Denied';&#xa;&#xa;+ delete(id): void&#xa;  if (client == 'ADMIN')&#xa;    employeeDao.delete(id);&#xa;  else&#xa;    throw 'Access Denied';&#xa;&#xa;+ get(id): Employee&#xa;  if (client == 'ADMIN' || client == 'USER')&#xa;    return employeeDao.get(id);&#xa;  else&#xa;    throw 'Access Denied';" style="swimlane;fontStyle=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="600" width="400" height="340" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="client_dao" value="Client&#xa;&#xa;// Client doesn't know about Proxy!&#xa;// Talks to EmployeeDao interface&#xa;&#xa;EmployeeDao dao = new EmployeeDaoProxy('ADMIN');&#xa;dao.create(new Employee());  // ✓ Allowed&#xa;dao.delete(123);             // ✓ Allowed&#xa;dao.get(123);                // ✓ Allowed&#xa;&#xa;EmployeeDao dao2 = new EmployeeDaoProxy('USER');&#xa;dao2.create(new Employee()); // ✗ Access Denied&#xa;dao2.delete(123);            // ✗ Access Denied&#xa;dao2.get(123);               // ✓ Allowed" style="swimlane;fontStyle=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="820" y="800" width="500" height="280" as="geometry" />
+        </mxCell>
+        
+        <!-- CODE EXAMPLE -->
+        <mxCell id="code_title" value="CODE WALKTHROUGH - Access Control Proxy" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="980" width="1520" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="code_example" value="// 1. INTERFACE (implemented by both Proxy and Real Object)&#xa;interface EmployeeDao {&#xa;  void create(Employee emp);&#xa;  void delete(int id);&#xa;  Employee get(int id);&#xa;}&#xa;&#xa;// 2. REAL OBJECT (actual implementation)&#xa;class EmployeeDaoImpl implements EmployeeDao {&#xa;  public void create(Employee emp) {&#xa;    System.out.println('Creating new row in DB');&#xa;  }&#xa;  public void delete(int id) {&#xa;    System.out.println('Deleting row from DB');&#xa;  }&#xa;  public Employee get(int id) {&#xa;    System.out.println('Fetching from DB');&#xa;    return new Employee();&#xa;  }&#xa;}&#xa;&#xa;// 3. PROXY (controls access, adds logic)&#xa;class EmployeeDaoProxy implements EmployeeDao {&#xa;  private EmployeeDaoImpl employeeDao;  // HAS-A (composition)&#xa;  private String client;&#xa;  &#xa;  public EmployeeDaoProxy(String client) {&#xa;    this.employeeDao = new EmployeeDaoImpl();&#xa;    this.client = client;&#xa;  }&#xa;  &#xa;  // PREPROCESSING: Check access before calling real method&#xa;  public void create(Employee emp) {&#xa;    if ('ADMIN'.equals(client)) {&#xa;      employeeDao.create(emp);  // Forward to real object&#xa;    } else {&#xa;      System.out.println('Access Denied');&#xa;    }&#xa;  }&#xa;  &#xa;  public void delete(int id) {&#xa;    if ('ADMIN'.equals(client)) {&#xa;      employeeDao.delete(id);&#xa;    } else {&#xa;      System.out.println('Access Denied');&#xa;    }&#xa;  }&#xa;  &#xa;  public Employee get(int id) {&#xa;    if ('ADMIN'.equals(client) || 'USER'.equals(client)) {&#xa;      return employeeDao.get(id);&#xa;    } else {&#xa;      System.out.println('Access Denied');&#xa;      return null;&#xa;    }&#xa;  }&#xa;}&#xa;&#xa;// 4. CLIENT (uses interface, doesn't know about Proxy!)&#xa;class Client {&#xa;  public static void main(String[] args) {&#xa;    // Client talks to interface, gets Proxy instance&#xa;    EmployeeDao dao = new EmployeeDaoProxy('ADMIN');&#xa;    dao.create(new Employee());  // ✓ ADMIN allowed → creates in DB&#xa;    &#xa;    EmployeeDao dao2 = new EmployeeDaoProxy('USER');&#xa;    dao2.create(new Employee()); // ✗ USER denied → Access Denied&#xa;    dao2.get(123);               // ✓ USER allowed → fetches from DB&#xa;  }&#xa;}&#xa;&#xa;&#xa;KEY RELATIONSHIPS:&#xa;  ✓ IS-A: EmployeeDaoProxy IS-A EmployeeDao (implements interface)&#xa;  ✓ HAS-A: EmployeeDaoProxy HAS-A EmployeeDaoImpl (composition)&#xa;  ✓ Proxy and Real Object both implement same interface&#xa;  ✓ Client uses interface type, doesn't know implementation details&#xa;&#xa;&#xa;BENEFITS:&#xa;  ✓ Centralized access control (no checks in real class)&#xa;  ✓ Real class remains clean (single responsibility)&#xa;  ✓ Easy to add: logging, caching, validation&#xa;  ✓ Client code unchanged (polymorphism!)&#xa;  ✓ Can chain multiple proxies (LoggingProxy → SecurityProxy → RealObject)" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1020" width="1520" height="1020" as="geometry" />
+        </mxCell>
+        
+        <!-- INTERVIEW QUESTIONS -->
+        <mxCell id="q_title" value="INTERVIEW QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="2080" width="1520" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="questions" value="Q1: Proxy Pattern vs Decorator Pattern — both wrap objects?&#xa;A1: INTENT differs. Proxy controls ACCESS to object (lazy loading, security, caching). Decorator adds NEW BEHAVIOR dynamically (cheese on pizza). Proxy: same interface, access control. Decorator: same interface, enhanced functionality. Proxy: client may not know it's proxy. Decorator: client explicitly wraps.&#xa;&#xa;Q2: How does Spring Boot use Proxy internally?&#xa;A2: Spring creates CGLIB/JDK dynamic proxies for @Bean objects. Handles: (1) AOP (@Transactional, @Cacheable), (2) Lazy initialization (@Lazy), (3) Scope management (prototype, request). Proxy intercepts method calls, applies cross-cutting concerns (transactions, logging), then delegates to real bean. You call proxy, think it's real object!&#xa;&#xa;Q3: Performance impact of Proxy? Extra indirection?&#xa;A3: Minimal overhead (one extra method call). Modern JVMs optimize well. GAINS outweigh cost: (1) Caching proxy → avoid expensive DB/network calls, (2) Lazy proxy → delay object creation, (3) Virtual proxy → load on demand. Trade-off: tiny latency vs massive throughput gains (caching) or resource savings (lazy loading).&#xa;&#xa;Q4: Can we have multiple Proxies for same Real Object?&#xa;A4: YES! Chain proxies: Client → LoggingProxy → SecurityProxy → CachingProxy → RealObject. Each proxy adds ONE concern (single responsibility). LoggingProxy logs, SecurityProxy checks auth, CachingProxy caches. Layered architecture. Each proxy forwards to next proxy (composition).&#xa;&#xa;Q5: Proxy Pattern for distributed systems (Remote Proxy)?&#xa;A5: Remote Proxy hides network communication. Client thinks it's calling local object. Proxy handles: (1) Serialization/deserialization, (2) Network I/O, (3) Error handling (retry, timeout). Example: RPC, RMI, gRPC stubs are remote proxies. Client calls proxy.getUser(id), proxy sends HTTP request to remote server, deserializes response, returns object. Abstraction layer!" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="2130" width="1520" height="420" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

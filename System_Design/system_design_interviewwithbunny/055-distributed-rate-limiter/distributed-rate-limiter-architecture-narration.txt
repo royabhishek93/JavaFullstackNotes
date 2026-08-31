@@ -1,0 +1,23 @@
+Think of a rate limiter as a security guard standing before the application. Every request asks the guard for permission to enter. A normal user can pass through. A client sending too many requests is stopped early, before it can overload payment, search, or database services. The response is HTTP 429, which simply means: too many requests, please try again later.
+
+The easiest mental model is Token Bucket. Each client has a bucket of entry tickets. One request spends one ticket. If the bucket has no ticket left, the next request is rejected. Tickets return slowly over time. Bucket size controls the biggest burst we allow. Refill rate controls the normal steady speed. This is why Token Bucket works well for public APIs.
+
+The API Gateway is where the security guard lives. A client first reaches the load balancer. The load balancer sends it to any healthy gateway. The gateway checks who the client is, checks their tickets, then either sends the request to the backend or returns 429. Doing this at the edge protects every downstream service.
+
+Now look at the HLD, or High-Level Design. HLD shows the big boxes. We have clients, a load balancer, a group of gateways, Redis, Postgres, and backend services. Redis is like a shared fast notebook used by every gateway. It stores the current ticket count and recently used policy rules. Postgres is the permanent rule book. It stores the original configuration safely.
+
+The gateways do not store ticket counts in their own memory. If they did, one user could send requests to gateway one, gateway two, and gateway three, and receive three separate limits. By using the same Redis data, every gateway sees the same ticket bucket. This is what makes the limit work across many servers.
+
+Redis can be split into shards when traffic grows. A simple rule sends the same user to the same shard every time. For example, all requests for user one-two-three and the orders endpoint go to one Redis shard. That shard can then update the bucket safely without talking to every other shard.
+
+When a request arrives, Redis must update the bucket safely. It reads the ticket count, adds any tickets that returned over time, removes one ticket if possible, and saves the answer. This happens as one Lua script. One script means one complete action. Two gateways cannot both take the final ticket by mistake.
+
+Now look at the LLD, or Low-Level Design. LLD shows the code pieces. The gateway calls one common method: isAllowed. A Strategy interface gives every limiter the same shape. Token Bucket, Fixed Window, and Leaky Bucket are different implementations. A factory reads configuration and chooses which implementation to use. This keeps the gateway code simple when the algorithm changes.
+
+The policy rules and ticket counts are stored differently because they change at different speeds. A policy, such as one hundred tickets and ten tickets per second, changes rarely. It lives permanently in Postgres and is copied into Redis. Ticket counts change with every request, so they live only in fast Redis. Old inactive buckets expire automatically.
+
+The normal flow is simple. The gateway reads the user from the login token, finds the policy in Redis, and runs the Lua check. If Redis says yes, the request goes to the backend and the response can include remaining ticket information. If Redis says no, the gateway returns 429 immediately. If the policy is missing in Redis, the gateway reads Postgres once and saves a fresh cached copy.
+
+When an administrator changes a policy, the new rule is saved to Postgres and Redis is updated immediately. A small notification tells gateways to discard old local copies. Redis can also fail, so we use a circuit breaker. For most public APIs, a short Redis outage should not take down the whole application. The system can temporarily allow requests and alert the team. Payment or compliance flows may choose stricter behavior.
+
+Finally, scale gateways and Redis separately. Gateways are easy to add because they hold no client ticket data. Add Redis shards as request volume grows. Watch the number of 429 responses, Redis response time, and policy-cache hit rate. The final design is simple in principle: one gatekeeper decision, one shared ticket bucket, and one protected backend.

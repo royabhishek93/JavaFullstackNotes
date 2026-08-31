@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Schema Registry — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Schema Registry — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 25</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:5.26%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🔒</div>
+  <h1 class="gradient-text">Kafka Schema Registry — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Avro</span><span class="badge">Schema Registry</span><span class="badge">_schemas Topic</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Schema Registry, Avro, Schema Evolution, BACKWARD Compatibility, FORWARD Compatibility, FULL Compatibility, Transitive, Subject Naming, Wire Format, AvroSerializer, AvroDeserializer, GenericRecord, SpecificRecord, Schema Versioning, Caching</p>
+</div>
+<div class="slide" id="s3" data-title="Why Raw JSON Fails in Production">
+<h2>Why Raw JSON Fails in Production</h2>
+<p>Without a schema contract, producer and consumer can drift apart silently — field changes, type changes, or removals cause data loss, wrong defaults, or runtime exceptions with no warning.</p>
+<div class="dia">FIVE WAYS JSON BREAKS IN PRODUCTION
+────────────────────────────────────────────────────────────────────────────
+  Producer V2           Consumer V1              What Happens?
+  ────────────────────  ───────────────────────  ──────────────────────────
+1 added: shippingAddr   no shippingAddress field  Jackson ignores (silent)
+                                                  OR throws if STRICT mode  ✗
+
+2 removed: totalAmount  expects totalAmount        Jackson sets 0 (default)
+                        (double)                   Business logic runs
+                                                   with totalAmount = 0.0   ✗
+
+3 renamed: totalAmount  expects totalAmount        amount→ no match
+           → amount     (double)                   totalAmount = 0 silently  ✗
+
+4 changed: quantity     expects quantity (int)     JsonMappingException
+           int → string                            thrown at runtime        ✗
+
+5 multiple consumers    C1 wants all fields        No contract enforced.
+  with different        C2 wants orderId+total     Producer changes freely
+  expectations          C3 wants orderId+address   → old consumers break    ✗
+
+RESULT: No validation. No contract. Producer changes schema → consumers break silently.</div>
+</div>
+<div class="slide" id="s4" data-title="What Is a Schema and Schema Registry">
+<h2>What Is a Schema and Schema Registry</h2>
+<p>A <strong>schema</strong> is a formal contract — it names every field and its type. A <strong>schema registry</strong> stores that contract, tracks every version change, and blocks producer updates that would break consumers.</p>
+<div class="dia">WITHOUT schema registry:
+  Producer ──[raw JSON bytes]──► Kafka ──[raw JSON bytes]──► Consumer
+               no contract                  no validation
+
+WITH schema registry:
+                    ┌──────────────────────────────────────────┐
+                    │           Schema Registry                │
+                    │  - stores schema + all versions          │
+                    │  - runs compatibility check on change    │
+                    │  - blocks breaking changes               │
+                    │  - assigns unique schema IDs             │
+                    └───────────────┬──────────────────────────┘
+                                    │ validate BEFORE publish
+                                    ▼
+  Producer ──[validated, typed]──► Kafka ──[schemaId + payload]──► Consumer
+               contract enforced                schema recoverable
+
+Schema Registry purpose in one sentence:
+  Bring validation BEFORE the producer sends an event.
+  If the new schema would break a consumer → exception → event NOT published.</div>
+</div>
+<div class="slide" id="s5" data-title="Avro Schema — The .avsc Contract">
+<h2>Avro Schema — The .avsc Contract</h2>
+<p>An Avro schema is defined in a <code>.avsc</code> file (JSON format). A Maven plugin reads it at compile time and generates a Java class — not a plain POJO, but one that includes a <code>getSchema()</code> method the AvroSerializer needs.</p>
+<div class="dia">src/main/avro/order.avsc  (the contract you write)
+┌────────────────────────────────────────────────────────────────┐
+│  {                                                             │
+│    "type":      "record",           ← object (not primitive)  │
+│    "name":      "Order",            ← becomes Java class name │
+│    "namespace": "com.eda.schema",   ← becomes Java package    │
+│    "fields": [                                                 │
+│      { "name": "orderId",     "type": "string" },             │
+│      { "name": "customerId",  "type": "string" },             │
+│      { "name": "productId",   "type": "string" },             │
+│      { "name": "quantity",    "type": "int"    },             │
+│      { "name": "totalAmount", "type": "double" }              │
+│    ]                                                           │
+│  }                                                             │
+└────────────────────────────────────────────────────────────────┘
+         │
+         │  mvn clean compile  ← Maven Avro plugin runs
+         ▼
+  target/generated-sources/avro/com/eda/schema/Order.java
+  ┌────────────────────────────────────────────────────────────┐
+  │  class Order extends SpecificRecordBase {                  │
+  │    String orderId, customerId, productId;                  │
+  │    int quantity;   double totalAmount;                     │
+  │                                                            │
+  │    Schema getSchema() { ... }  ← AvroSerializer uses this │
+  │    static Order.Builder newBuilder() { ... }               │
+  │  }                                                         │
+  └────────────────────────────────────────────────────────────┘
+  NOT a plain POJO — extends SpecificRecordBase.
+  AvroSerializer recognises it because of that base class.
+
+  pom.xml requirements:
+  ┌────────────────────────────────────────────────────────────┐
+  │  dependency: org.apache.avro  ← parses .avsc              │
+  │  dependency: kafka-avro-serializer  ← serialize/deserialize│
+  │  plugin: avro-maven-plugin    ← generates Java class      │
+  └────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s6" data-title="Schema Registry Setup and the _schemas Topic">
+<h2>Schema Registry Setup and the _schemas Topic</h2>
+<p>The Confluent Schema Registry is a separate process. It talks to Kafka because it stores all schema data inside a special Kafka topic called <code>_schemas</code> — schema + version + compatibility type all live there.</p>
+<div class="dia">schema-registry.properties
+┌──────────────────────────────────────────────────────────────────┐
+│  listeners=http://0.0.0.0:8085                                   │
+│  kafkastore.bootstrap.servers=localhost:9092,localhost:9093      │
+│  kafkastore.topic=_schemas    ← keep the default name           │
+└──────────────────────────────────────────────────────────────────┘
+                    │ connects on startup
+                    ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  KAFKA BROKER                                                   │
+  │                                                                 │
+  │  _schemas topic  (1 partition, created automatically)          │
+  │  ┌─────────────────────────────────────────────────────────┐   │
+  │  │  subject:       order-event-value                       │   │
+  │  │  version:       1                                       │   │
+  │  │  schemaId:      1001                                    │   │
+  │  │  schema:        { orderId:str, customerId:str, ... }    │   │
+  │  │  compatibility: BACKWARD  (default)                     │   │
+  │  └─────────────────────────────────────────────────────────┘   │
+  └─────────────────────────────────────────────────────────────────┘
+
+Correct start order:
+  1. Start controller(s)
+  2. Start broker(s)
+  3. Start schema registry  → connects → creates _schemas topic
+  4. Start producer / consumer apps
+
+Test that schema registry is running:
+  GET http://localhost:8085/subjects   → returns [] if empty (healthy)</div>
+</div>
+<div class="slide" id="s7" data-title="Producer Flow — First Send (Schema Registration)">
+<h2>Producer Flow — First Send (Schema Registration)</h2>
+<p>The very first time a producer sends an event, the AvroSerializer has no cached schema ID. It registers the schema with the registry, gets back a schema ID, caches it, then builds and sends the message.</p>
+<div class="dia">Producer:  kafkaTemplate.send("order-event", key, orderObject)
+                                                      │
+                             ┌────────────────────────▼─────────────────────────┐
+                             │               AvroSerializer                      │
+                             │                                                   │
+                             │  Step 1: orderObject.getSchema()                 │
+                             │          → returns full Avro schema definition   │
+                             │                                                   │
+                             │  Step 2: hash(schema)                            │
+                             │          → check local cache: NOT FOUND          │
+                             └────────────────────────┬─────────────────────────┘
+                                                      │ HTTP POST
+                                                      │ /subjects/order-event-value/versions
+                                                      │ body: { schema: "..." }
+                             ┌────────────────────────▼─────────────────────────┐
+                             │              Schema Registry                      │
+                             │                                                   │
+                             │  Is subject order-event-value known?  NO          │
+                             │  → first registration                            │
+                             │  → write to _schemas topic:                      │
+                             │       subject:  order-event-value               │
+                             │       version:  1                                │
+                             │       schemaId: 1001                             │
+                             │       compat:   BACKWARD (default)              │
+                             │  → return schemaId: 1001                         │
+                             └────────────────────────┬─────────────────────────┘
+                                                      │ schemaId = 1001
+                             ┌────────────────────────▼─────────────────────────┐
+                             │          AvroSerializer (continues)               │
+                             │                                                   │
+                             │  Step 3: cache[schemaHash] = 1001               │
+                             │                                                   │
+                             │  Step 4: build wire-format message               │
+                             │          → see Section 6                         │
+                             └────────────────────────┬─────────────────────────┘
+                                                      │
+                                                      ▼
+                                               Kafka Broker  ✓</div>
+</div>
+<div class="slide" id="s8" data-title="Message Wire Format (Magic Byte + Schema ID + Payload)">
+<h2>Message Wire Format (Magic Byte + Schema ID + Payload)</h2>
+<p>Every message serialized with AvroSerializer has a 5-byte prefix: 1 magic byte followed by 4 bytes for the schema ID. The payload contains <strong>values only</strong> — field names are never written to the wire.</p>
+<div class="dia">┌───────────┬──────────────────────────┬────────────────────────────────┐
+│  1 byte   │         4 bytes          │           N bytes              │
+│           │                          │                                │
+│  Magic    │       Schema ID          │          Payload               │
+│  Byte     │                          │  (field values, no names)      │
+│  = 0x00   │  e.g.  1001              │                                │
+└───────────┴──────────────────────────┴────────────────────────────────┘
+
+Magic byte = 0x00  (currently always zero — Confluent wire protocol v0)
+  Tells deserializer: "next 4 bytes = schema ID, then payload begins."
+  If a future version uses 0x01 the deserializer will adjust its parsing.
+
+Payload — values only, field names are NOT present:
+┌──────────┬───────────┬────────────┬─────┬───────┐
+│ "ORD-55" │ "CUST-01" │ "PROD-007" │  2  │ 55.0  │
+│ orderId  │customerId │ productId  │ qty │ total │
+└──────────┴───────────┴────────────┴─────┴───────┘
+  Field names omitted → smaller message on every event.
+  Schema ID lets the deserializer look up the structure.
+  Field ORDER in the .avsc file is the contract — it must match exactly.
+
+JSON vs Avro comparison (same data):
+  JSON:  { "orderId":"ORD-55", "customerId":"CUST-01", ... }  ← names + values
+  Avro:  [magicByte][schemaId]["ORD-55"]["CUST-01"][...]       ← values only</div>
+</div>
+<div class="slide" id="s9" data-title="Producer Flow — Schema Change + Compatibility Check">
+<h2>Producer Flow — Schema Change + Compatibility Check</h2>
+<p>On every send after the first, if the schema hash is new (schema changed), the serializer tries to register the new version. The registry runs a compatibility check and throws an exception if the change would break consumers.</p>
+<div class="dia">Example: producer changes quantity from int → string in order.avsc
+         mvn clean compile → new Order.java with quantity as String
+
+Producer calls send() again
+         │
+         AvroSerializer
+         │  getSchema() → new schema definition (quantity=string)
+         │  hash(new schema) → different from cached hash → NOT in cache
+         │  HTTP POST /subjects/order-event-value/versions { new schema }
+         │
+         Schema Registry
+         │  subject order-event-value EXISTS → version 1 already present
+         │  compatibility = BACKWARD
+         │
+         │  BACKWARD check logic:
+         │    Assume consumer is on NEW schema (quantity=string)
+         │    It reads an OLD Kafka message (quantity=int)
+         │    Can it deserialize int as string?  NO  ✗
+         │
+         └──► HTTP 409 Conflict
+              "String not compatible with writer type int."
+                   │
+                   ▼
+         AvroSerializer throws exception
+         Producer gets error
+         Event is NOT published to Kafka  ✓  (consumer protected)
+
+What WOULD be allowed (backward-safe changes):
+  ┌────────────────────────────────────────────┬──────┐
+  │  Change                                    │  OK? │
+  ├────────────────────────────────────────────┼──────┤
+  │  Add new field WITH a default value        │  ✓   │
+  │  Remove an existing field                  │  ✓   │
+  │  Add new field WITHOUT a default value     │  ✗   │
+  │  Change a field type                       │  ✗   │
+  └────────────────────────────────────────────┴──────┘</div>
+</div>
+<div class="slide" id="s10" data-title="Consumer Flow — Fetching Schema from Registry">
+<h2>Consumer Flow — Fetching Schema from Registry</h2>
+<p>When a consumer receives bytes, the AvroDeserializer reads the magic byte and schema ID, fetches the full schema from the registry (or its local cache), then uses field order from the schema to decode each value in the payload.</p>
+<div class="dia">Kafka returns bytes to consumer
+        │
+        ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                       AvroDeserializer                            │
+│                                                                  │
+│  Step 1: Read byte[0] → magic byte = 0x00                       │
+│          → protocol v0: next 4 bytes are schema ID              │
+│                                                                  │
+│  Step 2: Read bytes[1..4] → schema ID = 1001                    │
+│                                                                  │
+│  Step 3: local cache lookup for schemaId 1001 → NOT FOUND       │
+│          → HTTP GET http://localhost:8085/schemas/ids/1001       │
+│          ← registry returns full schema                         │
+│          → cache[1001] = schema  (no more HTTP calls for 1001)  │
+│                                                                  │
+│  Step 4: Read payload bytes[5..] using schema field order:      │
+│          field 1: orderId     (string) → read N bytes           │
+│          field 2: customerId  (string) → read N bytes           │
+│          field 3: productId   (string) → read N bytes           │
+│          field 4: quantity    (int)    → read 4 bytes           │
+│          field 5: totalAmount (double) → read 8 bytes           │
+│                                                                  │
+│  Step 5: Return GenericRecord (default)                         │
+│          OR return Order object (if specific.avro.reader=true)  │
+└──────────────────────────────────────────────────────────────────┘
+        │
+        ▼
+  consumer.value()  →  record or Order object
+
+application.properties (consumer):
+  spring.kafka.consumer.value-deserializer=
+    io.confluent.kafka.serializers.KafkaAvroDeserializer
+  spring.kafka.consumer.properties.schema.registry.url=
+    http://localhost:8085</div>
+</div>
+<div class="slide" id="s11" data-title="GenericRecord vs SpecificRecord">
+<h2>GenericRecord vs SpecificRecord</h2>
+<p>By default the deserializer returns a <code>GenericRecord</code> — like a loosely-typed map. Set <code>specific.avro.reader=true</code> and provide the same <code>.avsc</code> on the consumer side to receive a typed <code>Order</code> object instead.</p>
+<div class="dia">GENERIC RECORD (default, no .avsc needed on consumer):
+
+  GenericRecord rec = consumerRecord.value();
+  String id  = rec.get("orderId").toString();   ← cast required
+  int    qty = (Integer) rec.get("quantity");   ← cast required
+  ← no compile-time type safety
+
+SPECIFIC RECORD (specific.avro.reader=true):
+
+  Consumer also has order.avsc + maven plugin → generates Order.java
+  Order order = consumerRecord.value();
+  String id  = order.getOrderId();    ← type-safe getter  ✓
+  int    qty = order.getQuantity();   ← no casting        ✓
+
+How the deserializer decides which to return:
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  specific.avro.reader = true?                                   │
+  │           │                                                     │
+  │          YES                                                    │
+  │           │                                                     │
+  │           ▼                                                     │
+  │  Read schema from registry:                                     │
+  │    name      = "Order"                                          │
+  │    namespace = "com.eda.schema"                                 │
+  │           │                                                     │
+  │           ▼                                                     │
+  │  Look for class com.eda.schema.Order in consumer classpath      │
+  │           │                                                     │
+  │     found ──► map to Order object  ✓                           │
+  │   missing ──► return GenericRecord                             │
+  └─────────────────────────────────────────────────────────────────┘
+
+application.properties (consumer):
+  spring.kafka.consumer.properties.specific.avro.reader=true</div>
+</div>
+<div class="slide" id="s12" data-title="Caching — Producer and Consumer">
+<h2>Caching — Producer and Consumer</h2>
+<p>Both the AvroSerializer and AvroDeserializer maintain a local in-memory cache. The schema registry is only called once per unique schema version per application lifetime — not on every message.</p>
+<div class="dia">PRODUCER CACHE  (AvroSerializer)
+  key:   hash(schema definition string)
+  value: schemaId  (e.g. 1001)
+
+  send()
+    │
+    ▼
+  hash(schema) ──► in cache? ──YES──► use cached schemaId → serialize → send
+                        │
+                       NO
+                        ▼
+                  HTTP POST to schema registry
+                  receive schemaId
+                  cache[hash] = schemaId
+                        │
+                        ▼
+                  serialize → send
+
+CONSUMER CACHE  (AvroDeserializer)
+  key:   schemaId  (e.g. 1001)
+  value: full schema definition
+
+  receive bytes
+    │
+    ▼
+  read schemaId ──► in cache? ──YES──► use cached schema → deserialize
+                        │
+                       NO
+                        ▼
+                  HTTP GET /schemas/ids/{schemaId}
+                  receive schema
+                  cache[schemaId] = schema
+                        │
+                        ▼
+                  deserialize payload
+
+RESULT: HTTP calls to the schema registry are rare.
+  Typically: one call per unique schema version per running application instance.</div>
+</div>
+<div class="slide" id="s13" data-title="Schema Compatibility — BACKWARD (Default)">
+<h2>Schema Compatibility — BACKWARD (Default)</h2>
+<p>BACKWARD is the default compatibility mode. The registry assumes the consumer will upgrade to the <strong>new schema</strong> — then checks whether it can still read <strong>old messages</strong> already sitting in Kafka.</p>
+<div class="dia">BACKWARD question:  consumer on NEW schema  ─reads─►  OLD Kafka messages.
+                    Will anything break?
+
+Example: OLD schema (V1) has only { orderId: int }
+         Producer wants to publish with NEW schema (V2)
+
+  ┌────────────────────────────────┬───────────────────────────────┬──────┐
+  │  Change in V2                  │  Consumer V2 reads V1 message │  OK? │
+  ├────────────────────────────────┼───────────────────────────────┼──────┤
+  │  Add field WITH default        │  Field missing in old msg     │  ✓   │
+  │  status: string = "pending"    │  → consumer uses "pending"    │      │
+  ├────────────────────────────────┼───────────────────────────────┼──────┤
+  │  Add field WITHOUT default     │  Field missing in old msg     │  ✗   │
+  │  status: string  (no default)  │  → no value, no default       │      │
+  ├────────────────────────────────┼───────────────────────────────┼──────┤
+  │  Remove existing field         │  Extra field in old msg       │  ✓   │
+  │  remove orderId from V2        │  → consumer ignores it        │      │
+  ├────────────────────────────────┼───────────────────────────────┼──────┤
+  │  Change type                   │  int in old msg payload       │  ✗   │
+  │  quantity: int → string        │  → consumer expects string    │      │
+  └────────────────────────────────┴───────────────────────────────┴──────┘
+
+Summary for BACKWARD:
+  ✓ Add field with default value
+  ✓ Remove any existing field
+  ✗ Add field without default value
+  ✗ Change a field type</div>
+</div>
+<div class="slide" id="s14" data-title="Schema Compatibility — FORWARD">
+<h2>Schema Compatibility — FORWARD</h2>
+<p>FORWARD compatibility protects consumers that are <strong>still on the old schema</strong>. The registry checks whether an old consumer can safely read <strong>new messages</strong> published with the updated schema.</p>
+<div class="dia">FORWARD question:  consumer on OLD schema  ─reads─►  NEW Kafka messages.
+                   Will anything break?
+
+Example: OLD schema (V1) has { orderId: int }
+         Producer wants to publish with NEW schema (V2)
+
+  ┌────────────────────────────────┬───────────────────────────────┬──────┐
+  │  Change in V2                  │  Consumer V1 reads V2 message │  OK? │
+  ├────────────────────────────────┼───────────────────────────────┼──────┤
+  │  Add new field                 │  Consumer has no such field   │  ✓   │
+  │  status: string = "pending"    │  → unknown field, ignored     │      │
+  ├────────────────────────────────┼───────────────────────────────┼──────┤
+  │  Remove field that has default │  Field absent in new msg      │  ✓   │
+  │  (consumer still declares it)  │  → consumer uses its default  │      │
+  ├────────────────────────────────┼───────────────────────────────┼──────┤
+  │  Remove field WITHOUT default  │  Field absent in new msg      │  ✗   │
+  │                                │  → consumer has no fallback   │      │
+  ├────────────────────────────────┼───────────────────────────────┼──────┤
+  │  Change type                   │  Consumer expects int         │  ✗   │
+  │  quantity: int → string        │  → message has string bytes   │      │
+  └────────────────────────────────┴───────────────────────────────┴──────┘
+
+Summary for FORWARD:
+  ✓ Add any new field (old consumers ignore unknown fields)
+  ✓ Remove field that carries a default value
+  ✗ Remove field without a default value
+  ✗ Change a field type</div>
+</div>
+<div class="slide" id="s15" data-title="Schema Compatibility — FULL and Transitive Variants">
+<h2>Schema Compatibility — FULL and Transitive Variants</h2>
+<p>FULL means both BACKWARD and FORWARD must pass. The transitive variants extend any of these checks to compare against <strong>all previous versions</strong>, not just the immediately preceding one.</p>
+<div class="dia">FULL = BACKWARD + FORWARD combined
+  Every change must be safe from both directions:
+    → consumer on NEW schema reading OLD messages  (backward safe)
+    → consumer on OLD schema reading NEW messages  (forward safe)
+
+  Summary for FULL:
+    ✓ Add field WITH default value   (safe both ways)
+    ✗ Add field WITHOUT default value  (fails BACKWARD)
+    ✗ Remove field without default     (fails FORWARD)
+    ✗ Change type                      (fails both)
+
+TRANSITIVE variants — how many past versions are compared:
+
+  Non-transitive  →  new schema compared to LAST version only
+  Transitive      →  new schema compared to ALL previous versions
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  V1 ──► V2 ──► V3 ──► V4   (producer now publishing V4)         │
+  │                                                                  │
+  │  BACKWARD:             V4 checked against V3 only               │
+  │  BACKWARD_TRANSITIVE:  V4 checked against V3, V2, and V1        │
+  │                                                                  │
+  │  FORWARD:              V4 checked against V3 only               │
+  │  FORWARD_TRANSITIVE:   V4 checked against V3, V2, and V1        │
+  │                                                                  │
+  │  FULL:                 V4 checked against V3 only (both dirs)   │
+  │  FULL_TRANSITIVE:      V4 checked against V3, V2, V1 (both)    │
+  └──────────────────────────────────────────────────────────────────┘
+
+Use transitive when you need to guarantee that any consumer on any
+old version can safely interact with the newest messages in Kafka.
+Six levels in total:
+  BACKWARD · FORWARD · FULL · BACKWARD_TRANSITIVE · FORWARD_TRANSITIVE · FULL_TRANSITIVE</div>
+</div>
+<div class="slide" id="s16" data-title="Subject Naming Strategies">
+<h2>Subject Naming Strategies</h2>
+<p>A <strong>subject</strong> is the label under which the schema registry groups version history. The naming strategy controls how that label is formed from topic name and record name.</p>
+<div class="dia">SUBJECT = the registry key that groups schema versions in _schemas topic
+
+  ┌───────────────────────┬───────────────────────────────┬─────────────────────────┐
+  │  Strategy             │  Subject format               │  Use case               │
+  ├───────────────────────┼───────────────────────────────┼─────────────────────────┤
+  │ TopicNameStrategy     │ {topic}-value                 │  DEFAULT.               │
+  │ (default)             │ {topic}-key                   │  One schema per topic.  │
+  │                       │ e.g. order-event-value        │  Common choice.         │
+  ├───────────────────────┼───────────────────────────────┼─────────────────────────┤
+  │ RecordNameStrategy    │ {namespace}.{RecordName}      │  Same record reused     │
+  │                       │ e.g. com.eda.schema.Order     │  across many topics.    │
+  │                       │                               │  Schema shared.         │
+  ├───────────────────────┼───────────────────────────────┼─────────────────────────┤
+  │ TopicRecord           │ {topic}-{namespace}.          │  Different record types │
+  │ NameStrategy          │ {RecordName}                  │  per topic, but each    │
+  │                       │ e.g. order-event-             │  combination isolated.  │
+  │                       │      com.eda.schema.Order     │                         │
+  └───────────────────────┴───────────────────────────────┴─────────────────────────┘
+
+TopicNameStrategy example from the transcript:
+  topic:  order-event
+  key   → subject: order-event-key    (StringSerializer — no Avro subject needed)
+  value → subject: order-event-value  (KafkaAvroSerializer — schema stored here)
+
+Setting a strategy in application.properties (producer or consumer):
+  spring.kafka.producer.properties.value.subject.name.strategy=
+    io.confluent.kafka.serializers.subject.TopicNameStrategy
+    io.confluent.kafka.serializers.subject.RecordNameStrategy
+    io.confluent.kafka.serializers.subject.TopicRecordNameStrategy</div>
+</div>
+<div class="slide" id="s17" data-title="Setting Compatibility Levels (Global and Per-Subject)">
+<h2>Setting Compatibility Levels (Global and Per-Subject)</h2>
+<p>The default is BACKWARD. You can change it globally in the registry properties file, or override it per subject using the REST API — useful when different topics need different rules.</p>
+<div class="dia">GLOBAL setting (applies to every subject):
+
+  schema-registry.properties:
+  ┌────────────────────────────────────────────────────────────────┐
+  │  schema.compatibility.level=FULL                               │
+  └────────────────────────────────────────────────────────────────┘
+  Valid values:
+    BACKWARD (default) · FORWARD · FULL · NONE
+    BACKWARD_TRANSITIVE · FORWARD_TRANSITIVE · FULL_TRANSITIVE
+
+PER-SUBJECT OVERRIDE (REST API):
+
+  Override one subject while others keep the global setting:
+
+  PUT  http://localhost:8085/config/order-event-value
+  Body: { "compatibility": "FORWARD" }
+
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Global: FULL                                               │
+  │                                                             │
+  │  order-event-value  ← overridden to FORWARD                │
+  │  payment-event-value ← still uses global FULL              │
+  │  user-event-value    ← still uses global FULL              │
+  └─────────────────────────────────────────────────────────────┘
+
+Useful REST endpoints:
+  GET  /subjects                              → list all subjects
+  GET  /subjects/{subject}/versions           → list all versions
+  GET  /subjects/{subject}/versions/{version} → get schema at version
+  GET  /schemas/ids/{id}                      → get schema by ID
+  GET  /config/{subject}                      → get compatibility for subject
+  PUT  /config/{subject}                      → set compatibility for subject</div>
+</div>
+<div class="slide" id="s18" data-title="Complete Flow — Producer to Consumer">
+<h2>Complete Flow — Producer to Consumer</h2>
+<p>The full end-to-end picture showing how producer, schema registry, Kafka broker, and consumer all interact through the schema lifecycle.</p>
+<div class="dia">┌────────────────────────────────────────────────────────────────────────────────┐
+│                           COMPLETE SCHEMA REGISTRY FLOW                        │
+└────────────────────────────────────────────────────────────────────────────────┘
+
+PRODUCER SIDE
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                │
+│  order.avsc ──► mvn compile ──► Order.java (extends SpecificRecordBase)        │
+│                                                                                │
+│  kafkaTemplate.send("order-event", key, orderObject)                           │
+│        │                                                                       │
+│        ▼                                                                       │
+│  KafkaAvroSerializer                                                           │
+│    ├─ getSchema() → schema definition                                          │
+│    ├─ hash(schema) → check producer cache                                      │
+│    │      hit  ──► use cached schemaId                                         │
+│    │      miss ──► HTTP POST /subjects/order-event-value/versions ─────────┐  │
+│    ├─ receive schemaId → store in cache                         │           │  │
+│    └─ serialize:  [0x00][schemaId 4B][values only]              │           │  │
+└────────────────────────────────────────────────────────────────────────────────┘
+                                                                  │
+                                          ┌───────────────────────▼────────────┐
+                                          │        Schema Registry             │
+                                          │  - validates compatibility         │
+                                          │  - stores in _schemas topic        │
+                                          │  - returns schemaId                │
+                                          └───────────────────────┬────────────┘
+                                                                  │ schemaId
+KAFKA BROKER                                                      │
+┌───────────────────────────────────┐                             │
+│  order-event topic                │◄────────────────────────────┘
+│  ┌───────────────────────────┐    │  message: [0x00][1001][ORD-55][CUST-01][2][55.0]
+│  │  magic │ schemaId │ vals  │    │
+│  └───────────────────────────┘    │
+└───────────────────────────────────┘
+         │ consumer polls
+         ▼
+CONSUMER SIDE
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                                                                                │
+│  KafkaAvroDeserializer                                                         │
+│    ├─ read byte[0] = 0x00 → next 4 bytes = schemaId                           │
+│    ├─ read schemaId = 1001 → check consumer cache                              │
+│    │      hit  ──► use cached schema                                           │
+│    │      miss ──► HTTP GET /schemas/ids/1001 ──► store in cache  ──────────┐ │
+│    ├─ read payload using schema field order                       │          │ │
+│    └─ return GenericRecord  OR  Order object (specific.avro.reader=true)    │ │
+│                                                              Schema Registry ◄┘│
+│  @KafkaListener                                                                │
+│    Order order = record.value()  ← typed object, no casting                   │
+│    order.getOrderId(), order.getQuantity(), ...                                │
+└────────────────────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s19" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                  What it is                             Key point
+───────────────────────  ─────────────────────────────────────  ────────────────────────────────────
+Schema                   Formal definition: field names + types  Contract between producer &amp; consumer
+Schema Registry          Stores schemas + versions + compat       Validates before producer publishes
+.avsc file               Avro schema definition (JSON format)    Compile → Java class via Maven plugin
+_schemas topic           Kafka topic inside the broker           Registry persists all data here
+Subject                  Registry key grouping schema versions   Default: {topic}-value / {topic}-key
+SchemaId                 Unique int assigned per schema version  1001, 1002, ... stored in 4 bytes
+Magic byte               First byte of every Avro message        Always 0x00 (Confluent wire protocol)
+Wire format              [magic 1B][schemaId 4B][values only]    Field names NOT on the wire
+AvroSerializer           Registers schema, encodes to bytes      Runs on producer, value serializer
+AvroDeserializer         Fetches schema by ID, decodes bytes     Runs on consumer, value deserializer
+GenericRecord            Loosely-typed result (default)          Access fields by string name
+SpecificRecord           Typed result (Order object)             Needs .avsc + specific.avro.reader=true
+Producer cache           hash(schema) → schemaId                 Avoids repeated registry calls
+Consumer cache           schemaId → schema                       Avoids repeated registry calls
+
+BACKWARD (default)       Consumer on new schema reads old msgs   Add field+default ✓  Remove field ✓
+FORWARD                  Consumer on old schema reads new msgs   Add any field ✓  Remove field+default ✓
+FULL                     Both BACKWARD and FULL must pass        Add field+default ✓  only
+*_TRANSITIVE             Check new schema vs ALL past versions   Without: check vs last version only
+
+TopicNameStrategy        {topic}-value / {topic}-key             Default — one schema per topic
+RecordNameStrategy       {namespace}.{RecordName}                Reuse same schema across topics
+TopicRecordNameStrategy  {topic}-{namespace}.{RecordName}        Per-topic isolation with record name
+
+Set global compat:       schema.compatibility.level=BACKWARD     In schema-registry.properties
+Set per-subject compat:  PUT /config/{subject}                   REST API override</div>
+</div>
+<div class="slide" id="s20" data-title="Architecture — Schema Registry Governing the NotificationEvent">
+<h2>Architecture — Schema Registry in the Notification System</h2>
+<p>"20+ services consume NotificationEvent. Schema Registry is the single thing standing between one careless field change and breaking all of them at once."</p>
+<div class="dia">  CDC Publisher (producer)              Schema Registry            Delivery Consumers (20+ services)
+        │  register/lookup schema             │                            │
+        │─────────────────────────────────────►│                            │
+        │◄─────────────schemaId=1042───────────│                            │
+        │  send: [magic][1042][avro bytes]     │                            │
+        │──────────────────────────────────────┼───────────────────────────►│
+        │                                       │◄──fetch schema 1042────────│
+        │                                       │───schema definition───────►│
+        │                                                            deserialize using
+        │                                                            fetched schema ✓</div>
+<p><strong>Scenario-first:</strong> "If a producer adds a new required field with no default, the Registry REJECTS that registration outright — the deploy fails in CI before it ever reaches production, instead of 20 services throwing deserialization errors simultaneously at 2am."</p>
+</div>
+<div class="slide" id="s21" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why is BACKWARD the right default compatibility mode for most systems?
+A: It matches the typical rollout order — producers deploy first, consumers
+   upgrade afterward. New schema must remain readable by OLD consumer code
+   until they catch up.
+
+Q: Why does the wire format store only a 4-byte schema ID, not the schema
+   itself, in every message?
+A: Repeating the full schema on every message would be enormous overhead —
+   the ID is a pointer; both producer and consumer cache the actual schema
+   locally after the first registry lookup.
+
+Q: When would TopicRecordNameStrategy matter over the default
+   TopicNameStrategy?
+A: When the SAME topic carries multiple distinct record types (e.g. an
+   audit topic with several event kinds) — TopicNameStrategy alone would
+   force them all into one subject, mixing incompatible schemas together.</div>
+</div>
+<div class="slide" id="s22" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision              Choice        Alternative      Why ours                              When to flip
+──────────────────────  ────────────  ───────────────  ────────────────────────────────────  ─────────────────────
+Serialization format    Avro           Plain JSON        Compact wire format + registry-         Rapid prototyping,
+                                                            enforced compatibility                  no external consumers yet
+Compatibility mode      BACKWARD       FULL              Matches producer-deploys-first order,   Producer + consumer
+                                                            less restrictive than FULL                deploy simultaneously</div>
+</div>
+<div class="slide" id="s23" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "Someone wants to add a new REQUIRED field with no default to
+  NotificationEvent. You have to say no or find a workaround. Explain both
+  the risk and the fix."
+  Answer: "A required field with no default breaks BACKWARD compatibility
+  outright — any consumer still on the old schema deserializing new data
+  has no value to fill it with. Fix: add it as OPTIONAL with a sensible
+  default first, let it stabilize across all producers/consumers, and only
+  consider making it required in a later, deliberately-communicated
+  breaking-change version — never as a silent default."
+
+Trap 2 — "A teammate proposes making every schema change FULL-compatible
+  'just to be safe.' What's the actual cost?"
+  Answer: "FULL requires every version to be both backward AND forward
+  compatible with the adjacent version — ruling out otherwise-safe changes
+  like adding a required field with no default, or certain optional-field
+  reorderings. It slows down schema evolution significantly for marginal
+  extra safety we don't need, given our actual rollout order (producers
+  deploy first). I'd push back and keep BACKWARD, which matches reality."</div>
+</div>
+<div class="slide" id="s24" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why Avro + Schema Registry over raw JSON: shifts schema-breakage
+  detection from "runtime NPE in production" to "registration rejected in CI."
+- Why BACKWARD compatibility specifically: matches our actual deploy order
+  — producers ship first, consumers catch up.
+- Why the wire format carries only a schema ID, not the full schema: keeps
+  message overhead minimal at high throughput.
+- Why TopicRecordNameStrategy for multi-type topics: prevents incompatible
+  record shapes from being forced into one subject's compatibility check.</div>
+</div>
+<div class="slide" id="s25" data-title="Top 2 Technologies — Schema Governance">
+<h2>Top 2 Technologies — Schema Governance Layer</h2>
+<div class="dia">Confluent Schema Registry (Avro)  vs  Buf Schema Registry (Protobuf)
+
+Why pick Confluent Schema Registry (our choice): deepest Kafka
+  integration — wire format, REST API, Kafka Connect/ksqlDB all assume it.
+Why pick Buf: Protobuf-first organizations already using gRPC want one
+  registry and linting toolchain shared across both gRPC and Kafka.
+
+Example 1 (Confluent SR): Notification System registers NotificationEvent.avsc;
+  CI runs a compatibility check before any producer deploy proceeds.
+Example 2 (Buf): A company running both gRPC microservices and Kafka
+  events reuses the same .proto definitions end-to-end, catching breaking
+  changes with build-time linting before either surface ships.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 25;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Schema Registry — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

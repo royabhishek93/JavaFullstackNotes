@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Architecture Part 3 — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Architecture Part 3 — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 12</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:8.33%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🏗️</div>
+  <h1 class="gradient-text">Kafka Architecture Part 3 — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Controller Failure</span><span class="badge">Leader Partition Failure</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Active Controller Failure, Leader Partition Failure, Follower Partition Failure, Topics Cannot Fail, Consumer Crash, Consumer Heartbeat Timeout, Broker Failure</p>
+</div>
+<div class="slide" id="s3" data-title="What Happens When the Active Controller Fails?">
+<h2>What Happens When the Active Controller Fails?</h2>
+<p>The standby controllers are always watching for heartbeats from the active controller. When heartbeats stop, they immediately start a new election using the KRaft (Raft) consensus algorithm.</p>
+<div class="dia">  Initial state:
+  ┌──────────────────────────────────────────────────────────┐
+  │  Controller 1  (ACTIVE)  ── sends heartbeats ──►         │
+  │  Controller 2  (standby) ◄── receiving heartbeats        │
+  │  Controller 3  (standby) ◄── receiving heartbeats        │
+  └──────────────────────────────────────────────────────────┘
+
+  Controller 1 crashes:
+  ┌──────────────────────────────────────────────────────────┐
+  │  Controller 1  ✗  (crashed — no more heartbeats)         │
+  │  Controller 2  ── "no heartbeat from C1... election!"   │
+  │  Controller 3  ── "no heartbeat from C1... election!"   │
+  └──────────────────────────────────────────────────────────┘
+
+  Election via KRaft (Raft voting):
+  ─────────────────────────────────────────────────────────
+  Controller 2 requests votes
+  Controller 3 votes for Controller 2  ✓
+  Controller 2 votes for itself         ✓
+  Result: Controller 2 gets 2/2 available votes → wins
+
+  New state:
+  ┌──────────────────────────────────────────────────────────┐
+  │  Controller 1  ✗  (still crashed)                        │
+  │  Controller 2  (NEW ACTIVE) ← took over seamlessly       │
+  │  Controller 3  (standby)                                 │
+  └──────────────────────────────────────────────────────────┘
+
+  Impact: NONE — cluster continues working without interruption.
+  Topic creation, broker monitoring, leader election all continue.</div>
+</div>
+<div class="slide" id="s4" data-title="What Happens When a Leader Partition Fails?">
+<h2>What Happens When a Leader Partition Fails?</h2>
+<p>If the broker holding a partition leader crashes, the controller detects it (missed heartbeat), selects a new leader from the ISR, and updates all brokers.</p>
+<div class="dia">  Initial state (partition 0, replication factor 3):
+  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
+  │   Broker 1     │    │   Broker 2     │    │   Broker 3     │
+  │  P0 LEADER ★  │    │  P0 follower   │    │  P0 follower   │
+  └────────────────┘    └────────────────┘    └────────────────┘
+
+  ISR for P0 = [Broker 1, Broker 2, Broker 3]
+
+  Broker 1 crashes:
+  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
+  │   Broker 1  ✗  │    │   Broker 2     │    │   Broker 3     │
+  │  (no heartbeat)│    │  P0 follower   │    │  P0 follower   │
+  └────────────────┘    └────────────────┘    └────────────────┘
+
+  Controller detects: no heartbeat from Broker 1
+         │
+         ▼
+  Controller picks new leader from ISR (picks Broker 2)
+         │
+         ▼
+  Controller updates cluster metadata:
+    P0 leader  → Broker 2  (was Broker 1)
+    ISR for P0 → [Broker 2, Broker 3]  (Broker 1 removed)
+         │
+         ▼
+  Controller pushes updated metadata to all brokers
+
+  New state:
+  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
+  │   Broker 1  ✗  │    │   Broker 2     │    │   Broker 3     │
+  │  (crashed)     │    │  P0 LEADER ★  │    │  P0 follower   │
+  └────────────────┘    └────────────────┘    └────────────────┘
+
+  Impact: Producers and consumers reconnect to Broker 2 for P0.
+  No data loss. Automatic recovery. ✓</div>
+</div>
+<div class="slide" id="s5" data-title="What Happens When a Follower Partition Fails?">
+<h2>What Happens When a Follower Partition Fails?</h2>
+<p>A follower failure is less dramatic — the leader simply notices the follower has stopped sending fetch requests and removes it from the ISR. The cluster keeps running normally.</p>
+<div class="dia">  Initial state (partition 0, replication factor 3):
+  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
+  │   Broker 1     │    │   Broker 2     │    │   Broker 3     │
+  │  P0 LEADER ★  │◄──│  P0 follower   │    │  P0 follower   │
+  │  offset: 15    │    │  polls leader  │◄───│  polls leader  │
+  └────────────────┘    └────────────────┘    └────────────────┘
+
+  ISR for P0 = [Broker 1, Broker 2, Broker 3]
+
+  Broker 3 crashes — stops sending fetch requests to leader:
+  ┌────────────────┐    ┌────────────────┐    ┌────────────────┐
+  │   Broker 1     │    │   Broker 2     │    │   Broker 3  ✗  │
+  │  P0 LEADER ★  │◄──│  P0 follower   │    │  (no fetch     │
+  │  "no fetch from│    │  polls leader  │    │   requests)    │
+  │   Broker 3"   │    │                │    │                │
+  └────────────────┘    └────────────────┘    └────────────────┘
+
+  Leader Broker 1 detects: Broker 3 has not sent a fetch request
+  within replica.lag.time.max.ms (default ~30 seconds)
+         │
+         ▼
+  Leader removes Broker 3 from ISR
+  Notifies controller → controller updates metadata
+
+  ISR for P0 = [Broker 1, Broker 2]  ← Broker 3 removed
+
+  Writes continue with acks=all using the remaining ISR ✓
+
+  When Broker 3 recovers:
+  Broker 3 restarts → resumes polling leader → catches up
+  Leader: "Broker 3 is fetching again and is caught up"
+  Leader adds Broker 3 back to ISR → notifies controller ✓
+
+  Impact: System continues normally. No data loss. ✓</div>
+</div>
+<div class="slide" id="s6" data-title="Can a Topic Fail?">
+<h2>Can a Topic Fail?</h2>
+<p>A topic is just a logical category — a name and a folder. It has no hardware to fail. What actually fails are partitions (and the brokers that hold them).</p>
+<div class="dia">  What a topic actually IS:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Topic "order-events"                                       │
+  │  = just a name / label                                      │
+  │  = a logical container                                      │
+  │                                                             │
+  │  Its PARTITIONS are the physical things that can fail:      │
+  │                                                             │
+  │  Partition 0 → stored on Broker 1 (leader) + Broker 2      │
+  │  Partition 1 → stored on Broker 2 (leader) + Broker 3      │
+  │  Partition 2 → stored on Broker 3 (leader) + Broker 1      │
+  └─────────────────────────────────────────────────────────────┘
+
+  "Topic fails" → WRONG framing. Partitions fail.
+  "Partition 0 leader fails" → CORRECT framing.
+
+  What can actually fail:
+  ┌───────────────────────┬──────────────────────────────────────┐
+  │  Component            │  Can it fail?                        │
+  ├───────────────────────┼──────────────────────────────────────┤
+  │  Topic                │  ✗  No — it is just a name           │
+  │  Partition leader     │  ✓  Yes — broker can crash           │
+  │  Partition follower   │  ✓  Yes — broker can crash           │
+  │  Broker               │  ✓  Yes — machine can go down        │
+  │  Active controller    │  ✓  Yes — but standby takes over     │
+  └───────────────────────┴──────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s7" data-title="Consumer Crash Before Committing Offset">
+<h2>Consumer Crash Before Committing Offset</h2>
+<p>If a consumer crashes mid-processing before it commits the offset, the next consumer to pick up that partition will re-read and re-process those events.</p>
+<div class="dia">  Consumer 1 — assigned order-events partition 0
+
+  Step 1: Fetches events 100–199
+  Step 2: Processes event 100... 101... 102... 150...
+  Step 3: CRASH at event 150 — offset never committed
+          Last committed offset in __consumer_offsets: 99
+
+  Consumer 1 restarts:
+  ─────────────────────────────────────────────────────────
+  Consumer 1 asks group coordinator:
+    "What is my last committed offset for order-events P0?"
+  Group coordinator: "99"
+  Consumer 1: starts fetching from 100 again
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  Events 100–149 are processed TWICE                     │
+  │  This is called "at-least-once" delivery                │
+  │                                                         │
+  │  Your application must handle duplicate events          │
+  │  (make processing idempotent — same result if run twice)│
+  └─────────────────────────────────────────────────────────┘
+
+  Timeline:
+  ──────────────────────────────────────────────────────────
+  fetch 100–199 → process 100–150 → CRASH
+  [restart]
+  fetch 100–199 → process 100–199 → commit 199 ✓</div>
+</div>
+<div class="slide" id="s8" data-title="Consumer Heartbeat Timeout (max.poll.interval.ms)">
+<h2>Consumer Heartbeat Timeout (max.poll.interval.ms)</h2>
+<p>If a consumer is so busy processing that it forgets to heartbeat the group coordinator, the coordinator assumes it is dead, reassigns its partition, and later rejects its commit.</p>
+<div class="dia">  Config: max.poll.interval.ms = 300000  (5 minutes)
+  Meaning: group coordinator expects a heartbeat at least every 5 minutes
+
+  Consumer 1 — assigned order-events partition 0
+  ─────────────────────────────────────────────────────────
+  t=0:00  Consumer 1 fetches events 1–500 → starts processing
+  t=4:00  Consumer 1 still processing (long-running task)
+  t=5:00  ← max.poll.interval.ms exceeded — no heartbeat sent
+          Group coordinator: "Consumer 1 is dead"
+          Group coordinator: reassigns partition 0 to Consumer 2
+
+  t=5:30  Consumer 2 starts processing partition 0 from last offset
+
+  t=6:00  Consumer 1 finally finishes processing events 1–500
+          Consumer 1 tries to commit offset 500 to group coordinator
+
+          Group coordinator: REJECTED ✗
+          "You are no longer part of this group"
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  Result: events 1–500 get processed TWICE               │
+  │  Consumer 1 and Consumer 2 both processed them          │
+  │                                                         │
+  │  Fix options:                                           │
+  │  ─ Increase max.poll.interval.ms for slow processors    │
+  │  ─ Reduce records fetched per poll (max.poll.records)   │
+  │  ─ Make processing faster                               │
+  └─────────────────────────────────────────────────────────┘
+
+  Full timeline:
+  ──────────────────────────────────────────────────────────
+  Consumer 1: fetch → [long processing] → commit REJECTED ✗
+                                          └─► re-joins group → gets new partition assigned
+  Consumer 2:         [reassigned] → fetch from last offset → processes again</div>
+</div>
+<div class="slide" id="s9" data-title="What Happens When a Broker Fails?">
+<h2>What Happens When a Broker Fails?</h2>
+<p>A broker failure combines both leader partition failure and follower partition failure — the controller handles everything automatically.</p>
+<div class="dia">  Setup: 3 brokers, topic with 6 partitions, replication factor 3
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Broker 1    │  Broker 2    │  Broker 3                      │
+  │  P0 leader ★ │  P1 leader ★ │  P2 leader ★                  │
+  │  P1 follower │  P2 follower │  P0 follower                   │
+  │  P2 follower │  P0 follower │  P1 follower                   │
+  └──────────────────────────────────────────────────────────────┘
+
+  Broker 1 crashes:
+  ─────────────────────────────────────────────────────────────────
+  Who detects it?  The ACTIVE CONTROLLER
+  How?             Broker 1 stops sending heartbeats to controller.
+
+  Controller's response (two actions in parallel):
+
+  ACTION 1: For each partition where Broker 1 WAS the leader:
+  ──────────────────────────────────────────────────────────
+  P0 leader was Broker 1 → pick new leader from ISR
+    ISR had [B1, B2, B3] → B1 down → pick B2
+    P0 new leader = Broker 2
+
+  ACTION 2: For each partition where Broker 1 WAS a follower:
+  ──────────────────────────────────────────────────────────
+  P1: ISR was [B1, B2, B3] → remove B1 → ISR = [B2, B3]
+  P2: ISR was [B1, B2, B3] → remove B1 → ISR = [B2, B3]
+
+  Controller updates cluster metadata and pushes to all brokers.
+
+  New state after recovery:
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Broker 1 ✗  │  Broker 2          │  Broker 3              │
+  │  (crashed)   │  P0 leader ★ (new) │  P2 leader ★           │
+  │              │  P1 leader ★       │  P1 follower           │
+  │              │  P2 follower       │  P0 follower           │
+  └──────────────────────────────────────────────────────────────┘
+
+  Impact: No data loss. Automatic recovery. Producers and consumers
+  reconnect to new leaders transparently. ✓</div>
+</div>
+<div class="slide" id="s10" data-title="All Failure Scenarios Side by Side">
+<h2>All Failure Scenarios Side by Side</h2>
+<div class="dia">  FAILURE SCENARIO SUMMARY
+  ──────────────────────────────────────────────────────────────────────
+  Failure              Detected by       Recovery mechanism
+  ───────────────────  ────────────────  ────────────────────────────────
+  Active controller    Standby ctrlrs    KRaft election → new active ctrl
+  Leader partition     Controller        New leader elected from ISR
+  Follower partition   Partition leader  Leader removes from ISR; adds back when recovered
+  Topic                N/A               Topics cannot fail — partitions fail
+  Consumer crash       Group coordinator Re-read from last committed offset (at-least-once)
+  Consumer heartbeat   Group coordinator Partition reassigned; stale commit rejected
+  timeout
+  Broker               Controller        Leader partitions: new leader elected
+                                         Follower partitions: removed from ISR
+  ──────────────────────────────────────────────────────────────────────
+
+  In every case: no manual intervention needed, cluster self-heals.</div>
+</div>
+<div class="slide" id="s11" data-title="At-Least-Once Delivery and Idempotency">
+<h2>At-Least-Once Delivery and Idempotency</h2>
+<p>Because consumers can re-process events after a crash or timeout, Kafka guarantees <strong>at-least-once</strong> delivery by default — every event is processed at least once, but possibly more.</p>
+<div class="dia">  Delivery guarantees in Kafka:
+  ─────────────────────────────────────────────────────────────────
+  at-most-once:   event may be lost, never processed twice
+                  (commit before processing — risky)
+
+  at-least-once:  event processed at least once, possibly twice  ← Kafka default
+                  (commit after processing — safe but duplicates possible)
+
+  exactly-once:   every event processed exactly once
+                  (requires Kafka transactions — more complex)
+
+  ─────────────────────────────────────────────────────────────────
+  at-least-once example (Kafka default behavior):
+
+  Fetch events 100–199
+       │
+       ▼
+  Process events 100–199
+       │
+       ▼
+  CRASH before commit              OR    Heartbeat timeout
+       │                                        │
+       ▼                                        ▼
+  Re-read from 100 again               Another consumer reads from 100
+
+  HOW TO HANDLE DUPLICATES:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  Make your processing IDEMPOTENT                            │
+  │  = running the same event twice produces the same result    │
+  │                                                             │
+  │  Example: "set user balance to $50"  ← idempotent ✓        │
+  │  Example: "add $10 to user balance"  ← NOT idempotent ✗    │
+  │           (running twice adds $20 total)                    │
+  └─────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s12" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Failure Scenario          Who Detects It            What Happens                          Impact
+────────────────────────  ────────────────────────  ────────────────────────────────────  ────────────────────────────
+Active controller crash   Standby controllers       KRaft election picks new active ctrl  None — seamless takeover
+Leader partition crash    Controller (heartbeat)    New leader elected from ISR           None — auto recovery
+Follower partition crash  Partition leader          Removed from ISR; re-added on recover None — writes continue
+Topic "failure"           N/A                       Cannot happen — topic is just a name  N/A — ask about partitions
+Consumer crash            Group coordinator         Re-reads from last committed offset   Possible duplicate processing
+Consumer heartbeat        Group coordinator         Partition reassigned; commit rejected Possible duplicate processing
+timeout (max.poll.         (after max.poll.interval.ms)  consumer re-joins with new partition
+interval.ms exceeded)
+Broker crash              Controller (heartbeat)    Leader elect + ISR update for all     None — auto recovery
+                                                    affected partitions
+
+Key configs:
+  replica.lag.time.max.ms    How long before follower is removed from ISR (default ~30s)
+  max.poll.interval.ms       How long consumer can go without heartbeat (default 5 min)
+  acks                       How many ISR confirmations producer waits for (0 / 1 / all)
+  min.insync.replicas        Minimum ISR size required for writes to succeed</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 12;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Architecture Part 3 — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

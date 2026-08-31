@@ -1,0 +1,33 @@
+A notification system sends useful messages to users through email, SMS, push notifications, and in-app messages. Think about an order confirmation, an OTP for login, a delivery update, or a marketing campaign. The hard part is not sending one message. The hard part is sending millions reliably, quickly for urgent messages, and respectfully according to user preferences.
+
+First, classify work by urgency. An OTP or suspicious-login alert is critical because the user is waiting. An order confirmation is important but can take a few seconds. A promotional campaign can wait much longer. We use separate priority lanes so a large marketing campaign never blocks a password-reset code.
+
+This is the High-Level Design, or HLD. Applications call the API Gateway. Notification Service validates the request, checks templates and preferences, and writes durable records. Kafka holds asynchronous delivery work. Workers send through email, SMS, push, or in-app providers. Postgres stores the durable state. Provider webhooks report what happened after a send attempt.
+
+Before delivery, we render the template and check consent. A template is a reusable message with placeholders such as name and order ID. The Notification Service fills placeholders with request data. Then it checks user preferences. If a user turned off promotional push messages, we skip that message. This is important: respecting preferences happens before we create provider work.
+
+At the low-level design, the controller receives the request and the service performs validation. The service creates a notification record with status PENDING and creates an outbox event in the same database transaction. An idempotency key lets the calling application safely retry a request without creating duplicate sends.
+
+The outbox pattern prevents a dangerous failure. Without it, the service could save a notification in Postgres, crash before publishing to Kafka, and silently lose the message. With the outbox pattern, the notification row and an unpublished outbox row commit together. A publisher later finds unpublished rows and keeps trying to send the event to Kafka.
+
+Kafka is the delivery buffer. It separates accepting a notification from making an external provider call. Different topics represent different priority lanes and channels. Critical SMS carries OTPs. Standard email carries order updates. Promotional push carries campaigns. Retry and dead-letter topics isolate failure work. Workers can scale per topic, so urgent work gets more processing capacity.
+
+A delivery worker reads an event, first checks idempotency, then checks the provider rate limit. This matters because SendGrid, Twilio, FCM, and APNs each limit how quickly we can call them. The worker chooses the correct provider adapter, makes the provider API call, and records the provider message identifier and current status.
+
+Provider acceptance is not the same as final delivery. After a provider accepts the request, it often sends a webhook later. For an email, that webhook can say delivered, bounced, opened, or clicked. For push, it can report a bad device token. The webhook handler verifies the provider signature and updates DeliveryStatus using the provider message ID.
+
+Failures need different handling. A timeout or provider overload may succeed later, so we retry with exponential backoff. A bad phone number or a hard email bounce is permanent, so do not waste retries. After the retry limit, place the event in a dead-letter queue. The DLQ gives operations a visible place to inspect failed messages instead of losing them.
+
+OTP uses a dedicated fast path. The service creates a short code, stores only a hash in Redis with a short TTL, and publishes an SMS event to the critical topic. It applies rate limits so an attacker cannot request unlimited codes. Fast workers process critical SMS before standard or promotional traffic.
+
+Provider adapters are the low-level design boundary for channel differences. The worker calls one ChannelProvider interface. EmailProvider translates the call to SendGrid or Amazon SES. SmsProvider calls Twilio or MSG91. PushProvider calls FCM or APNs. This makes provider failover and testing simpler because the rest of the system uses one common contract.
+
+Scheduled notifications should not occupy Kafka for hours before they are due. Store them in Postgres with a scheduled time. A scheduler finds due records and publishes them to the correct priority topic. For bulk campaigns, split recipients into batches and use low-priority workers with provider rate limits.
+
+Preference management is part of reliability and trust. Store each user's channel choices, notification-type choices, and do-not-disturb window. Cache these settings in Redis because they are checked often. When a preference changes, publish an event to invalidate stale cache entries. Never send marketing just because a stale preference was convenient.
+
+Operate the system with business metrics. Watch requests accepted, Kafka lag, worker throughput, provider latency, retry count, bounce rate, delivered rate, and DLQ volume. Kafka lag means workers cannot keep up. A provider error spike may mean an external outage. These metrics help the team distinguish a system failure from a bad template or bad recipient data.
+
+Scale each part for its own pressure. API and Notification Service scale with incoming requests. Kafka scales with partitions and consumers. Workers scale independently by priority and provider quota. Postgres scales durable write capacity. Redis handles the preference cache, OTP storage, and rate limiting. The important design principle is isolation: campaign traffic must not consume the resources reserved for critical notifications.
+
+The full production flow is simple when viewed end to end. Accept the request once. Validate the template and consent. Save the notification and outbox together. Publish asynchronous work to the correct Kafka topic. Send through an idempotent worker. Track the provider result, retry temporary failures, and make failures visible in the DLQ. This gives reliable multi-channel delivery at scale.

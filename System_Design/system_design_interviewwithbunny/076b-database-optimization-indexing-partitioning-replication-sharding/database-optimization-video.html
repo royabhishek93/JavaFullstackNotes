@@ -1,0 +1,953 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Database Optimization</title>
+<link rel="stylesheet" href="../../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Database Optimization — Indexing, Partitioning, Replication, Sharding</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+<!-- ═══════════════════════════════════════════ S1 TITLE -->
+<div class="slide active" id="s1" data-title="Database Optimization — Indexing, Partitioning, Replication, Sharding">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🗄️</div>
+  <h1 class="gradient-text">Database Optimization</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Indexing · Partitioning · Replication · Sharding — System Design Fundamentals #10</p>
+  <div class="tags" style="justify-content:center;margin-top:20px">
+    <span class="badge">🗂 B-Tree Indexing</span>
+    <span class="badge">✂️ Range / Hash Partitioning</span>
+    <span class="badge">🔄 Master-Replica</span>
+    <span class="badge">⚡ Consistent Hashing</span>
+    <span class="badge">💾 Query Optimization</span>
+    <span class="badge">🔁 Caching Patterns</span>
+    <span class="badge">🎯 Senior Interview Traps</span>
+  </div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S2 WHY IT MATTERS -->
+<div class="slide" id="s2" data-title="Why Database Optimization Matters">
+<div class="section-label">📋 Why It Matters</div>
+<h2>The Cost of Slow Queries</h2>
+<p style="margin-bottom:10px">Every growing application hits a wall — a simple database that works fine at 100 req/s starts showing cracks at 1,000 and crumbles at 2,500. Performance is a non-functional requirement that <strong>must</strong> be designed in, not bolted on.</p>
+<div class="cols2" style="margin:10px 0">
+  <div class="card red">
+    <h3>Business Impact</h3>
+    <ul>
+      <li>Slow login = user drops off immediately</li>
+      <li>Delayed writes = lost registrations &amp; revenue</li>
+      <li>Cascading timeouts = entire service down</li>
+      <li>Customer complaints spike → brand damage</li>
+    </ul>
+  </div>
+  <div class="card blue">
+    <h3>Typical Growth Pattern</h3>
+    <ul>
+      <li><span class="gr">100 req/s</span> — default DB, zero tuning</li>
+      <li><span class="hl">1,000 req/s</span> — small lag appears</li>
+      <li><span class="or">1,500 req/s</span> — users complain</li>
+      <li><span class="rd">2,500 req/s</span> — system needs re-arch</li>
+    </ul>
+  </div>
+</div>
+<div class="info">The <strong>6-step optimization ladder</strong> (in order): Query Tuning → Indexing → Vertical Scaling → Read Replication → Partitioning → Sharding. Never jump straight to sharding — exhaust simpler options first.</div>
+<div class="cols3" style="margin-top:10px">
+  <div class="stat"><div class="val bl">80%</div><div class="lbl">Reads (typical app)</div></div>
+  <div class="stat"><div class="val pu">20%</div><div class="lbl">Writes (typical app)</div></div>
+  <div class="stat"><div class="val gr">O(log n)</div><div class="lbl">Index read cost</div></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S3 B-TREE INTERNALS -->
+<div class="slide" id="s3" data-title="B-Tree Index Internals">
+<div class="section-label">🗂 Indexing</div>
+<h2>B-Tree Index Internals</h2>
+<p style="margin-bottom:8px">Indexing transforms a full-table scan — O(n) linear search — into a B-Tree traversal at <strong>O(log n)</strong>. Think of it like the index at the back of a book: you look up a keyword to find the page, not scan every page.</p>
+<div class="dia">  B-Tree on <span class="kw">users.email</span> (1,000 rows shown)
+
+  Root ──────────────────────────────────────
+  │                 [1 .. 1000]              │
+  └──────────────────────────────────────────┘
+           ┌──────────────┴──────────────┐
+     [1..500]                       [501..1000]
+       ┌──────┴──────┐           ┌──────┴──────┐
+  [1..250]     [251..500]   [501..750]    [751..1000]
+       │             │           │              │
+  leaf pages    leaf pages  leaf pages    leaf pages
+  (row ptrs)    (row ptrs)  (row ptrs)    (row ptrs)
+
+  Looking up user_id=376:
+    Root → [1..500]  →  [251..500]  →  leaf  →  row
+    3 comparisons vs 1,000 linear scans  ✓</div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card green">
+    <h3>What Indexing Improves</h3>
+    <ul>
+      <li>Read latency: O(n) → O(log n)</li>
+      <li>Range scans via sorted leaf pages</li>
+      <li>JOIN performance on FK columns</li>
+      <li>ORDER BY / GROUP BY if index covers sort key</li>
+    </ul>
+  </div>
+  <div class="card red">
+    <h3>Write Overhead Added</h3>
+    <ul>
+      <li>Every INSERT / UPDATE / DELETE must rebalance the tree</li>
+      <li>More indexes = higher write latency</li>
+      <li>Extra disk I/O and memory for index pages</li>
+      <li>Bulk loads slow significantly with many indexes</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S4 INDEX TYPES -->
+<div class="slide" id="s4" data-title="Index Types: Composite, Covering, Partial, Hash">
+<div class="section-label">🗂 Indexing</div>
+<h2>Index Types</h2>
+<div class="cols2" style="margin-bottom:8px">
+  <div class="card blue">
+    <h3>Composite Index</h3>
+    <p>Index on multiple columns — <em>column order matters</em>. Follows <strong>left-prefix rule</strong>: an index on (a, b, c) serves queries on a, (a,b), (a,b,c) but NOT on (b) alone.</p>
+    <div class="dia" style="margin-top:6px"><span class="kw">CREATE INDEX</span> idx_user_country_age
+  <span class="kw">ON</span> users(country, age);
+<span class="cm">-- Uses index:</span>
+<span class="kw">WHERE</span> country=<span class="str">'IN'</span> <span class="kw">AND</span> age &gt; <span class="num">25</span>
+<span class="cm">-- Skips index:</span>
+<span class="kw">WHERE</span> age &gt; <span class="num">25</span>  <span class="cm">-- no left prefix</span></div>
+  </div>
+  <div class="card cyan">
+    <h3>Covering Index</h3>
+    <p>Index contains <em>all columns</em> the query needs — DB never touches the main table. Eliminates the "heap fetch" step entirely.</p>
+    <div class="dia" style="margin-top:6px"><span class="kw">CREATE INDEX</span> idx_cover
+  <span class="kw">ON</span> users(email) <span class="kw">INCLUDE</span> (name, avatar);
+<span class="cm">-- Query answered from index only:</span>
+<span class="kw">SELECT</span> name, avatar
+<span class="kw">FROM</span>  users <span class="kw">WHERE</span> email=<span class="str">'x@y.com'</span></div>
+  </div>
+</div>
+<div class="cols2">
+  <div class="card yellow">
+    <h3>Partial Index</h3>
+    <p>Index only a <em>subset of rows</em> matching a predicate. Smaller, faster, avoids indexing NULL or inactive data.</p>
+    <div class="dia" style="margin-top:6px"><span class="kw">CREATE INDEX</span> idx_active_users
+  <span class="kw">ON</span> users(email)
+  <span class="kw">WHERE</span> status = <span class="str">'active'</span>;
+<span class="cm">-- 90% of rows are inactive → tiny index</span></div>
+  </div>
+  <div class="card purple">
+    <h3>Hash Index</h3>
+    <p>O(1) exact-match lookup but <strong>cannot</strong> do range scans or ORDER BY. Ideal for equality filters on UUID / token columns.</p>
+    <div class="dia" style="margin-top:6px"><span class="kw">CREATE INDEX</span> idx_token
+  <span class="kw">ON</span> sessions <span class="kw">USING</span> hash(token);
+<span class="cm">-- Perfect: WHERE token = $1</span>
+<span class="cm">-- Useless: WHERE token &gt; $1</span></div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S5 WHEN NOT TO INDEX -->
+<div class="slide" id="s5" data-title="When NOT to Index">
+<div class="section-label">🗂 Indexing</div>
+<h2>When NOT to Index</h2>
+<p style="margin-bottom:10px">Indexes are not free. Over-indexing is a common anti-pattern that quietly degrades write-heavy services and wastes storage.</p>
+<div class="warn">Rule of thumb: Do NOT index a column if the query touches more than <strong>~10–15% of table rows</strong>. A full scan can be faster than random index lookups in that case (index selectivity too low).</div>
+<table class="tbl" style="margin:10px 0">
+  <tr><th>Scenario</th><th>Why indexing hurts</th></tr>
+  <tr><td><span class="rd">Low-cardinality columns</span> (e.g., status ENUM with 3 values)</td><td>Index selectivity near zero — DB skips it and scans anyway</td></tr>
+  <tr><td><span class="rd">Write-heavy tables</span> (event logs, audit trails)</td><td>Every insert rebuilds index pages; throughput tanks</td></tr>
+  <tr><td><span class="rd">Small tables</span> (under a few thousand rows)</td><td>Full scan costs less than B-Tree traversal + heap fetch</td></tr>
+  <tr><td><span class="rd">Rarely queried columns</span></td><td>Index maintains itself for zero payoff</td></tr>
+  <tr><td><span class="rd">Too many indexes on one table</span></td><td>Each UPDATE re-indexes all N indexes; latency multiplies</td></tr>
+  <tr><td><span class="rd">Columns with frequent bulk updates</span></td><td>Fragmentation forces periodic REINDEX/VACUUM</td></tr>
+</table>
+<div class="tip">Interview answer: "I monitor <strong>pg_stat_user_indexes</strong> (Postgres) or <strong>sys.dm_db_index_usage_stats</strong> (SQL Server) for zero-scan indexes and drop unused ones as part of routine maintenance."</div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card green"><h3>Good Candidates</h3><ul><li>Primary keys (auto-indexed)</li><li>Foreign keys used in JOINs</li><li>High-cardinality WHERE columns (email, UUID)</li><li>Columns in ORDER BY + LIMIT queries</li></ul></div>
+  <div class="card red"><h3>Poor Candidates</h3><ul><li>Boolean flags (true/false only)</li><li>Status columns (pending/active/done)</li><li>Gender, country on small tables</li><li>Columns never in WHERE / JOIN / ORDER BY</li></ul></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S6 EXPLAIN PLAN -->
+<div class="slide" id="s6" data-title="Reading EXPLAIN Query Plans">
+<div class="section-label">🗂 Indexing</div>
+<h2>Reading EXPLAIN Query Plans</h2>
+<p style="margin-bottom:8px"><strong>EXPLAIN ANALYZE</strong> shows the execution plan the query planner chose and the actual runtime stats. Knowing how to read it is a senior-engineer skill tested in interviews.</p>
+<div class="dia">  <span class="cm">-- Postgres: run this to see actual stats</span>
+  <span class="kw">EXPLAIN ANALYZE</span>
+  <span class="kw">SELECT</span> name, email <span class="kw">FROM</span> users <span class="kw">WHERE</span> email = <span class="str">'a@b.com'</span>;
+
+  <span class="cm">-- BAD output (no index):</span>
+  Seq Scan on users  (cost=<span class="num">0.00</span>..<span class="num">18450.00</span> rows=<span class="num">1</span> width=<span class="num">36</span>)
+                     (actual time=<span class="num">23.4</span>..<span class="num">89.2</span> ms rows=<span class="num">1</span>)
+    Filter: (email = <span class="str">'a@b.com'</span>)
+    Rows Removed by Filter: <span class="num">999999</span>
+
+  <span class="cm">-- GOOD output (with index):</span>
+  Index Scan using idx_users_email on users
+                     (cost=<span class="num">0.43</span>..<span class="num">8.45</span> rows=<span class="num">1</span> width=<span class="num">36</span>)
+                     (actual time=<span class="num">0.08</span>..<span class="num">0.09</span> ms rows=<span class="num">1</span>)
+    Index Cond: (email = <span class="str">'a@b.com'</span>)</div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card red">
+    <h3>Red Flags in EXPLAIN</h3>
+    <ul>
+      <li><strong>Seq Scan</strong> on large tables — missing index</li>
+      <li><strong>Hash Join</strong> with high cost — missing FK index</li>
+      <li><strong>Rows Removed by Filter</strong> very high — low selectivity</li>
+      <li><strong>Sort</strong> node — missing ORDER BY index</li>
+      <li>Estimated rows ≠ actual rows — stale statistics, run ANALYZE</li>
+    </ul>
+  </div>
+  <div class="card green">
+    <h3>Green Flags in EXPLAIN</h3>
+    <ul>
+      <li><strong>Index Scan</strong> / <strong>Index Only Scan</strong> — index used</li>
+      <li>Low actual time (<1 ms for point lookups)</li>
+      <li>Rows estimate close to actual — fresh statistics</li>
+      <li><strong>Nested Loop</strong> on small inner sets — optimal JOIN</li>
+      <li>cost estimates low and proportional to result set</li>
+    </ul>
+  </div>
+</div>
+<div class="tip">Run <strong>ANALYZE &lt;table&gt;</strong> when query planner makes poor choices — stale statistics cause wrong plan selection.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S7 H vs V PARTITIONING -->
+<div class="slide" id="s7" data-title="Horizontal vs Vertical Partitioning">
+<div class="section-label">✂️ Partitioning</div>
+<h2>Horizontal vs Vertical Partitioning</h2>
+<p style="margin-bottom:8px">Partitioning logically splits a table into smaller chunks so queries scan less data. Unlike replication (which copies everything), partitioning <em>distributes</em> data — each record lives in exactly one partition.</p>
+<div class="cols2" style="margin:8px 0">
+  <div class="card blue">
+    <h3>Horizontal Partitioning (Row-based)</h3>
+    <p>Split rows across partitions using a <strong>partition key</strong>. The schema stays the same in each partition — only the data differs.</p>
+    <div class="dia" style="margin-top:6px">  users table (10M rows total)
+
+  Partition 1: users_a_e  (rows A–E emails)
+  Partition 2: users_f_m  (rows F–M emails)
+  Partition 3: users_n_z  (rows N–Z emails)
+
+  <span class="cm">-- Query only scans one partition:</span>
+  <span class="kw">WHERE</span> email <span class="kw">LIKE</span> <span class="str">'g%'</span>  → Partition 2 only</div>
+  </div>
+  <div class="card purple">
+    <h3>Vertical Partitioning (Column-based)</h3>
+    <p>Split columns into separate tables. Hot columns (frequently read) stay in the main table; cold/large columns move to a separate table joined on PK.</p>
+    <div class="dia" style="margin-top:6px">  <span class="cm">-- Before: one fat table</span>
+  users(id, email, name, avatar_blob,
+        bio_text, preferences_json)
+
+  <span class="cm">-- After: hot + cold split</span>
+  users_core(id, email, name)      <span class="cm">-- hot</span>
+  users_profile(user_id, avatar_blob,
+    bio_text, preferences_json)    <span class="cm">-- cold</span></div>
+  </div>
+</div>
+<div class="info">In system design interviews, "partitioning" almost always means <strong>horizontal partitioning</strong>. Vertical partitioning is more of a schema normalization technique.</div>
+<div class="tip">Key difference from replication: partitioning reduces data per node — replication copies the same data to all replicas. Partitioning improves search cost; replication improves read throughput and availability.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S8 PARTITION STRATEGIES -->
+<div class="slide" id="s8" data-title="Partition Strategies: Range, Hash, List">
+<div class="section-label">✂️ Partitioning</div>
+<h2>Partition Strategies</h2>
+<div class="cols2" style="margin-bottom:8px">
+  <div class="card blue">
+    <h3>Range Partitioning</h3>
+    <p>Rows go into partitions based on a value falling within a contiguous range. Natural for <strong>time-series</strong> and date-based data.</p>
+    <div class="dia" style="margin-top:6px"><span class="kw">PARTITION BY RANGE</span>(created_at):
+  orders_2023: Jan–Dec 2023
+  orders_2024: Jan–Dec 2024
+  orders_2025: Jan–Dec 2025
+
+<span class="cm">-- Range scan on current month only:</span>
+<span class="kw">WHERE</span> created_at &gt;= <span class="str">'2025-01-01'</span>
+  → touches orders_2025 only  ✓</div>
+    <p style="margin-top:5px"><strong>Watch out:</strong> Hot partition problem — all writes go to the current partition.</p>
+  </div>
+  <div class="card cyan">
+    <h3>Hash Partitioning</h3>
+    <p>Apply a hash function to the partition key and assign to a bucket. Distributes data <strong>evenly</strong> — good for preventing hotspots.</p>
+    <div class="dia" style="margin-top:6px"><span class="kw">PARTITION BY HASH</span>(user_id) <span class="kw">PARTITIONS</span> <span class="num">8</span>;
+
+  hash(user_id) % 8 = 0 → shard_0
+  hash(user_id) % 8 = 1 → shard_1
+  ...
+  hash(user_id) % 8 = 7 → shard_7
+
+<span class="cm">-- Lookup goes to exactly one partition:</span>
+<span class="kw">WHERE</span> user_id = <span class="num">123456</span>  → shard_2 only</div>
+  </div>
+</div>
+<div class="card yellow" style="margin-bottom:8px">
+  <h3>List Partitioning</h3>
+  <p>Rows are assigned to a partition based on an explicit list of values. Best for <strong>geographic or categorical</strong> data with a known, finite set.</p>
+  <div class="dia" style="margin-top:6px"><span class="kw">PARTITION BY LIST</span>(country):
+  partition_apac:  <span class="kw">IN</span> (<span class="str">'IN'</span>, <span class="str">'JP'</span>, <span class="str">'SG'</span>, <span class="str">'AU'</span>)
+  partition_emea:  <span class="kw">IN</span> (<span class="str">'GB'</span>, <span class="str">'DE'</span>, <span class="str">'FR'</span>, <span class="str">'AE'</span>)
+  partition_amer:  <span class="kw">IN</span> (<span class="str">'US'</span>, <span class="str">'CA'</span>, <span class="str">'BR'</span>, <span class="str">'MX'</span>)</div>
+</div>
+<div class="warn">Choosing the <em>wrong</em> partition key degrades performance instead of improving it. Always ask: "What column appears in the WHERE clause of the most-frequent queries?"</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S9 PARTITION PRUNING -->
+<div class="slide" id="s9" data-title="Partition Pruning">
+<div class="section-label">✂️ Partitioning</div>
+<h2>Partition Pruning</h2>
+<p style="margin-bottom:8px">Partition pruning is the query planner's ability to <em>skip irrelevant partitions entirely</em> and only scan partitions that can contain matching rows. This is what makes partitioning fast.</p>
+<div class="dia">  Table: orders partitioned by RANGE(year)
+  Partitions: p_2022, p_2023, p_2024, p_2025
+
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> year = <span class="num">2024</span>;
+
+  <span class="cm">-- Planner PRUNES: p_2022, p_2023, p_2025</span>
+  <span class="cm">-- Planner SCANS:  p_2024 only  (25% of data)</span>
+
+  <span class="cm">-- Bad query — prevents pruning:</span>
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> YEAR(created_at)=<span class="num">2024</span>
+  <span class="cm">-- Function wrapping breaks partition pruning!</span>
+  <span class="cm">-- All partitions scanned → no benefit</span></div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card green">
+    <h3>What Enables Pruning</h3>
+    <ul>
+      <li>WHERE clause directly compares the partition key</li>
+      <li>Literal values or bind parameters (not functions)</li>
+      <li>Range predicates on range-partitioned tables</li>
+      <li>Equality predicates on hash/list partitions</li>
+    </ul>
+  </div>
+  <div class="card red">
+    <h3>What Breaks Pruning</h3>
+    <ul>
+      <li>Wrapping partition key in a function: <code>YEAR(date)</code>, <code>LOWER(email)</code></li>
+      <li>Implicit type cast on the partition key</li>
+      <li>Using a non-partition column in the WHERE clause only</li>
+      <li>OR conditions that span all partitions</li>
+    </ul>
+  </div>
+</div>
+<div class="tip">Interview tip: "Partition pruning only works when the query's WHERE clause directly filters on the partition key without any function transformation — I always store dates as DATE type and query them as dates, not via YEAR() functions."</div>
+<div class="info">Postgres calls this "constraint exclusion" for static partitions and "partition pruning" for native declarative partitions. Check via <strong>EXPLAIN</strong> — pruned partitions do not appear in the plan.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S10 MASTER-REPLICA -->
+<div class="slide" id="s10" data-title="Master-Replica Replication">
+<div class="section-label">🔄 Replication</div>
+<h2>Master-Replica Replication</h2>
+<p style="margin-bottom:8px">When 80% of your traffic is reads, replication is the highest-leverage optimization. Separate read traffic from write traffic by introducing dedicated read replicas.</p>
+<div class="dia">  User Onboarding Service
+         │
+         ├── Registration (WRITE) ──────► Master DB
+         │                                   │
+         └── Login / Profile (READ) ──► Load  │  async replication
+                                      Balancer │  ────────────────►
+                                          │   ▼
+                                      ┌───────────┐
+                                      │ Replica 1 │  1,000 read req/s
+                                      ├───────────┤
+                                      │ Replica 2 │  1,000 read req/s
+                                      └───────────┘
+  Total capacity: 1,000 writes/s + 2,000 reads/s</div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card green">
+    <h3>Benefits</h3>
+    <ul>
+      <li>Read throughput scales linearly with replica count</li>
+      <li>Master not burdened by heavy analytical queries</li>
+      <li>Replicas double as hot standbys for failover</li>
+      <li>Increased data durability — data on multiple nodes</li>
+    </ul>
+  </div>
+  <div class="card yellow">
+    <h3>Replication Modes</h3>
+    <ul>
+      <li><strong>Async (default):</strong> Master acks write before replica confirms. Fast but eventual consistency.</li>
+      <li><strong>Semi-sync:</strong> At least one replica acknowledges before master acks. Balance of speed + durability.</li>
+      <li><strong>Sync:</strong> All replicas must confirm. Zero lag but slow writes.</li>
+    </ul>
+  </div>
+</div>
+<div class="info">Added bonus: replication gives you <strong>high availability</strong>. If one replica fails, others serve reads. If master fails, a replica is promoted. You get both scale and resilience from one architectural move.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S11 REPLICATION LAG -->
+<div class="slide" id="s11" data-title="Replication Lag & Read-Your-Writes Problem">
+<div class="section-label">🔄 Replication</div>
+<h2>Replication Lag + Read-Your-Writes Problem</h2>
+<p style="margin-bottom:8px">Async replication introduces a window of inconsistency. A user writes to the master, then immediately reads from a replica that hasn't yet received the update — they see stale data.</p>
+<div class="dia">  t=0ms:  User updates profile photo
+          → Write sent to Master ✓
+
+  t=5ms:  User reloads profile page
+          → Read routed to Replica
+          → Replica not yet synced!
+          → User still sees old photo  ✗
+
+  t=50ms: Replica catches up
+          → User now sees new photo ✓
+
+  <span class="cm">This window (0–50ms) is "replication lag"</span></div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card red">
+    <h3>Read-Your-Writes Violation</h3>
+    <p>A user cannot see their own recent write when immediately reading from a lagging replica. Classic symptom: "I just updated my bio but it shows the old text."</p>
+  </div>
+  <div class="card green">
+    <h3>Solutions</h3>
+    <ul>
+      <li><strong>Sticky routing:</strong> Send a user's reads to master for N seconds after a write</li>
+      <li><strong>Write-then-read to master:</strong> Route reads to master for the writing user</li>
+      <li><strong>Read your write token:</strong> Client passes last-write LSN; replica serves only if caught up</li>
+      <li><strong>Sync replication:</strong> Zero lag but higher write latency</li>
+    </ul>
+  </div>
+</div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card blue">
+    <h3>Monotonic Read Consistency</h3>
+    <p>Related problem: a user refreshing sees data go <em>backwards</em> if routed to different replicas at different lag levels. Solution: pin a user's session to one replica.</p>
+  </div>
+  <div class="card yellow">
+    <h3>Monitoring Lag</h3>
+    <p>Postgres: <code>SELECT * FROM pg_stat_replication;</code><br>MySQL: <code>SHOW SLAVE STATUS\G</code><br>Alert when <strong>Seconds_Behind_Master > 5s</strong>.</p>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S12 MULTI-MASTER -->
+<div class="slide" id="s12" data-title="Multi-Master Replication Trade-offs">
+<div class="section-label">🔄 Replication</div>
+<h2>Multi-Master Replication Trade-offs</h2>
+<p style="margin-bottom:8px">Multi-master (active-active) allows writes to go to any node. Solves write-scalability and geo-redundancy but introduces the hardest problem in distributed systems: <strong>write conflict resolution</strong>.</p>
+<div class="cols2" style="margin:8px 0">
+  <div class="card blue">
+    <h3>Single-Master (Standard)</h3>
+    <ul>
+      <li>All writes to one node — no conflicts possible</li>
+      <li>Simple operational model</li>
+      <li>Write throughput limited to one machine</li>
+      <li>Master failure requires promotion of replica</li>
+      <li>Best for: most OLTP applications</li>
+    </ul>
+  </div>
+  <div class="card purple">
+    <h3>Multi-Master</h3>
+    <ul>
+      <li>Writes accepted on any node — higher write throughput</li>
+      <li>Works across geo-regions (low-latency local writes)</li>
+      <li>Conflict resolution required (last-write-wins, CRDTs, manual)</li>
+      <li>Complex failover and split-brain risk</li>
+      <li>Best for: global apps, collaborative editing</li>
+    </ul>
+  </div>
+</div>
+<div class="warn">Conflict scenario: User A in Mumbai and User B in London both update the same row at the same millisecond. Both masters accept the write. Now they must reconcile — which value wins?</div>
+<div class="cols3" style="margin-top:8px">
+  <div class="card green"><h3>Last Write Wins (LWW)</h3><p>Higher timestamp wins. Simple but can discard valid concurrent writes. Used by Cassandra.</p></div>
+  <div class="card cyan"><h3>CRDTs</h3><p>Data structures that always merge correctly (e.g., counters, sets). Used by Redis, Riak. No conflicts by design.</p></div>
+  <div class="card yellow"><h3>Application Merge</h3><p>Push conflict to application layer. E.g., Google Docs uses OT/CRDT to merge concurrent edits.</p></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S13 SHARDING STRATEGIES -->
+<div class="slide" id="s13" data-title="Sharding Strategies: Range, Hash, Consistent Hashing">
+<div class="section-label">⚡ Sharding</div>
+<h2>Sharding Strategies</h2>
+<p style="margin-bottom:8px">Sharding = splitting data AND infrastructure across multiple database <em>servers</em>. Unlike partitioning (multiple partitions on one server), each shard is a separate physical node.</p>
+<div class="cols2" style="margin-bottom:8px">
+  <div class="card blue">
+    <h3>Range Sharding</h3>
+    <div class="dia" style="margin-top:5px">  Shard 1: user_id  1 – 1,000,000
+  Shard 2: user_id  1M – 2,000,000
+  Shard 3: user_id  2M – 3,000,000
+
+<span class="cm">+ Simple range scans</span>
+<span class="cm">- Hotspot: new users always hit Shard N</span></div>
+  </div>
+  <div class="card cyan">
+    <h3>Hash Sharding</h3>
+    <div class="dia" style="margin-top:5px">  shard = hash(user_id) % N
+
+  N=4 shards:
+  user_id=101 → hash % 4 = 1 → Shard 1
+  user_id=205 → hash % 4 = 3 → Shard 3
+
+<span class="cm">+ Even distribution, no hotspot</span>
+<span class="cm">- Re-sharding requires remapping ALL keys</span></div>
+  </div>
+</div>
+<div class="card purple" style="margin-bottom:8px">
+  <h3>Consistent Hashing (Production Choice)</h3>
+  <p>Place shards on a ring (0–2³²). Each key maps to the next clockwise shard. Adding/removing a shard only remaps ~1/N of keys instead of all of them.</p>
+  <div class="dia" style="margin-top:6px">           0
+        ┌────┐
+    270 │    │ 90       Shards: A(0°), B(90°), C(180°), D(270°)
+        └────┘
+          180
+
+  key_hash=50°  → Shard B (next clockwise from 50°)
+  key_hash=200° → Shard D
+
+  Add Shard E at 135°: only keys 90°–135° remapped
+  → 1/4 of data moves instead of everything  ✓</div>
+</div>
+<div class="tip">Interview: "I'd choose consistent hashing for any production sharding setup because it minimises data movement during topology changes — critical for zero-downtime scaling."</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S14 SHARD KEY PITFALLS -->
+<div class="slide" id="s14" data-title="Shard Key Selection Pitfalls">
+<div class="section-label">⚡ Sharding</div>
+<h2>Shard Key Selection Pitfalls</h2>
+<p style="margin-bottom:8px">The shard key is the most critical decision in any sharding design. A wrong choice causes hotspots, cross-shard queries, and re-sharding pain that is almost impossible to fix without downtime.</p>
+<table class="tbl" style="margin:8px 0">
+  <tr><th>Pitfall</th><th>Example</th><th>Impact</th></tr>
+  <tr><td><span class="rd">Hotspot shard</span></td><td>Shard by <code>created_at</code> range — all new writes go to latest shard</td><td>One shard overwhelmed; others idle</td></tr>
+  <tr><td><span class="rd">Low cardinality key</span></td><td>Shard by <code>country</code> with only 5 countries</td><td>Uneven distribution; can't add more shards</td></tr>
+  <tr><td><span class="rd">Cross-shard queries</span></td><td>Shard by <code>user_id</code> but query by <code>email</code></td><td>Scatter-gather across all shards — slow</td></tr>
+  <tr><td><span class="rd">Changing key</span></td><td>Shard by mutable attribute (e.g., user's city)</td><td>Row must move shards on update</td></tr>
+  <tr><td><span class="rd">No monotonic IDs</span></td><td>Shard by auto-increment PK with range sharding</td><td>New rows always go to last shard</td></tr>
+</table>
+<div class="cols2" style="margin-top:8px">
+  <div class="card green">
+    <h3>Good Shard Key Properties</h3>
+    <ul>
+      <li><strong>High cardinality</strong> — enough distinct values for even distribution</li>
+      <li><strong>Immutable</strong> — value never changes after insert</li>
+      <li><strong>Present in most queries</strong> — avoids cross-shard scatter</li>
+      <li><strong>Uniform write distribution</strong> — not time-monotonic</li>
+    </ul>
+  </div>
+  <div class="card blue">
+    <h3>Common Good Choices</h3>
+    <ul>
+      <li><strong>user_id (UUID)</strong> — high cardinality, immutable, in most queries</li>
+      <li><strong>tenant_id</strong> — SaaS apps, isolates tenants cleanly</li>
+      <li><strong>order_id (hash)</strong> — uniform distribution on e-commerce</li>
+      <li><strong>hashed timestamp bucket</strong> — spread time-based load</li>
+    </ul>
+  </div>
+</div>
+<div class="warn">Scatter-gather: if a query has no shard key in the WHERE clause, the database must query ALL shards and merge results. At scale this is O(N × query cost) — catastrophically slow.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S15 CONNECTION POOLING -->
+<div class="slide" id="s15" data-title="Connection Pooling">
+<div class="section-label">⚙️ Optimizations</div>
+<h2>Connection Pooling</h2>
+<p style="margin-bottom:8px">Opening a new DB connection is expensive — TCP handshake, TLS, auth, and session setup can take 5–50ms. At high throughput, establishing fresh connections per request wastes more time than the query itself.</p>
+<div class="dia">  Without Pooling (naïve):
+  Request → [open conn 20ms] → [query 1ms] → [close conn] → Response
+  Effective query time: 21ms  ✗
+
+  With Pooling (PgBouncer / HikariCP):
+  Request → [borrow idle conn 0.1ms] → [query 1ms] → [return conn] → Response
+  Effective query time: 1.1ms  ✓
+
+  Pool state:
+  ┌────────────────────────────────────┐
+  │  [conn1:idle] [conn2:busy] [conn3:idle] │
+  │  [conn4:idle] [conn5:busy]          │
+  │  Min: 5    Max: 20    Current: 5   │
+  └────────────────────────────────────┘</div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card blue">
+    <h3>Pool Sizing Formula</h3>
+    <p>Too small → requests queue. Too large → DB overwhelmed with context switches.</p>
+    <div class="dia" style="margin-top:5px">  pool_size ≈ num_cores × 2 + effective_spindle_count
+  <span class="cm">-- HikariCP recommendation:</span>
+  <span class="cm">-- For 4-core DB: pool ~9–10 connections</span>
+  <span class="cm">-- Not 100+ connections as many apps do!</span></div>
+  </div>
+  <div class="card cyan">
+    <h3>Popular Poolers</h3>
+    <ul>
+      <li><strong>PgBouncer</strong> — Postgres, lightweight, session/transaction/statement modes</li>
+      <li><strong>HikariCP</strong> — JVM apps (Spring Boot default), ultra-fast</li>
+      <li><strong>c3p0 / DBCP</strong> — legacy Java, still used</li>
+      <li><strong>RDS Proxy</strong> — AWS managed pooler for RDS/Aurora</li>
+    </ul>
+  </div>
+</div>
+<div class="tip">Interview: "I size connection pools using the HikariCP formula and set <strong>connectionTimeout</strong> to fail fast rather than queue indefinitely — queuing masks overload problems."</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S16 N+1 PROBLEM -->
+<div class="slide" id="s16" data-title="N+1 Query Problem and Solutions">
+<div class="section-label">⚙️ Optimizations</div>
+<h2>N+1 Query Problem &amp; Solutions</h2>
+<p style="margin-bottom:8px">The N+1 problem is one of the most common performance killers in ORM-backed applications. It occurs when fetching N parent records and then issuing N separate queries to fetch their related children.</p>
+<div class="dia">  <span class="cm">-- The problem: fetching 100 users with their orders</span>
+  <span class="cm">-- ORM generates:</span>
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> users;                       <span class="cm">-- 1 query</span>
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> user_id = <span class="num">1</span>;   <span class="cm">-- query 2</span>
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> user_id = <span class="num">2</span>;   <span class="cm">-- query 3</span>
+  ...
+  <span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">WHERE</span> user_id = <span class="num">100</span>;  <span class="cm">-- query 101</span>
+  <span class="cm">-- 101 round-trips to DB for 100 users!</span>
+
+  <span class="cm">-- The fix: JOIN or eager-load in one shot</span>
+  <span class="kw">SELECT</span> u.*, o.*
+  <span class="kw">FROM</span>  users u
+  <span class="kw">JOIN</span>  orders o <span class="kw">ON</span> o.user_id = u.id
+  <span class="kw">WHERE</span> u.id <span class="kw">IN</span> (<span class="num">1</span>, <span class="num">2</span>, ..., <span class="num">100</span>);  <span class="cm">-- 1 query  ✓</span></div>
+<div class="cols2" style="margin-top:8px">
+  <div class="card green">
+    <h3>Solutions</h3>
+    <ul>
+      <li><strong>Eager loading:</strong> <code>User.includes(:orders)</code> in ActiveRecord, <code>@EntityGraph</code> in JPA</li>
+      <li><strong>Batch loading:</strong> DataLoader pattern — collect all IDs, fire one IN query</li>
+      <li><strong>JOIN query:</strong> Write the JOIN explicitly for complex cases</li>
+      <li><strong>GraphQL DataLoader:</strong> Batches N+1 at the resolver layer</li>
+    </ul>
+  </div>
+  <div class="card yellow">
+    <h3>Detection</h3>
+    <ul>
+      <li>Enable query logging and look for identical queries with different IDs</li>
+      <li>Use <strong>Bullet gem</strong> (Rails) or <strong>Hibernate statistics</strong></li>
+      <li>APM tools (Datadog, New Relic) flag N+1 automatically</li>
+      <li>Count DB round-trips per API call in load tests</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S17 CACHING PATTERNS -->
+<div class="slide" id="s17" data-title="Caching Patterns: Read-Through, Write-Through, Write-Behind">
+<div class="section-label">⚙️ Optimizations</div>
+<h2>Caching Patterns</h2>
+<p style="margin-bottom:8px">Caching reduces DB load by serving repeated reads from memory. The pattern you choose determines consistency guarantees and write behaviour.</p>
+<div class="cols2" style="margin-bottom:8px">
+  <div class="card blue">
+    <h3>Read-Through (Cache-Aside)</h3>
+    <div class="dia" style="margin-top:5px">  Read request:
+  App → Cache HIT? → return data  ✓
+  App → Cache MISS → DB → populate cache → return
+  <span class="cm">-- App manages cache population</span>
+  <span class="cm">-- Lazy loading: only cache what's needed</span>
+  <span class="cm">-- Risk: cache stampede on cold start</span></div>
+  </div>
+  <div class="card green">
+    <h3>Write-Through</h3>
+    <div class="dia" style="margin-top:5px">  Write request:
+  App → Cache → DB (synchronous)
+  <span class="cm">-- Both updated in same transaction</span>
+  <span class="cm">-- Strong consistency: cache never stale</span>
+  <span class="cm">-- Slower writes (2 ops per write)</span>
+  <span class="cm">-- Cache may hold rarely-read data</span></div>
+  </div>
+</div>
+<div class="cols2">
+  <div class="card yellow">
+    <h3>Write-Behind (Write-Back)</h3>
+    <div class="dia" style="margin-top:5px">  Write request:
+  App → Cache (return immediately)
+          ↓ async (batched later)
+         DB
+  <span class="cm">-- Fastest writes (acknowledge immediately)</span>
+  <span class="cm">-- Risk: data loss if cache crashes</span>
+  <span class="cm">-- Use for: high-write, loss-tolerant data</span></div>
+  </div>
+  <div class="card red">
+    <h3>Cache Invalidation Strategies</h3>
+    <ul>
+      <li><strong>TTL (Time-To-Live)</strong> — expire after fixed time</li>
+      <li><strong>Event-driven</strong> — invalidate on DB update event</li>
+      <li><strong>Version tags</strong> — cache key includes version number</li>
+      <li><strong>LRU eviction</strong> — least-recently-used evicted first</li>
+    </ul>
+    <p style="margin-top:5px"><em>"There are only two hard things in CS: cache invalidation and naming things."</em></p>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S18 QUERY OPTIMIZATION -->
+<div class="slide" id="s18" data-title="Query Optimization Patterns">
+<div class="section-label">⚙️ Optimizations</div>
+<h2>Query Optimization Patterns</h2>
+<p style="margin-bottom:8px">Query optimization is always the first step — cheapest to implement, no infrastructure changes needed. Poor queries can negate the benefit of indexes, partitioning, and even sharding.</p>
+<div class="cols2" style="margin-bottom:8px">
+  <div class="card red">
+    <h3>Anti-Patterns to Avoid</h3>
+    <div class="dia" style="margin-top:5px"><span class="cm">-- 1. SELECT * (fetches unused columns)</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> users <span class="kw">WHERE</span> email=<span class="str">'a@b.com'</span>
+
+<span class="cm">-- 2. Functions on indexed columns</span>
+<span class="kw">WHERE</span> LOWER(email) = <span class="str">'a@b.com'</span>  <span class="cm">← breaks index</span>
+
+<span class="cm">-- 3. LIKE with leading wildcard</span>
+<span class="kw">WHERE</span> name <span class="kw">LIKE</span> <span class="str">'%john%'</span>  <span class="cm">← full scan</span>
+
+<span class="cm">-- 4. Implicit type cast</span>
+<span class="kw">WHERE</span> user_id = <span class="str">'12345'</span>  <span class="cm">← cast breaks index</span></div>
+  </div>
+  <div class="card green">
+    <h3>Optimized Equivalents</h3>
+    <div class="dia" style="margin-top:5px"><span class="cm">-- 1. Select only needed columns</span>
+<span class="kw">SELECT</span> name, avatar <span class="kw">FROM</span> users <span class="kw">WHERE</span> email=<span class="str">'a@b.com'</span>
+
+<span class="cm">-- 2. Store email lowercase at insert time</span>
+<span class="kw">WHERE</span> email = <span class="str">'a@b.com'</span>  <span class="cm">← uses index  ✓</span>
+
+<span class="cm">-- 3. Full-text search for substring matches</span>
+<span class="kw">WHERE</span> to_tsvector(name) @@ plainto_tsquery(<span class="str">'john'</span>)
+
+<span class="cm">-- 4. Match types explicitly</span>
+<span class="kw">WHERE</span> user_id = <span class="num">12345</span>  <span class="cm">← integer literal  ✓</span></div>
+  </div>
+</div>
+<div class="cols2">
+  <div class="card cyan"><h3>Pagination Pattern</h3><div class="dia" style="margin-top:5px"><span class="cm">-- BAD: OFFSET gets worse at high page #</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders <span class="kw">LIMIT</span> <span class="num">20</span> <span class="kw">OFFSET</span> <span class="num">10000</span>
+<span class="cm">-- DB scans 10,020 rows to return 20!</span>
+
+<span class="cm">-- GOOD: keyset pagination</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> orders
+<span class="kw">WHERE</span> id &gt; last_seen_id
+<span class="kw">ORDER BY</span> id <span class="kw">LIMIT</span> <span class="num">20</span></div></div>
+  <div class="card yellow"><h3>Batch Operations</h3><div class="dia" style="margin-top:5px"><span class="cm">-- BAD: N individual inserts</span>
+<span class="kw">INSERT INTO</span> events(data) <span class="kw">VALUES</span> (<span class="str">'a'</span>);
+<span class="kw">INSERT INTO</span> events(data) <span class="kw">VALUES</span> (<span class="str">'b'</span>);
+
+<span class="cm">-- GOOD: bulk insert</span>
+<span class="kw">INSERT INTO</span> events(data)
+<span class="kw">VALUES</span>(<span class="str">'a'</span>),(<span class="str">'b'</span>),(<span class="str">'c'</span>),(<span class="str">'d'</span>);  <span class="cm">← 1 round-trip</span></div></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S19 SCHEMA DESIGN -->
+<div class="slide" id="s19" data-title="Schema Design for Performance">
+<div class="section-label">⚙️ Optimizations</div>
+<h2>Schema Design for Performance</h2>
+<p style="margin-bottom:8px">Schema decisions made at day 1 are among the hardest to undo at scale. Design for your query patterns, not just normalization theory.</p>
+<div class="cols2" style="margin-bottom:8px">
+  <div class="card blue">
+    <h3>Normalisation vs Denormalisation</h3>
+    <table class="tbl" style="margin-top:6px">
+      <tr><th>Normalised (3NF)</th><th>Denormalised</th></tr>
+      <tr><td>No redundancy</td><td>Controlled redundancy</td></tr>
+      <tr><td>Complex JOINs</td><td>Fewer JOINs, faster reads</td></tr>
+      <tr><td>Simple writes</td><td>Multiple update targets</td></tr>
+      <tr><td>OLTP default</td><td>OLAP / read-heavy APIs</td></tr>
+    </table>
+  </div>
+  <div class="card yellow">
+    <h3>Data Type Choices</h3>
+    <ul>
+      <li>Use <strong>INT/BIGINT</strong> for IDs — smaller, faster than VARCHAR UUIDs</li>
+      <li>Use <strong>UUID v7</strong> when globally unique IDs needed (time-ordered, shard-friendly)</li>
+      <li>Store <strong>timestamps as TIMESTAMPTZ</strong> — avoids timezone bugs</li>
+      <li>Prefer <strong>ENUM</strong> over VARCHAR for fixed categories — storage + constraint</li>
+      <li>Avoid <strong>TEXT/JSON blobs</strong> in frequently-queried columns — unpredictable size</li>
+    </ul>
+  </div>
+</div>
+<div class="card cyan" style="margin-bottom:8px">
+  <h3>User Table — Before vs After Optimization</h3>
+  <div class="dia" style="margin-top:6px">  <span class="cm">-- BEFORE (common anti-pattern)</span>
+  users(id VARCHAR(36), email VARCHAR(255), full_data JSON, created_at VARCHAR)
+  <span class="cm">-- Problems: VARCHAR UUID slow to join, JSON unindexable, VARCHAR date unsortable</span>
+
+  <span class="cm">-- AFTER</span>
+  users(
+    id          BIGSERIAL PRIMARY KEY,          <span class="cm">-- fast integer PK</span>
+    email       VARCHAR(254) UNIQUE NOT NULL,   <span class="cm">-- index auto-created</span>
+    name        VARCHAR(100) NOT NULL,
+    status      user_status_enum NOT NULL,      <span class="cm">-- ENUM, not VARCHAR</span>
+    created_at  TIMESTAMPTZ DEFAULT now()       <span class="cm">-- proper timestamp</span>
+  );</div>
+</div>
+<div class="tip">Soft deletes (<code>deleted_at TIMESTAMP</code>) are common but dangerous at scale — they double the effective table size. Use a partial index: <code>WHERE deleted_at IS NULL</code>.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S20 TRADE-OFFS TABLE -->
+<div class="slide" id="s20" data-title="Optimization Trade-offs Table">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Optimization Techniques — Trade-offs at a Glance</h2>
+<p style="margin-bottom:8px">Use this table when an interviewer asks "what are the trade-offs of X?" — always show you can see both sides.</p>
+<table class="tbl">
+  <tr><th>Technique</th><th>What it solves</th><th>Cost / Trade-off</th><th>When to apply</th></tr>
+  <tr><td><span class="bl">Query tuning</span></td><td>Slow individual queries</td><td>Dev time only; no infra cost</td><td>Always first — free wins</td></tr>
+  <tr><td><span class="gr">Indexing</span></td><td>Read latency O(n) → O(log n)</td><td>Write latency ↑, disk space ↑</td><td>High-cardinality WHERE/JOIN columns</td></tr>
+  <tr><td><span class="hl">Vertical scaling</span></td><td>All bottlenecks simultaneously</td><td>Cost ↑↑, hard ceiling exists</td><td>Quick wins before horizontal work</td></tr>
+  <tr><td><span class="cy">Read replication</span></td><td>Read throughput, availability</td><td>Replication lag, eventual consistency</td><td>Read-heavy (>60% reads)</td></tr>
+  <tr><td><span class="or">Partitioning</span></td><td>Scan cost on large tables</td><td>Cross-partition queries slow; wrong key = disaster</td><td>Tables >50M rows with clear query patterns</td></tr>
+  <tr><td><span class="pu">Sharding</span></td><td>Write throughput, massive scale</td><td>Cross-shard JOINs, complexity, operational burden</td><td>Last resort — exhaust others first</td></tr>
+  <tr><td><span class="bl">Caching</span></td><td>DB load, read latency</td><td>Staleness, invalidation complexity</td><td>Hot read data with acceptable TTL</td></tr>
+  <tr><td><span class="gr">Connection pooling</span></td><td>Connection overhead</td><td>Pool misconfiguration can starve DB</td><td>Any app with >10 concurrent DB users</td></tr>
+</table>
+<div class="info" style="margin-top:10px">The optimization ladder order: <strong>Query tuning → Indexing → Vertical scale → Read replicas → Partitioning → Sharding</strong>. Each step adds operational complexity. Justifying the complexity is part of the interview answer.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S21 TRAP Q&A 1 -->
+<div class="slide" id="s21" data-title="Senior Trap Q&A — Indexing & Replication">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Senior Trap Q&amp;A — Set 1: Indexing &amp; Replication</h2>
+
+<div class="quote">
+  <strong>Q: "If indexing is so good, why not index every column?"</strong><br><br>
+  A: Every index costs write performance — on INSERT, UPDATE, or DELETE, the database must update all index trees for that table. Too many indexes means each write triggers multiple B-Tree rebalances, degrading write throughput significantly. Additionally, each index consumes memory and disk. I'd only index columns that appear in WHERE, JOIN ON, or ORDER BY clauses of frequent, high-cardinality queries, and I'd monitor <em>pg_stat_user_indexes</em> for unused indexes to drop them.
+</div>
+
+<div class="quote" style="margin-top:10px">
+  <strong>Q: "You added a read replica. A user says 'I just updated my profile but it shows the old data.' What's happening?"</strong><br><br>
+  A: This is the read-your-writes consistency violation caused by replication lag. The write went to the master, but the subsequent read was routed to a replica that hadn't yet received the async replication update. Fixes depend on SLA: for strict consistency I'd route that user's reads to the master for a short window after any write, or pass the master's WAL LSN to the client and have replicas serve the read only once they've applied up to that LSN. For looser requirements, a small TTL-based sticky session to master is simpler.
+</div>
+
+<div class="quote" style="margin-top:10px">
+  <strong>Q: "What's the difference between a covering index and a composite index?"</strong><br><br>
+  A: A composite index covers multiple columns in the index key — the query planner uses it for filtering and ordering. A covering index goes further: it includes all columns that the query needs (via INCLUDE clause in Postgres), so the database can satisfy the entire query from the index without ever touching the main table heap — this is called an "index-only scan" and is significantly faster for read-heavy workloads.
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S22 TRAP Q&A 2 -->
+<div class="slide" id="s22" data-title="Senior Trap Q&A — Partitioning & Sharding">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Senior Trap Q&amp;A — Set 2: Partitioning &amp; Sharding</h2>
+
+<div class="quote">
+  <strong>Q: "What's the difference between partitioning and sharding?"</strong><br><br>
+  A: Partitioning logically divides a table's data into smaller chunks (partitions) that still reside on the same database server. Sharding goes further — each shard is a completely separate database server (or cluster). Multiple partitions can live on a single shard, but not vice versa. Partitioning reduces scan cost by allowing partition pruning. Sharding distributes both data and write load across machines, enabling horizontal scale-out beyond a single server's limits.
+</div>
+
+<div class="quote" style="margin-top:10px">
+  <strong>Q: "Why is consistent hashing preferred over simple modular hash sharding?"</strong><br><br>
+  A: With modular hashing (hash % N), adding or removing a shard requires remapping nearly all keys — every key's shard assignment changes. At scale, this means a re-sharding event moves the majority of your data, causing massive I/O and potentially hours of downtime. Consistent hashing places shards on a ring so only ~1/N of keys need to move when a shard is added or removed. This makes topology changes minimally disruptive — essential for live, zero-downtime systems.
+</div>
+
+<div class="quote" style="margin-top:10px">
+  <strong>Q: "How would you handle a hot partition problem?"</strong><br><br>
+  A: Hot partitions occur when one partition receives disproportionate traffic — typically from range sharding on monotonically increasing keys like timestamps or auto-increment IDs. Solutions: (1) Switch to hash-based partitioning to distribute writes uniformly. (2) Add a random suffix or time bucket to the partition key to spread load. (3) Use consistent hashing with virtual nodes — each physical shard handles multiple virtual positions on the ring, preventing single hot spots even with slight key skew.
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S23 TRAP Q&A 3 -->
+<div class="slide" id="s23" data-title="Senior Trap Q&A — Advanced Scenarios">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Senior Trap Q&amp;A — Set 3: Advanced Scenarios</h2>
+
+<div class="quote">
+  <strong>Q: "When would you use write-behind caching vs write-through? What's the risk?"</strong><br><br>
+  A: Write-through keeps cache and DB always in sync — every write updates both synchronously. This gives strong consistency but adds write latency. Write-behind (write-back) acknowledges the write immediately after updating the cache, and flushes to the DB asynchronously in batches — this is much faster but introduces data loss risk if the cache node crashes before flushing. I'd use write-behind for high-write, loss-tolerant data like analytics counters or view counts, and write-through for anything with strict durability requirements like financial transactions.
+</div>
+
+<div class="quote" style="margin-top:10px">
+  <strong>Q: "Your DB has 100M rows. Queries are slow despite indexes. What would you check?"</strong><br><br>
+  A: In order: (1) EXPLAIN ANALYZE — is the planner choosing the right index? Are statistics stale? Run ANALYZE. (2) Index selectivity — is the WHERE column high-cardinality? (3) Query patterns — any function wrapping the index column? Leading-wildcard LIKE? (4) Partition pruning — if partitioned, is the WHERE clause on the partition key? (5) Table bloat — excessive dead rows from updates/deletes; VACUUM FULL or pg_repack. (6) Lock contention — check pg_locks for blocking queries. (7) Consider partitioning if it isn't already done.
+</div>
+
+<div class="quote" style="margin-top:10px">
+  <strong>Q: "How do you scale writes beyond what a single master can handle?"</strong><br><br>
+  A: The options in escalating complexity: (1) Vertical scale the master (CPU/RAM/NVMe SSDs). (2) Move heavy analytics/reporting queries to replicas to free master capacity. (3) Horizontal write scaling via sharding — split data across multiple masters, each owning a subset. (4) Multi-master replication for geo-distributed writes (with conflict resolution). (5) Event sourcing + CQRS — separate write model (append-only event log) from read model; the event log can be partitioned across Kafka topics trivially.
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S24 QUICK NUMBERS -->
+<div class="slide" id="s24" data-title="Quick Numbers to Remember">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Quick Numbers to Remember</h2>
+<p style="margin-bottom:10px">Interviewers respect engineers who can anchor discussions with real-world numbers. Memorise these ballpark figures.</p>
+<div class="cols3" style="margin-bottom:10px">
+  <div class="stat"><div class="val bl">O(log n)</div><div class="lbl">B-Tree index read</div></div>
+  <div class="stat"><div class="val gr">O(n)</div><div class="lbl">Full table scan</div></div>
+  <div class="stat"><div class="val pu">O(1)</div><div class="lbl">Hash index lookup</div></div>
+  <div class="stat"><div class="val hl">~5–50ms</div><div class="lbl">New DB connection cost</div></div>
+  <div class="stat"><div class="val cy">~0.1ms</div><div class="lbl">Pooled connection borrow</div></div>
+  <div class="stat"><div class="val or">~1ms</div><div class="lbl">SSD random read latency</div></div>
+</div>
+<table class="tbl">
+  <tr><th>Scenario</th><th>Typical threshold to act</th></tr>
+  <tr><td>Add an index</td><td>Column queried in >20% of requests with >10K rows in table</td></tr>
+  <tr><td>Add read replica</td><td>Read:Write ratio >3:1, or read latency consistently >50ms</td></tr>
+  <tr><td>Partition a table</td><td>Table size >50M rows or >100GB with predictable query patterns</td></tr>
+  <tr><td>Shard the database</td><td>Single master cannot sustain write load even at max vertical scale</td></tr>
+  <tr><td>Introduce caching</td><td>Same query repeats frequently with acceptable staleness window</td></tr>
+  <tr><td>Replication lag alert</td><td>&gt;5 seconds behind master</td></tr>
+</table>
+<div class="cols2" style="margin-top:10px">
+  <div class="card green">
+    <h3>Typical Read:Write Ratios</h3>
+    <ul>
+      <li>Social feed / news feed: <strong>99:1</strong></li>
+      <li>E-commerce product catalog: <strong>90:10</strong></li>
+      <li>User onboarding service: <strong>80:20</strong></li>
+      <li>Order processing system: <strong>60:40</strong></li>
+      <li>Event ingestion pipeline: <strong>5:95</strong></li>
+    </ul>
+  </div>
+  <div class="card blue">
+    <h3>Connection Pool Rules of Thumb</h3>
+    <ul>
+      <li>Postgres max connections: <strong>100–200</strong> (default 100)</li>
+      <li>HikariCP formula: <strong>cores × 2 + spindles</strong></li>
+      <li>Each connection uses <strong>~5–10MB</strong> RAM on server</li>
+      <li>PgBouncer can multiplex <strong>1,000+ app conns</strong> → 20 DB conns</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ S25 CLOSING -->
+<div class="slide" id="s25" data-title="Summary & Closing">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Summary — The Complete Optimization Ladder</h2>
+<p style="margin-bottom:8px">Always present database optimization as a <em>progressive decision ladder</em> in interviews. Jumping straight to sharding shows you don't understand the cost/complexity tradeoffs.</p>
+<div class="cols2" style="margin-bottom:8px">
+  <div class="card blue">
+    <h3>6-Step Optimization Ladder</h3>
+    <div class="step-row"><span class="step">1</span><div><strong>Query Tuning</strong> — SELECT specific columns, avoid SELECT *, use proper types, keyset pagination. Zero infra cost.</div></div>
+    <div class="step-row"><span class="step">2</span><div><strong>Indexing</strong> — B-Tree for range/equality, Hash for exact match, Partial for subsets, Covering to eliminate heap fetch. Read ↑, Write ↓.</div></div>
+    <div class="step-row"><span class="step">3</span><div><strong>Vertical Scaling</strong> — Bigger machine. Quick win, but has a ceiling and costs money fast.</div></div>
+    <div class="step-row"><span class="step">4</span><div><strong>Read Replication</strong> — Master for writes, replicas for reads. Solves 80% of read-heavy scaling problems. Watch for replication lag.</div></div>
+    <div class="step-row"><span class="step">5</span><div><strong>Partitioning</strong> — Logically split large tables. Reduces scan cost via partition pruning. Choose partition key carefully.</div></div>
+    <div class="step-row"><span class="step">6</span><div><strong>Sharding</strong> — Distribute data + infrastructure. Last resort. Use consistent hashing. Pick immutable, high-cardinality shard key.</div></div>
+  </div>
+  <div>
+    <div class="card green" style="margin-bottom:8px">
+      <h3>Bonus Techniques</h3>
+      <ul>
+        <li>Connection pooling (always on by default in production)</li>
+        <li>Caching (Redis / Memcached) for hot read data</li>
+        <li>N+1 elimination via eager loading / DataLoader</li>
+        <li>Schema design — right types, indexes, denormalization where needed</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>Interview Delivery Tips</h3>
+      <ul>
+        <li>Start with business impact — "slow queries mean users drop off"</li>
+        <li>Show the ladder — don't jump to sharding immediately</li>
+        <li>Quantify: mention O(log n) vs O(n), 80:20 read/write ratio</li>
+        <li>Acknowledge trade-offs for every technique you propose</li>
+        <li>End with: "I'd profile first with EXPLAIN ANALYZE before making any architectural change"</li>
+      </ul>
+    </div>
+  </div>
+</div>
+<div class="info">Next in this series: <strong>Caching Deep Dive</strong> — Redis internals, eviction policies, distributed caching, cache stampede prevention, and the cache consistency problem in detail.</div>
+</div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'DB Optimization';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

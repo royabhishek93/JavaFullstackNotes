@@ -1,0 +1,84 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="File System LLD" id="filesystem">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1-3: CLASS DIAGRAM -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (Composite Pattern - Object Inside Object)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- FileSystem Interface -->
+        <mxCell id="filesystem_interface" value="&lt;&lt;interface&gt;&gt;&#xa;FileSystem&#xa;&#xa;+ ls(): void" style="swimlane;fontStyle=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="400" y="80" width="200" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- File Class (Leaf) -->
+        <mxCell id="file_class" value="File (LEAF)&#xa;&#xa;- fileName: String&#xa;&#xa;+ File(name)&#xa;+ ls(): void&#xa;  // Print file name" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="200" y="220" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Directory Class (Composite) -->
+        <mxCell id="directory_class" value="Directory (COMPOSITE)&#xa;&#xa;- directoryName: String&#xa;- fileSystemList: List&lt;FileSystem&gt;&#xa;&#xa;+ Directory(name)&#xa;+ add(FileSystem)&#xa;+ ls(): void&#xa;  // Print dir name&#xa;  // Iterate &amp; call child.ls()" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="600" y="220" width="280" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Composite Pattern Explanation -->
+        <mxCell id="pattern_explanation" value="COMPOSITE PATTERN STRUCTURE:&#xa;&#xa;1. COMPONENT (Interface)&#xa;   - FileSystem interface with ls() method&#xa;&#xa;2. LEAF (Cannot have children)&#xa;   - File: Terminal node, just prints file name&#xa;&#xa;3. COMPOSITE (Can have children)&#xa;   - Directory: Non-terminal node&#xa;   - Has List&lt;FileSystem&gt; (can store Files OR Directories)&#xa;   - ls() iterates and calls child.ls() recursively&#xa;&#xa;KEY CONCEPT: Object inside Object (Tree Structure)&#xa;- Directory can contain Files (leaf nodes)&#xa;- Directory can contain Directories (composite nodes)&#xa;- NO instanceof check needed!&#xa;  (Before: if (obj instanceof File) vs if (obj instanceof Directory))&#xa;  (After: Just call fileSystem.ls() — polymorphism handles it)&#xa;&#xa;RECURSION:&#xa;Directory.ls() → calls child.ls() for each child&#xa;- If child is File: prints file name, returns&#xa;- If child is Directory: prints dir name, recursively calls ls() on its children" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="680" height="320" as="geometry" />
+        </mxCell>
+        
+        <!-- Example Tree Structure -->
+        <mxCell id="example_title" value="EXAMPLE: TREE STRUCTURE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="example_tree" value="Movie (Directory)&#xa;├── Border (File)&#xa;└── ComedyMovie (Directory)&#xa;    ├── Hulchul (File)&#xa;    └── PhirHeraPheri (File)&#xa;&#xa;&#xa;CODE EXECUTION FLOW:&#xa;&#xa;movie.ls()&#xa;  → Prints: 'Movie'&#xa;  → Iterates fileSystemList:&#xa;    &#xa;    [0] Border (File)&#xa;        → border.ls()&#xa;        → Prints: 'Border'&#xa;    &#xa;    [1] ComedyMovie (Directory)&#xa;        → comedyMovie.ls()&#xa;        → Prints: 'ComedyMovie'&#xa;        → Iterates its fileSystemList:&#xa;          &#xa;          [0] Hulchul (File)&#xa;              → hulchul.ls()&#xa;              → Prints: 'Hulchul'&#xa;          &#xa;          [1] PhirHeraPheri (File)&#xa;              → phirHeraPheri.ls()&#xa;              → Prints: 'PhirHeraPheri'&#xa;&#xa;OUTPUT:&#xa;Movie&#xa;Border&#xa;ComedyMovie&#xa;Hulchul&#xa;PhirHeraPheri&#xa;&#xa;&#xa;AVOIDING if-else instanceof:&#xa;&#xa;BEFORE (Problem):&#xa;for (Object obj : objectList) {&#xa;  if (obj instanceof File) {&#xa;    ((File) obj).ls();  // Typecasting needed&#xa;  } else if (obj instanceof Directory) {&#xa;    ((Directory) obj).ls();  // Typecasting needed&#xa;  }&#xa;}&#xa;&#xa;AFTER (Composite Pattern):&#xa;for (FileSystem fs : fileSystemList) {&#xa;  fs.ls();  // NO instanceof, NO typecasting!&#xa;}" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="520" height="720" as="geometry" />
+        </mxCell>
+        
+        <!-- Other Examples -->
+        <mxCell id="other_examples_title" value="OTHER COMPOSITE PATTERN EXAMPLES" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="440" width="500" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="other_examples" value="EXAMPLE 2: ORGANIZATION HIERARCHY&#xa;&#xa;Employee (Component)&#xa;├── CEO (Composite)&#xa;│   ├── Director1 (Composite)&#xa;│   │   ├── Manager1 (Composite)&#xa;│   │   │   ├── ITEngineer1 (Leaf)&#xa;│   │   │   └── ITEngineer2 (Leaf)&#xa;│   │   └── Manager2 (Composite)&#xa;│   │       └── MarketingTeam (Leaf)&#xa;│   └── Director2 (Composite)&#xa;&#xa;&#xa;EXAMPLE 3: DELIVERY BOX&#xa;&#xa;Container (Component)&#xa;├── Box (Composite)&#xa;│   ├── Product1 (Leaf)&#xa;│   ├── SmallBox (Composite)&#xa;│   │   ├── Product2 (Leaf)&#xa;│   │   └── Product3 (Leaf)&#xa;│   └── Product4 (Leaf)&#xa;&#xa;&#xa;EXAMPLE 4: ARITHMETIC EXPRESSION&#xa;(From transcript - Calculator Design)&#xa;&#xa;ArithmeticExpression (Component)&#xa;├── Number (Leaf) - just returns value&#xa;└── Expression (Composite)&#xa;    - leftExpression: ArithmeticExpression&#xa;    - rightExpression: ArithmeticExpression&#xa;    - operation: Enum (ADD/SUBTRACT/MULTIPLY/DIVIDE)&#xa;&#xa;Example: 2 * (1 + 7)&#xa;&#xa;Expression(MULTIPLY)&#xa;├── Number(2) [left]&#xa;└── Expression(ADD) [right]&#xa;    ├── Number(1) [left]&#xa;    └── Number(7) [right]&#xa;&#xa;evaluate() → 2 * (1 + 7)&#xa;  leftExpression.evaluate() → 2&#xa;  rightExpression.evaluate() →&#xa;    leftExpression.evaluate() → 1&#xa;    rightExpression.evaluate() → 7&#xa;    operation = ADD → 1 + 7 = 8&#xa;  operation = MULTIPLY → 2 * 8 = 16&#xa;&#xa;&#xa;WHEN TO USE COMPOSITE PATTERN:&#xa;✓ Problem can be represented as TREE structure&#xa;✓ Object inside object scenario&#xa;✓ Want to avoid instanceof checks and typecasting&#xa;✓ Recursion naturally fits the problem&#xa;✓ Part-whole hierarchy (employee org, file system, GUI widgets)" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="600" y="480" width="700" height="720" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1340" y="20" width="540" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- FileSystem Table -->
+        <mxCell id="er_filesystem" value="FileSystem&#xa;&#xa;PK  fileSystemId: INT&#xa;    name: VARCHAR(255)&#xa;    type: ENUM (FILE/DIRECTORY)&#xa;FK  parentId: INT (nullable)&#xa;    path: VARCHAR(500)&#xa;    size: BIGINT (for files)&#xa;    createdAt: DATETIME&#xa;    modifiedAt: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="80" width="260" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Metadata Table -->
+        <mxCell id="er_metadata" value="FileMetadata&#xa;&#xa;PK  metadataId: INT&#xa;FK  fileSystemId: INT&#xa;    permissions: VARCHAR(10)&#xa;    owner: VARCHAR(100)&#xa;    group: VARCHAR(100)&#xa;    mimeType: VARCHAR(100)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="80" width="240" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1340" y="300" width="540" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: How does Composite Pattern avoid instanceof checks and typecasting?&#xa;A1: Parent interface FileSystem. Both File and Directory implement it. Directory stores List&lt;FileSystem&gt; (not List&lt;Object&gt;). When iterating, just call fileSystem.ls() — polymorphism resolves to correct implementation. No if-else, no casting needed.&#xa;&#xa;Q2: Directory can contain both Files and Directories. How is this handled without type confusion?&#xa;A2: Directory has List&lt;FileSystem&gt; (interface type). Since File implements FileSystem AND Directory implements FileSystem, the list can hold both. add(FileSystem fs) method accepts any FileSystem implementation. Recursion in ls() naturally handles nested directories.&#xa;&#xa;Q3: What if you want to search for a file by name in nested directories?&#xa;A3: Add search(String name) to FileSystem interface. File implementation: if (fileName.equals(name)) return this, else null. Directory implementation: iterate fileSystemList, recursively call child.search(name), return first non-null result. Composite pattern makes recursive search elegant.&#xa;&#xa;Q4: How to implement delete operation? File deletion vs Directory deletion differs (directory must delete children first).&#xa;A4: Add delete() to FileSystem. File: simple deletion, return success. Directory: first recursively call delete() on all children in fileSystemList, then delete self. Composite pattern ensures child-first deletion automatically through recursion. Post-order traversal (children first, then parent).&#xa;&#xa;Q5: Want to calculate total size of a directory (sum of all file sizes recursively). How?&#xa;A5: Add getSize() to FileSystem. File returns its size (stored field). Directory iterates fileSystemList, sums up child.getSize() for all children. Recursion handles nested dirs. Example: Dir1 (File1: 100KB, Dir2 (File2: 50KB)) → Dir2.getSize() = 50KB, Dir1.getSize() = 100 + 50 = 150KB." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="360" width="540" height="480" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Principles -->
+        <mxCell id="principles_box" value="DESIGN PRINCIPLES &amp; INTERVIEW TIPS:&#xa;&#xa;1. TOP-DOWN DESIGN APPROACH&#xa;   - Start from high-level component (FileSystem)&#xa;   - Break down into Leaf (File) and Composite (Directory)&#xa;   - Naturally flows from abstract to concrete&#xa;&#xa;2. OPEN-CLOSED PRINCIPLE&#xa;   - Open for extension: Add new operations (search, delete, getSize) to interface&#xa;   - Closed for modification: Existing code unchanged&#xa;&#xa;3. SINGLE RESPONSIBILITY&#xa;   - File: Represents leaf node, no child management&#xa;   - Directory: Represents composite, manages children&#xa;   - Each class has ONE reason to change&#xa;&#xa;4. LISKOV SUBSTITUTION&#xa;   - Can substitute FileSystem with File or Directory anywhere&#xa;   - Directory.ls() works same as File.ls() from caller perspective&#xa;&#xa;5. INTERFACE SEGREGATION&#xa;   - FileSystem has only ls() (and other common operations)&#xa;   - Don't add add() to FileSystem interface&#xa;   - add() only in Directory (leaf nodes can't have children)&#xa;&#xa;COMPLEXITY ANALYSIS:&#xa;&#xa;Time Complexity for ls():&#xa;- File: O(1) — just print name&#xa;- Directory with N total nodes: O(N) — visit each node once&#xa;- Tree traversal (DFS pre-order)&#xa;&#xa;Space Complexity:&#xa;- Recursion stack depth = tree height&#xa;- Worst case (linear tree): O(N)&#xa;- Best case (balanced tree): O(log N)&#xa;&#xa;WHEN NOT TO USE:&#xa;✗ Flat structure (no nesting) — overkill&#xa;✗ Operations differ drastically between leaf and composite&#xa;✗ No need for uniform treatment of objects&#xa;&#xa;INTERVIEW RED FLAGS TO AVOID:&#xa;✗ Using instanceof checks (defeats the purpose)&#xa;✗ Typecasting in iteration loops&#xa;✗ Not using interface/abstract class for component&#xa;✗ Adding leaf-specific methods to component interface" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="880" width="540" height="600" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

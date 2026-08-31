@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TinyURL / URL Shortener System Design</title>
+<link rel="stylesheet" href="../../sd-player.css">
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">TinyURL / URL Shortener System Design</span>
+    <span id="counter">1 / 25</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+<!-- ═══════════════════════════════════════════════════════ s1 — Title ═══ -->
+<div id="s1" class="slide" data-title="TinyURL / URL Shortener System Design">
+  <div class="title-wrap">
+    <div style="font-size:3rem;margin-bottom:12px">🔗</div>
+    <h1 class="gradient-text">TinyURL / URL Shortener</h1>
+    <h1 class="gradient-text">System Design</h1>
+    <p style="color:var(--muted);margin:14px 0 22px;font-size:.9rem">Design a system like TinyURL, Bitly, or t.co — from requirements to 1B redirects/day</p>
+    <div class="tags" style="justify-content:center">
+      <span class="badge">Base62 Encoding</span>
+      <span class="badge">Zookeeper IDs</span>
+      <span class="badge">Redis Cache</span>
+      <span class="badge">MySQL Sharding</span>
+      <span class="badge">Kafka Analytics</span>
+      <span class="badge">301 vs 302</span>
+      <span class="badge">100M URLs/day</span>
+      <span class="badge">115K RPS Reads</span>
+      <span class="badge">ClickHouse OLAP</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ s2 — Opening ═══ -->
+<div id="s2" class="slide" data-title="Opening Script — How to Start the Interview">
+  <div class="section-label">📋 Requirements</div>
+  <h2>Opening Script</h2>
+  <div class="quote">"The core challenge is not storage — it's generating billions of globally unique short codes <strong>without collisions</strong>, and serving 100,000+ redirects/sec with sub-5ms latency. The write path is easy; the <strong>read path (redirecting) is where the design lives</strong>. Let me confirm requirements first."</div>
+  <div class="tip">This opening signals you understand the hard part. Never say "I'd use a database to store a mapping" — that's junior level.</div>
+  <h3 style="margin-top:12px">5 Core Components (mention upfront)</h3>
+  <div class="cols2" style="margin-top:8px">
+    <div class="card blue"><strong>1. Short Code Gen</strong><br><span style="font-size:.8rem;color:var(--soft)">Zookeeper range → Base62 encode. Zero collisions, zero network calls on hot path.</span></div>
+    <div class="card green"><strong>2. Storage Layer</strong><br><span style="font-size:.8rem;color:var(--soft)">MySQL sharded by short_code hash. Small rows (~500 B), pure point lookups.</span></div>
+    <div class="card cyan"><strong>3. Redirect Cache</strong><br><span style="font-size:.8rem;color:var(--soft)">Redis LRU. 80% of traffic served from ~10 GB hot set. Cache-aside pattern.</span></div>
+    <div class="card yellow"><strong>4. Redirect Type</strong><br><span style="font-size:.8rem;color:var(--soft)">302 = analytics. 301 = max performance. Mention the trade-off explicitly.</span></div>
+  </div>
+  <div class="card purple" style="margin-top:10px"><strong>5. Analytics Pipeline</strong> — Kafka async decouples click tracking from redirect. ClickHouse aggregates billions of events in seconds.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ s3 — Func Req ═══ -->
+<div id="s3" class="slide" data-title="Functional Requirements">
+  <div class="section-label">📋 Requirements</div>
+  <h2>Functional Requirements</h2>
+  <div class="cols2">
+    <div>
+      <h3>Core Features</h3>
+      <div class="card blue" style="margin-bottom:8px"><span class="step">1</span><strong>Create short URL</strong> — POST /api/v1/urls, returns 7-char code</div>
+      <div class="card blue" style="margin-bottom:8px"><span class="step">2</span><strong>Redirect</strong> — GET /{shortCode} → 302 to long URL</div>
+      <div class="card blue" style="margin-bottom:8px"><span class="step">3</span><strong>Custom aliases</strong> — user-chosen codes like /my-product</div>
+      <div class="card blue" style="margin-bottom:8px"><span class="step">4</span><strong>URL expiry / TTL</strong> — configurable; return 410 Gone when expired</div>
+    </div>
+    <div>
+      <h3>Extended Features</h3>
+      <div class="card purple" style="margin-bottom:8px"><span class="step">5</span><strong>Click analytics</strong> — count, geography, referrer, time</div>
+      <div class="card purple" style="margin-bottom:8px"><span class="step">6</span><strong>User ownership</strong> — users own their URLs, can delete</div>
+      <div class="card purple" style="margin-bottom:8px"><span class="step">7</span><strong>410 for expired URLs</strong> — not 404. "Gone" ≠ "never existed"</div>
+      <div class="card purple" style="margin-bottom:8px"><span class="step">8</span><strong>De-dup per user</strong> — same long URL → same short code for same user</div>
+    </div>
+  </div>
+  <div class="tip">Ask explicitly: "Do we need analytics?" — it determines 301 vs 302 and whether you need Kafka + ClickHouse pipeline.</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════ s4 — Non-Func Req ═══ -->
+<div id="s4" class="slide" data-title="Non-Functional Requirements & Scale">
+  <div class="section-label">📋 Requirements</div>
+  <h2>Non-Functional Requirements</h2>
+  <div class="cols3" style="margin-bottom:12px">
+    <div class="stat"><div class="val bl">100M</div><div class="lbl">URLs created/day</div></div>
+    <div class="stat"><div class="val cy">10B</div><div class="lbl">Redirects/day</div></div>
+    <div class="stat"><div class="val gr">100:1</div><div class="lbl">Read:Write ratio</div></div>
+    <div class="stat"><div class="val hl">&lt;10ms</div><div class="lbl">Redirect p99</div></div>
+    <div class="stat"><div class="val pu">99.99%</div><div class="lbl">Availability</div></div>
+    <div class="stat"><div class="val or">~90 TB</div><div class="lbl">Storage (5 years)</div></div>
+  </div>
+  <div class="cols2">
+    <div class="card green">
+      <h3>Throughput Breakdown</h3>
+      <p><strong>Writes:</strong> 100M ÷ 86,400 = <span class="hl">1,157/sec</span> (peak 2× ≈ 2,300)</p>
+      <p><strong>Reads:</strong> 10B ÷ 86,400 = <span class="cy">115,740/sec</span> (peak 3× ≈ 350K)</p>
+      <p style="margin-top:4px;font-size:.8rem">→ Design must optimize the <strong>read path</strong>. Writes are trivially handled by any DB.</p>
+    </div>
+    <div class="card yellow">
+      <h3>Code Space Math</h3>
+      <p>7 chars × Base62 = <strong>62⁷ = 3.5 trillion</strong> unique codes</p>
+      <p>At 100M/day → exhausted in <span class="hl">~95 years</span></p>
+      <p style="margin-top:4px;font-size:.8rem">Storage: 500 B/row × 100M × 365 × 5 = ~91 TB</p>
+    </div>
+  </div>
+  <div class="info" style="margin-top:8px">Redis working set: top 20% of URLs = 20M × 500 B = ~10 GB. Fits in a Redis cluster. Cache hit rate exceeds 80% (Zipf distribution).</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════ s5 — HLD Diagram ═══ -->
+<div id="s5" class="slide" data-title="HLD — System Architecture Diagram">
+  <div class="section-label">🏛 HLD</div>
+  <h2>High Level Architecture</h2>
+  <div class="dia">WRITE PATH (1,157/sec)                   READ PATH (115,740/sec)
+─────────────────────                   ────────────────────────────
+
+Client                                   Client
+  │ POST /shorten {longUrl}                │ GET /aB3xY7z
+  ▼                                        ▼
+┌──────────────────┐               ┌───────────────────┐
+│   API Gateway    │               │  API Gateway      │
+│  (Rate Limiter)  │               │  + CDN Edge       │
+└────────┬─────────┘               └─────────┬─────────┘
+         │                                   │ Cache Hit? → Return 302
+         ▼                                   ▼
+┌──────────────────┐               ┌───────────────────┐
+│  Shortener Svc   │               │   Redis Cache     │
+│  1. ZK range ID  │               │  url:{code}→url   │
+│  2. Base62 encode│               │  LRU, ~10 GB      │
+│  3. Store in DB  │               └─────────┬─────────┘
+│  4. Cache write  │                         │ Cache Miss
+└────────┬─────────┘                         ▼
+         │                         ┌───────────────────┐
+         ▼                         │  MySQL (sharded)  │
+┌──────────────────┐               │  url_mappings     │
+│  MySQL Primary   │               └─────────┬─────────┘
+│  url_mappings    │                         │ Return longUrl
+└────────┬─────────┘                         ▼
+         │ async event             ┌───────────────────┐
+         ▼                         │  302 Redirect Svc │
+┌──────────────────┐               └───────────────────┘
+│  Kafka Topic     │◄── click events (async, non-blocking)
+│  url.clicks      │
+└────────┬─────────┘
+         ▼
+┌──────────────────┐
+│   ClickHouse     │  ← OLAP, columnar, billions of events
+└──────────────────┘</div>
+</div>
+
+<!-- ═════════════════════════════════════════════════════ s6 — Core Entities ═══ -->
+<div id="s6" class="slide" data-title="Core Entities — URL Mapping, User, Analytics">
+  <div class="section-label">🏛 HLD</div>
+  <h2>Core Entities</h2>
+  <div class="card blue" style="margin-bottom:10px">
+    <h3>ShortUrl — url_mappings (MySQL)</h3>
+    <p><span class="hl">short_code</span> VARCHAR(10) PK &nbsp;·&nbsp; <span class="cy">long_url</span> TEXT &nbsp;·&nbsp; <span class="gr">user_id</span> BIGINT FK &nbsp;·&nbsp; <span class="or">expires_at</span> TIMESTAMP NULL &nbsp;·&nbsp; <span class="pu">is_custom_alias</span> BOOL &nbsp;·&nbsp; <span class="soft">long_url_hash</span> CHAR(32)</p>
+  </div>
+  <div class="card green" style="margin-bottom:10px">
+    <h3>User — users (MySQL)</h3>
+    <p><span class="hl">user_id</span> BIGINT PK AUTO_INC &nbsp;·&nbsp; <span class="cy">email</span> VARCHAR(255) UNIQUE &nbsp;·&nbsp; <span class="gr">created_at</span> TIMESTAMP &nbsp;·&nbsp; <span class="or">plan_type</span> ENUM('free','pro','enterprise')</p>
+  </div>
+  <div class="card purple" style="margin-bottom:10px">
+    <h3>ClickEvent — click_events (ClickHouse, NOT MySQL)</h3>
+    <p><span class="hl">short_code</span> String &nbsp;·&nbsp; <span class="cy">clicked_at</span> DateTime &nbsp;·&nbsp; <span class="gr">country</span> LowCardinality &nbsp;·&nbsp; <span class="or">referrer</span> String &nbsp;·&nbsp; <span class="pu">user_agent</span> String &nbsp;·&nbsp; <span class="rd">ip_address</span> String (hashed)</p>
+  </div>
+  <div class="tip">Never mix OLTP (URL point lookups) with OLAP (click aggregations) in the same DB. ClickEvent lives exclusively in ClickHouse — separate the concerns.</div>
+  <div class="info">Redis key schema: <code>url:{shortCode}</code> → longUrl (TTL = expiry time or 24h) &nbsp;·&nbsp; <code>user_ratelimit:{ip}</code> → count (TTL = 60s)</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════ s7 — Base62 Deep Dive ═══ -->
+<div id="s7" class="slide" data-title="Base62 Encoding — Why & How">
+  <div class="section-label">⚙️ LLD Deep Dive</div>
+  <h2>Base62 Encoding Deep Dive</h2>
+  <div class="cols2" style="margin-bottom:10px">
+    <div class="card blue">
+      <h3>Why Base62?</h3>
+      <ul>
+        <li>Chars: <span class="hl">0-9, a-z, A-Z</span> = 62 total</li>
+        <li>All URL-safe — no percent-encoding needed</li>
+        <li>7 chars = 62⁷ = <span class="cy">3.5 trillion</span> unique codes</li>
+        <li>~95 years at 100M URLs/day</li>
+        <li>Human-readable and compact in links</li>
+      </ul>
+    </div>
+    <div class="card red">
+      <h3>Why NOT alternatives?</h3>
+      <ul>
+        <li><span class="rd">Base64:</span> + and / are not URL-safe</li>
+        <li><span class="rd">UUID:</span> 36 chars — defeats "short" URL purpose</li>
+        <li><span class="rd">MD5 prefix:</span> collision risk 13%+ at 1B URLs</li>
+        <li><span class="rd">Hex:</span> only 16 chars, needs 10+ chars for same space</li>
+      </ul>
+    </div>
+  </div>
+  <div class="dia">Input integer: 125
+Charset: "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+125 ÷ 62 = 2  remainder 1  → charset[1] = '1'
+  2 ÷ 62 = 0  remainder 2  → charset[2] = '2'
+Result: "21"  → left-padded to 7 chars: "0000021"
+
+String toBase62(long id) {
+  char[] chars = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".toCharArray();
+  StringBuilder sb = new StringBuilder();
+  while (id > 0) { sb.append(chars[(int)(id % 62)]); id /= 62; }
+  return sb.reverse().toString();
+}</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ s8 — Hash vs Counter ID Gen ═══ -->
+<div id="s8" class="slide" data-title="Hash vs Counter ID Generation Comparison">
+  <div class="section-label">⚙️ LLD Deep Dive</div>
+  <h2>ID Generation: 4 Options Compared</h2>
+  <table class="tbl">
+    <tr><th>Option</th><th>How It Works</th><th>Pro</th><th>Con</th><th>Verdict</th></tr>
+    <tr>
+      <td><span class="rd">A: MD5 Hash</span></td>
+      <td>sha1(longUrl).substring(0,7)</td>
+      <td>Simple, deterministic</td>
+      <td>13%+ collision at 1B URLs; DB check per create</td>
+      <td><span class="pill red">❌ Avoid</span></td>
+    </tr>
+    <tr>
+      <td><span class="hl">B: Global Counter</span></td>
+      <td>DB/Redis auto-increment + Base62</td>
+      <td>No collisions, simple logic</td>
+      <td>Single point of failure, serialization bottleneck</td>
+      <td><span class="pill yellow">⚠ Weak</span></td>
+    </tr>
+    <tr>
+      <td><span class="cy">B2: Snowflake ID</span></td>
+      <td>41-bit ts + 10-bit workerID + 12-bit seq</td>
+      <td>Decentralized, 4M IDs/sec, no coordination</td>
+      <td>10–11 char codes, clock sync required</td>
+      <td><span class="pill blue">✓ Good alt</span></td>
+    </tr>
+    <tr>
+      <td><span class="gr">C: ZK Range</span></td>
+      <td>Server gets 1M IDs from ZK, encodes in-memory</td>
+      <td>Zero collision, zero network on hot path, horizontal scale</td>
+      <td>Needs Zookeeper cluster ops</td>
+      <td><span class="pill green">✅ Best</span></td>
+    </tr>
+  </table>
+  <div class="success" style="margin-top:10px">Zookeeper Range: each server fetches 1M IDs once (~14 min supply at 1,157/sec). Encodes locally. Only 1 ZK call per million URLs — zero overhead on hot path.</div>
+</div>
+
+<!-- ════════════════════════════════════════════ s9 — Hash Collision Handling ═══ -->
+<div id="s9" class="slide" data-title="Hash Collision Handling Strategies">
+  <div class="section-label">⚙️ LLD Deep Dive</div>
+  <h2>Hash Collision Handling</h2>
+  <div class="warn">Birthday paradox: at 1B URLs stored, using 7-char Base62 codes from hash gives ~13% collision probability. Even 0.001% is catastrophic — wrong URL redirects.</div>
+  <div class="card green" style="margin:10px 0">
+    <h3>Zookeeper Range Eliminates This Entirely</h3>
+    <p>Sequential integers encoded to Base62 are <strong>mathematically guaranteed unique</strong>. Ranges never overlap (ZK uses atomic compare-and-swap on a global counter node). No DB uniqueness check needed. No retry logic needed.</p>
+  </div>
+  <h3>If Hash-Based (Hypothetical — Interviewer Pushes)</h3>
+  <div class="cols2">
+    <div class="card yellow">
+      <h3>Strategy 1 — Append &amp; Re-hash</h3>
+      <p>On collision: append attempt counter and re-hash.<br><code style="font-size:10px">sha1(longUrl + attempt).substring(0,7)</code><br>Max 3 retries; 500 beyond that.</p>
+    </div>
+    <div class="card yellow">
+      <h3>Strategy 2 — Uniqueness Check</h3>
+      <p>SELECT from DB before INSERT to verify not taken. If taken, fall back to counter-based code. Adds 1 DB round-trip per creation (~5ms) — acceptable at 1,157/sec but adds latency tail.</p>
+    </div>
+  </div>
+  <div class="tip" style="margin-top:8px">Always close with: "This is exactly why I'd use Zookeeper range allocation — it makes collisions structurally impossible with no retry logic."</div>
+</div>
+
+<!-- ════════════════════════════════════════════ s10 — 301 vs 302 Redirect ═══ -->
+<div id="s10" class="slide" data-title="301 vs 302 Redirect — The Interview Trap">
+  <div class="section-label">⚙️ LLD Deep Dive</div>
+  <h2>301 vs 302 Redirect — The Interview Trap</h2>
+  <div class="cols2" style="margin-bottom:10px">
+    <div class="card red">
+      <h3>301 — Moved Permanently</h3>
+      <ul>
+        <li>Browser caches redirect <strong>forever</strong></li>
+        <li>Repeat clicks bypass your server entirely</li>
+        <li><span class="rd">Cannot count those clicks</span></li>
+        <li>CDN caches indefinitely too</li>
+        <li>Use when: analytics NOT required, max throughput</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>302 — Found (Temporary)</h3>
+      <ul>
+        <li>Browser does <strong>NOT</strong> cache the redirect</li>
+        <li>Every click reaches your server</li>
+        <li><span class="gr">Enables full click tracking</span></li>
+        <li>Supports expiry enforcement</li>
+        <li>Use when: analytics ARE required</li>
+      </ul>
+    </div>
+  </div>
+  <div class="warn">Never say "I'll use 301 to reduce server load" without first asking if analytics are needed. This is a fail — 301 makes click counting impossible for repeat visitors.</div>
+  <div class="tip"><strong>410 Gone</strong> for expired URLs — not 404. 404 = "never existed." 410 = "existed, but is permanently gone." Clients and crawlers handle them differently. Interviewers test this.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ s11 — Read Path LLD ═══ -->
+<div id="s11" class="slide" data-title="Read Path LLD — Cache-First Redirect">
+  <div class="section-label">⚙️ LLD Deep Dive</div>
+  <h2>Read Path LLD — Redirect Flow</h2>
+  <div class="dia">Browser      CDN/Edge       Redirect Svc      Redis          MySQL
+  │               │                  │               │               │
+  │ GET /aB3xY7z  │                  │               │               │
+  │──────────────▶│                  │               │               │
+  │               │ (CDN miss)       │               │               │
+  │               │─────────────────▶│               │               │
+  │               │                  │ GET url:aB3.. │               │
+  │               │                  │──────────────▶│               │
+  │               │                  │◀──────────────│  (cache hit)  │
+  │               │ 302 + Location   │               │               │
+  │◀──────────────│ longUrl          │               │               │
+  │               │ [cache miss path]│──────────────────────────────▶│
+  │               │                  │◀──────────────────────────────│
+  │               │                  │ SET url:code longUrl EX ttl   │
+  │               │                  │ async: publish click → Kafka  │</div>
+  <div class="cols2" style="margin-top:8px">
+    <div class="card green"><h3>Cache Hit (80%+ traffic)</h3><p>Redis returns URL in <span class="gr">&lt;1ms</span>. Send 302. Fire-and-forget Kafka publish. Total: &lt;2ms.</p></div>
+    <div class="card yellow"><h3>Cache Miss (20%)</h3><p>Redis miss → MySQL query (<span class="hl">5–10ms</span>) → write to Redis → return 302. Total: ~12ms. Check expires_at here.</p></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ s12 — Write Path LLD ═══ -->
+<div id="s12" class="slide" data-title="Write Path LLD — URL Shortening">
+  <div class="section-label">⚙️ LLD Deep Dive</div>
+  <h2>Write Path LLD — URL Creation</h2>
+  <div class="dia">Client     API Gateway     URL Service       Zookeeper       MySQL          Redis
+  │               │               │                  │               │               │
+  │ POST /shorten │               │                  │               │               │
+  │──────────────▶│               │                  │               │               │
+  │               │ auth + route  │                  │               │               │
+  │               │──────────────▶│                  │               │               │
+  │               │               │ (range exhausted)│               │               │
+  │               │               │─────────────────▶│               │               │
+  │               │               │◀─────────────────│               │               │
+  │               │               │  [N, N+1,000,000)│               │               │
+  │               │               │ counter++ → Base62 = shortCode   │               │
+  │               │               │ INSERT url_mappings              │               │
+  │               │               │─────────────────────────────────▶│               │
+  │               │               │ SET url:{code} longUrl EX ttl    │               │
+  │               │               │─────────────────────────────────────────────────▶│
+  │◀──────────────│ {shortUrl}    │                  │               │               │</div>
+  <div class="info" style="margin-top:8px">Zookeeper is called only when range exhausts (~1 call per 1M URLs ≈ once per 14 min). On the hot path: counter++ in memory → Base62 → DB write. No coordination overhead per request.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ s13 — Rate Limiting ═══ -->
+<div id="s13" class="slide" data-title="Rate Limiting Design">
+  <div class="section-label">⚡ Optimizations</div>
+  <h2>Rate Limiting Design</h2>
+  <div class="cols2" style="margin-bottom:10px">
+    <div class="card red">
+      <h3>Write — POST /shorten</h3>
+      <ul>
+        <li>Free: <span class="hl">100 URLs/day</span> per user</li>
+        <li>Pro: <span class="cy">10,000 URLs/day</span></li>
+        <li>Unauthed IP: 10 creates/min</li>
+        <li>Return <span class="gr">429 Too Many Requests</span></li>
+      </ul>
+    </div>
+    <div class="card blue">
+      <h3>Read — GET /{code}</h3>
+      <ul>
+        <li>No per-user limit (public redirects)</li>
+        <li>Anti-abuse: 1,000 req/min per IP</li>
+        <li>DDoS: CDN + API Gateway layer</li>
+      </ul>
+    </div>
+  </div>
+  <h3>Redis Sliding Window Counter</h3>
+  <div class="dia">Key:   rl:{userId}:{minute_bucket}
+Value: integer (INCR)
+TTL:   60 seconds
+
+bucket = floor(currentEpochMs / 60000)
+key    = "rl:" + userId + ":" + bucket
+count  = INCR key
+if count == 1: EXPIRE key 60
+if count > LIMIT: return 429 Too Many Requests</div>
+  <div class="tip">Two-layer defense: API Gateway handles gross limits (Kong, AWS API GW). Redis handles fine-grained per-user limits. Mention both.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ s14 — Analytics ═══ -->
+<div id="s14" class="slide" data-title="Analytics Service — Kafka + ClickHouse">
+  <div class="section-label">⚡ Optimizations</div>
+  <h2>Analytics Service</h2>
+  <div class="card yellow" style="margin-bottom:10px">
+    <strong>Core principle:</strong> Analytics must NEVER block the redirect. Send 302 first — Kafka publish is fire-and-forget. Acceptable lag: 30–60 seconds for dashboards.
+  </div>
+  <div class="cols2" style="margin-bottom:10px">
+    <div class="card blue">
+      <h3>Kafka Click Event</h3>
+      <p>Published after every redirect:<br><code style="font-size:10px">short_code, clicked_at, ip_hashed, country, referrer, user_agent</code></p>
+      <p style="margin-top:6px">Topic: <span class="hl">url.click.events</span><br>Partitioned by short_code (ordering per URL)</p>
+    </div>
+    <div class="card purple">
+      <h3>ClickHouse Storage</h3>
+      <p>Columnar OLAP — aggregates billions of rows in seconds.<br>Partition by: <span class="gr">toYYYYMM(clicked_at)</span><br>Order by: <span class="cy">(short_code, clicked_at)</span></p>
+    </div>
+  </div>
+  <h3>Trending URLs (Advanced Feature)</h3>
+  <div class="info">Kafka → Flink sliding 5-min window → count events per short_code → on threshold: ZADD trending:urls {score} {code} → dashboard reads ZREVRANGE top-10 in O(log n)</div>
+  <div class="warn" style="margin-top:6px">Never do: <code>UPDATE url_mappings SET click_count = click_count + 1</code> — hot URLs (100K+ clicks/sec) cause catastrophic row-level lock contention in MySQL.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ s15 — Caching Strategy ═══ -->
+<div id="s15" class="slide" data-title="Caching Strategy — Redis, TTL, Eviction">
+  <div class="section-label">⚡ Optimizations</div>
+  <h2>Caching Strategy</h2>
+  <div class="cols2" style="margin-bottom:10px">
+    <div class="card cyan">
+      <h3>Redis — L2 Cache</h3>
+      <ul>
+        <li>Pattern: <strong>Cache-Aside</strong> (lazy/pull-through)</li>
+        <li>Eviction: <span class="hl">allkeys-lru</span></li>
+        <li>Working set: <span class="cy">~10–20 GB</span></li>
+        <li>TTL: match URL expiry (or 24h if no expiry)</li>
+        <li>Key: <code>url:{shortCode}</code> → longUrl</li>
+      </ul>
+    </div>
+    <div class="card blue">
+      <h3>L1 In-Process Cache</h3>
+      <ul>
+        <li>Caffeine (JVM) in each app server</li>
+        <li>Top 100K hottest URLs in heap</li>
+        <li>Sub-microsecond — faster than Redis network hop</li>
+        <li>Fallback when Redis is degraded</li>
+      </ul>
+    </div>
+  </div>
+  <div class="cols2">
+    <div class="card yellow">
+      <h3>CDN Edge Cache (301 only)</h3>
+      <p>For non-analytics URLs: CDN caches at edge PoPs. Origin never involved for repeat clicks. Essential at 1B RPS scale.</p>
+    </div>
+    <div class="card green">
+      <h3>Zipf Distribution</h3>
+      <p>Top 20% of URLs = 80% of traffic. A 10–20 GB Redis cluster absorbs the entire hot working set. &gt;80% cache hit rate.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════ s16 — ER Diagram ═══ -->
+<div id="s16" class="slide" data-title="ER Diagram & DB Schema">
+  <div class="section-label">🗄 DB Schema</div>
+  <h2>ER Diagram & DB Schema</h2>
+  <div class="dia">┌──────────────────┐         ┌───────────────────────────┐
+│      users       │         │       url_mappings        │
+├──────────────────┤         ├───────────────────────────┤
+│ PK user_id BIGINT│◄───────│ FK user_id BIGINT         │
+│    email TEXT    │  1   N  │ PK short_code VARCHAR(10) │
+│    plan ENUM     │         │    long_url TEXT           │
+│    created_at TS │         │    long_url_hash CHAR(32)  │
+└──────────────────┘         │    expires_at TS NULL      │
+                             │    is_custom_alias BOOL    │
+                             │    created_at TIMESTAMP    │
+                             └──────────────┬─────────────┘
+                                            │ 1
+                                   async via Kafka
+                                            │ N
+                             ┌──────────────▼─────────────┐
+                             │  click_events  (ClickHouse) │
+                             ├────────────────────────────┤
+                             │ FK short_code  String      │
+                             │    clicked_at  DateTime    │
+                             │    country     LowCardinality│
+                             │    referrer    String      │
+                             │    ip_address  String      │
+                             └────────────────────────────┘
+
+INDEXES (url_mappings):
+  PRIMARY KEY (short_code)
+  INDEX idx_user_urls    (user_id, created_at DESC)
+  INDEX idx_dedup        (user_id, long_url_hash)
+
+PARTITION BY toYYYYMM(clicked_at)   ORDER BY (short_code, clicked_at)</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ s17 — Scaling ═══ -->
+<div id="s17" class="slide" data-title="Scaling — Horizontal Sharding by Hash">
+  <div class="section-label">📈 Scaling</div>
+  <h2>Scaling — Horizontal Sharding</h2>
+  <div class="card red" style="margin-bottom:10px">
+    <strong>Problem:</strong> Single MySQL cannot handle 115K RPS reads + 90 TB across 5 years. Even with read replicas, primary becomes the write bottleneck.
+  </div>
+  <div class="cols2" style="margin-bottom:10px">
+    <div class="card green">
+      <h3>Shard by hash(short_code)</h3>
+      <p><code>shardIndex = hash(shortCode) % NUM_SHARDS</code></p>
+      <ul>
+        <li>Any redirect → exactly <strong>one shard</strong></li>
+        <li>No cross-shard queries needed ever</li>
+        <li>Even distribution via hash</li>
+        <li>10 shards × 9 TB = manageable</li>
+      </ul>
+    </div>
+    <div class="card red">
+      <h3>Why NOT shard by user_id?</h3>
+      <ul>
+        <li>Viral URL on one user → <span class="rd">hot shard</span></li>
+        <li>Marketing campaign = one user's shard overwhelmed</li>
+        <li>Redirect query doesn't know user_id at lookup time</li>
+      </ul>
+    </div>
+  </div>
+  <table class="tbl">
+    <tr><th>Bottleneck</th><th>Solution</th></tr>
+    <tr><td>115K RPS reads</td><td>Redis LRU cache → 80%+ hit rate → MySQL sees only ~20K RPS</td></tr>
+    <tr><td>90 TB storage</td><td>10 MySQL shards (RDS Multi-AZ), each ~9 TB</td></tr>
+    <tr><td>URL expiry cleanup</td><td>Nightly batch: DELETE WHERE expires_at &lt; NOW() - INTERVAL 7 DAYS (batches of 1K rows)</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════ s18 — Custom Aliases + Expiry ═══ -->
+<div id="s18" class="slide" data-title="Custom Aliases & Expiry Feature Design">
+  <div class="section-label">📈 Scaling</div>
+  <h2>Custom Aliases &amp; Expiry</h2>
+  <div class="cols2" style="margin-bottom:10px">
+    <div class="card purple">
+      <h3>Custom Alias Design</h3>
+      <ul>
+        <li>Same <code>url_mappings</code> table, same PK column</li>
+        <li>Check uniqueness before insert → <span class="rd">409 Conflict</span> if taken</li>
+        <li>Namespace separation: auto-codes = zero-padded 7 chars; aliases must be ≥ 4 chars and not match that pattern</li>
+        <li><code>is_custom_alias = TRUE</code> flag for reporting</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>Expiry Design</h3>
+      <ul>
+        <li><code>expires_at TIMESTAMP NULL</code> — NULL = permanent</li>
+        <li>Redis TTL = URL expiry time</li>
+        <li>On cache miss → MySQL → check <code>expires_at &lt; NOW()</code></li>
+        <li>Return <span class="hl">410 Gone</span> (not 404) for expired</li>
+        <li>Nightly batch cleanup with 7-day grace period</li>
+      </ul>
+    </div>
+  </div>
+  <div class="info"><strong>POST /api/v1/urls:</strong> <code>{"longUrl":"...","customAlias":"my-link","ttlDays":30}</code><br>Conflict response: <code>{"error":"ALIAS_TAKEN","message":"Choose another."}</code></div>
+  <div class="tip">De-dup is per-user only (check long_url_hash per user_id). Two different users can have separate short codes for the same long URL — for independent analytics tracking.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ s19 — Trade-offs Table ═══ -->
+<div id="s19" class="slide" data-title="Trade-offs — Hash vs Counter, SQL vs NoSQL">
+  <div class="section-label">⚖️ Trade-offs</div>
+  <h2>Key Trade-offs</h2>
+  <h3 style="margin-bottom:6px">ID Generation</h3>
+  <table class="tbl" style="margin-bottom:12px">
+    <tr><th>Approach</th><th>Collision Risk</th><th>Network on Hot Path</th><th>Recommendation</th></tr>
+    <tr><td><span class="rd">MD5 Hash</span></td><td><span class="rd">13%+ at 1B URLs</span></td><td>1 DB check per create</td><td><span class="pill red">❌ Avoid</span></td></tr>
+    <tr><td><span class="hl">Global Counter</span></td><td><span class="gr">Zero</span></td><td>1 DB call per create</td><td><span class="pill yellow">⚠ Weak</span></td></tr>
+    <tr><td><span class="cy">Snowflake ID</span></td><td><span class="gr">Zero</span></td><td>Zero (local)</td><td><span class="pill blue">✓ Good alt</span></td></tr>
+    <tr><td><span class="gr">ZK Range</span></td><td><span class="gr">Zero</span></td><td>Zero (in-memory)</td><td><span class="pill green">✅ Best</span></td></tr>
+  </table>
+  <h3 style="margin-bottom:6px">Storage</h3>
+  <table class="tbl">
+    <tr><th>Option</th><th>Strength</th><th>Weakness</th><th>For URL Shortener</th></tr>
+    <tr><td><span class="gr">MySQL (sharded)</span></td><td>B-tree PK lookup, ACID, expiry DELETE</td><td>Manual sharding complexity</td><td><span class="pill green">✅ Right fit</span></td></tr>
+    <tr><td><span class="or">Cassandra</span></td><td>Append-heavy, wide rows, multi-DC</td><td>Tombstones, eventual consistency</td><td><span class="pill red">❌ Wrong access pattern</span></td></tr>
+    <tr><td><span class="cy">DynamoDB</span></td><td>Managed, auto-scale, point lookups</td><td>Cost at 115K RPS, cold reads</td><td><span class="pill yellow">✓ Viable managed option</span></td></tr>
+  </table>
+</div>
+
+<!-- ══════════════════════════════════════════ s20 — PostgreSQL vs Cassandra ═══ -->
+<div id="s20" class="slide" data-title="PostgreSQL vs Cassandra Comparison">
+  <div class="section-label">⚖️ Trade-offs</div>
+  <h2>PostgreSQL / MySQL vs Cassandra</h2>
+  <table class="tbl">
+    <tr><th>Dimension</th><th>MySQL / PostgreSQL</th><th>Cassandra</th></tr>
+    <tr><td><strong>Data model</strong></td><td>Relational, normalized</td><td>Wide-column, denormalized</td></tr>
+    <tr><td><strong>Best access pattern</strong></td><td><span class="gr">Point lookups by PK</span> — perfect for short_code</td><td>Range scans, time-series append</td></tr>
+    <tr><td><strong>Consistency</strong></td><td>Strong (ACID)</td><td>Tunable (eventual by default)</td></tr>
+    <tr><td><strong>Write throughput</strong></td><td>~10K writes/sec per node</td><td><span class="gr">100K+ writes/sec</span> (LSM tree)</td></tr>
+    <tr><td><strong>Read latency</strong></td><td><span class="gr">&lt;1ms</span> with index + cache</td><td>2–10ms (SSTable reads)</td></tr>
+    <tr><td><strong>Sharding</strong></td><td>Manual (Vitess, ProxySQL)</td><td><span class="gr">Built-in</span> consistent hashing</td></tr>
+    <tr><td><strong>Expiry/deletion</strong></td><td>Simple DELETE + TTL job</td><td>Tombstone overhead; TTL must be set at write time</td></tr>
+    <tr><td><strong>For URL shortener</strong></td><td><span class="pill green">✅ Ideal — point lookups, expiry, ACID</span></td><td><span class="pill red">❌ Operational complexity, no benefit</span></td></tr>
+  </table>
+  <div class="tip">When asked "why not Cassandra?" — Cassandra is optimized for time-series append with wide rows. URL lookups are random point reads by PK — exactly what a MySQL B-tree index is designed for.</div>
+</div>
+
+<!-- ══════════════════════════════════════════════ s21 — Redis vs Memcached ═══ -->
+<div id="s21" class="slide" data-title="Redis vs Memcached Comparison">
+  <div class="section-label">⚖️ Trade-offs</div>
+  <h2>Redis vs Memcached</h2>
+  <table class="tbl" style="margin-bottom:12px">
+    <tr><th>Dimension</th><th>Redis</th><th>Memcached</th></tr>
+    <tr><td><strong>Data structures</strong></td><td><span class="gr">Strings, Hashes, Sets, Sorted Sets, Lists, Streams</span></td><td>Strings only</td></tr>
+    <tr><td><strong>Per-key TTL</strong></td><td><span class="gr">Native — SET key val EX seconds</span></td><td>Per-key TTL (eviction-only, less precise)</td></tr>
+    <tr><td><strong>Persistence</strong></td><td><span class="gr">AOF + RDB snapshots</span></td><td>None — volatile in-memory only</td></tr>
+    <tr><td><strong>High Availability</strong></td><td><span class="gr">Redis Sentinel + Cluster mode</span></td><td>Manual sharding at client level</td></tr>
+    <tr><td><strong>Advanced features</strong></td><td>Pub/Sub, Lua scripts, Transactions, Sorted sets</td><td>None</td></tr>
+    <tr><td><strong>Memory efficiency</strong></td><td>Good</td><td><span class="gr">Slightly better for pure key-value strings</span></td></tr>
+    <tr><td><strong>For URL shortener</strong></td><td><span class="pill green">✅ Choose Redis — TTL, sorted sets for trending, HA</span></td><td><span class="pill red">❌ Missing TTL semantics &amp; advanced features</span></td></tr>
+  </table>
+  <div class="info">We need per-key TTL matching URL expiry times. Redis: <code>SET url:{code} {longUrl} EX {secondsUntilExpiry}</code> — trivial. Memcached would require a separate expiry tracking store.</div>
+</div>
+
+<!-- ══════════════════════════════════════ s22 — Senior Trap Q&A 1 ═══ -->
+<div id="s22" class="slide" data-title="Senior Q&A #1 — Hash Collisions at Scale">
+  <div class="section-label">🎯 Interview Prep</div>
+  <h2>Senior Trap Q&amp;A #1</h2>
+  <div class="quote">"How do you prevent hash collisions at scale — what happens when two different long URLs produce the same short code?"</div>
+  <div class="card green" style="margin-top:10px">
+    <h3>Correct Answer</h3>
+    <p>Use <strong>Zookeeper range allocation, not hashing</strong>. Sequential integers encoded to Base62 are mathematically unique — there is no collision to prevent. The question assumes MD5/hash-based generation.</p>
+  </div>
+  <div class="card yellow" style="margin-top:8px">
+    <h3>If interviewer insists on hash-based (hypothetical)</h3>
+    <ul>
+      <li>Append attempt counter + re-hash: <code style="font-size:10.5px">sha1(longUrl + attempt).substring(0,7)</code></li>
+      <li>SELECT before INSERT to verify code not already taken</li>
+      <li>Cap at 3 retries; return 500 beyond that</li>
+      <li>Birthday paradox at 1B URLs = 13%+ collision probability — this is why we don't use hashing</li>
+    </ul>
+  </div>
+  <div class="warn" style="margin-top:8px"><strong>Zookeeper failure mode:</strong> server holds 1M IDs in memory (~14 min supply). At exhaustion, circuit-break URL creation with 503 rather than risk ID space corruption. Pro-tip: refresh range at 10% remaining threshold.</div>
+</div>
+
+<!-- ══════════════════════════════════════ s23 — Senior Trap Q&A 2 ═══ -->
+<div id="s23" class="slide" data-title="Senior Q&A #2 — 301 Cache Poisoning">
+  <div class="section-label">🎯 Interview Prep</div>
+  <h2>Senior Trap Q&amp;A #2</h2>
+  <div class="quote">"How would you handle 301 cache poisoning — a bad actor creates a URL to a safe domain, gets it cached everywhere, then tries to exploit the cached behavior?"</div>
+  <div class="card red" style="margin-top:10px">
+    <h3>The Problem with 301</h3>
+    <p>Browsers and CDNs cache 301 indefinitely. Once a redirect is cached to a destination, you cannot push an update to those clients. If you need to deactivate a URL, cached clients will continue redirecting to the old destination.</p>
+  </div>
+  <div class="card green" style="margin-top:8px">
+    <h3>Defense Strategy</h3>
+    <ul>
+      <li>Use <strong>302 by default</strong> — eliminates browser-level permanent caching</li>
+      <li>If using CDN for 301: set <code>Cache-Control: max-age=86400</code> (24h max)</li>
+      <li><strong>Immutable URL semantics:</strong> once created, long_url cannot be changed — only the URL can be deactivated (returns 410)</li>
+      <li>Ownership enforcement: only creator can delete/deactivate</li>
+    </ul>
+  </div>
+  <div class="tip" style="margin-top:8px">This tests whether you understand CDN caching behavior and prefer immutable URL semantics. Senior engineers design for deactivation — 410 Gone is the correct signal to CDNs to purge the entry.</div>
+</div>
+
+<!-- ══════════════════════════════════════ s24 — Senior Trap Q&A 3 ═══ -->
+<div id="s24" class="slide" data-title="Senior Q&A #3 — Scale to 1B URLs/day">
+  <div class="section-label">🎯 Interview Prep</div>
+  <h2>Senior Trap Q&amp;A #3</h2>
+  <div class="quote">"How would you scale this to handle 1 billion redirects per second — 10× the current design?"</div>
+  <div class="cols2" style="margin-bottom:10px">
+    <div class="card red">
+      <h3>What breaks at 1B RPS?</h3>
+      <ul>
+        <li>Redis tops out at ~100–500M ops/sec</li>
+        <li>MySQL origin sees too many cache misses</li>
+        <li>Single-region: global latency &gt; 10ms target</li>
+        <li>Kafka partition throughput ceiling</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Solutions (priority order)</h3>
+      <ol style="padding-left:16px">
+        <li>Push redirects to <strong>CDN edge</strong> (CloudFront / Fastly) — handles 90%+ with zero origin involvement</li>
+        <li>Multi-region Redis with active-active replication (us-east, eu-west, ap-se)</li>
+        <li>MySQL → Vitess cluster (50+ shards)</li>
+        <li>Add Kafka partitions + ClickHouse nodes linearly</li>
+      </ol>
+    </div>
+  </div>
+  <div class="info">Zookeeper range allocation already scales linearly — each server is independent. Write rate at 10× is ~11K/sec (Vitess handles it). ID generation requires no changes at 1B RPS.</div>
+</div>
+
+<!-- ══════════════════════════════════════ s25 — Key Numbers + Closing ═══ -->
+<div id="s25" class="slide" data-title="Key Numbers & Closing — What NOT to Say">
+  <div class="section-label">🎯 Interview Prep</div>
+  <h2>Key Numbers — Memorize These</h2>
+  <div class="cols3" style="margin-bottom:12px">
+    <div class="stat"><div class="val bl">1,157</div><div class="lbl">writes/sec avg</div></div>
+    <div class="stat"><div class="val cy">115,740</div><div class="lbl">reads/sec avg</div></div>
+    <div class="stat"><div class="val gr">100:1</div><div class="lbl">read:write ratio</div></div>
+    <div class="stat"><div class="val hl">3.5T</div><div class="lbl">code space (62⁷)</div></div>
+    <div class="stat"><div class="val pu">~95 yrs</div><div class="lbl">code exhaustion</div></div>
+    <div class="stat"><div class="val or">~90 TB</div><div class="lbl">5-year storage</div></div>
+    <div class="stat"><div class="val bl">~10 GB</div><div class="lbl">Redis hot set</div></div>
+    <div class="stat"><div class="val cy">80%+</div><div class="lbl">cache hit rate</div></div>
+    <div class="stat"><div class="val gr">~500 B</div><div class="lbl">per URL row</div></div>
+  </div>
+  <div class="warn"><strong>NEVER say:</strong> "Use MD5 hash" &nbsp;·&nbsp; "Global auto-increment counter" &nbsp;·&nbsp; "UPDATE click_count on every click" &nbsp;·&nbsp; "Use 301 by default" &nbsp;·&nbsp; "Use Cassandra" &nbsp;·&nbsp; "Return 404 for expired URLs"</div>
+  <div class="success" style="margin-top:8px"><strong>Study order:</strong> Rapid Answer (5 components) → Base62 + Zookeeper ID gen deep dive (#1 follow-up) → 301 vs 302 trap → 410 vs 404 → Key Numbers table</div>
+</div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'TinyURL';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script>
+</body>
+</html>

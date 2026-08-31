@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Streams STATEFUL Processing Nodes — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Streams STATEFUL Processing Nodes — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 16</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:10.0%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">⏱️</div>
+  <h1 class="gradient-text">Kafka Streams STATEFUL Processing Nodes — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">groupByKey</span><span class="badge">aggregate</span><span class="badge">Stateful Operators</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: groupByKey, groupBy, count, aggregate, KTable, RocksDB state store, KStream-KTable join, KTable-KTable join, repartition trigger</p>
+</div>
+<div class="slide" id="s3" data-title="Why Stateful? The Memory Problem">
+<h2>Why Stateful? The Memory Problem</h2>
+<p>Stateless nodes process each record in isolation — they remember nothing. Stateful nodes must <strong>remember previous records</strong> to compute a correct result.</p>
+<div class="dia">STATELESS (filter) — no memory needed:
+  record-1 ──► filter(amount &gt; 500) ──► pass or drop   (no history needed)
+  record-2 ──► filter(amount &gt; 500) ──► pass or drop
+  record-3 ──► filter(amount &gt; 500) ──► pass or drop
+
+STATEFUL (count per user) — memory IS needed:
+  record-1  user:Alice  ──► How many so far? Must remember!
+  record-2  user:Bob    ──► ...
+  record-3  user:Alice  ──► Alice count = 2 — only correct if we remembered record-1
+
+SOLUTION: RocksDB state store (local key-value database, one per task, on disk)
+  ┌──────────────────────────────────────────┐
+  │  RocksDB (per task, local disk)          │
+  │  key        │ value                      │
+  │  ───────────┼───────                     │
+  │  "Alice"    │  2                         │
+  │  "Bob"      │  1                         │
+  └──────────────────────────────────────────┘
+
+Each task has its OWN RocksDB. They never share state.
+Every write to RocksDB is also mirrored to a changelog topic in Kafka
+so state can be rebuilt after a crash.</div>
+</div>
+<div class="slide" id="s4" data-title="groupByKey vs groupBy — Entry Point to Stateful Processing">
+<h2>groupByKey vs groupBy — Entry Point to Stateful Processing</h2>
+<p><code>groupByKey</code> and <code>groupBy</code> do <strong>not</strong> count or aggregate. They set metadata — which key to group by — for the downstream nodes (<code>count</code>, <code>aggregate</code>) to use.</p>
+<div class="dia">groupByKey — use the EXISTING key (no key change, no repartition):
+  ┌──────────────────────┐
+  │  KStream             │  key = userId  (already what we want)
+  │  key:  "U07"         │
+  │  value: Order{...}   │
+  └──────────┬───────────┘
+             │ .groupByKey()
+             ▼
+  ┌──────────────────────┐
+  │  KGroupedStream      │  metadata: "downstream nodes use the current key"
+  │  key:  "U07"         │  no repartition needed
+  └──────────────────────┘
+
+groupBy — CHANGE the key (always triggers repartition):
+  ┌──────────────────────┐
+  │  KStream             │  key = orderId  (wrong for our goal)
+  │  key:  "O101"        │
+  │  value: Order{...}   │
+  └──────────┬───────────┘
+             │ .groupBy((key, order) → order.getUserId())
+             ▼
+  ┌──────────────────────────────────────────────────┐
+  │  New key = "U07"  (userId)                       │
+  │  Repartition INITIATED — internal topic created  │
+  │  so all "U07" records land in the same partition │
+  └──────────────────────────────────────────────────┘
+             │
+             ▼
+  ┌──────────────────────┐
+  │  KGroupedStream      │  metadata: "use userId as group key"
+  └──────────────────────┘
+
+SHORTCUT: if you only need to change the key before grouping, you can either
+  a) selectKey(…).groupByKey()   — two steps, repartition at groupByKey
+  b) groupBy(…)                  — one step, repartition always triggered</div>
+</div>
+<div class="slide" id="s5" data-title="count — Event-by-Event State Evolution">
+<h2>count — Event-by-Event State Evolution</h2>
+<p><code>count</code> reads the current value from RocksDB, increments it by 1, writes it back, and emits an updated KTable row.</p>
+<div class="dia">EVENTS ARRIVING (key = user name):
+  ─────────────────────────────────────────────────────────────►  time
+  Alice       Bob         Alice       Alice
+  (event-1)   (event-2)   (event-3)   (event-4)
+
+ROCKSDB STATE AFTER EACH EVENT:
+  ┌──────────────────────────────────────────────────────────────┐
+  │ After event-1 (Alice):   { Alice: 1 }                        │
+  │ After event-2 (Bob):     { Alice: 1,  Bob: 1 }               │
+  │ After event-3 (Alice):   { Alice: 2,  Bob: 1 }               │
+  │ After event-4 (Alice):   { Alice: 3,  Bob: 1 }               │
+  └──────────────────────────────────────────────────────────────┘
+
+KTABLE OUTPUT (one emission per change):
+  ┌──────────┬───────┐
+  │ key      │ count │
+  ├──────────┼───────┤
+  │ Alice    │  1    │  ← emitted after event-1
+  │ Bob      │  1    │  ← emitted after event-2
+  │ Alice    │  2    │  ← emitted after event-3  (updates Alice row)
+  │ Alice    │  3    │  ← emitted after event-4  (updates Alice row)
+  └──────────┴───────┘
+
+CODE SHAPE:
+  orders
+    .groupByKey()
+    .count(Materialized.as("order-counter-store"))
+  → returns KTable&lt;String, Long&gt;</div>
+</div>
+<div class="slide" id="s6" data-title="aggregate — Custom Aggregation Logic">
+<h2>aggregate — Custom Aggregation Logic</h2>
+<p><code>aggregate</code> gives you full control. You provide two things: (1) an <strong>initializer</strong> that runs the very first time a key is seen, and (2) an <strong>aggregator</strong> that runs on every subsequent record.</p>
+<div class="dia">GOAL: sum order amounts per user
+  Input records: Alice→100, Bob→200, Alice→150, Alice→50
+
+  ── aggregate flow for key "Alice" ──────────────────────────────
+
+  STEP 1 — First time "Alice" appears:
+  ┌──────────────────────────────────────────────────────────────┐
+  │  RocksDB lookup "Alice" → NOT FOUND                          │
+  │  → run initializer()           → returns 0                   │
+  │  → run aggregator("Alice", 100, rocksDBval=0)                 │
+  │       your logic: 0 + 100 = 100                              │
+  │  → write 100 to RocksDB["Alice"]                             │
+  └──────────────────────────────────────────────────────────────┘
+
+  STEP 2 — Second Alice record (value=150):
+  ┌──────────────────────────────────────────────────────────────┐
+  │  RocksDB lookup "Alice" → FOUND → 100                        │
+  │  → skip initializer (already initialized)                    │
+  │  → run aggregator("Alice", 150, rocksDBval=100)               │
+  │       your logic: 100 + 150 = 250                            │
+  │  → write 250 to RocksDB["Alice"]                             │
+  └──────────────────────────────────────────────────────────────┘
+
+  STEP 3 — Third Alice record (value=50):
+  ┌──────────────────────────────────────────────────────────────┐
+  │  RocksDB lookup "Alice" → FOUND → 250                        │
+  │  → aggregator("Alice", 50, rocksDBval=250)                    │
+  │       your logic: 250 + 50 = 300                             │
+  │  → write 300 to RocksDB["Alice"]                             │
+  └──────────────────────────────────────────────────────────────┘
+
+  FINAL KTABLE STATE:
+  ┌────────┬───────┐
+  │ key    │ total │
+  ├────────┼───────┤
+  │ Alice  │  300  │
+  │ Bob    │  200  │
+  └────────┴───────┘
+
+AGGREGATOR SIGNATURE:
+  (K key,  V newRecordValue,  VR currentRocksDBValue)  →  VR updatedValue
+        ↑            ↑                  ↑                       ↑
+    record key    arriving          read from               written back
+                  record            RocksDB                to RocksDB</div>
+</div>
+<div class="slide" id="s7" data-title="KStream-KTable Join — Enriching a Stream">
+<h2>KStream-KTable Join — Enriching a Stream</h2>
+<p>Each arriving stream event is matched with the <strong>latest value</strong> for the same key in a KTable. The result is an enriched stream event.</p>
+<div class="dia">KTABLE: user-profiles  (updated separately; always holds latest state)
+  ┌──────────┬──────────────────────────────────────────┐
+  │ key      │ value                                    │
+  ├──────────┼──────────────────────────────────────────┤
+  │ "U07"    │ UserProfile { name:"Alice", city:"NY" }  │
+  │ "U12"    │ UserProfile { name:"Bob",   city:"LA" }  │
+  └──────────┴──────────────────────────────────────────┘
+
+KSTREAM: order-events  (infinite; key must be userId to match the KTable)
+  → use selectKey first if key is currently orderId
+
+JOIN FLOW — one arriving event:
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Stream event arrives:                                        │
+  │    key="U07"  value=Order{orderId:"O101", amount:500}         │
+  │                                                              │
+  │  KTable lookup by key "U07":                                  │
+  │    found → UserProfile{name:"Alice", city:"NY"}              │
+  │                                                              │
+  │  ValueJoiner called:                                          │
+  │    (orderValue, profileValue) → EnrichedOrder{               │
+  │        orderId:"O101", amount:500,                           │
+  │        userName:"Alice", city:"NY"   ← enriched!             │
+  │    }                                                         │
+  └──────────────────────────────────────────────────────────────┘
+          │
+          ▼
+  OUTPUT KSTREAM: key="U07"  value=EnrichedOrder{...}
+
+KEY RULES:
+  KStream key  must equal  KTable key   (join is always by key)
+  If KStream key = orderId → selectKey first to change it to userId
+
+  KTable → KStream join is NOT supported.
+  A KStream has no fixed boundary, so there is nothing to look up against.</div>
+</div>
+<div class="slide" id="s8" data-title="KTable-KTable Join — Merging Two Tables">
+<h2>KTable-KTable Join — Merging Two Tables</h2>
+<p>Two KTables can be joined to produce a third KTable. Whenever either source table updates, the joined result is recomputed automatically.</p>
+<div class="dia">  KTable: user-profiles          KTable: user-preferences
+  ┌──────────┬────────────────┐  ┌──────────┬───────────────┐
+  │ "U07"    │ Alice / NY     │  │ "U07"    │ theme: dark   │
+  │ "U12"    │ Bob   / LA     │  │ "U12"    │ theme: light  │
+  └──────────┴────────────────┘  └──────────┴───────────────┘
+                   │                          │
+                   └────────────┬─────────────┘
+                                ▼ .join(...)
+                   ┌──────────┬────────────────────────────────┐
+                   │ "U07"    │ Alice / NY / theme:dark         │
+                   │ "U12"    │ Bob   / LA / theme:light        │
+                   └──────────┴────────────────────────────────┘
+
+  OUTPUT: KTable  (automatically re-emits when either source changes)
+  RULE: both KTables must use the same key type and same key values</div>
+</div>
+<div class="slide" id="s9" data-title="How groupByKey Triggers Repartition">
+<h2>How groupByKey Triggers Repartition</h2>
+<p>Repartition is needed when a key changed earlier in the topology — it ensures all records for the same new key land in the same partition before stateful nodes run.</p>
+<div class="dia">SCENARIO: selectKey changed key from orderId → userId upstream
+
+  [source topic]  key = orderId
+       │
+       ▼  orders KStream  ← key was changed by selectKey, repartition PENDING
+       │
+       ▼ .groupByKey()
+  ┌──────────────────────────────────────────────────────────────┐
+  │  groupByKey checks: was key changed before this point?       │
+  │  YES → repartition initiated NOW                             │
+  │                                                              │
+  │  1. Records are published to an auto-created topic           │
+  │     key=userId → same userId → same partition  (guaranteed)  │
+  │                                                              │
+  │  2. Sub-Topology 1 reads from that repartition topic         │
+  │                                                              │
+  │  3. count / aggregate see ALL records for "U07" in one task  ✓│
+  └──────────────────────────────────────────────────────────────┘
+
+WITHOUT repartition (wrong):
+  Partition-0: U07-order1, U07-order3   → Task-0 counts U07=2
+  Partition-1: U07-order2               → Task-1 counts U07=1
+  Neither task has the FULL picture!  ✗
+
+WITH repartition (correct):
+  Partition-0: U07-order1, U07-order2, U07-order3  → Task-0 counts U07=3  ✓</div>
+</div>
+<div class="slide" id="s10" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Operation         │ What it does                           │ Output type          │ Uses RocksDB
+──────────────────┼────────────────────────────────────────┼──────────────────────┼──────────────
+groupByKey        │ Tell downstream: use the current key.  │ KGroupedStream       │ No
+                  │ Triggers repartition if key was changed│                      │
+groupBy           │ Change key, always triggers repartition│ KGroupedStream       │ No
+count             │ Count records per key                  │ KTable&lt;K, Long&gt;      │ Yes
+aggregate         │ Custom aggregation per key             │ KTable&lt;K, VR&gt;        │ Yes
+KStream-KTable    │ Enrich each stream event with the      │ KStream&lt;K, VR&gt;       │ Reads KTable
+join              │ latest table value for that key        │                      │
+KTable-KTable     │ Merge two tables by shared key         │ KTable&lt;K, VR&gt;        │ Yes
+join              │                                        │                      │
+
+groupByKey / groupBy  = metadata only (which key to use downstream)
+count / aggregate     = do the actual grouping and state management in RocksDB
+Initializer runs      = only on FIRST occurrence of a key (RocksDB has no entry yet)
+Aggregator runs       = on EVERY record (receives current RocksDB value as input)</div>
+</div>
+<div class="slide" id="s11" data-title="Architecture — The Stateful Half of the Delivery-Rate Topology">
+<h2>Architecture — Where count()/aggregate() Actually Do the Work</h2>
+<p>"Here's the stateful stage of the delivery-rate topology — where groupByKey's 'metadata only' promise turns into real RocksDB reads and writes."</p>
+<div class="dia">  (after filter + rekey by channel, repartitioned)
+        │
+        ▼ groupByKey  ← metadata only: "use current key (channel) downstream"
+        ▼ windowedBy(1 min)
+        ▼ aggregate(DeliveryStats::new, DeliveryStats::update)
+              │
+              ├─ Initializer (DeliveryStats::new) → runs ONLY on first event
+              │   for a given (channel, window) combination
+              └─ Aggregator (DeliveryStats::update) → runs on EVERY event,
+                  reads current RocksDB value, writes updated value back
+        ▼
+  KTable&lt;(channel,window), DeliveryStats&gt; → toStream() → sink topic</div>
+<p><strong>Scenario-first:</strong> "The Initializer/Aggregator split matters operationally: the Initializer is cheap and rare (once per new key), while the Aggregator runs on every single record and is what actually drives your RocksDB read/write load — that's the part to profile if this stage becomes a bottleneck."</p>
+</div>
+<div class="slide" id="s12" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why does groupBy ALWAYS trigger a repartition but groupByKey only
+   SOMETIMES does?
+A: groupBy lets you supply a brand-new key selector — Streams can't
+   guarantee that new key is already co-located correctly, so it always
+   repartitions. groupByKey reuses the existing key; a repartition is only
+   needed if an EARLIER step already changed that key without
+   Streams having re-partitioned yet.
+
+Q: Why is a KStream-KTable join's KTable side described as "reads KTable"
+   rather than "uses RocksDB" like count/aggregate?
+A: The join READS the KTable's already-materialized RocksDB state per
+   incoming stream record — it doesn't independently manage its own new
+   state store the way count/aggregate do; it depends on state built by an
+   earlier aggregation step.
+
+Q: What actually happens if two different keys hash to the same RocksDB
+   entry space?
+A: They don't — RocksDB entries are keyed by the full (possibly windowed)
+   key, so distinct keys always get distinct entries; there's no
+   collision risk analogous to a hash table bucket collision here.</div>
+</div>
+<div class="slide" id="s13" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision              Choice           Alternative        Why ours                            When to flip
+──────────────────────  ───────────────  ─────────────────  ──────────────────────────────────  ─────────────────────
+Aggregation type         aggregate() with  count()             Custom stats object (sent/delivered/ Only need a simple
+                          custom object                          failed breakdown) needed              count, nothing richer
+Repartition trigger      groupByKey        groupBy              Reuses existing key if already        Genuinely need to
+(preferred when possible) (no new key)      (always repartitions) correctly partitioned                 change the grouping key</div>
+</div>
+<div class="slide" id="s14" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "Your Aggregator function has a subtle bug: it occasionally
+  returns a NEW object instead of mutating and returning the EXISTING
+  accumulator. Under heavy load, aggregated counts intermittently come out
+  wrong. Why?"
+  Answer: "If the Aggregator doesn't consistently return the properly
+  updated state (e.g., accidentally resets fields on a new object
+  construction instead of adding to the existing accumulator), each call
+  can silently DISCARD prior accumulated state rather than building on it
+  — since RocksDB just stores whatever the Aggregator returns. This is a
+  correctness bug in application logic, not something Kafka Streams can
+  detect or prevent — the framework trusts your Aggregator's output completely."
+
+Trap 2 — "A colleague claims groupByKey never needs a repartition 'because
+  the name doesn't mention re-keying.' Give a concrete counter-example
+  where it DOES trigger one."
+  Answer: "If an EARLIER step in the same topology used selectKey() or
+  map() to change the key, and groupByKey is called afterward without an
+  intervening repartition already having happened, Streams still needs to
+  repartition at that groupByKey call to guarantee correct co-partitioning
+  — the operation's own name doesn't exempt it from needing one if the
+  key was changed upstream and never yet physically repartitioned."</div>
+</div>
+<div class="slide" id="s15" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why aggregate() over count() for delivery-rate stats: need a richer
+  breakdown (sent/delivered/failed) than a simple count can provide.
+- Why groupByKey is preferred over groupBy when the key is already
+  correct: avoids an unnecessary repartition when one isn't structurally required.
+- Why the Initializer/Aggregator split matters for profiling: the
+  Aggregator is what runs per-record and drives actual RocksDB load — the
+  Initializer's cost is comparatively negligible.
+- Why we trust but carefully test Aggregator correctness: Kafka Streams
+  has no way to detect a logically-buggy Aggregator that silently discards
+  prior state.</div>
+</div>
+<div class="slide" id="s16" data-title="Top 2 Technologies — Aggregation Operator Choice">
+<h2>Top 2 Technologies — count() vs aggregate() for Metrics</h2>
+<div class="dia">count()  vs  aggregate() (custom accumulator)
+
+Why pick count(): simplest possible operator when you genuinely only need
+  a raw count per key/window — no custom logic needed.
+Why pick aggregate(): needed when the metric is richer than a count — a
+  breakdown, a running sum with multiple fields, or any custom accumulation logic.
+
+Example 1 (count()): A simple "number of DLQ events per hour" alert metric
+  — a raw count is all that's needed.
+Example 2 (aggregate()): Notification System's delivery-rate stats needing
+  sent/delivered/failed/bounced broken out per channel per window —
+  requires a custom DeliveryStats accumulator.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 16;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Streams STATEFUL Processing Nodes — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

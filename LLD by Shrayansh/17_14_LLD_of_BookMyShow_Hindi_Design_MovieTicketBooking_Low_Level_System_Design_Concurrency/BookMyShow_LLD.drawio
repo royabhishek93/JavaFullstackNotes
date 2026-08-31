@@ -1,0 +1,180 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="BookMyShow LLD" id="bookmyshow">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM (Top Area) -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM &amp; RELATIONSHIPS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="800" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Movie Class -->
+        <mxCell id="movie_class" value="Movie&#xa;&#xa;- movieId: int (PK)&#xa;- movieName: String&#xa;- movieDuration: int&#xa;&#xa;+ getMovieDetails()&#xa;+ updateMovie()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- MovieController Class -->
+        <mxCell id="moviectrl_class" value="MovieController&#xa;&#xa;- cityVsMovies: Map&lt;City, List&lt;Movie&gt;&gt;&#xa;- allMovies: List&lt;Movie&gt;&#xa;&#xa;+ getMoviesByCity(City)&#xa;+ addMovie(Movie, City)&#xa;+ updateMovie(Movie)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="280" y="80" width="240" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Theater Class -->
+        <mxCell id="theater_class" value="Theater&#xa;&#xa;- theaterId: int (PK)&#xa;- address: String&#xa;- city: City&#xa;- screens: List&lt;Screen&gt;&#xa;- shows: List&lt;Show&gt;&#xa;&#xa;+ addScreen(Screen)&#xa;+ addShow(Show)&#xa;+ getShows()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="560" y="80" width="200" height="220" as="geometry" />
+        </mxCell>
+        
+        <!-- Screen Class -->
+        <mxCell id="screen_class" value="Screen&#xa;&#xa;- screenId: int (PK)&#xa;- seats: List&lt;Seat&gt;&#xa;&#xa;+ addSeat(Seat)&#xa;+ getAvailableSeats()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="800" y="80" width="200" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Seat Class -->
+        <mxCell id="seat_class" value="Seat&#xa;&#xa;- seatId: int (PK)&#xa;- seatCategory: SeatCategory&#xa;- row: int&#xa;- price: double&#xa;- version: int (Optimistic Lock)&#xa;&#xa;+ bookSeat()&#xa;+ releaseSeat()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1040" y="80" width="200" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Show Class -->
+        <mxCell id="show_class" value="Show&#xa;&#xa;- showId: int (PK)&#xa;- movie: Movie (FK)&#xa;- screen: Screen (FK)&#xa;- startTime: DateTime&#xa;- bookedSeatIds: List&lt;Integer&gt;&#xa;&#xa;+ bookSeats(List&lt;Seat&gt;)&#xa;+ getAvailableSeats()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="320" width="220" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Booking Class -->
+        <mxCell id="booking_class" value="Booking&#xa;&#xa;- bookingId: int (PK)&#xa;- show: Show (FK)&#xa;- bookedSeats: List&lt;Seat&gt;&#xa;- payment: Payment (FK)&#xa;- userId: int&#xa;&#xa;+ createBooking()&#xa;+ cancelBooking()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="300" y="320" width="200" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Payment Class -->
+        <mxCell id="payment_class" value="Payment&#xa;&#xa;- paymentId: int (PK)&#xa;- amount: double&#xa;- paymentStatus: Status&#xa;- timestamp: DateTime&#xa;&#xa;+ processPayment()&#xa;+ refund()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="540" y="320" width="180" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- SeatCategory Enum -->
+        <mxCell id="seatcat_enum" value="&lt;&lt;enum&gt;&gt;&#xa;SeatCategory&#xa;&#xa;SILVER&#xa;GOLD&#xa;PLATINUM" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1280" y="80" width="160" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Relationships -->
+        <mxCell id="rel1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=diamondThin;endFill=1;" edge="1" parent="1" source="moviectrl_class" target="movie_class">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=diamondThin;endFill=1;" edge="1" parent="1" source="theater_class" target="screen_class">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=diamondThin;endFill=1;" edge="1" parent="1" source="screen_class" target="seat_class">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;endArrow=block;endFill=0;dashed=1;" edge="1" parent="1" source="show_class" target="movie_class">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=0;" edge="1" parent="1" source="booking_class" target="show_class">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;endArrow=block;endFill=0;" edge="1" parent="1" source="booking_class" target="payment_class">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM (Bottom Left) -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM (Database Schema)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="580" width="800" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Movie Table -->
+        <mxCell id="er_movie" value="Movie&#xa;&#xa;PK  movieId: INT&#xa;    movieName: VARCHAR(200)&#xa;    movieDuration: INT" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="640" width="220" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Theater Table -->
+        <mxCell id="er_theater" value="Theater&#xa;&#xa;PK  theaterId: INT&#xa;    address: VARCHAR(500)&#xa;    city: VARCHAR(100)&#xa;    zipCode: VARCHAR(10)" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="640" width="220" height="130" as="geometry" />
+        </mxCell>
+        
+        <!-- Screen Table -->
+        <mxCell id="er_screen" value="Screen&#xa;&#xa;PK  screenId: INT&#xa;FK  theaterId: INT&#xa;    screenName: VARCHAR(50)" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="640" width="220" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- Seat Table (PHYSICAL seat, no version - reused across all shows) -->
+        <mxCell id="er_seat" value="Seat&#xa;&#xa;PK  seatId: INT&#xa;FK  screenId: INT&#xa;    seatCategory: ENUM&#xa;    row: INT&#xa;    seatNumber: INT&#xa;    price: DECIMAL(10,2)" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="820" y="640" width="220" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- ShowSeat Table (per-show booking state - version lives HERE, not on Seat!) -->
+        <mxCell id="er_showseat" value="ShowSeat&#xa;&#xa;PK  showSeatId: INT&#xa;FK  showId: INT&#xa;FK  seatId: INT&#xa;    status: ENUM (AVAILABLE/&#xa;      LOCKED/BOOKED)&#xa;    version: INT&#xa;      (Optimistic Lock)" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="640" width="240" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Show Table -->
+        <mxCell id="er_show" value="Show&#xa;&#xa;PK  showId: INT&#xa;FK  movieId: INT&#xa;FK  screenId: INT&#xa;FK  theaterId: INT&#xa;    startTime: DATETIME&#xa;    endTime: DATETIME" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="820" width="220" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Booking Table -->
+        <mxCell id="er_booking" value="Booking&#xa;&#xa;PK  bookingId: INT&#xa;FK  showId: INT&#xa;FK  userId: INT&#xa;FK  paymentId: INT&#xa;    createdAt: DATETIME&#xa;    status: ENUM" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="820" width="220" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- BookingSeat Table (references ShowSeat, not Seat directly) -->
+        <mxCell id="er_bookingseat" value="BookingSeat&#xa;&#xa;PK  id: INT&#xa;FK  bookingId: INT&#xa;FK  showSeatId: INT" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="820" width="220" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Payment Table -->
+        <mxCell id="er_payment" value="Payment&#xa;&#xa;PK  paymentId: INT&#xa;    amount: DECIMAL(10,2)&#xa;    paymentStatus: ENUM&#xa;    timestamp: DATETIME&#xa;    paymentMethod: VARCHAR(50)" style="swimlane;fontStyle=1;align=left;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=1;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="820" y="820" width="220" height="150" as="geometry" />
+        </mxCell>
+        
+        <!-- ER Relationships -->
+        <mxCell id="er_rel1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmandOne;endFill=0;startArrow=ERmany;startFill=0;" edge="1" parent="1" source="er_screen" target="er_theater">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_rel2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmandOne;endFill=0;startArrow=ERmany;startFill=0;" edge="1" parent="1" source="er_seat" target="er_screen">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_rel_showseat1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmandOne;endFill=0;startArrow=ERmany;startFill=0;" edge="1" parent="1" source="er_showseat" target="er_seat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_rel_showseat2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmandOne;endFill=0;startArrow=ERmany;startFill=0;" edge="1" parent="1" source="er_showseat" target="er_show">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_rel3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmandOne;endFill=0;startArrow=ERmany;startFill=0;" edge="1" parent="1" source="er_show" target="er_movie">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_rel4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmandOne;endFill=0;startArrow=ERmany;startFill=0;" edge="1" parent="1" source="er_booking" target="er_show">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_rel5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=ERmandOne;endFill=0;startArrow=ERmany;startFill=0;" edge="1" parent="1" source="er_booking" target="er_payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS (Bottom Right) -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS (Interview Focus)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1100" y="580" width="780" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: Multiple users booking same seat simultaneously. How to handle?&#xa;A1: Optimistic locking with version field. User1 reads version=1, User2 reads version=1. First to update wins (version=2). Second user fails version check and must retry.&#xa;&#xa;Q2: User books seat but doesn't complete payment in 15 minutes. What happens?&#xa;A2: Redis lock with TTL expires after 15 min. Seat becomes available. First user's booking cancelled if they return later. Background job to cleanup expired bookings.&#xa;&#xa;Q3: Why optimistic locking over pessimistic for ticket booking?&#xa;A3: High traffic system. Pessimistic locks block other reads, causing poor performance. Optimistic allows concurrent reads, only conflicts on write. Better user experience.&#xa;&#xa;Q4: Show started but seats showing as booked (payment pending). How to handle?&#xa;A4: Background scheduler runs every 5 min to cancel expired bookings. Update seat status to available. Could also block booking 10 min before show starts.&#xa;&#xa;Q5: How to scale this system for millions of concurrent users?&#xa;A5: Database sharding (by city/theater). Read replicas for search. Redis cache for hot shows. Message queue for booking requests. Microservices for booking, payment, notification." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="640" width="780" height="340" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS:&#xa;&#xa;1. MVC Pattern - MovieController, TheaterController separate from entities&#xa;2. Optimistic Locking - Version-based concurrency control&#xa;3. Observer Pattern - Could be used for notifications&#xa;4. Factory Pattern - Could create different booking types&#xa;&#xa;CONCURRENCY STRATEGY:&#xa;- Optimistic Lock: Check version before update&#xa;- Redis TTL: Auto-expire reservations&#xa;- Database Transaction: ACID for booking+payment" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="1020" width="780" height="160" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

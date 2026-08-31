@@ -1,0 +1,150 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="System Context" id="context">
+    <mxGraphModel dx="1400" dy="850" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="850" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="UBER/OLA Ride-Sharing System — Context &amp; Boundary" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="20" width="1360" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="Like a digital taxi dispatcher — instantly connects riders with nearby drivers and tracks trips in real-time" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="120" y="70" width="1160" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- System Boundary Box -->
+        <mxCell id="system-boundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;dashed=1;dashPattern=8 8;" vertex="1" parent="1">
+          <mxGeometry x="300" y="140" width="800" height="500" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="system-label" value="UBER/OLA RIDE-SHARING PLATFORM" style="text;html=1;strokeColor=none;fillColor=#f57f17;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="500" y="150" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Core Services inside boundary -->
+        <mxCell id="core-services" value="🚗 CORE SERVICES&#xa;&#xa;• Ride Service (fare calc, requests)&#xa;• Driver Matching (geosearch)&#xa;• Location Tracking (WebSocket)&#xa;• Payment Processing&#xa;• Rating &amp; Feedback&#xa;• Notification System&#xa;• Surge Pricing Calculator" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="340" y="200" width="330" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="data-stores" value="💾 DATA STORES&#xa;&#xa;• PostgreSQL (trips, drivers, riders)&#xa;• Redis Geospatial (driver locations)&#xa;• Redis Cache (surge, fare estimates)&#xa;• Zookeeper (driver assignment locks)&#xa;• Kafka (event streaming)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="340" y="400" width="330" height="150" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="infrastructure" value="🔧 INFRASTRUCTURE&#xa;&#xa;• API Gateway (auth, rate limiting)&#xa;• Load Balancer&#xa;• WebSocket Gateway&#xa;• CDN (driver/rider photos)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="720" y="200" width="340" height="150" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="monitoring" value="📊 MONITORING&#xa;&#xa;• Active trips per region&#xa;• Avg wait time (&lt;1 min SLA)&#xa;• Driver availability&#xa;• Surge heatmaps&#xa;• Cancellation rates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#9e9e9e;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="720" y="370" width="340" height="130" as="geometry" />
+        </mxCell>
+        
+        <!-- External Actors -->
+        <mxCell id="rider" value="📱 RIDER&#xa;(Mobile App)&#xa;&#xa;• Request rides&#xa;• Track driver&#xa;• Make payment&#xa;• Rate driver" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="180" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="driver" value="🚕 DRIVER&#xa;(Mobile App)&#xa;&#xa;• Go online/offline&#xa;• Accept/decline rides&#xa;• Navigate to pickup&#xa;• Complete trip&#xa;• Rate rider" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="370" width="180" height="150" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="admin" value="👨‍💼 ADMIN/OPS&#xa;&#xa;• Monitor metrics&#xa;• Adjust surge params&#xa;• Review fraud&#xa;• Customer support" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=13;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="180" height="110" as="geometry" />
+        </mxCell>
+        
+        <!-- External Systems -->
+        <mxCell id="maps-api" value="🗺️ GOOGLE MAPS&#xa;Distance Matrix API&#xa;&#xa;• Calculate routes&#xa;• Distance &amp; duration&#xa;• ETA prediction" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1180" y="200" width="180" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payment-gateway" value="💳 PAYMENT&#xa;GATEWAY&#xa;(Stripe/Razorpay)&#xa;&#xa;• Process payments&#xa;• Refunds&#xa;• Payouts to drivers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1180" y="340" width="180" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="push-services" value="🔔 PUSH&#xa;NOTIFICATIONS&#xa;FCM + APN&#xa;&#xa;• Ride matched&#xa;• Driver arrived&#xa;• Trip updates" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;fontSize=12;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1180" y="490" width="180" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Arrows with labels -->
+        <mxCell id="arrow-rider-system" value="1. Request ride&#xa;2. Track location&#xa;3. Pay &amp; rate" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=10;fontStyle=1" edge="1" parent="1" source="rider" target="core-services">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-driver-system" value="1. Send location (WS)&#xa;2. Accept/decline&#xa;3. Trip updates" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=10;fontStyle=1" edge="1" parent="1" source="driver" target="core-services">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-admin-system" value="Monitor &amp; configure" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#f57f17;fontSize=10;dashed=1" edge="1" parent="1" source="admin" target="monitoring">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="250" y="615" />
+              <mxPoint x="250" y="435" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="arrow-system-maps" value="Fare estimate&#xa;&amp; ETA" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#e65100;fontSize=10;dashed=1" edge="1" parent="1" source="core-services" target="maps-api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-system-payment" value="Process trip&#xa;payments" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#01579b;fontSize=10;dashed=1" edge="1" parent="1" source="core-services" target="payment-gateway">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1140" y="290" />
+              <mxPoint x="1140" y="405" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="arrow-system-push" value="Ride status&#xa;notifications" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#7b1fa2;fontSize=10;dashed=1" edge="1" parent="1" source="core-services" target="push-services">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1140" y="290" />
+              <mxPoint x="1140" y="550" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Key Challenge Box -->
+        <mxCell id="challenge-box" value="🎯 KEY CHALLENGES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=2;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="700" width="1320" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="challenge-1" value="⚡ GEOSPATIAL SEARCH: Find 10 nearest drivers from 1M in &lt;10ms using Redis GEORADIUS" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="730" width="650" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="challenge-2" value="🔒 PREVENT DOUBLE-ASSIGNMENT: Zookeeper ephemeral locks ensure one driver = one ride (no race conditions)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="755" width="650" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="challenge-3" value="📍 REAL-TIME TRACKING: WebSocket for 100K+ connections, location updates every 3-5s without killing bandwidth" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="50" y="780" width="650" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="challenge-4" value="📈 SURGE PRICING: Calculate demand/supply ratio per 5km grid every 60s, prevent price shocks with smoothing" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="720" y="730" width="620" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="challenge-5" value="⚖️ CAP THEOREM: Rider side → Availability (eventual consistency OK); Driver assignment → Consistency (strict locks)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="720" y="755" width="620" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="challenge-6" value="🌐 SCALE: 100K concurrent rides, millions of location updates/min, sub-second driver matching latency" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="720" y="780" width="620" height="20" as="geometry" />
+        </mxCell>
+        
+        <!-- Real-World Analogy -->
+        <mxCell id="analogy-box" value="🌍 REAL-WORLD ANALOGY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="250" y="700" width="1110" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analogy-text" value="Traditional Taxi Stand: You walk to a taxi queue, wait in line, hope a cab shows up nearby. No price transparency, no tracking, cash-only.&#xa;&#xa;UBER/OLA: Open app → see all nearby cabs on map in real-time → tap to request → driver assigned in &lt;1 second → track their exact location → cashless payment → both parties rate each other. Like upgrading from rotary phones to smartphones — same service (transportation), 100× better experience through tech." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="260" y="730" width="1090" height="40" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

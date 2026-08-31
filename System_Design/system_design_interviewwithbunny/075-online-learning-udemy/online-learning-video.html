@@ -1,0 +1,2160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Online Learning Platform System Design — Udemy / Coursera</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+
+/* ── Topbar ── */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+
+/* ── Slide area ── */
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Controls ── */
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+
+/* ── Typography ── */
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin-bottom:5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+ul{padding-left:16px}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+em{color:#c4d4e8;font-style:italic}
+.hl{color:var(--yellow);font-weight:600}
+.gr{color:#4ade80}
+.rd{color:#f87171}
+.bl{color:var(--blue)}
+.pu{color:#a78bfa}
+.cy{color:#22d3ee}
+.or{color:#fb923c}
+
+/* ── Layout helpers ── */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* ── Cards ── */
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px 15px;box-shadow:0 2px 12px rgba(0,0,0,.35);
+  transition:border-color .2s;
+}
+.card.blue{border-left:3px solid var(--blue);background:linear-gradient(135deg,rgba(59,130,246,.04),var(--surface))}
+.card.green{border-left:3px solid var(--green);background:linear-gradient(135deg,rgba(34,197,94,.04),var(--surface))}
+.card.yellow{border-left:3px solid var(--yellow);background:linear-gradient(135deg,rgba(245,158,11,.04),var(--surface))}
+.card.red{border-left:3px solid var(--red);background:linear-gradient(135deg,rgba(239,68,68,.04),var(--surface))}
+.card.purple{border-left:3px solid var(--purple);background:linear-gradient(135deg,rgba(139,92,246,.04),var(--surface))}
+.card.cyan{border-left:3px solid var(--cyan);background:linear-gradient(135deg,rgba(6,182,212,.04),var(--surface))}
+.card.orange{border-left:3px solid var(--orange);background:linear-gradient(135deg,rgba(249,115,22,.04),var(--surface))}
+
+/* ── Code blocks ── */
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.8;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:8px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+  position:relative;
+}
+.dia::before{
+  content:'';display:block;height:24px;
+  background:linear-gradient(90deg,#1a2744 0%,#111827 100%);
+  margin:-12px -14px 10px;border-radius:7px 7px 0 0;
+  border-bottom:1px solid #1a2744;
+}
+.dia .kw{color:#60a5fa;font-weight:500}
+.dia .str{color:#4ade80}
+.dia .num{color:#fbbf24}
+.dia .cm{color:#2d4a6e;font-style:italic}
+
+/* ── Tables ── */
+.tbl{width:100%;border-collapse:collapse;font-size:11px;margin:6px 0}
+.tbl th{
+  background:linear-gradient(90deg,#0d1423,#111827);
+  color:var(--blue);padding:7px 10px;text-align:left;
+  border-bottom:1px solid var(--border2);font-weight:600;font-size:11px;letter-spacing:.03em;text-transform:uppercase
+}
+.tbl td{padding:5px 10px;border-bottom:1px solid #0c1220;color:var(--soft);vertical-align:top;font-size:11.5px}
+.tbl tr:hover td{background:#0d1423}
+.tbl tr:last-child td{border-bottom:none}
+
+/* ── Badges & Pills ── */
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+.pill{display:inline-block;border-radius:5px;padding:2px 8px;font-size:10.5px;font-weight:700;letter-spacing:.02em}
+.pill.red{background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d}
+.pill.yellow{background:#431a00;color:#fde68a;border:1px solid #78350f}
+.pill.green{background:#052e16;color:#86efac;border:1px solid #14532d}
+.pill.blue{background:#0f2349;color:#93c5fd;border:1px solid #1e3a5f}
+.pill.purple{background:#1e0a44;color:#d8b4fe;border:1px solid #3b0764}
+
+/* ── Title slide ── */
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* ── Step badge ── */
+.step{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:50%;font-size:10px;font-weight:800;color:#fff;margin-right:7px;flex-shrink:0;box-shadow:0 2px 6px rgba(59,130,246,.4)}
+.step-row{display:flex;align-items:flex-start;margin:5px 0}
+
+/* ── Callout boxes ── */
+.tip{
+  background:linear-gradient(135deg,#1a1100,#1c1506);
+  border:1px solid #78350f;border-left:3px solid var(--yellow);
+  border-radius:8px;padding:10px 14px;font-size:11.5px;color:#fde68a;margin:8px 0;
+  box-shadow:0 2px 8px rgba(245,158,11,.08);
+}
+.warn{
+  background:linear-gradient(135deg,#150505,#1a0a0a);
+  border:1px solid #7f1d1d;border-left:3px solid var(--red);
+  border-radius:8px;padding:10px 14px;font-size:11.5px;color:#fca5a5;margin:8px 0;
+  box-shadow:0 2px 8px rgba(239,68,68,.08);
+}
+.info{
+  background:linear-gradient(135deg,#060f20,#0a1628);
+  border:1px solid #1e3a5f;border-left:3px solid var(--blue);
+  border-radius:8px;padding:10px 14px;font-size:11.5px;color:#93c5fd;margin:8px 0;
+  box-shadow:0 2px 8px rgba(59,130,246,.08);
+}
+.success{
+  background:linear-gradient(135deg,#041510,#052e16);
+  border:1px solid #14532d;border-left:3px solid var(--green);
+  border-radius:8px;padding:10px 14px;font-size:11.5px;color:#86efac;margin:8px 0;
+}
+
+/* ── Section label ── */
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+
+/* ── Tag row ── */
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+
+/* ── Stat tiles ── */
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.stat .val{font-size:1.4rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+.stat .lbl{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+
+/* ── Interview quote ── */
+.quote{background:linear-gradient(135deg,#080e1c,#0a1220);border:1px solid #1a2744;border-left:3px solid var(--cyan);border-radius:8px;padding:12px 16px;font-size:.875rem;color:#c4d4e8;line-height:1.75;margin:8px 0;font-style:italic}
+.quote strong{color:#e2e8f0;font-style:normal}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Online Learning Platform System Design — Udemy / Coursera</span>
+    <span id="counter">1 / 35</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:2.86%"></div></div>
+
+  <div id="slide-area">
+
+<!-- ═══════════════════════════════════════════════════ S1 TITLE -->
+<div class="slide active" id="s1" data-title="Online Learning Platform — System Design">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🎓</div>
+  <h1 class="gradient-text">Online Learning Platform System Design</h1>
+  <p style="margin-top:8px;font-size:1rem;color:#475569">Udemy · Coursera — HLD · LLD · ER · DB Schema · Scaling · Interview Q&amp;A</p>
+  <div class="tags" style="justify-content:center;margin-top:20px">
+    <span class="badge">🎬 Video Streaming / HLS / CloudFront</span>
+    <span class="badge">⚡ &lt;2s Startup Adaptive Bitrate</span>
+    <span class="badge">📊 Progress Tracking / Kafka</span>
+    <span class="badge">💳 Stripe Idempotency</span>
+    <span class="badge">🔍 Elasticsearch Course Search</span>
+    <span class="badge">🏆 Certificate Generation</span>
+    <span class="badge">57M Students · 213K Courses</span>
+  </div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S2 OPENING -->
+<div class="slide" id="s2" data-title="Opening — One-Liner Architecture Anchor">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>One-Liner Architecture Anchor</h2>
+<div class="quote">
+  <strong>Memorise this before your interview:</strong><br><br>
+  "Instructor uploads video → <span class="cy">S3 presigned URL</span> → <span class="hl">FFmpeg transcode (1080p/720p/480p/360p)</span> → <span class="gr">HLS 6-sec segments</span> → <span class="bl">CloudFront CDN (&lt;2sec startup)</span> → Student watches → <span class="or">Progress batched 30sec</span> → Kafka consumer upserts (<span class="cy">last_position_sec</span> resume, <span class="gr">max_position_sec</span> completion) → <span class="pu">Stripe payment with idempotency</span> → <span class="hl">Certificate on 100% completion</span>"
+</div>
+<div class="cols2" style="margin-top:10px">
+  <div class="card blue">
+    <h3>Why this one-liner works</h3>
+    <ul>
+      <li>Covers the <strong>entire lifecycle</strong> end-to-end</li>
+      <li>Signals you know <strong>async vs sync</strong> boundaries</li>
+      <li>Shows <strong>two position fields</strong> awareness (trap question)</li>
+      <li>Drops Kafka, S3, CloudFront, Stripe — key buzzwords</li>
+      <li>Demonstrates idempotency understanding at payment layer</li>
+    </ul>
+  </div>
+  <div class="card yellow">
+    <h3>Critical Gotchas to Pre-empt</h3>
+    <ul>
+      <li><span class="rd">NEVER</span> sync transcode during upload — 10-15 min for 2 GB</li>
+      <li><span class="hl">HLS + CDN mandatory</span> for &lt;2s — raw S3 alone fails</li>
+      <li><span class="cy">last_position_sec</span> ≠ <span class="gr">max_position_sec</span> — rewind trap</li>
+      <li>Payment idempotency has <strong>5 layers</strong>, not just UNIQUE constraint</li>
+      <li><span class="gr">course_stats</span> is denormalized — no COUNT(*) in hot path</li>
+    </ul>
+  </div>
+</div>
+<div class="tip">💡 Open your answer with this one-liner. Interviewers instantly know you've built this before.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S3 FUNCTIONAL REQS -->
+<div class="slide" id="s3" data-title="Functional Requirements">
+<div class="section-label">📋 Requirements</div>
+<h2>Functional Requirements</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Student Features</h3>
+      <ul>
+        <li><strong>F1</strong> — Browse, search, filter courses (category, difficulty, rating, price)</li>
+        <li><strong>F2</strong> — Enroll in free or paid courses</li>
+        <li><strong>F3</strong> — Track video progress with <span class="cy">resume</span> (last watched position)</li>
+        <li><strong>F4</strong> — Take quizzes (MCQ auto-grade) and submit assignments</li>
+        <li><strong>F5</strong> — Review &amp; rate courses (1-5 stars, helpful votes)</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>System Features</h3>
+      <ul>
+        <li><strong>F9</strong> — Certificate issued on <span class="hl">100% completion</span></li>
+        <li><strong>F10</strong> — <span class="cy">70/30 revenue split</span> (instructor/platform)</li>
+        <li><strong>F11</strong> — Async video transcoding pipeline</li>
+        <li><strong>F12</strong> — Course recommendations</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card purple" style="margin-bottom:10px">
+      <h3>Instructor Features</h3>
+      <ul>
+        <li><strong>F6</strong> — Onboarding with identity verification (KYC) + Stripe Connect payout</li>
+        <li><strong>F7</strong> — Create courses: videos (up to 5 GB), quizzes, assignments, resources</li>
+        <li><strong>F8</strong> — Publish course (<span class="hl">admin approval required</span> for first course)</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>Real-World Context</h3>
+      <ul>
+        <li>🎓 Udemy — 57M students, 213K courses, 74K instructors</li>
+        <li>📚 Coursera — University partnerships, certificates, nanodegrees</li>
+        <li>⚡ Key differentiator: <span class="cy">video quality + resume</span></li>
+        <li>💰 Revenue model: one-time purchase or subscription</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S4 NON-FUNCTIONAL -->
+<div class="slide" id="s4" data-title="Non-Functional Requirements + CAP Theorem">
+<div class="section-label">📋 Requirements</div>
+<h2>Non-Functional Requirements &amp; CAP Theorem</h2>
+<div class="cols2">
+  <div>
+    <div class="card red" style="margin-bottom:10px">
+      <h3>Scale (Udemy Numbers)</h3>
+      <ul>
+        <li>57M students globally, 213K courses</li>
+        <li>Billions of HLS segments in S3, petabytes of video</li>
+        <li>Millions of video requests/day</li>
+        <li>Thousands of enrollments/hour during sales</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>CAP Theorem — Explicit Split</h3>
+      <table class="tbl">
+        <tr><th>Subsystem</th><th>Choice</th><th>Why</th></tr>
+        <tr><td>Video streaming</td><td class="gr">AP</td><td>Stale manifest OK, uptime critical</td></tr>
+        <tr><td>Course listing</td><td class="gr">AP</td><td>Slightly stale count acceptable</td></tr>
+        <tr><td>Payments</td><td class="rd">CP</td><td>No double charging ever</td></tr>
+        <tr><td>Enrollment</td><td class="rd">CP</td><td>Consistent access grant</td></tr>
+        <tr><td>Progress</td><td class="gr">AP</td><td>Async write OK, eventual resume</td></tr>
+      </table>
+    </div>
+  </div>
+  <div>
+    <div class="card cyan">
+      <h3>Performance SLAs</h3>
+      <table class="tbl">
+        <tr><th>Metric</th><th>Target</th></tr>
+        <tr><td>Video startup</td><td class="gr"><strong>&lt; 2 sec</strong></td></tr>
+        <tr><td>Course listing API</td><td class="hl">&lt; 200ms</td></tr>
+        <tr><td>Enrollment check</td><td class="hl">&lt; 100ms</td></tr>
+        <tr><td>Search (Elasticsearch)</td><td class="bl">&lt; 100ms</td></tr>
+        <tr><td>Progress write (Kafka)</td><td class="bl">async, &lt;1s DB</td></tr>
+        <tr><td>Certificate generation</td><td class="pu">&lt; 30 sec</td></tr>
+      </table>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>Reliability &amp; Durability</h3>
+      <ul>
+        <li>99.9% uptime for video playback</li>
+        <li>Video durability: <span class="hl">11 nines</span> via S3 cross-region replication</li>
+        <li>Payment: ACID transactions (no double charging)</li>
+        <li>5 GB max video file, 100 MB resource file</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S5 CORE ENTITIES -->
+<div class="slide" id="s5" data-title="Core Entities — 8 Data Models">
+<div class="section-label">🗂 Data Model</div>
+<h2>Core Entities — 8 Data Models</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10.5px">Entity 1: <span class="kw">User / Instructor</span>
+  userId, name, email, role (STUDENT/INSTRUCTOR/ADMIN)
+  instructor_profile {
+    bio, expertise, verification_status,
+    avg_rating, students_count, course_count,
+    stripe_account_id, promo_video_asset_id
+  }
+  status, metadata
+
+Entity 2: <span class="kw">Course</span>
+  course_id (PK), owner_instructor_id
+  title, description, category_id
+  level (BEGINNER/INTERMEDIATE/ADVANCED)
+  price DECIMAL(10,2), thumbnail_url
+  status (DRAFT/IN_REVIEW/PUBLISHED/ARCHIVED)
+  students_enrolled INT  <span class="cm">← denormalized counter</span>
+  rating DECIMAL(3,2)   <span class="cm">← denormalized avg</span>
+
+Entity 3: <span class="kw">Enrollment</span>
+  enrollment_id, user_id, course_id
+  owner_instructor_id   <span class="cm">← denormalized</span>
+  enrolled_at TIMESTAMP
+  completion_status DECIMAL(5,2)  <span class="cm">← 0.00–100.00%</span>
+  payment_id, certificate_url, metadata
+  UNIQUE (user_id, course_id)
+
+Entity 4: <span class="kw">Progress</span>  <span class="cm">← PK: (user_id, course_id, lesson_id)</span>
+  video_id, duration_sec
+  last_position_sec     <span class="cm">← resume point (always latest)</span>
+  max_position_sec      <span class="cm">← farthest watched (never decreases)</span>
+  status (NOT_STARTED/IN_PROGRESS/COMPLETED)
+  completed_at, metadata</div>
+  </div>
+  <div>
+<div class="dia" style="font-size:10.5px">Entity 5: <span class="kw">Payment</span>
+  payment_id, user_id, course_id
+  amount DECIMAL(10,2), currency
+  status (PENDING/COMPLETED/FAILED/REFUNDED)
+  stripe_payment_id
+  enrollment_request_id  <span class="cm">← client-generated idempotency key</span>
+  created_at, metadata
+
+Entity 6: <span class="kw">Quiz</span>
+  quiz_id, course_id, lesson_id, title
+  pass_score DECIMAL(5,2)  <span class="cm">← 70.00 = 70%</span>
+  time_limit_sec, attempts_allowed INT
+
+Entity 7: <span class="kw">Review</span>
+  review_id, user_id, course_id
+  rating INT (1-5), comment TEXT
+  helpful_votes INT, created_at
+
+Entity 8: <span class="kw">Course_stats</span>  <span class="cm">← denormalized, updated async</span>
+  course_id (PK/FK)
+  avg_rating DECIMAL(3,2)
+  total_reviews INT, enrolled INT
+  completion_rate DECIMAL(5,2)
+  updated_at
+  <span class="cm">← avoids COUNT(*) aggregations in hot listing path</span></div>
+    <div class="info" style="font-size:10.5px;margin-top:6px">Entity 8 (course_stats) is a materialized view updated by Kafka consumers — <strong>never compute live aggregations</strong> on the hot course listing path.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S6 API DESIGN -->
+<div class="slide" id="s6" data-title="API Design — All Endpoints">
+<div class="section-label">🔌 API Design</div>
+<h2>API Design — All Endpoints</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Course Endpoints</h3>
+<div class="dia" style="font-size:10.5px"><span class="kw">GET</span>  /courses?search=&amp;category=&amp;price=&amp;rating=&amp;level=&amp;sort=
+<span class="kw">GET</span>  /courses/{courseId}
+<span class="kw">POST</span> /instructor/courses
+<span class="kw">POST</span> /instructor/courses/{courseId}/publish
+  <span class="cm">→ admin approval required for first course</span></div>
+    </div>
+    <div class="card green">
+      <h3>Enrollment &amp; Progress</h3>
+<div class="dia" style="font-size:10.5px"><span class="kw">POST</span> /courses/{courseId}/enroll
+  <span class="cm">→ free enroll (no payment) or initiates payment</span>
+<span class="kw">GET</span>  /me/enrollments?courseId=...
+  <span class="cm">→ enrolled courses + progress % + last accessed</span>
+
+<span class="kw">POST</span> /progress/events
+  body: { events: [{courseId, lessonId, videoId,
+           position, action:'WATCHING', ts}] }
+  <span class="cm">→ batched every 30 sec, 200 OK immediately</span>
+<span class="kw">GET</span>  /me/courses/{courseId}/progress
+  <span class="cm">→ {lastPosition, duration, percentWatched, status}</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="card purple" style="margin-bottom:10px">
+      <h3>Quiz Endpoints</h3>
+<div class="dia" style="font-size:10.5px"><span class="kw">POST</span> /courses/{cId}/lessons/{lId}/quiz/start
+  <span class="cm">→ INSERT quiz_attempts (status='IN_PROGRESS')</span>
+<span class="kw">GET</span>  /courses/{cId}/lessons/{lId}/quiz/questions
+  <span class="cm">→ {questions, timeLimit, totalPoints}</span>
+<span class="kw">POST</span> /courses/{cId}/lessons/{lId}/quiz/submit
+  body: { answers: [{question_id, answer}] }
+  <span class="cm">→ auto-grade MCQ, returns score + passed bool</span></div>
+    </div>
+    <div class="card yellow">
+      <h3>Video Upload</h3>
+<div class="dia" style="font-size:10.5px"><span class="kw">POST</span> /instructor/courses/{cId}/lessons/{lId}/video
+  <span class="cm">→ returns {uploadURL (presigned S3), videoId}</span>
+  <span class="cm">→ client PUTs directly to S3 (bypasses server)</span>
+  <span class="cm">→ chunked, resumable, up to 5 GB</span>
+
+<span class="kw">GET</span>  /courses/{cId}/lessons/{lId}/video
+  <span class="cm">→ enrollment check → CloudFront signed URL (24h)</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S7 HLD -->
+<div class="slide" id="s7" data-title="HLD — High Level Architecture">
+<div class="section-label">🏛 HLD</div>
+<h2>High Level Design — Full Architecture</h2>
+<div class="dia" style="font-size:10px">
+┌────────────────────────────────────────────────────────────────────────────────┐
+│                    ONLINE LEARNING PLATFORM — HLD                              │
+├────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                │
+│  STUDENTS                              INSTRUCTORS                ADMINS       │
+│  ┌──┐ ┌──┐ ┌──┐                        ┌──┐ ┌──┐                 ┌──┐         │
+│  └──┘ └──┘ └──┘                        └──┘ └──┘                 └──┘         │
+│       │                                      │                     │           │
+│       ▼                                      ▼                     ▼           │
+│  ┌─────────────────────────────────────────────────────────────────────┐       │
+│  │          API Gateway &amp; Load Balancer                                │       │
+│  │   Auth (JWT) · Rate Limiting (100 req/min) · Routing · SSL          │       │
+│  └────┬──────────┬──────────┬──────────┬──────────┬──────────┬────────┘       │
+│       │          │          │          │          │          │                 │
+│  ┌────▼──┐  ┌────▼──┐  ┌───▼────┐ ┌───▼────┐ ┌───▼───┐ ┌───▼─────┐          │
+│  │Course │  │Video  │  │Enroll  │ │Progress│ │Payment│ │ User    │          │
+│  │Catalog│  │Playback│  │Svc    │ │Svc     │ │Svc    │ │ Svc     │          │
+│  │ Svc   │  │Svc    │  │        │ │        │ │       │ │         │          │
+│  └───┬───┘  └───┬───┘  └───┬────┘ └───┬────┘ └───┬───┘ └───┬─────┘          │
+│      │          │          │          │          │          │                 │
+│  CourseDB   S3+CDN    EnrollDB   Kafka+    PaymentDB  UserDB                  │
+│  ElasticSearch         (MySQL)   ProgressDB  Stripe    (MySQL)                │
+│                                  (sharded)                                    │
+│                                                                                │
+│  INSTRUCTOR PATH:                                                              │
+│  Catalog Svc → CourseDB                                                        │
+│  Media Uploader Svc → S3 (presigned URL) → Lambda → Kafka 'video.uploaded'    │
+│  Course Moderator Svc → approval workflow                                      │
+│                                                                                │
+│  ASYNC PIPELINE:                                                               │
+│  Kafka: video.uploaded → Video Processing Worker (FFmpeg, Spot instances)     │
+│  Kafka: video.progress → user_tracking_consumer_svc → Progress DB             │
+│  Kafka: payment.completed → Enrollment Consumer → Enrollment DB                │
+│  Kafka: course.completed → Certificate Consumer → S3 + email                  │
+│  CDC pipeline: CourseDB → Elasticsearch (search sync)                         │
+│  Permission Sync Svc: payment/refund/subscription events → Access table       │
+└────────────────────────────────────────────────────────────────────────────────┘</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S8 HLD SERVICES -->
+<div class="slide" id="s8" data-title="HLD — Services Breakdown">
+<div class="section-label">🏛 HLD</div>
+<h2>HLD — Every Service and Its Role</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Course Catalog Service</h3>
+      <ul>
+        <li>CRUD on courses → Course DB (MySQL)</li>
+        <li>Publishes CDC changes → Elasticsearch (full-text search sync)</li>
+        <li>Redis cache: course details 1h TTL, 90% hit rate</li>
+        <li>Reads from <span class="cy">course_stats</span> (denormalized) — no COUNT aggregations</li>
+      </ul>
+    </div>
+    <div class="card green" style="margin-bottom:10px">
+      <h3>Video Playback Service</h3>
+      <ul>
+        <li>Checks <span class="hl">Access table</span> (not just Enrollment) before serving</li>
+        <li>Generates CloudFront signed URL (expires 24h)</li>
+        <li>Returns master.m3u8 → client player handles ABR</li>
+        <li>Separate from Media Uploader Svc (SRP)</li>
+      </ul>
+    </div>
+    <div class="card yellow">
+      <h3>User Progress Service</h3>
+      <ul>
+        <li>Receives batched heartbeats (every 30s)</li>
+        <li>Publishes to Kafka <span class="cy">video.progress</span> (100 partitions, key=user_id)</li>
+        <li>Returns 200 OK immediately — async, doesn't block video</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card purple" style="margin-bottom:10px">
+      <h3>Enrollment Service</h3>
+      <ul>
+        <li>Kafka consumer on <span class="gr">payment.completed</span></li>
+        <li>Idempotency check before INSERT enrollment</li>
+        <li>Updates <span class="hl">course_stats.enrolled</span> counter async</li>
+        <li>UNIQUE(user_id, course_id) DB-level guard</li>
+      </ul>
+    </div>
+    <div class="card red" style="margin-bottom:10px">
+      <h3>Payment Service</h3>
+      <ul>
+        <li>Creates Stripe PaymentIntent with <span class="cy">enrollmentRequestId</span></li>
+        <li>Verifies Stripe webhook signature</li>
+        <li>Publishes <span class="gr">payment.completed</span> to Kafka on success</li>
+        <li>Polling backup: checks Stripe API every 5 min for PENDING</li>
+      </ul>
+    </div>
+    <div class="card cyan">
+      <h3>Permission Sync Service</h3>
+      <ul>
+        <li>Listens to payment/refund/subscription Kafka events</li>
+        <li><span class="gr">payment.completed</span> → INSERT Access (LIFETIME, ACTIVE)</li>
+        <li><span class="rd">refund.issued</span> (30-day window) → UPDATE Access REVOKED</li>
+        <li><span class="pu">subscription.expired</span> → UPDATE Access EXPIRED</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S9 VIDEO UPLOAD -->
+<div class="slide" id="s9" data-title="Video Upload & Transcoding Pipeline">
+<div class="section-label">🎓 Course Delivery</div>
+<h2>Video Upload &amp; Transcoding Pipeline</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px">Instructor → POST /instructor/courses/C123/lessons/L456/video
+    │
+    ▼
+Media Uploader Svc
+  presignedURL = s3.generatePresignedUrl('putObject', {
+    Bucket: 'course-videos-raw',
+    Key:    'courses/C123/lessons/L456/original.mp4',
+    Expires: 3600
+  })
+  Response: { uploadURL, videoId: 'V789' }
+    │
+    ▼  (client uploads DIRECTLY to S3 — bypasses server)
+  S3 PUT {presignedURL}   ← chunked, resumable, up to 5 GB
+    │
+    ▼  S3 event → Lambda (on ObjectCreated)
+  Lambda publishes Kafka 'video.uploaded':
+    { videoId:'V789', courseId:'C123', lessonId:'L456',
+      s3Key, fileSize: 2_000_000_000 }
+    │
+    ▼  Video Processing Worker (Kafka consumer, Spot instances)
+  1. Download original.mp4 from S3
+  2. FFmpeg transcode → 4 resolutions:
+       1080p  1920×1080  5 Mbps
+        720p  1280×720   2.5 Mbps
+        480p   854×480   1 Mbps
+        360p   640×360   500 Kbps
+  3. HLS packaging (per resolution):
+       ffmpeg -i 1080p.mp4 -c copy -f hls -hls_time 6 \
+         -hls_segment_filename '1080p_%03d.ts' 1080p.m3u8
+       → master.m3u8 + 4 variant playlists + .ts segments
+  4. Thumbnail extraction: frames at 0s, 5s, 10s (JPEG)
+  5. Upload all → s3://course-videos-cdn/C123/L456/
+  6. UPDATE lessons SET
+       video_url = 'https://cdn.example.com/.../master.m3u8',
+       processing_status = 'COMPLETED',
+       duration_sec = 1200
+    │
+    ▼
+  Notification Svc → email instructor "Video ready"</div>
+  </div>
+  <div>
+    <div class="card red">
+      <h3>Why Async?</h3>
+      <ul>
+        <li>2 GB video = <span class="hl">10–15 min</span> processing (4 resolutions + HLS)</li>
+        <li>Holding HTTP connection 10+ min = timeouts + terrible UX</li>
+        <li>Async: instructor gets <span class="gr">immediate upload confirmation</span></li>
+        <li>Spot instances = <span class="cy">70% cost reduction</span> vs on-demand</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>HLS Output Structure</h3>
+<div class="dia" style="font-size:10px">master.m3u8
+  → 1080p.m3u8  (1080p variant playlist)
+    → 1080p_000.ts  (6 sec segment)
+    → 1080p_001.ts
+    → ...
+  → 720p.m3u8
+  → 480p.m3u8
+  → 360p.m3u8</div>
+    </div>
+    <div class="warn">Never transcode synchronously during upload. Always: S3 → Lambda → Kafka → Worker pool.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S10 VIDEO STREAMING -->
+<div class="slide" id="s10" data-title="Video Streaming — &lt;2 sec Startup">
+<div class="section-label">🎓 Course Delivery</div>
+<h2>Video Streaming — &lt;2 Second Startup</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px">Student: GET /courses/C123/lessons/L456/video
+    │
+    ▼
+Video Playback Service
+  1. Check Access table (not just Enrollment):
+       SELECT status FROM access
+       WHERE user_id=? AND course_id='C123'
+       AND status='ACTIVE'
+       → null → 403 'Enroll first'
+  2. Fetch video URL:
+       SELECT video_url FROM lessons WHERE lesson_id='L456'
+       → 'https://cdn.example.com/.../master.m3u8'
+  3. Generate CloudFront signed URL (24h expiry):
+       cloudfront.getSignedUrl({
+         url: videoUrl, expires: now() + 86400
+       })  ← prevents unauthorized sharing
+  4. Response: { videoURL: signedURL, thumbnailURL,
+                 duration: 1200, variants: [...] }
+    │
+    ▼
+Client (Video.js / Plyr)
+  1. fetch(signedURL) → master.m3u8
+  2. Adaptive bitrate selection:
+       ≥10 Mbps → 1080p
+       ~2.5 Mbps → 720p
+       ~1 Mbps  → 480p
+       &lt;1 Mbps  → 360p   ← switches mid-stream seamlessly
+  3. Fetch .ts segments sequentially
+     → buffers 30 sec ahead for smooth playback</div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Startup Time Breakdown</h3>
+<div class="dia" style="font-size:10.5px">DNS lookup           50 ms
+TCP/TLS handshake   100 ms
+Manifest download   200 ms
+First segment (6s)  500 ms  ← ~2 MB at 480p from edge
+──────────────────────────
+Total               850 ms  ✓  (well under 2 sec)</div>
+    </div>
+    <div class="card cyan" style="margin-top:10px">
+      <h3>CDN Optimization</h3>
+      <ul>
+        <li>CloudFront <span class="hl">200+ edge locations</span> — user → nearest (&lt;50ms)</li>
+        <li>Segment cache TTL: <span class="gr">30 days</span> (immutable .ts content)</li>
+        <li>Manifest cache TTL: <span class="cy">1 hour</span></li>
+        <li>Cache hit rate: <span class="hl">95%+</span> for popular courses</li>
+        <li>Reduces S3 egress cost by 95%</li>
+      </ul>
+    </div>
+    <div class="tip">💡 Mention the 850ms math breakdown in your interview. Interviewers love when you quantify it.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S11 HLS DEEP DIVE -->
+<div class="slide" id="s11" data-title="HLS Adaptive Bitrate — Deep Dive">
+<div class="section-label">🎓 Course Delivery</div>
+<h2>HLS Adaptive Bitrate — How It Works</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>master.m3u8 Structure</h3>
+<div class="dia" style="font-size:10.5px">#EXTM3U
+#EXT-X-VERSION:3
+
+#EXT-X-STREAM-INF:BANDWIDTH=5000000,
+  RESOLUTION=1920x1080
+1080p.m3u8
+
+#EXT-X-STREAM-INF:BANDWIDTH=2500000,
+  RESOLUTION=1280x720
+720p.m3u8
+
+#EXT-X-STREAM-INF:BANDWIDTH=1000000,
+  RESOLUTION=854x480
+480p.m3u8
+
+#EXT-X-STREAM-INF:BANDWIDTH=500000,
+  RESOLUTION=640x360
+360p.m3u8</div>
+    </div>
+    <div class="card green">
+      <h3>variant playlist (1080p.m3u8)</h3>
+<div class="dia" style="font-size:10.5px">#EXTM3U
+#EXT-X-TARGETDURATION:6
+#EXT-X-VERSION:3
+
+#EXTINF:6.000000,
+1080p_000.ts
+#EXTINF:6.000000,
+1080p_001.ts
+#EXTINF:5.968000,
+1080p_002.ts
+...
+#EXT-X-ENDLIST</div>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow" style="margin-bottom:10px">
+      <h3>ABR Decision Logic</h3>
+      <ul>
+        <li>Player downloads first segment → measures bandwidth</li>
+        <li>Selects highest quality that fits available bandwidth</li>
+        <li>Monitors buffer level every 2 seconds</li>
+        <li>Buffer &lt; 10s → drop quality; Buffer &gt; 30s → raise quality</li>
+        <li>Switches mid-stream: <span class="gr">seamless, no buffering</span></li>
+        <li>User on slow network gets 360p (500 Kbps) not a spinning wheel</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3>Why 6-second segments?</h3>
+      <ul>
+        <li>Short enough for quick quality switches (~6s lag)</li>
+        <li>Long enough to amortize HTTP overhead</li>
+        <li>Sweet spot: industry standard (Apple, Netflix use 2-10s)</li>
+        <li>Each segment independently cacheable by CDN</li>
+        <li>Seek: jump to segment containing timestamp directly</li>
+      </ul>
+    </div>
+    <div class="info" style="font-size:11px">FFmpeg command: <span class="cy">-hls_time 6 -hls_segment_filename '1080p_%03d.ts'</span> — the 6 sets segment duration.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S12 PROGRESS TRACKING -->
+<div class="slide" id="s12" data-title="Progress Tracking System">
+<div class="section-label">📊 Progress Tracking</div>
+<h2>Progress Tracking — Event-Driven at Scale</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px">Video player (client-side)
+  Heartbeat every 10 sec:
+    { courseId:'C123', lessonId:'L456', videoId:'V789',
+      position: 120, action:'WATCHING', timestamp }
+
+  Batching — 3 events per 30 sec:
+    POST /progress/events
+    body: { events: [
+      {position:120, ts:'10s'},
+      {position:130, ts:'20s'},
+      {position:140, ts:'30s'}
+    ]}
+  → Reduces API calls 3×
+  → 1M students × 6 events/min = 6M → 2M calls/min
+    │
+    ▼
+User Progress Service
+  FOR EACH event:
+    kafka.send('video.progress', {
+      key: userId,   ← ensures ordering per user
+      value: {userId, courseId, lessonId, videoId,
+              position:140, timestamp}
+    })
+  Response: 200 OK immediately  ← async, non-blocking
+    │
+    ▼
+user_tracking_consumer_svc
+  (10 instances, 100 Kafka partitions, key=user_id)
+  Upsert:
+    INSERT INTO progress
+      (user_id, course_id, lesson_id, video_id,
+       last_position_sec=140, max_position_sec=140)
+    ON CONFLICT (user_id, course_id, lesson_id) DO UPDATE SET
+      last_position_sec  = EXCLUDED.last_position_sec,
+      max_position_sec   = GREATEST(progress.max_position_sec,
+                                    EXCLUDED.max_position_sec),
+      updated_at         = now()
+
+  Completion check:
+    IF max_position_sec >= duration_sec * 0.95
+      UPDATE progress SET status='COMPLETED', completed_at=now()
+      Recompute enrollment completion_status
+      IF completion_status = 100.00:
+        Publish Kafka 'course.completed'</div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Kafka Partition Strategy</h3>
+      <ul>
+        <li><span class="hl">100 partitions</span> on video.progress topic</li>
+        <li>Partition key = <span class="cy">user_id</span> — all events for same user → same partition</li>
+        <li>Guarantees <span class="gr">ordering per user</span>, parallelism across users</li>
+        <li>10 consumers × 10K events/sec = <span class="hl">100K events/sec</span> total</li>
+        <li>Auto-scale on lag &gt; 1000 messages</li>
+      </ul>
+    </div>
+    <div class="card cyan" style="margin-top:10px">
+      <h3>Resume Functionality</h3>
+<div class="dia" style="font-size:10.5px">GET /me/courses/C123/lessons/L456/progress
+→ {
+    lastPosition: 140,     ← resume here
+    duration: 1200,
+    percentWatched: 11.7%,
+    status: 'IN_PROGRESS'
+  }
+Client: videoPlayer.seek(140)</div>
+    </div>
+    <div class="tip">💡 The idempotent upsert is the key insight — safe to reprocess Kafka events on consumer restart. GREATEST() ensures max never decreases.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S13 TWO POSITION FIELDS -->
+<div class="slide" id="s13" data-title="Progress — Two Position Fields Explained">
+<div class="section-label">📊 Progress Tracking</div>
+<h2>The Two Position Fields — Senior Trap</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>last_position_sec</h3>
+      <ul>
+        <li><strong>Purpose:</strong> Where to resume playback</li>
+        <li><strong>Update:</strong> Always set to latest position sent</li>
+        <li><strong>Behavior on rewind:</strong> Decreases (user rewound to 0s → last=0)</li>
+        <li><strong>Used by:</strong> Client seeks to this position on lesson open</li>
+      </ul>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>max_position_sec</h3>
+      <ul>
+        <li><strong>Purpose:</strong> Farthest point ever watched (completion check)</li>
+        <li><strong>Update:</strong> <span class="hl">GREATEST(existing, new)</span> — never decreases</li>
+        <li><strong>Behavior on rewind:</strong> Stays at previous max</li>
+        <li><strong>Used by:</strong> Completion check — if max &ge; duration × 0.95</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Concrete Scenario — Why Both Are Needed</h3>
+<div class="dia" style="font-size:10.5px">Video duration: 1200 sec (20 min)
+Completion threshold: 1140 sec (95%)
+
+Scenario:
+  User watches to 800s  → last=800, max=800
+  User rewinds to 0s    → last=0,   max=800
+  User watches to 150s  → last=150, max=800
+  User closes the app
+
+  Resume: seeks to 150s  ← last_position_sec ✓
+  Completion: 800 &lt; 1140 → IN_PROGRESS (correct, not complete)
+  ← max never decreased on rewind ✓
+
+If ONLY one field (naive approach):
+  After rewind: position=0
+  Completion check: 0 &lt; 1140 → resets to not complete 😱
+  User loses their 67% progress record on rewind!</div>
+    </div>
+    <div class="warn">This is the #1 interview trap. If you have only one field you will incorrectly mark 67%-watched lesson as incomplete when user rewinds. Always use both fields.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S14 PAYMENT -->
+<div class="slide" id="s14" data-title="Payment & Enrollment Flow">
+<div class="section-label">🏛 HLD</div>
+<h2>Payment &amp; Enrollment Flow</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px">POST /courses/C123/enroll  ($49.99)
+    │
+    ▼
+Payment Service
+  1. Create Stripe PaymentIntent:
+       POST /v1/payment_intents {
+         amount: 4999, currency: 'usd',
+         metadata: {
+           courseId:   'C123',
+           userId:     'U456',
+           enrollmentRequestId: 'REQ123'  ← client UUID
+         }
+       }
+       → { id:'pi_abc123', client_secret, status:'...' }
+  2. INSERT payments (
+       status='PENDING',
+       stripe_payment_id='pi_abc123',
+       enrollment_request_id='REQ123'
+     )
+  3. Return { paymentIntentId, clientSecret } to client
+    │
+    ▼
+Client (Stripe.js)
+  stripe.confirmCardPayment(clientSecret, {
+    payment_method: { card: cardElement }
+  })   ← Stripe processes atomically (2-5 sec)
+    │
+    ▼
+Stripe Webhook → POST /webhooks/stripe
+  { type: 'payment_intent.succeeded',
+    data: { object: { id: 'pi_abc123' } } }
+  1. Verify signature   ← prevents fake webhooks
+  2. UPDATE payments SET status='COMPLETED'
+  3. Publish Kafka 'payment.completed':
+       { paymentId, userId:'U456', courseId:'C123', amount:49.99 }
+    │
+    ▼
+Enrollment Consumer (Kafka)
+  1. Idempotency check:
+       SELECT COUNT(*) FROM enrollments
+       WHERE user_id='U456' AND course_id='C123'
+       → count &gt; 0 → SKIP  ← already enrolled (duplicate webhook)
+       → count = 0 → proceed
+  2. INSERT enrollments (completion_status=0.0)
+  3. UPDATE courses SET students_enrolled += 1
+  4. Send welcome email via Notification Svc</div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Revenue Split (70/30)</h3>
+      <ul>
+        <li>Stripe Connect handles payout splitting automatically</li>
+        <li>Instructor has <span class="cy">stripe_account_id</span> from onboarding</li>
+        <li>On payment success: 70% transferred to instructor, 30% retained</li>
+        <li>KYC / identity verification required before first payout</li>
+      </ul>
+    </div>
+    <div class="card red" style="margin-top:10px">
+      <h3>Refund (30-day Window)</h3>
+      <ul>
+        <li>POST /payments/{id}/refund → Stripe refund API</li>
+        <li>Publish Kafka <span class="rd">refund.issued</span> event</li>
+        <li>Permission Sync Svc → UPDATE Access SET status='REVOKED'</li>
+        <li>Video Playback Svc checks Access table → denies on next request</li>
+        <li>Access table separates "enrolled" from "currently has access"</li>
+      </ul>
+    </div>
+    <div class="tip">💡 Mention: Access table is separate from Enrollments — handles subscription vs one-time purchase scope.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S15 IDEMPOTENCY -->
+<div class="slide" id="s15" data-title="Enrollment Idempotency — 5 Layers">
+<div class="section-label">🏛 HLD</div>
+<h2>Enrollment Idempotency — 5 Layers</h2>
+<table class="tbl" style="margin-bottom:12px">
+  <tr><th>#</th><th>Layer</th><th>Mechanism</th><th>Protects Against</th></tr>
+  <tr><td class="gr"><strong>1</strong></td><td>Client double-click</td><td>Same <span class="cy">enrollmentRequestId</span> (client UUID) → Stripe returns existing PaymentIntent</td><td>User clicks Enroll twice rapidly</td></tr>
+  <tr><td class="hl"><strong>2</strong></td><td>Webhook signature</td><td>Verify Stripe HMAC signature → reject unsigned requests</td><td>Fake/forged webhook</td></tr>
+  <tr><td class="bl"><strong>3</strong></td><td>Kafka consumer DB check</td><td>SELECT COUNT(*) before INSERT → skip if already enrolled</td><td>Duplicate Kafka event / webhook retry</td></tr>
+  <tr><td class="pu"><strong>4</strong></td><td>DB UNIQUE constraint</td><td>UNIQUE(user_id, course_id) → INSERT fails at DB level</td><td>Race condition between two consumers</td></tr>
+  <tr><td class="rd"><strong>5</strong></td><td>Polling backup</td><td>Payment Svc polls Stripe every 5 min for PENDING payments → manually triggers</td><td>Webhook lost / delayed</td></tr>
+</table>
+<div class="cols2">
+  <div class="card blue">
+    <h3>All paths converge</h3>
+    <p>Whether the trigger is webhook, polling, or manual retry — every path runs the same idempotent consumer logic. The outcome is always exactly-once enrollment regardless of which path fires first or how many times it fires.</p>
+  </div>
+  <div class="card yellow">
+    <h3>Key: enrollmentRequestId is client-generated</h3>
+    <ul>
+      <li>Server <span class="rd">NEVER</span> generates idempotency keys — client does</li>
+      <li>Client UUID generated before payment button click</li>
+      <li>Stored in Stripe metadata → returned on any duplicate call</li>
+      <li>This is the <strong>interview gotcha</strong> — who generates the key?</li>
+    </ul>
+  </div>
+</div>
+<div class="success">All 5 layers together: no double charging, no double enrollment, no lost enrollments — even with network partitions, Kafka restarts, or Stripe webhook retries.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S16 QUIZ -->
+<div class="slide" id="s16" data-title="Quiz System Design">
+<div class="section-label">🎓 Course Delivery</div>
+<h2>Quiz System Design</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px">Quiz structure:
+  quiz_id, lesson_id, title
+  pass_score: 70%, time_limit: 600s, attempts_allowed: 3
+
+Questions:
+  question_id, quiz_id, question_text
+  type: MCQ_SINGLE / MULTI_SELECT / FILL /
+        SELECT / TRUE_FALSE / TEXT
+  options: JSON [{id:'A', text:'...'}, ...]
+  correct_answer: 'A', points: 10
+
+Quiz attempt flow:
+  1. POST .../quiz/start
+       → INSERT quiz_attempts (status='IN_PROGRESS',
+           started_at=now(), attempt_number)
+       → rate limit: check cooldown (24h between retries)
+
+  2. GET .../quiz/questions
+       → { questions (shuffled), timeLimit:600,
+           totalPoints:100 }
+       → timer starts client-side
+
+  3. POST .../quiz/submit
+       body: { answers: [
+         {question_id:'Q1', answer:'A'},
+         {question_id:'Q2', answer:['A','C']}
+       ]}
+
+  4. Auto-grading (MCQ):
+       FOR EACH answer:
+         IF answer === correct_answer
+           score += points
+       percentage = (score / total_points) × 100
+       passed = percentage &gt;= 70
+
+  5. UPDATE quiz_attempts SET
+       score=85, percentage=85.0,
+       status='COMPLETED', passed=true,
+       completed_at=now()
+
+  6. IF passed:
+       UPDATE progress SET status='COMPLETED'
+       → triggers enrollment completion_status recompute</div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Retake Policy</h3>
+      <ul>
+        <li>attempts_left = attempts_allowed - attempts_used</li>
+        <li>If failed + attempts_left &gt; 0 → allow retake</li>
+        <li>Cooldown: <span class="hl">24h between attempts</span> (prevents brute-force)</li>
+        <li>If exhausted → 403 "No attempts remaining, contact instructor"</li>
+      </ul>
+    </div>
+    <div class="card cyan" style="margin-top:10px">
+      <h3>Rate Limiting at API Gateway</h3>
+      <ul>
+        <li>Token bucket: 100 req/min per userId (from JWT)</li>
+        <li>Protects against quiz brute-force (guess answers rapidly)</li>
+        <li>Also prevents progress event flooding</li>
+        <li>Prevents course catalog scraping</li>
+        <li>Key = userId, not IP (authenticated requests)</li>
+      </ul>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>Assignment Grading (Manual)</h3>
+      <ul>
+        <li>Student submits text/file → stored in S3</li>
+        <li>Instructor reviews and enters score manually</li>
+        <li>On pass: triggers same progress completion flow</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S17 CERTIFICATE -->
+<div class="slide" id="s17" data-title="Certificate Generation Service">
+<div class="section-label">🎓 Course Delivery</div>
+<h2>Certificate Generation Service</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px">Trigger: enrollment.completion_status = 100%
+
+How it gets to 100%:
+  user_tracking_consumer_svc detects:
+    max_position_sec &gt;= duration_sec × 0.95  (per lesson)
+  → marks lesson progress status='COMPLETED'
+  → recomputes:
+      completed_lessons / total_lessons × 100
+      UPDATE enrollments SET
+        completion_status = X.XX
+  → IF completion_status = 100.00:
+      Publish Kafka 'course.completed':
+        { userId, courseId, enrollmentId, completedAt }
+
+Certificate Consumer (Kafka listener):
+  1. Idempotency guard:
+       SELECT COUNT(*) FROM certificates
+       WHERE user_id=? AND course_id=?
+       → count &gt; 0 → SKIP (Kafka retry safety)
+  2. Generate certificate:
+       certificate_id = UUID
+       template = fetch course template from S3
+       fill: student_name, course_title,
+             instructor_name, completion_date
+       render → PDF/PNG
+       upload → s3://certificates/{userId}/{courseId}.pdf
+  3. INSERT certificates (
+       certificate_id, user_id, course_id,
+       issued_at, s3_url
+     )
+  4. Notification Svc → email student:
+       "Congratulations! Download your certificate"
+       → CloudFront signed URL (24h) in email
+  5. UPDATE enrollments SET
+       certificate_url = signedS3Url</div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Completion Calculation</h3>
+      <ul>
+        <li>Each lesson tracked independently in Progress table</li>
+        <li>Video lesson: 95% watched threshold (max_position_sec)</li>
+        <li>Quiz lesson: passed = true (score &ge; pass_score)</li>
+        <li>All lessons must be COMPLETED before certificate issues</li>
+        <li>Formula: (completed_lessons / total_lessons) × 100</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Certificate Verification</h3>
+      <ul>
+        <li>Unique certificate_id (UUID) embedded in PDF</li>
+        <li>Public verification URL: /verify/{certificate_id}</li>
+        <li>Returns: student name, course, date, instructor</li>
+        <li>Shareable on LinkedIn, immune to forgery</li>
+      </ul>
+    </div>
+    <div class="info" style="font-size:11px;margin-top:8px">Idempotency is critical: Kafka consumer may retry. Guard with SELECT COUNT(*) before issuing — never issue duplicate certificates.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S18 COURSE DISCOVERY -->
+<div class="slide" id="s18" data-title="Course Discovery & Search — Elasticsearch">
+<div class="section-label">🏛 HLD</div>
+<h2>Course Discovery &amp; Search — Elasticsearch</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px">CDC Pipeline (Course DB → Elasticsearch):
+  Aggregator CDC service listens to:
+    - INSERT on courses (new course published)
+    - UPDATE on courses (title/desc/price change)
+    - UPDATE on course_stats (rating/enrollment change)
+  → transforms row → Elasticsearch document:
+    {
+      course_id, title, description, tags,
+      category, difficulty, price, rating,
+      students_enrolled, instructor_name,
+      published_status
+    }
+  → upsert into 'courses' ES index
+
+Search query:
+  GET /courses?search=machine+learning&amp;category=IT
+              &amp;price=0-50&amp;rating=4&amp;level=BEGINNER
+              &amp;sort=rating
+
+  Elasticsearch query:
+  {
+    "bool": {
+      "must": [
+        { "multi_match": {
+            "query": "machine learning",
+            "fields": ["title^3","description","tags^2"],
+            "type": "best_fields"
+          }
+        }
+      ],
+      "filter": [
+        { "term":  { "category": "IT" } },
+        { "range": { "price": { "lte": 50 } } },
+        { "range": { "rating": { "gte": 4 } } },
+        { "term":  { "difficulty": "BEGINNER" } },
+        { "term":  { "published_status": "PUBLISHED" } }
+      ]
+    },
+    "sort": [{ "rating": "desc" }]
+  }</div>
+  </div>
+  <div>
+    <div class="card blue">
+      <h3>Elasticsearch Features Used</h3>
+      <ul>
+        <li><span class="hl">Full-text search</span> on title/description/tags with field boosting (title^3)</li>
+        <li><span class="cy">Autocomplete</span> via ngram tokenizer (3-5 char n-grams)</li>
+        <li><span class="gr">Faceted filtering</span>: category, price range, rating, difficulty</li>
+        <li>Complex <span class="pu">aggregations</span> (category counts, price histogram) &lt;100ms</li>
+        <li><span class="or">Relevance scoring</span> with BM25 + field boosts</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Redis Cache Layer</h3>
+      <ul>
+        <li>Popular search results cached (TTL 1h)</li>
+        <li>Key: <span class="cy">search:{hash(query+filters)}</span></li>
+        <li>90% of searches hit cache (tail queries are unique)</li>
+        <li>Invalidated on course_stats update via CDC</li>
+      </ul>
+    </div>
+    <div class="success">CDC ensures Elasticsearch is always within seconds of Course DB — no manual sync jobs needed.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S19 RECOMMENDATIONS -->
+<div class="slide" id="s19" data-title="Recommendation System — Collaborative Filtering">
+<div class="section-label">🏛 HLD</div>
+<h2>Recommendation System</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Collaborative Filtering (User-User)</h3>
+      <ul>
+        <li>"Users who enrolled in X also enrolled in Y"</li>
+        <li>Build user-course matrix from enrollment data</li>
+        <li>Compute cosine similarity between user vectors</li>
+        <li>Find k nearest neighbors → recommend their courses</li>
+        <li>Spark ML job runs nightly → results to Redis</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Content-Based Filtering</h3>
+      <ul>
+        <li>"Similar to courses you've enrolled in"</li>
+        <li>TF-IDF vectors from course title/description/tags</li>
+        <li>Elasticsearch more_like_this query for real-time</li>
+        <li>Category + difficulty matching</li>
+        <li>Instructor's other courses surfaced on course page</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow" style="margin-bottom:10px">
+      <h3>Popularity-Based (Cold Start)</h3>
+      <ul>
+        <li>New users: trending courses by category</li>
+        <li>Trending = enrollments in last 7 days (Redis sorted set)</li>
+        <li>After 3+ enrollments → switch to collaborative</li>
+        <li>Homepage "Best Sellers" = popularity rank</li>
+      </ul>
+    </div>
+    <div class="card purple">
+      <h3>Data Pipeline</h3>
+<div class="dia" style="font-size:10.5px">Kafka events:
+  enrollment.created
+  course.completed
+  review.submitted
+  video.progress (watch time)
+    │
+    ▼
+Spark Streaming (real-time signals)
+  + Spark Batch (nightly ML training)
+    │
+    ▼
+Recommendation Store (Redis)
+  Key: rec:{userId}  → [courseId1, courseId2, ...]
+  TTL: 24h, refreshed nightly
+    │
+    ▼
+GET /me/recommendations → reads from Redis</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S20 LIVE CLASS -->
+<div class="slide" id="s20" data-title="Live Class & Webinar Integration">
+<div class="section-label">🎓 Course Delivery</div>
+<h2>Live Class / Webinar Integration</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Architecture Approach</h3>
+      <ul>
+        <li>Use <strong>WebRTC</strong> for real-time bidirectional video (instructor ↔ students)</li>
+        <li>TURN/STUN servers for NAT traversal</li>
+        <li>Media Server (Janus/mediasoup) for fan-out: 1 instructor → 1000 students</li>
+        <li>Fallback to HLS (30s delay) for very large audiences (10K+)</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Live Session Flow</h3>
+<div class="dia" style="font-size:10.5px">Instructor starts live class
+  → POST /courses/C123/live/start
+  → Creates LiveSession record (session_id, start_time)
+  → Generates WebRTC offer + TURN credentials
+  → Media server allocates room
+
+Students join:
+  → GET /courses/C123/live/join
+  → Enrollment + Access check (same as VOD)
+  → Receive TURN credentials + SDP offer
+  → WebRTC connection established
+
+Recording (auto):
+  → Media server records to S3 (raw MPEG-TS)
+  → On session end: same transcoding pipeline
+    Kafka 'video.uploaded' → FFmpeg → HLS</div>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Progress for Live Classes</h3>
+      <ul>
+        <li>Attendance tracked by session join/leave events</li>
+        <li>Minimum attendance: 80% session duration = COMPLETED</li>
+        <li>Same Progress table, lesson_type='LIVE'</li>
+        <li>Recording available as regular VOD after processing</li>
+      </ul>
+    </div>
+    <div class="card purple" style="margin-top:10px">
+      <h3>Scaling Live</h3>
+      <ul>
+        <li>&lt;100 students: WebRTC mesh (direct P2P with instructor)</li>
+        <li>100-1000: SFU (Selective Forwarding Unit) — media server forwards streams</li>
+        <li>&gt;1000: HLS stream + Q&amp;A via WebSocket chat (one-way video)</li>
+        <li>Chat: Kafka + WebSocket gateway (same as notification system)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S21 OFFLINE DOWNLOAD -->
+<div class="slide" id="s21" data-title="Offline Download Support">
+<div class="section-label">🎓 Course Delivery</div>
+<h2>Offline Download Support</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Download Architecture</h3>
+<div class="dia" style="font-size:10.5px">Student: GET /courses/C123/lessons/L456/download
+  1. Enrollment + Access check (ACTIVE status)
+  2. Generate time-limited S3 presigned URL:
+       s3.getSignedUrl('getObject', {
+         Bucket: 'course-videos-cdn',
+         Key:    'C123/L456/720p.m3u8',
+         Expires: 3600  ← 1 hour to initiate download
+       })
+  3. Return { downloadUrl, expiresIn: 3600 }
+
+Client:
+  Download all .ts segments referenced in 720p.m3u8
+  Store locally in encrypted container
+  AES-128 encrypted (key delivered per session)
+  Downloaded content bound to device ID + userId</div>
+    </div>
+    <div class="card green">
+      <h3>DRM &amp; Expiry</h3>
+      <ul>
+        <li>Downloaded content expires: <span class="hl">30-day license</span></li>
+        <li>App checks license validity on playback</li>
+        <li>If access revoked (refund) → license server denies renewal</li>
+        <li>AES-128 encryption key fetched from license server on each play</li>
+        <li>Widevine/FairPlay for mobile apps</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Offline Progress Sync</h3>
+      <ul>
+        <li>Progress stored locally (SQLite on device)</li>
+        <li>On network reconnect: batch-upload offline events</li>
+        <li>Same <span class="cy">POST /progress/events</span> API — no special handling</li>
+        <li>Timestamps preserved → correct ordering on upsert</li>
+        <li>Kafka consumer handles out-of-order events safely (GREATEST())</li>
+      </ul>
+    </div>
+    <div class="card purple" style="margin-top:10px">
+      <h3>Storage on Device</h3>
+      <ul>
+        <li>Default: 720p download (~300 MB/hr of video)</li>
+        <li>User can choose 480p (~120 MB/hr) to save space</li>
+        <li>Auto-delete after course completion (optional)</li>
+        <li>Storage quota warning at 80% device capacity</li>
+      </ul>
+    </div>
+    <div class="info" style="margin-top:8px;font-size:11px">Only enrolled + active-access students can download. Same Access table check as streaming.</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S22 ER DIAGRAM -->
+<div class="slide" id="s22" data-title="ER Diagram — Full Schema">
+<div class="section-label">🗂 Data Model</div>
+<h2>ER Diagram — Full Schema Relationships</h2>
+<div class="dia" style="font-size:10px">
+┌──────────────────┐         ┌────────────────────────────────────┐
+│ <span class="kw">Users</span>             │         │ <span class="kw">Courses</span>                             │
+│──────────────────│         │────────────────────────────────────│
+│ PK user_id  uuid │ 1:N     │ PK course_id  uuid                 │
+│    email         │────────&gt;│ FK instructor_id  uuid             │
+│    role enum     │         │    title, description, category    │
+│    status        │         │    difficulty enum, price DECIMAL  │
+│    instructor_profile jsonb│    published_status enum           │
+└──────────────────┘         │    students_enrolled INT           │
+         │                   │    rating DECIMAL(3,2)             │
+         │ 1:N               │ IDX (category, rating)             │
+         ▼                   │ IDX (instructor_id, created_at)    │
+┌──────────────────┐         └──────────┬─────────────────────────┘
+│ <span class="kw">Enrollments</span>       │                │ 1:N
+│──────────────────│                    ▼
+│ PK enrollment_id │         ┌──────────────────────────────────┐
+│ FK user_id       │&lt;────────│ <span class="kw">Lessons</span>                          │
+│ FK course_id     │         │ lesson_id, course_id, section_id │
+│    enrolled_at   │         │ title, type (VIDEO/QUIZ/ASSIGN)  │
+│    completion_%  │         │ video_url, processing_status     │
+│    payment_id    │         │ duration_sec, sort_order         │
+│    certificate_url│        └──────────────────────────────────┘
+│ UNIQUE(user_id,  │
+│   course_id)     │         ┌──────────────────────────────────┐
+└────────┬─────────┘         │ <span class="kw">Progress</span>                         │
+         │                   │ PK (user_id, course_id,          │
+         │ 1:1               │      lesson_id)                  │
+         ▼                   │ last_position_sec INT            │
+┌──────────────────┐         │ max_position_sec  INT            │
+│ <span class="kw">Payments</span>          │         │ status enum, completed_at        │
+│ payment_id       │         │ SHARD: user_id                   │
+│ stripe_payment_id│         └──────────────────────────────────┘
+│ enrollment_req_id│
+│ status enum      │         ┌──────────────────────────────────┐
+└──────────────────┘         │ <span class="kw">course_stats</span> (denormalized)      │
+                             │ course_id PK/FK                  │
+┌──────────────────┐         │ avg_rating, total_reviews        │
+│ <span class="kw">Certificates</span>     │         │ enrolled, completion_rate        │
+│ certificate_id   │         │ updated_at (async via Kafka)     │
+│ user_id, course_id│        └──────────────────────────────────┘
+│ issued_at, s3_url│
+└──────────────────┘</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S23 TRADE-OFFS -->
+<div class="slide" id="s23" data-title="Architecture Trade-offs">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Architecture Trade-offs</h2>
+<table class="tbl">
+  <tr><th>Decision</th><th>Chosen</th><th>Alternative</th><th>Why Chosen</th></tr>
+  <tr><td>Video delivery</td><td class="gr">HLS + CloudFront CDN</td><td>Raw S3 URL</td><td>CDN: 95% cache hit, &lt;2s global startup. Raw S3 = 200-500ms global latency = fails SLA</td></tr>
+  <tr><td>Progress writes</td><td class="gr">Async Kafka + upsert</td><td>Sync DB write</td><td>Async: 200 OK immediately, doesn't stall video. Sync: DB write latency blocks playback</td></tr>
+  <tr><td>Transcode</td><td class="gr">Async S3→Lambda→Kafka→Worker</td><td>Sync on upload</td><td>2 GB = 10-15 min. Sync = timeout + wasted connections. Spot instances = 70% cheaper</td></tr>
+  <tr><td>Course search</td><td class="gr">Elasticsearch + CDC</td><td>SQL LIKE queries</td><td>ES: full-text, filters, autocomplete &lt;100ms. SQL LIKE: table scan, no relevance ranking</td></tr>
+  <tr><td>Course stats</td><td class="gr">Denormalized course_stats</td><td>Live COUNT(*)</td><td>COUNT on millions of enrollments in hot path = 200ms+. Denormalized = &lt;1ms lookup</td></tr>
+  <tr><td>Enrollment idempotency</td><td class="gr">5 layers</td><td>Just UNIQUE constraint</td><td>DB constraint catches race but not webhook duplicates, lost webhooks, client double-click</td></tr>
+  <tr><td>Progress sharding</td><td class="gr">Shard by user_id</td><td>Shard by course_id</td><td>User's all progress on one shard → fast range queries. Course shard = cross-shard joins</td></tr>
+  <tr><td>Access control</td><td class="gr">Separate Access table</td><td>Just check Enrollment</td><td>Handles refunds, subscriptions, expiry separately. Enrolled ≠ currently has access</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S24 HLS VS DASH -->
+<div class="slide" id="s24" data-title="HLS vs DASH — Video Protocol Comparison">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>HLS vs DASH — Top Comparison #1</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>HLS (HTTP Live Streaming)</h3>
+      <ul>
+        <li>Developed by <strong>Apple</strong> (2009), industry standard</li>
+        <li>Manifest: <span class="cy">.m3u8</span> format</li>
+        <li>Segments: <span class="cy">.ts</span> (MPEG-TS container)</li>
+        <li>Native support: <strong>Safari, iOS, macOS</strong></li>
+        <li>Requires hls.js on Chrome/Firefox (JS library)</li>
+        <li>Segment duration: typically 6-10 sec</li>
+        <li>Encryption: AES-128, Sample-AES</li>
+        <li>DRM: FairPlay (Apple only)</li>
+        <li><span class="gr">Pro:</span> Universal CDN caching, battle-tested, Apple native</li>
+        <li><span class="rd">Con:</span> Higher latency for live (15-30s)</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card purple">
+      <h3>DASH (Dynamic Adaptive Streaming over HTTP)</h3>
+      <ul>
+        <li>ISO standard (2011), open specification</li>
+        <li>Manifest: <span class="pu">.mpd</span> (XML-based)</li>
+        <li>Segments: <span class="pu">fMP4</span> (fragmented MP4) — more efficient</li>
+        <li>Supported by: YouTube, Netflix, Amazon Prime</li>
+        <li>Browser support: Chrome, Firefox (via dash.js)</li>
+        <li>Better compression: fMP4 ~10-15% smaller than .ts</li>
+        <li>DRM: Widevine (Google) + PlayReady (Microsoft)</li>
+        <li><span class="gr">Pro:</span> Open standard, better compression, Widevine support</li>
+        <li><span class="rd">Con:</span> No native iOS support (needs MSE), more complex</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Winner for EdTech: HLS</h3>
+      <p>iOS/Safari dominance in education apps + simpler CDN caching + FairPlay DRM makes <span class="hl">HLS the right choice</span> for Udemy/Coursera. Use DASH only if targeting primarily Android/Chrome and need Widevine.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S25 POSTGRES VS MONGO -->
+<div class="slide" id="s25" data-title="PostgreSQL vs MongoDB — Course Data Storage">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>PostgreSQL vs MongoDB — Top Comparison #2</h2>
+<div class="cols2">
+  <div>
+    <div class="card green">
+      <h3>PostgreSQL (chosen for core tables)</h3>
+      <ul>
+        <li>ACID transactions — critical for <span class="hl">Payments + Enrollments</span></li>
+        <li>UNIQUE constraints — double-enrollment prevention</li>
+        <li>Foreign keys — referential integrity (course_id, user_id)</li>
+        <li>DECIMAL precision — payment amounts ($49.99 must be exact)</li>
+        <li>Complex joins — enrollment + progress + course in one query</li>
+        <li>JSONB column — flexible metadata without schema changes</li>
+        <li>Mature replication, read replicas, PgBouncer pooling</li>
+        <li><span class="gr">Use for:</span> Users, Courses, Enrollments, Payments, Progress</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card orange">
+      <h3>MongoDB (consider for)</h3>
+      <ul>
+        <li>Schema-free — course curriculum changes often (sections/lessons nested)</li>
+        <li>Document model: course + all lessons in one document (no joins)</li>
+        <li>Better for deeply nested: quiz questions, options, metadata</li>
+        <li>Flexible: different lesson types (video/quiz/text) without NULLs</li>
+        <li>Horizontal scaling built-in (sharding native)</li>
+        <li><span class="rd">Risk:</span> No multi-document ACID (prior to v4), joins via $lookup are slow</li>
+        <li><span class="or">Use for:</span> Course curriculum structure, quiz question bank, comments</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Hybrid Decision</h3>
+      <p>PostgreSQL for transactional data (payments, enrollments, progress). MongoDB for document-heavy course content (curriculum, quizzes). Most EdTech platforms use <span class="hl">PostgreSQL as primary</span> with JSONB for flexibility.</p>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S26 SCALING -->
+<div class="slide" id="s26" data-title="Scaling — Udemy Numbers">
+<div class="section-label">🏛 HLD</div>
+<h2>Scaling Techniques — Udemy Numbers (57M Students, 213K Courses)</h2>
+<table class="tbl">
+  <tr><th>Technique</th><th>What It Does</th><th>Numbers</th></tr>
+  <tr><td><span class="cy">CDN (CloudFront)</span></td><td>200+ edge nodes cache .ts segments (30d TTL)</td><td class="gr">95% cache hit; &lt;50ms edge latency; &lt;2s startup</td></tr>
+  <tr><td><span class="hl">Async transcode</span></td><td>S3→Lambda→Kafka→Spot Worker</td><td class="gr">70% cheaper (Spot); 10-15 min async (not sync)</td></tr>
+  <tr><td><span class="cy">Progress batching</span></td><td>Client batches 3 events/30s</td><td class="hl">3× fewer API calls; 2M calls/min at 1M students</td></tr>
+  <tr><td><span class="gr">Read replicas</span></td><td>1 master (writes) + 5 replicas (reads)</td><td class="bl">Scales to millions of read queries/min</td></tr>
+  <tr><td><span class="pu">Kafka partitioning</span></td><td>100 partitions by user_id on video.progress</td><td class="gr">100K events/sec (10K/consumer × 10 consumers)</td></tr>
+  <tr><td><span class="or">Elasticsearch</span></td><td>CDC sync from Course DB</td><td class="bl">Full-text + filters &lt;100ms</td></tr>
+  <tr><td><span class="cy">Redis cache</span></td><td>Course details 1h TTL; enrollment check 24h</td><td class="hl">90% hit rate; 10× DB load reduction</td></tr>
+  <tr><td><span class="gr">HLS adaptive</span></td><td>4 resolutions, 6-sec segments</td><td class="bl">Auto-switches mid-stream; no buffering on slow network</td></tr>
+  <tr><td><span class="rd">S3 lifecycle</span></td><td>Raw → Glacier after 90 days</td><td class="gr">80% storage savings ($0.004 vs $0.023/GB)</td></tr>
+  <tr><td><span class="pu">DB sharding</span></td><td>Progress by user_id; Payments by created_at</td><td class="bl">Scales to billions of progress records</td></tr>
+</table>
+<div class="cols3" style="margin-top:10px">
+  <div class="stat"><div class="val cy">57M</div><div class="lbl">Udemy Students</div></div>
+  <div class="stat"><div class="val hl">213K</div><div class="lbl">Courses</div></div>
+  <div class="stat"><div class="val gr">95%</div><div class="lbl">CDN Cache Hit</div></div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S27 SENIOR TRAP Q1-Q2 -->
+<div class="slide" id="s27" data-title="Senior Trap Q&amp;As — Part 1">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Senior Trap Q&amp;As — Part 1</h2>
+<div class="cols2">
+  <div>
+    <div class="card red">
+      <h3>Q1: Why not sync transcode on video upload?</h3>
+      <div class="quote"><strong>Trap:</strong> "We can just transcode when instructor uploads and return the URL in the same response."<br><br><strong>Answer:</strong> 2 GB video = 10-15 minutes of FFmpeg processing (4 resolutions + HLS packaging + thumbnails). Holding an HTTP connection for 10+ minutes causes gateway timeouts, wasted thread resources, and terrible UX. The correct design: client uploads to S3 presigned URL (server not involved), S3 event → Lambda → Kafka → Spot Worker pool. Instructor gets immediate 200 OK, receives email when video is ready. Spot instances reduce compute cost by 70%.</div>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Q2: Why two position fields in Progress table?</h3>
+      <div class="quote"><strong>Trap:</strong> "Just store the current playback position — that's all you need."<br><br><strong>Answer:</strong> Two distinct semantics: <strong>last_position_sec</strong> = where to resume (always latest, decreases on rewind), <strong>max_position_sec</strong> = farthest ever watched (GREATEST update, never decreases). If only one field: user watches to 800s, rewinds to 0, closes app → stored position=0 → system thinks 0% watched, marks lesson incomplete — losing 67% of progress. With two fields: last=0 (resume at 0), max=800 (67% complete — correct). Completion fires when max ≥ duration × 0.95.</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S28 SENIOR TRAP Q3-Q5 -->
+<div class="slide" id="s28" data-title="Senior Trap Q&amp;As — Part 2">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Senior Trap Q&amp;As — Part 2</h2>
+<div class="cols2">
+  <div>
+    <div class="card purple" style="margin-bottom:10px">
+      <h3>Q3: Enrollment just checks Enrollment table for access?</h3>
+      <div class="quote"><strong>Trap:</strong> "Video Playback checks enrollments to decide if user can watch."<br><br><strong>Answer:</strong> Wrong table. Video Playback checks the <strong>Access table</strong> (status=ACTIVE), not Enrollments. Why? Enrolled ≠ has active access. User might have enrolled (record exists) but received a refund (access REVOKED) or subscription expired (EXPIRED). The Access table is maintained by Permission Sync Svc via Kafka events: payment.completed → ACTIVE; refund.issued → REVOKED; subscription.expired → EXPIRED. Separating enrollment from access allows correct handling of all scenarios.</div>
+    </div>
+    <div class="card red">
+      <h3>Q4: Who generates the idempotency key for payment?</h3>
+      <div class="quote"><strong>Trap:</strong> "The server generates the idempotency key before creating PaymentIntent."<br><br><strong>Answer:</strong> The <strong>client generates enrollmentRequestId</strong> (UUID) before the user clicks Enroll. If user double-clicks, both requests carry the same UUID → Stripe returns the same existing PaymentIntent (no second charge). Server-generated keys only protect against server crashes, not client-side double-clicks. This is the pattern used by Stripe's own documentation.</div>
+    </div>
+  </div>
+  <div>
+    <div class="card cyan">
+      <h3>Q5: Why Kafka partition by user_id not course_id for progress?</h3>
+      <div class="quote"><strong>Trap:</strong> "Partition by course_id to keep all progress for one course together."<br><br><strong>Answer:</strong> Wrong. Partition by <strong>user_id</strong>. Reason: We need ordering per user (events for same user must arrive in order — last_position_sec must be the latest). user_id partitioning ensures all of one user's events go to the same partition → same consumer → sequential processing. course_id partitioning would put user events on different partitions → out-of-order → last_position_sec might be stale. DB is also sharded by user_id (user's progress on same shard for fast range queries).</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S29 KAFKA EVENT FLOW -->
+<div class="slide" id="s29" data-title="Kafka Event Flow — Complete Picture">
+<div class="section-label">🏛 HLD</div>
+<h2>Kafka Event Flow — Complete Picture</h2>
+<div class="dia" style="font-size:10px">
+PRODUCER                     TOPIC                    CONSUMER
+─────────────────────────────────────────────────────────────────────
+
+Lambda (S3 trigger)      →  video.uploaded        →  Video Processing Worker
+                                                      (FFmpeg Spot instances)
+                                                      → UPDATE lessons status='COMPLETED'
+                                                      → email instructor
+
+Video Playback Svc       →  video.progress        →  user_tracking_consumer_svc
+(client heartbeats)          (100 partitions,          → UPSERT progress
+                              key=user_id)              → completion check
+                                                        → IF 100%: publish course.completed
+
+course.completed         →  course.completed      →  Certificate Consumer
+(from tracking svc)                                   → generate PDF → S3
+                                                      → INSERT certificates
+                                                      → email student
+
+Stripe Webhook           →  payment.completed     →  Enrollment Consumer
+(Payment Svc)                                         → idempotency check
+                                                      → INSERT enrollments
+                                                      → UPDATE course stats
+                                                      → welcome email
+
+                         →  payment.completed     →  Permission Sync Svc
+                                                      → INSERT Access (ACTIVE)
+
+Refund handler           →  refund.issued         →  Permission Sync Svc
+                                                      → UPDATE Access (REVOKED)
+
+Subscription Svc         →  subscription.expired  →  Permission Sync Svc
+                                                      → UPDATE Access (EXPIRED)
+
+CDC (Course DB)          →  course.updated        →  Elasticsearch Sync Svc
+                                                      → upsert course document
+
+Review Svc               →  review.submitted      →  course_stats updater
+Enrollment Consumer      →  enrollment.created    →  Recommendation Engine</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S30 DB SCHEMA COURSES -->
+<div class="slide" id="s30" data-title="DB Schema — Courses + Enrollments">
+<div class="section-label">🗂 DB Schema</div>
+<h2>DB Schema — Courses &amp; Enrollments</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px"><span class="kw">CREATE TABLE</span> courses (
+  course_id       <span class="str">uuid</span>            PRIMARY KEY,
+  instructor_id   <span class="str">uuid</span>            NOT NULL REFERENCES users(user_id),
+  title           <span class="str">varchar(255)</span>    NOT NULL,
+  description     <span class="str">text</span>,
+  category        <span class="str">varchar(100)</span>,
+  difficulty      <span class="str">enum</span>('BEGINNER','INTERMEDIATE','ADVANCED'),
+  price           <span class="str">decimal(10,2)</span>   DEFAULT <span class="num">0</span>,
+  rating          <span class="str">decimal(3,2)</span>    DEFAULT <span class="num">0.00</span>,  <span class="cm">← denormalized</span>
+  students_enrolled <span class="str">int</span>           DEFAULT <span class="num">0</span>,    <span class="cm">← denormalized</span>
+  published_status  <span class="str">enum</span>(
+    'DRAFT','PENDING_APPROVAL','PUBLISHED','ARCHIVED'
+  ) DEFAULT 'DRAFT',
+  thumbnail_url   <span class="str">varchar(500)</span>,
+  created_at      <span class="str">timestamptz</span>     DEFAULT now()
+);
+
+<span class="cm">-- Indexes</span>
+CREATE INDEX ON courses(instructor_id, created_at);
+CREATE INDEX ON courses(category, rating);
+CREATE INDEX ON courses(published_status);
+
+<span class="kw">CREATE TABLE</span> course_stats (
+  course_id        <span class="str">uuid</span> PRIMARY KEY REFERENCES courses,
+  avg_rating       <span class="str">decimal(3,2)</span>,
+  total_reviews    <span class="str">int</span>     DEFAULT <span class="num">0</span>,
+  enrolled         <span class="str">int</span>     DEFAULT <span class="num">0</span>,
+  completion_rate  <span class="str">decimal(5,2)</span>,
+  updated_at       <span class="str">timestamptz</span>
+); <span class="cm">← updated async via Kafka, never via direct write</span></div>
+  </div>
+  <div>
+<div class="dia" style="font-size:10px"><span class="kw">CREATE TABLE</span> enrollments (
+  enrollment_id      <span class="str">uuid</span>           PRIMARY KEY,
+  user_id            <span class="str">uuid</span>           NOT NULL REFERENCES users,
+  course_id          <span class="str">uuid</span>           NOT NULL REFERENCES courses,
+  owner_instructor_id <span class="str">uuid</span>,          <span class="cm">← denormalized</span>
+  enrolled_at        <span class="str">timestamptz</span>    DEFAULT now(),
+  completion_status  <span class="str">decimal(5,2)</span>   DEFAULT <span class="num">0.00</span>,
+  last_accessed_at   <span class="str">timestamptz</span>,
+  payment_id         <span class="str">uuid</span>           REFERENCES payments,
+  certificate_url    <span class="str">varchar(500)</span>,
+  metadata           <span class="str">jsonb</span>,
+  CONSTRAINT uq_user_course UNIQUE (user_id, course_id)
+);
+
+CREATE INDEX ON enrollments(user_id, enrolled_at);
+CREATE INDEX ON enrollments(course_id, enrolled_at);
+
+<span class="kw">CREATE TABLE</span> access (
+  access_id    <span class="str">uuid</span>   PRIMARY KEY,
+  user_id      <span class="str">uuid</span>   NOT NULL REFERENCES users,
+  course_id    <span class="str">uuid</span>   NOT NULL REFERENCES courses,
+  scope_type   <span class="str">enum</span>('LIFETIME','SUBSCRIPTION'),
+  status       <span class="str">enum</span>('ACTIVE','REVOKED','EXPIRED'),
+  purchase_date <span class="str">timestamptz</span>,
+  expires_at   <span class="str">timestamptz</span>  <span class="cm">← null for LIFETIME</span>
+);
+<span class="cm">← Video Playback checks this, NOT enrollments</span></div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S31 DB SCHEMA PROGRESS -->
+<div class="slide" id="s31" data-title="DB Schema — Progress + Payments">
+<div class="section-label">🗂 DB Schema</div>
+<h2>DB Schema — Progress &amp; Payments</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px"><span class="cm">-- Sharded by user_id (all progress on same shard)</span>
+<span class="kw">CREATE TABLE</span> progress (
+  user_id           <span class="str">uuid</span>   NOT NULL,
+  course_id         <span class="str">uuid</span>   NOT NULL,
+  lesson_id         <span class="str">uuid</span>   NOT NULL,
+  video_id          <span class="str">uuid</span>,
+  duration_sec      <span class="str">int</span>,
+  last_position_sec <span class="str">int</span>    DEFAULT <span class="num">0</span>,  <span class="cm">← resume point</span>
+  max_position_sec  <span class="str">int</span>    DEFAULT <span class="num">0</span>,  <span class="cm">← completion check</span>
+  status            <span class="str">enum</span>(
+    'NOT_STARTED','IN_PROGRESS','COMPLETED'
+  ) DEFAULT 'NOT_STARTED',
+  completed_at      <span class="str">timestamptz</span>,
+  updated_at        <span class="str">timestamptz</span>  DEFAULT now(),
+  metadata          <span class="str">jsonb</span>,
+  PRIMARY KEY (user_id, course_id, lesson_id)
+);
+
+<span class="cm">-- Upsert query (Kafka consumer)</span>
+INSERT INTO progress
+  (user_id, course_id, lesson_id, video_id,
+   last_position_sec, max_position_sec, updated_at)
+VALUES (?, ?, ?, ?, <span class="num">140</span>, <span class="num">140</span>, now())
+ON CONFLICT (user_id, course_id, lesson_id) DO UPDATE SET
+  last_position_sec = EXCLUDED.last_position_sec,
+  max_position_sec  = GREATEST(
+    progress.max_position_sec,
+    EXCLUDED.max_position_sec
+  ),
+  updated_at = now();</div>
+  </div>
+  <div>
+<div class="dia" style="font-size:10px"><span class="kw">CREATE TABLE</span> payments (
+  payment_id            <span class="str">uuid</span>           PRIMARY KEY,
+  user_id               <span class="str">uuid</span>           NOT NULL REFERENCES users,
+  course_id             <span class="str">uuid</span>           NOT NULL REFERENCES courses,
+  amount                <span class="str">decimal(10,2)</span>  NOT NULL,
+  currency              <span class="str">varchar(3)</span>     DEFAULT <span class="str">'usd'</span>,
+  status                <span class="str">enum</span>(
+    'PENDING','COMPLETED','FAILED','REFUNDED'
+  ) DEFAULT 'PENDING',
+  stripe_payment_id     <span class="str">varchar(255)</span>   UNIQUE,
+  enrollment_request_id <span class="str">varchar(255)</span>,  <span class="cm">← client UUID</span>
+  created_at            <span class="str">timestamptz</span>    DEFAULT now(),
+  metadata              <span class="str">jsonb</span>
+);
+
+<span class="cm">-- Sharded by created_at (time-based for historical)</span>
+CREATE INDEX ON payments(user_id, created_at);
+CREATE INDEX ON payments(stripe_payment_id);
+CREATE INDEX ON payments(status, created_at);
+<span class="cm">← status index: polling backup finds PENDING payments</span>
+
+<span class="kw">CREATE TABLE</span> certificates (
+  certificate_id <span class="str">uuid</span>        PRIMARY KEY,
+  user_id        <span class="str">uuid</span>        NOT NULL REFERENCES users,
+  course_id      <span class="str">uuid</span>        NOT NULL REFERENCES courses,
+  issued_at      <span class="str">timestamptz</span> DEFAULT now(),
+  s3_url         <span class="str">varchar(500)</span>,
+  UNIQUE (user_id, course_id)  <span class="cm">← no duplicate certs</span>
+);</div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S32 DB SCHEMA QUIZZES -->
+<div class="slide" id="s32" data-title="DB Schema — Quizzes + Reviews">
+<div class="section-label">🗂 DB Schema</div>
+<h2>DB Schema — Quizzes, Questions &amp; Reviews</h2>
+<div class="cols2">
+  <div>
+<div class="dia" style="font-size:10px"><span class="kw">CREATE TABLE</span> quizzes (
+  quiz_id          <span class="str">uuid</span>           PRIMARY KEY,
+  course_id        <span class="str">uuid</span>           NOT NULL REFERENCES courses,
+  lesson_id        <span class="str">uuid</span>           NOT NULL,
+  title            <span class="str">varchar(255)</span>,
+  pass_score       <span class="str">decimal(5,2)</span>   DEFAULT <span class="num">70.00</span>,
+  time_limit_sec   <span class="str">int</span>,              <span class="cm">← null = no limit</span>
+  attempts_allowed <span class="str">int</span>            DEFAULT <span class="num">3</span>
+);
+
+<span class="kw">CREATE TABLE</span> questions (
+  question_id    <span class="str">uuid</span>   PRIMARY KEY,
+  quiz_id        <span class="str">uuid</span>   NOT NULL REFERENCES quizzes,
+  question_text  <span class="str">text</span>   NOT NULL,
+  type           <span class="str">enum</span>(
+    'MCQ_SINGLE','MULTI_SELECT',
+    'FILL','SELECT','TRUE_FALSE','TEXT'
+  ),
+  options        <span class="str">jsonb</span>,   <span class="cm">← [{id:'A',text:'...'}, ...]</span>
+  correct_answer <span class="str">jsonb</span>,   <span class="cm">← 'A' or ['A','C']</span>
+  points         <span class="str">int</span>    DEFAULT <span class="num">10</span>,
+  sort_order     <span class="str">int</span>
+);
+
+<span class="kw">CREATE TABLE</span> quiz_attempts (
+  attempt_id   <span class="str">uuid</span>         PRIMARY KEY,
+  user_id      <span class="str">uuid</span>         NOT NULL REFERENCES users,
+  quiz_id      <span class="str">uuid</span>         NOT NULL REFERENCES quizzes,
+  attempt_num  <span class="str">int</span>          DEFAULT <span class="num">1</span>,
+  status       <span class="str">enum</span>('IN_PROGRESS','COMPLETED'),
+  score        <span class="str">decimal(5,2)</span>,
+  percentage   <span class="str">decimal(5,2)</span>,
+  passed       <span class="str">boolean</span>,
+  started_at   <span class="str">timestamptz</span>  DEFAULT now(),
+  completed_at <span class="str">timestamptz</span>
+);</div>
+  </div>
+  <div>
+<div class="dia" style="font-size:10px"><span class="kw">CREATE TABLE</span> reviews (
+  review_id     <span class="str">uuid</span>   PRIMARY KEY,
+  user_id       <span class="str">uuid</span>   NOT NULL REFERENCES users,
+  course_id     <span class="str">uuid</span>   NOT NULL REFERENCES courses,
+  rating        <span class="str">int</span>    CHECK (rating BETWEEN <span class="num">1</span> AND <span class="num">5</span>),
+  comment       <span class="str">text</span>,
+  helpful_votes <span class="str">int</span>    DEFAULT <span class="num">0</span>,
+  created_at    <span class="str">timestamptz</span>  DEFAULT now(),
+  UNIQUE (user_id, course_id)  <span class="cm">← one review per enrollment</span>
+);
+
+CREATE INDEX ON reviews(course_id, rating);
+<span class="cm">← for sorted review listing</span>
+
+<span class="kw">CREATE TABLE</span> lessons (
+  lesson_id         <span class="str">uuid</span>   PRIMARY KEY,
+  course_id         <span class="str">uuid</span>   NOT NULL REFERENCES courses,
+  section_id        <span class="str">uuid</span>,
+  title             <span class="str">varchar(255)</span>,
+  type              <span class="str">enum</span>('VIDEO','QUIZ','ASSIGNMENT','TEXT'),
+  video_url         <span class="str">varchar(500)</span>,   <span class="cm">← master.m3u8 URL</span>
+  processing_status <span class="str">enum</span>(
+    'PENDING','PROCESSING','COMPLETED','FAILED'
+  ),
+  duration_sec      <span class="str">int</span>,
+  sort_order        <span class="str">int</span>    NOT NULL,
+  is_free_preview   <span class="str">boolean</span>  DEFAULT false
+);
+
+CREATE INDEX ON lessons(course_id, sort_order);
+<span class="cm">← curriculum ordering</span></div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S33 QUICK NUMBERS -->
+<div class="slide" id="s33" data-title="Quick Numbers — Memorise These">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Quick Numbers — Memorise for Interview</h2>
+<div class="cols3" style="margin-bottom:12px">
+  <div class="stat"><div class="val cy">57M</div><div class="lbl">Udemy Students</div></div>
+  <div class="stat"><div class="val hl">213K</div><div class="lbl">Courses</div></div>
+  <div class="stat"><div class="val gr">&lt;2s</div><div class="lbl">Video Startup</div></div>
+  <div class="stat"><div class="val bl">850ms</div><div class="lbl">Actual Startup (DNS+TLS+manifest+seg)</div></div>
+  <div class="stat"><div class="val pu">6s</div><div class="lbl">HLS Segment Duration</div></div>
+  <div class="stat"><div class="val or">95%</div><div class="lbl">CDN Cache Hit Rate</div></div>
+  <div class="stat"><div class="val cy">30s</div><div class="lbl">Progress Batch Interval</div></div>
+  <div class="stat"><div class="val hl">100</div><div class="lbl">Kafka Partitions (progress)</div></div>
+  <div class="stat"><div class="val gr">70%</div><div class="lbl">Spot Instance Savings</div></div>
+  <div class="stat"><div class="val rd">10-15</div><div class="lbl">Min to Transcode 2GB</div></div>
+  <div class="stat"><div class="val bl">95%</div><div class="lbl">Watch Threshold for Completion</div></div>
+  <div class="stat"><div class="val pu">5</div><div class="lbl">Idempotency Layers</div></div>
+</div>
+<div class="cols2">
+  <div class="card blue">
+    <h3>Video Resolutions &amp; Bitrates</h3>
+    <ul>
+      <li><span class="hl">1080p</span> 1920×1080 — 5 Mbps</li>
+      <li><span class="cy">720p</span>  1280×720  — 2.5 Mbps</li>
+      <li><span class="gr">480p</span>   854×480  — 1 Mbps</li>
+      <li><span class="pu">360p</span>   640×360  — 500 Kbps</li>
+    </ul>
+  </div>
+  <div class="card green">
+    <h3>Key Timeouts &amp; TTLs</h3>
+    <ul>
+      <li>CloudFront signed URL: <span class="hl">24 hours</span></li>
+      <li>S3 presigned upload URL: <span class="cy">3600 sec (1 hr)</span></li>
+      <li>Redis course cache TTL: <span class="gr">1 hour</span></li>
+      <li>Redis enrollment check TTL: <span class="pu">24 hours</span></li>
+      <li>Refund window: <span class="or">30 days</span></li>
+      <li>Quiz attempt cooldown: <span class="bl">24 hours</span></li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S34 KAFKA FLOW DEEP DIVE -->
+<div class="slide" id="s34" data-title="Kafka — Why Event-Driven Architecture">
+<div class="section-label">🏛 HLD</div>
+<h2>Why Kafka? Event-Driven Decoupling</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Problems Kafka Solves</h3>
+      <ul>
+        <li><strong>Video progress:</strong> 1M students × 2 events/min = 2M writes/min — sync DB writes would collapse</li>
+        <li><strong>Payment → Enrollment:</strong> Stripe webhook fires, enrollment must be created — async decouples them</li>
+        <li><strong>Completion → Certificate:</strong> Multiple downstream actions from one event (cert + email + stats)</li>
+        <li><strong>Retries:</strong> Consumer can lag, restart, reprocess — idempotent upserts handle it safely</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Consumer Scaling</h3>
+      <ul>
+        <li>100 partitions = max 100 parallel consumers per topic</li>
+        <li>Auto-scale: if consumer lag &gt; 1000 → add instances</li>
+        <li>Each consumer handles ~10K events/sec</li>
+        <li>Total throughput: 100K events/sec per topic</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Guaranteed Exactly-Once Semantics</h3>
+      <ul>
+        <li>Kafka guarantees <span class="hl">at-least-once delivery</span></li>
+        <li>Consumers must be <span class="gr">idempotent</span> for exactly-once effect</li>
+        <li>Progress: ON CONFLICT upsert + GREATEST() → safe to reprocess</li>
+        <li>Enrollment: DB check before INSERT → skip if exists</li>
+        <li>Certificate: SELECT COUNT check before generate → skip if exists</li>
+        <li>UNIQUE constraints catch any remaining race conditions</li>
+      </ul>
+    </div>
+    <div class="card purple" style="margin-top:10px">
+      <h3>Topic Retention</h3>
+      <ul>
+        <li>video.progress: 7 days (replay window for bugs)</li>
+        <li>payment.completed: 30 days (auditing)</li>
+        <li>course.completed: 30 days (idempotency window)</li>
+        <li>video.uploaded: 3 days (transient trigger)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S35 CLOSING -->
+<div class="slide" id="s35" data-title="Closing — Interview Cheatsheet">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Closing — Interview Cheatsheet</h2>
+<div class="cols2">
+  <div>
+    <div class="card green">
+      <h3>Always Mention These 5</h3>
+      <ul>
+        <li>1. <span class="hl">HLS + CDN</span> mandatory for &lt;2s startup — never raw S3</li>
+        <li>2. <span class="cy">Async transcode</span> — S3→Lambda→Kafka→Spot, never sync</li>
+        <li>3. <span class="gr">Two position fields</span> — last (resume) vs max (completion)</li>
+        <li>4. <span class="pu">5-layer idempotency</span> — client UUID + webhook sig + DB check + UNIQUE + polling</li>
+        <li>5. <span class="or">Access table</span> ≠ Enrollment table — refunds/subscriptions need it</li>
+      </ul>
+    </div>
+    <div class="card blue" style="margin-top:10px">
+      <h3>CAP Split (Say This Clearly)</h3>
+      <ul>
+        <li>Video streaming: <span class="gr">AP</span> (availability over consistency)</li>
+        <li>Payments + Enrollment: <span class="rd">CP</span> (consistency over availability)</li>
+        <li>Progress: <span class="gr">AP</span> (eventual resume is fine)</li>
+        <li>Search (Elasticsearch): <span class="gr">AP</span> (slightly stale results OK)</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>850ms Breakdown (Memorise)</h3>
+<div class="dia" style="font-size:10.5px">DNS lookup            50 ms
+TCP/TLS handshake    100 ms
+Manifest download    200 ms
+First segment (6s)   500 ms
+──────────────────────────
+Total                850 ms  ✓</div>
+    </div>
+    <div class="card red" style="margin-top:10px">
+      <h3>10 Critical Numbers</h3>
+      <ul>
+        <li>57M students, 213K courses (Udemy)</li>
+        <li>4 resolutions: 1080p / 720p / 480p / 360p</li>
+        <li>6-sec HLS segments, 30s progress batching</li>
+        <li>100 Kafka partitions, key=user_id</li>
+        <li>95% CDN cache hit, 95% watch = completion</li>
+        <li>70% cost savings with Spot instances</li>
+      </ul>
+    </div>
+    <div class="quote" style="margin-top:10px">Start with the one-liner: "Instructor uploads → S3 presigned → FFmpeg async → HLS CDN → Student watches → Progress Kafka → Stripe idempotency → Certificate"</div>
+  </div>
+</div>
+</div>
+
+  </div><!-- end slide-area -->
+
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Display order: Title → Opening → Requirements → HLD → Course Delivery → Progress → Payments → Quiz → Cert → Search → Rec → Live → Offline → ER → Trade-offs → Comparisons → Senior Traps → Kafka → DB Schema (30+) → Quick Numbers → Closing
+const ORDER = [
+   1,  // Title
+   2,  // Opening — One-liner Anchor
+   3,  // Functional Requirements
+   4,  // Non-Functional + CAP
+   5,  // Core Entities
+   6,  // API Design
+   7,  // HLD Full Architecture
+   8,  // HLD Services Breakdown
+   9,  // Video Upload & Transcoding
+  10,  // Video Streaming <2sec
+  11,  // HLS Adaptive Bitrate
+  12,  // Progress Tracking System
+  13,  // Two Position Fields
+  14,  // Payment & Enrollment Flow
+  15,  // Idempotency 5 Layers
+  16,  // Quiz System
+  17,  // Certificate Generation
+  18,  // Course Discovery & Search
+  19,  // Recommendation System
+  20,  // Live Class / Webinar
+  21,  // Offline Download
+  22,  // ER Diagram
+  23,  // Trade-offs
+  24,  // HLS vs DASH
+  25,  // PostgreSQL vs MongoDB
+  26,  // Scaling (Udemy Numbers)
+  27,  // Senior Trap Q&As Part 1
+  28,  // Senior Trap Q&As Part 2
+  29,  // Kafka Event Flow
+  30,  // DB Schema — Courses + Enrollments   ← position 30
+  31,  // DB Schema — Progress + Payments     ← position 31
+  32,  // DB Schema — Quizzes + Reviews       ← position 32
+  33,  // Quick Numbers
+  34,  // Kafka — Why Event-Driven
+  35   // Closing — Cheatsheet
+];
+const TOTAL = ORDER.length; // 35
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+// Build dots
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const slideId = ORDER[i-1];
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+slideId)?.dataset.title || '';
+  d.onclick = (pos => () => showSlide(pos))(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  const slideId = ORDER[n-1];
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+slideId);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent =
+    el?.dataset.title || 'Online Learning Platform System Design';
+  document.getElementById('progress-fill').style.width =
+    ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => {
+    d.classList.toggle('active', i+1===n);
+  });
+}
+
+function navigate(dir) {
+  showSlide(current + dir);
+  if(autoTimer) resetAuto();
+}
+
+function togglePlay() {
+  if(autoTimer) {
+    clearInterval(autoTimer); autoTimer=null;
+    document.getElementById('play-btn').textContent='▶ Play';
+  } else { startAuto(); }
+}
+
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => {
+    if(current < TOTAL) showSlide(current+1);
+    else togglePlay();
+  }, AUTO_INTERVAL);
+}
+
+function resetAuto() {
+  clearInterval(autoTimer);
+  startAuto();
+}
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

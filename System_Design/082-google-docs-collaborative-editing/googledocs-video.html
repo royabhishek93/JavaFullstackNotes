@@ -1,0 +1,589 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Docs System Design</title>
+<link rel="stylesheet" href="../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Google Docs — Collaborative Editing System</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+<div class="slide active" id="s1" data-title="Google Docs — Collaborative Editing System">
+  <div class="title-slide">
+    <div class="main-emoji">📝</div>
+    <h1>Google Docs<br>System Design</h1>
+    <p class="subtitle">Collaborative Document Editing at Scale</p>
+    <div class="badges">
+      <span class="badge">OT</span>
+      <span class="badge">CRDT</span>
+      <span class="badge">WebSocket</span>
+      <span class="badge">Delta Sync</span>
+      <span class="badge">Version History</span>
+      <span class="badge">Collab Cursors</span>
+    </div>
+    <p class="tagline">500M users · 10B docs · 25M ops/sec · &lt;100ms propagation</p>
+  </div>
+</div>
+
+<div class="slide" id="s2" data-title="The Hardest Problem in Collaborative Editing">
+  <h2>The Hardest Problem</h2>
+  <p class="callout">"Two users type at the <strong>exact same position</strong> at the same time. Whose change wins?"</p>
+  <pre class="code-block">
+Document: "BC"   (Alice and Bob both have this on screen)
+
+Alice types "A" at pos 0  →  her screen: "ABC"
+Bob   types "D" at pos 2  →  his screen: "BCD"
+
+Both ops race to the server simultaneously.
+Who wins? ─── BOTH. That's the design challenge.</pre>
+  <p>The answer is: <strong>neither edit is lost</strong>. The system must converge both users to <code>"ABCD"</code>.</p>
+  <p>This is NOT a storage problem. NOT a scale problem. It's a <strong>conflict resolution</strong> problem.</p>
+  <p>The algorithm that solves it is called <strong>Operational Transformation (OT)</strong>.</p>
+  <p>Google Docs has used OT since 2010. Figma and Notion use CRDT — we'll cover both.</p>
+</div>
+
+<div class="slide" id="s3" data-title="Functional Requirements">
+  <h2>Functional Requirements</h2>
+  <ul>
+    <li><strong>Real-time co-editing</strong> — multiple users edit the same document simultaneously</li>
+    <li><strong>Presence &amp; cursors</strong> — see each collaborator's cursor in a distinct colour</li>
+    <li><strong>Comments &amp; suggestions</strong> — anchor to a text range, resolve/reopen</li>
+    <li><strong>Version history</strong> — view and restore any past version of the document</li>
+    <li><strong>Offline editing</strong> — edits queued locally, synced on reconnect</li>
+    <li><strong>Sharing &amp; permissions</strong> — Viewer / Commenter / Editor roles per user or link</li>
+    <li><strong>Auto-save</strong> — no explicit save action; every keystroke is persisted</li>
+    <li><strong>Rich text export</strong> — download as DOCX, PDF, HTML</li>
+    <li><strong>@mention notifications</strong> — notify users tagged in comments</li>
+  </ul>
+  <p class="note">Start with plain text. Rich text (bold, tables) layers on top — same OT model, richer op types.</p>
+</div>
+
+<div class="slide" id="s4" data-title="Non-Functional Requirements">
+  <h2>Non-Functional Requirements</h2>
+  <table class="nfr-table">
+    <tr><th>Dimension</th><th>Target</th></tr>
+    <tr><td>Scale</td><td>500M users · 10B documents · 5M active docs at peak</td></tr>
+    <tr><td>Concurrency</td><td>Up to 100 concurrent editors per document</td></tr>
+    <tr><td>Latency</td><td>&lt;100ms edit propagation between collaborators</td></tr>
+    <tr><td>Throughput</td><td>25M edit events/sec (5M docs × 5 ops/sec)</td></tr>
+    <tr><td>Consistency</td><td>Strong within a session; eventual across regions</td></tr>
+    <tr><td>Durability</td><td>Zero data loss — every acknowledged keystroke persisted</td></tr>
+    <tr><td>Availability</td><td>High — auto-recovery from server failures in &lt;1s</td></tr>
+    <tr><td>Storage</td><td>500 TB content + ~5 PB versions in object storage</td></tr>
+  </table>
+  <p class="note">25M ops/sec rules out REST (50ms/call). This number forces WebSocket.</p>
+</div>
+
+<div class="slide" id="s5" data-title="High-Level Architecture">
+  <h2>High-Level Architecture</h2>
+  <pre class="code-block">
+Browser ──WebSocket──► WS Gateway (sticky: docId hash)
+                            │
+                    ┌───────▼────────────┐
+                    │ Collab Service     │
+                    │  OT/CRDT Engine   │
+                    │  Op Transform     │
+                    └───┬───────┬───────┘
+                        │       │
+               ┌────────▼─┐  ┌──▼────────────┐
+               │  Redis   │  │    Kafka       │
+               │ canonical│  │  doc-ops topic │
+               │ cursors  │  └──────┬─────────┘
+               │ versions │         │
+               └──────────┘  ┌──────▼──────────┐
+                             │ Op Consumer Svc  │
+                             │ → Cassandra ops  │
+                             └──────────────────┘
+                    │
+             ┌──────▼──────────┐
+             │  Auto-Save Svc  │
+             │  every 10–20s  │
+             │  → S3 snapshots │
+             └─────────────────┘</pre>
+  <p class="note">Redis = live canonical copy. Cassandra = op log. S3 = durable snapshots. Kafka = durability buffer.</p>
+</div>
+
+<div class="slide" id="s6" data-title="The Concurrent Edit Problem">
+  <h2>The Concurrent Edit Problem</h2>
+  <pre class="code-block">
+Initial document: "BC"   (version = 5)
+
+User A: INSERT "A" at pos 0, clientVersion=5
+User B: INSERT "D" at pos 2, clientVersion=5
+
+Both ops arrive at the server simultaneously.
+Server processes A first → canonical = "ABC", version=6
+
+Now B's op arrives: { INSERT "D" at pos 2, clientVersion=5 }
+clientVersion 5 &lt; server version 6 → CONCURRENT OP DETECTED
+
+Without OT:  apply "D" at pos 2 → "ADBC"  ✗ (B's intent lost)
+With OT:     transform B's pos 2 → pos 3  ✓
+             apply "D" at pos 3 → "ABCD"  ✓</pre>
+  <p>OT <strong>transforms</strong> the position of a later-arriving op to account for ops that were applied first.</p>
+  <p>The key insight: ops carry a <code>clientVersion</code>. The server transforms any op whose version is stale.</p>
+</div>
+
+<div class="slide" id="s7" data-title="Operational Transformation — Deep Dive">
+  <h2>Operational Transformation — Deep Dive</h2>
+  <pre class="code-block">
+OT TRANSFORM RULES  (transforming op1 against already-applied op2):
+
+op2 = INSERT at position P:
+  op1 = INSERT:  pos &gt; P  → pos++      (shift right)
+                 pos &lt; P  → unchanged
+                 pos = P  → tie-break by userId (lower ID wins)
+  op1 = DELETE:  pos &gt;= P → pos++
+                 pos &lt; P  → unchanged
+
+op2 = DELETE at position P:
+  op1 = INSERT:  pos &gt; P  → pos--      (shift left)
+                 pos &lt;= P → unchanged
+  op1 = DELETE:  pos &gt; P  → pos--
+                 pos = P  → NOOP       (char already gone)
+                 pos &lt; P  → unchanged</pre>
+  <p class="note"><strong>NOOP</strong> = the character op1 wanted to delete was already deleted by op2. Safe to discard.</p>
+  <p>The server applies Alice's op, then transforms Bob's op against it before applying. Both edits survive.</p>
+</div>
+
+<div class="slide" id="s8" data-title="CRDT — Conflict-Free Replicated Data Type">
+  <h2>CRDT — The Alternative Approach</h2>
+  <p><strong>Core insight:</strong> OT fails without total ordering. CRDT eliminates the ordering requirement entirely.</p>
+  <pre class="code-block">
+Instead of integer positions, use FRACTIONAL IDs:
+
+Initial:  B = 0.50,  C = 0.75
+
+Alice inserts "A" before B → assigns position 0.25
+Bob   inserts "D" after  C → assigns position 0.875
+
+Merge: sort all chars by fractional position:
+  A=0.25, B=0.50, C=0.75, D=0.875  →  "ABCD"  ✓
+
+No transformation needed — positions never collide!</pre>
+  <p><strong>Tombstones:</strong> Deleted characters keep their ID but are marked deleted. Prevents resurrection of content.</p>
+  <p><strong>Used by:</strong> Figma, Notion, Atom (Teletype). Position IDs = unique (siteId, clock) tuples.</p>
+  <p class="note">CRDT is commutative: ops can arrive in any order and still converge. Ideal for offline editing.</p>
+</div>
+
+<div class="slide" id="s9" data-title="OT vs CRDT Trade-offs">
+  <h2>OT vs CRDT — Trade-offs</h2>
+  <table class="nfr-table">
+    <tr><th>Dimension</th><th>OT</th><th>CRDT</th></tr>
+    <tr><td>Core idea</td><td>Transform positions</td><td>Fractional position IDs</td></tr>
+    <tr><td>Central server?</td><td>Required (sticky routing)</td><td>Optional (P2P capable)</td></tr>
+    <tr><td>Offline editing</td><td>Difficult — many transforms</td><td>Excellent — just merge</td></tr>
+    <tr><td>Storage per char</td><td>Low (just characters)</td><td>Higher (ID per char)</td></tr>
+    <tr><td>Multi-region active</td><td>Hard — needs primary</td><td>Natural (commutative)</td></tr>
+    <tr><td>Algorithm complexity</td><td>Moderate</td><td>Higher (ID allocation)</td></tr>
+    <tr><td>Used by</td><td>Google Docs</td><td>Figma, Notion, Atom</td></tr>
+  </table>
+  <p class="note"><strong>Interview answer:</strong> "I'll use OT — it's Google's approach. I'd switch to CRDT if we needed true offline editing or multi-region active-active writes."</p>
+</div>
+
+<div class="slide" id="s10" data-title="WebSocket Session Management">
+  <h2>WebSocket Session Management</h2>
+  <pre class="code-block">
+CONNECT:   ws://editor/{docId}?userId={uid}&token={jwt}
+ON CONNECT: server sends { content, version: 42, activeUsers: [...] }
+
+STICKY ROUTING (critical for OT):
+  WS Gateway uses consistent hash on docId.
+  All 100 editors of doc-123 → same WS Server 3.
+  OT requires total ordering; sticky routing enforces it.
+
+HEARTBEAT:
+  Client → server PING every 30s.
+  Server closes connection if no PING in 60s.
+  Client detects closure, reconnects in &lt;1s.
+
+RECONNECT WITH OP REPLAY:
+  Client sends: { reconnect, docId, lastSeenVersion: 41 }
+  Server replies: all ops since version 41
+  Client transforms buffered unACKed ops against them
+  Client resubmits buffered ops</pre>
+  <p class="note">Client maintains a local queue of unACKed ops. On disconnect, it never loses in-flight edits.</p>
+</div>
+
+<div class="slide" id="s11" data-title="Operation Pipeline">
+  <h2>Operation Pipeline — End to End</h2>
+  <pre class="code-block">
+CLIENT SIDE:
+  User keystroke
+    → Apply op locally (immediate feedback)
+    → Debounce 50ms (batch rapid keystrokes)
+    → Compress: "HELLO" typed in 200ms = 1 INSERT op
+    → Add to unACKed queue
+    → Send via WebSocket: { type, pos, content, clientVersion }
+
+SERVER SIDE:
+  Receive op
+    → Validate: auth, doc permissions, op size &lt; 10KB
+    → Rate-limit: max 100 ops/sec per (userId, docId)
+    → Read version V from Redis
+    → If op.clientVersion &lt; V: transform op against ops v+1..V
+    → Apply to Redis canonical copy
+    → Increment Redis version counter
+    → Publish to Kafka (BEFORE ACKing client)
+    → Broadcast transformed op to all other editors
+    → Send OP_ACK { opId, serverVersion } to sender</pre>
+  <p class="note">Kafka publish before ACK guarantees durability. If server crashes after publish, op is safe in Kafka.</p>
+</div>
+
+<div class="slide" id="s12" data-title="Presence and Cursors">
+  <h2>Presence &amp; Cursor Awareness</h2>
+  <pre class="code-block">
+Redis keys per active document:
+  doc:{docId}:cursors     HASH    userId → { line, col, color }
+  doc:{docId}:active_users SET    userIds  (TTL 30s, refreshed on activity)
+
+CURSOR UPDATES:
+  Client sends CURSOR_MOVE every 300ms (only if moved)
+  Server: SET doc:{docId}:cursors[userId] = { line, col }
+  Server: broadcast CURSOR_UPDATE to all room members
+
+COLOR ASSIGNMENT:
+  On join: server assigns deterministic color from palette
+  Hash(userId) % palette_size → consistent color per user
+
+SERVER → CLIENT: CURSOR_UPDATE message
+  { userId, cursor: { line: 4, col: 12 }, color: "#FF5733", name: "Alice" }
+
+CURSOR OT:
+  When op is applied, server also transforms all cursor positions.
+  INSERT at pos 3: cursors at pos &gt;= 3 shift right by 1.
+  Delete at pos 3: cursors at pos &gt; 3 shift left by 1.</pre>
+  <p class="note">Cursor TTL of 30s auto-removes stale cursors if a user disconnects without sending a leave event.</p>
+</div>
+
+<div class="slide" id="s13" data-title="Offline Editing">
+  <h2>Offline Editing</h2>
+  <pre class="code-block">
+WHILE OFFLINE:
+  Ops queued in IndexedDB (browser persistent storage)
+  User continues editing with full local responsiveness
+  Ops tagged with { clientVersion, localTimestamp }
+
+ON RECONNECT:
+  1. Client sends: { reconnect, docId, baseVersion: 42 }
+  2. Server replies: all ops applied since version 42
+  3. Client transforms local op queue against server ops
+     (same OT rules — positions may shift)
+  4. Client resubmits transformed ops one by one
+
+EXAMPLE — offline 10 minutes, 200 local ops:
+  Server applied 450 ops while client was offline
+  Client must transform all 200 local ops against 450 server ops
+  OT: O(local × server) = 200 × 450 = 90,000 transforms
+  At &lt;1µs each → &lt;100ms total. Seamless sync.</pre>
+  <p class="note">For heavy offline use, CRDT is superior — no transform needed, just merge. OT offline sync is O(n×m).</p>
+</div>
+
+<div class="slide" id="s14" data-title="Version History">
+  <h2>Version History</h2>
+  <pre class="code-block">
+DOCUMENT LIFECYCLE:
+
+COLD (no active editors):
+  Latest major version lives only in S3
+
+User opens doc → WARM:
+  Redis: canonical copy loaded from S3, version=10
+  activeUsers set created
+
+EDITING → minor auto-saves every 10–20s:
+  Read Redis canonical → PUT to S3 as v10.1, v10.2 ...
+
+Last editor leaves → RECONCILIATION JOB:
+  1. Fetch base version v10 from S3
+  2. Fetch ALL ops since v10 from Cassandra
+  3. Replay ops → final document state
+  4. PUT to S3 as v11 (MAJOR version)
+  5. Delete minor versions v10.1 … v10.N from S3
+  6. Delete session ops from Cassandra
+  7. Delete Redis canonical key → COLD again</pre>
+  <p class="note">Minor versions are scaffolding — deleted after reconciliation. 50 minors × 50KB × 1M sessions/day = 2.5TB/day savings.</p>
+</div>
+
+<div class="slide" id="s15" data-title="Commenting System">
+  <h2>Commenting System</h2>
+  <pre class="code-block">
+COMMENT ANCHOR:
+  { docId, startPos, endPos, anchorVersion, text, authorId }
+  anchorVersion = document version when comment was created
+
+PROBLEM: document changes after comment is created.
+SOLUTION: OT-transform the anchor on every op.
+  INSERT before startPos → startPos++, endPos++
+  DELETE overlaps anchor range → mark comment as "orphaned"
+
+COMMENT STATES:
+  OPEN     → active, shown in margin
+  RESOLVED → hidden by default, accessible via history
+  ORPHANED → anchor text was deleted; shown as "Context deleted"
+
+@MENTION NOTIFICATIONS:
+  Parse comment text for @{userId} patterns
+  Send notification via pub/sub → push notification + email
+  Notification: { docId, commentId, mentionedBy, snippet }
+
+REPLY THREADING:
+  comments table: (docId, commentId, parentId nullable)
+  Replies inherit anchor from parent comment</pre>
+</div>
+
+<div class="slide" id="s16" data-title="Database Schema">
+  <h2>Database Schema</h2>
+  <pre class="code-block">
+-- MySQL: documents (metadata)
+CREATE TABLE documents (
+  doc_id       UUID PRIMARY KEY,
+  owner_id     UUID NOT NULL,
+  title        VARCHAR(255),
+  current_ver  BIGINT DEFAULT 0,
+  status       ENUM('COLD','WARM','SAVING'),
+  created_at   TIMESTAMP
+);
+
+-- Cassandra: document_ops (op log, partition by doc)
+CREATE TABLE document_ops (
+  doc_id       UUID,
+  op_id        TIMEUUID,
+  user_id      UUID,
+  op_type      TEXT,    -- INSERT | DELETE
+  position     INT,
+  content      TEXT,
+  client_ver   BIGINT,
+  PRIMARY KEY  (doc_id, op_id)
+) WITH CLUSTERING ORDER BY (op_id ASC);
+
+-- Cassandra: document_snapshots
+CREATE TABLE document_snapshots (
+  doc_id       UUID,
+  version      BIGINT,
+  s3_key       TEXT,
+  is_major     BOOLEAN,
+  op_count     INT,
+  created_at   TIMESTAMP,
+  PRIMARY KEY  (doc_id, version)
+);</pre>
+</div>
+
+<div class="slide" id="s17" data-title="Storage Architecture">
+  <h2>Storage Architecture</h2>
+  <table class="nfr-table">
+    <tr><th>Store</th><th>What</th><th>Why</th></tr>
+    <tr><td>Redis</td><td>Live canonical copy, version counter, cursors, active users</td><td>Microsecond r/w; TTL support</td></tr>
+    <tr><td>Cassandra</td><td>Op log (transient), doc metadata, version list</td><td>High-write time-series; partition by docId</td></tr>
+    <tr><td>S3 / GCS</td><td>Document snapshots (minor + major versions)</td><td>Unlimited cheap blob storage; CDN-friendly</td></tr>
+    <tr><td>MySQL</td><td>Users, permissions, sharing settings</td><td>Strong consistency; relational joins needed</td></tr>
+    <tr><td>Kafka</td><td>Op event stream (durability buffer)</td><td>Decouple WS server from DB write latency</td></tr>
+  </table>
+  <p><strong>Hot path:</strong> Redis (live doc) → Kafka (durable log) → ACK client</p>
+  <p><strong>Cold path:</strong> Cassandra consumer persists ops; reconciliation job writes S3 major version</p>
+  <p class="note">Redis is NOT the source of truth — it is a materialized view. Always rebuildable from S3 + Cassandra.</p>
+</div>
+
+<div class="slide" id="s18" data-title="Scaling Strategy">
+  <h2>Scaling Strategy</h2>
+  <pre class="code-block">
+WS GATEWAY — 300 servers @ 100K connections each = 30M connections
+  Consistent hash on docId → sticky server assignment
+  Rebalance: when server joins/leaves, rehash affected docs
+  New WS server loads canonical from Redis, resumes ops
+
+REDIS CLUSTER — 100 shards
+  Partition: hash(docId) % 100 → shard assignment
+  5M active docs × 50KB = 250GB → 2.5GB per shard (manageable)
+  TTL: canonical key expires 30min post last edit
+
+CASSANDRA — partition key = docId
+  25M ops/sec across 5M docIds = no hot partition
+  Write amplification: each Kafka consumer writes one partition
+
+HOT DOCUMENT (100 concurrent editors):
+  100 users × 5 ops/sec = 500 ops/sec to one WS server
+  OT engine: each op transforms against recent ops
+  Mitigation: cap at 100 editors; allocate high-CPU pod
+  Google Jupiter protocol: regional OT shards, 100ms sync</pre>
+</div>
+
+<div class="slide" id="s19" data-title="Export Pipeline">
+  <h2>Export Pipeline</h2>
+  <pre class="code-block">
+USER CLICKS "Download as PDF":
+
+  1. API call: POST /api/v1/documents/{id}/export
+     { format: "PDF" | "DOCX" | "HTML" | "TXT" }
+
+  2. Export job enqueued to async queue (SQS/Kafka)
+     Response 202 Accepted: { jobId: "exp_abc123" }
+
+  3. Export Worker picks up job:
+     a. Fetch latest canonical from Redis (or S3 if cold)
+     b. Render to HTML (internal format)
+     c. PDF  → headless Chrome (Puppeteer) renders HTML → PDF
+        DOCX → pandoc converts HTML → DOCX
+        TXT  → strip tags, extract plain text
+
+  4. Upload result to S3: exports/{docId}/{jobId}.pdf
+
+  5. Notify client via WebSocket or polling:
+     GET /api/v1/documents/{id}/export/{jobId}
+     → { status: "DONE", downloadUrl: "https://..." }
+
+  Export links expire in 1 hour (S3 pre-signed URL).</pre>
+</div>
+
+<div class="slide" id="s20" data-title="Architecture Trade-offs">
+  <h2>Architecture Trade-offs</h2>
+  <table class="nfr-table">
+    <tr><th>Decision</th><th>Chosen</th><th>Alternative</th><th>Why chosen</th></tr>
+    <tr><td>Conflict resolution</td><td>OT</td><td>CRDT</td><td>Less storage per char; Google standard; single-server model</td></tr>
+    <tr><td>Real-time transport</td><td>WebSocket</td><td>SSE / Long-poll</td><td>Bidirectional; server can push; 50× lower overhead</td></tr>
+    <tr><td>Op log storage</td><td>Cassandra</td><td>Bigtable</td><td>Open source; docId partition = perfect time-series fit</td></tr>
+    <tr><td>Durability buffer</td><td>Kafka</td><td>Direct Cassandra write</td><td>Decouples WS server from DB latency; ACK after Kafka</td></tr>
+    <tr><td>Canonical copy</td><td>Redis</td><td>Bigtable / MySQL</td><td>Microsecond reads; TTL auto-eviction; pub/sub</td></tr>
+    <tr><td>Document blobs</td><td>S3</td><td>Cassandra BLOB</td><td>5PB of versions; S3 is cheapest for large immutable blobs</td></tr>
+    <tr><td>Editing model</td><td>Delta ops</td><td>Full doc each save</td><td>50 bytes vs 50KB per op = 1000× less bandwidth</td></tr>
+  </table>
+</div>
+
+<div class="slide" id="s21" data-title="Senior Q&A — 50 Users, 10,000 Line Document">
+  <h2>Senior Q&amp;A 1</h2>
+  <p class="callout">"50 users simultaneously type in a 10,000-line document. How does your system handle this without lag?"</p>
+  <pre class="code-block">
+50 users × 5 ops/sec = 250 ops/sec hitting one WS server.
+
+BOTTLENECK 1 — OT transform queue:
+  Each new op must transform against recent concurrent ops.
+  At 250 ops/sec with 50 concurrent users, transform depth is low
+  because each user's ops are independent (different paragraphs).
+  Batch transformation: group ops by paragraph, parallelize.
+
+BOTTLENECK 2 — Redis write rate:
+  250 ops/sec = trivial for Redis (handles 1M+ ops/sec).
+
+BOTTLENECK 3 — Broadcast fan-out:
+  Each op broadcast to 49 other users = 250 × 49 = 12,250 sends/sec.
+  Per-user send queue; slow clients buffered, not blocked.
+
+MITIGATION — Collaborative region sharding:
+  Split 10,000 lines into regions (0–2500, 2501–5000...).
+  Each region has its own op queue.
+  Only editors in the same region need to transform against each other.
+  Cross-region ops: transform only if they collide (rare).</pre>
+</div>
+
+<div class="slide" id="s22" data-title="Senior Q&A — Network Partition, 200 Offline Ops">
+  <h2>Senior Q&amp;A 2</h2>
+  <p class="callout">"User A edits offline for 2 hours. They reconnect with 200 ops. Server applied 800 ops meanwhile. How do you reconcile?"</p>
+  <pre class="code-block">
+ON RECONNECT:
+  Client sends: { reconnect, docId, baseVersion: 42 }
+  Server fetches: all 800 ops since version 42 from Cassandra
+
+TRANSFORM PHASE:
+  For each of client's 200 local ops:
+    Transform against all 800 server ops = 200 × 800 = 160,000 transforms
+    At &lt;1µs per transform → &lt;160ms total
+  Result: 200 transformed ops aligned to server version 842
+
+CONFLICT HANDLING:
+  INSERT-INSERT: positions shifted — handled by OT rules
+  DELETE of already-deleted char: NOOP — character gone, skip
+  Paradox: client deleted text that server also heavily edited?
+    OT handles character by character. Each char has a definitive fate.
+
+EDGE CASE — client offline for 2+ hours:
+  Cassandra ops retention: only kept during active session.
+  If reconciliation job ran (all users left), ops are deleted.
+  Solution: keep ops for 24h; or use base snapshot + CRDT-style merge.
+  Production recommendation: switch to CRDT for offline &gt; session length.</pre>
+</div>
+
+<div class="slide" id="s23" data-title="Senior Q&A — Collaborative Undo/Redo">
+  <h2>Senior Q&amp;A 3</h2>
+  <p class="callout">"Implement undo/redo in a collaborative environment where other users have also edited since your last action."</p>
+  <pre class="code-block">
+NAIVE APPROACH — fails in collaboration:
+  "Undo" = reverse my last op. But other users edited after me.
+  Reversing my op at the old position corrupts others' text.
+
+CORRECT APPROACH — Selective Undo with OT:
+  Each user maintains a personal undo stack of their own ops.
+  When user presses Ctrl+Z:
+    1. Take their last op from personal undo stack
+    2. Invert it: INSERT "A" at 5 → DELETE 1 char at 5
+    3. Transform the inverted op against ALL ops applied after it
+       (by anyone, including other users)
+    4. Submit transformed inverse op as a new op
+
+EXAMPLE:
+  Alice: INSERT "X" at pos 5   → version 10
+  Bob:   INSERT "Y" at pos 3   → version 11
+  Alice undoes: inverse = DELETE at pos 5
+    Transform DELETE(5) against INSERT(3): pos 5 → pos 6
+    Submit: DELETE at pos 6  → removes Alice's "X" correctly
+
+REDO:
+  Redo = re-apply the undone op, transform against current state.
+  Redo stack cleared if user makes a new edit (standard convention).</pre>
+</div>
+
+<div class="slide" id="s24" data-title="Key Numbers to Memorize">
+  <h2>Key Numbers</h2>
+  <table class="nfr-table">
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Registered users</td><td>500 million</td></tr>
+    <tr><td>Daily active users</td><td>100 million</td></tr>
+    <tr><td>Total documents</td><td>10 billion</td></tr>
+    <tr><td>Active docs at peak</td><td>~5 million</td></tr>
+    <tr><td>Edit events/sec</td><td>25 million</td></tr>
+    <tr><td>Max concurrent editors/doc</td><td>100</td></tr>
+    <tr><td>WS connections at peak</td><td>30 million</td></tr>
+    <tr><td>WS servers needed</td><td>~300</td></tr>
+    <tr><td>Delta op size</td><td>~50 bytes</td></tr>
+    <tr><td>Avg document size</td><td>50 KB</td></tr>
+    <tr><td>Total doc storage (S3)</td><td>500 TB content + ~5 PB versions</td></tr>
+    <tr><td>Auto-save interval</td><td>every 10–20 seconds</td></tr>
+    <tr><td>Edit propagation latency</td><td>&lt;100ms target</td></tr>
+    <tr><td>Cursor TTL (Redis)</td><td>30 seconds</td></tr>
+    <tr><td>Canonical copy TTL (Redis)</td><td>30 min post last edit</td></tr>
+  </table>
+</div>
+
+<div class="slide" id="s25" data-title="Closing — What You Just Demonstrated">
+  <h2>Closing — What You Demonstrated</h2>
+  <div class="closing-grid">
+    <div class="closing-item"><strong>OT Algorithm</strong><br>Transform rules for insert/insert, insert/delete, delete/delete. NOOP rule.</div>
+    <div class="closing-item"><strong>CRDT Alternative</strong><br>Fractional position IDs. Commutative merge. No central server needed.</div>
+    <div class="closing-item"><strong>Sticky Routing</strong><br>Consistent hash on docId. Total op ordering = OT correctness guarantee.</div>
+    <div class="closing-item"><strong>Event Sourcing</strong><br>Op log is source of truth. Redis = materialized view. Rebuildable from S3 + Cassandra.</div>
+    <div class="closing-item"><strong>Reconciliation</strong><br>Major versions at session end. Minor versions as scaffolding. 2.5TB/day savings.</div>
+    <div class="closing-item"><strong>Resilience</strong><br>Three safety layers: Kafka durability, client op queue, Redis canonical. Zero data loss.</div>
+  </div>
+  <p class="callout">"The hardest part of Google Docs is not storage or scale — it is making two simultaneous edits at the same position both survive correctly. OT solves it."</p>
+  <p class="note">Study order: OT Algorithm → Architecture → Reconciliation Lifecycle → CRDT comparison → Key numbers</p>
+</div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

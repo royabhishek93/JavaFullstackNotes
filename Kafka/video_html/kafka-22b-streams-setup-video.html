@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Streams Setup — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Streams Setup — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 17</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:5.88%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🌊</div>
+  <h1 class="gradient-text">Kafka Streams Setup — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Streams JAR</span><span class="badge">StreamsConfig</span><span class="badge">@EnableKafkaStreams</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Maven dependency, StreamsConfig, application.id, bootstrap.servers, num.stream.threads, state.dir, @EnableKafkaStreams, StreamsBuilder, KStream, topology building, auto-created topics, repartition topic, changelog topic, task distribution, RocksDB state directory, key transformation, startup lifecycle, graceful shutdown</p>
+</div>
+<div class="slide" id="s3" data-title="The Kafka Streams JAR — Adding the Dependency">
+<h2>The Kafka Streams JAR — Adding the Dependency</h2>
+<p>Kafka Streams is just a JAR file you include in your project — it is not a server or a cluster you deploy separately. Adding this one dependency turns your Spring Boot application into a stream processor.</p>
+<div class="dia">Your Spring Boot App
+┌────────────────────────────────────────────────────────────────┐
+│                                                                │
+│   pom.xml / build.gradle                                       │
+│   ┌────────────────────────────────────────────────────────┐  │
+│   │  &lt;dependency&gt;                                          │  │
+│   │    &lt;groupId&gt;org.apache.kafka&lt;/groupId&gt;                 │  │
+│   │    &lt;artifactId&gt;kafka-streams&lt;/artifactId&gt;              │  │
+│   │  &lt;/dependency&gt;                                         │  │
+│   └────────────────────────────────────────────────────────┘  │
+│                          │                                     │
+│                          ▼                                     │
+│   ┌──────────────────────────────────────────────────────┐    │
+│   │  kafka-streams.jar  (everything you need)            │    │
+│   │  ┌────────────┐  ┌─────────────┐  ┌──────────────┐  │    │
+│   │  │ StreamsBuilder│  │KafkaStreams│  │TopologyTestDriver│  │    │
+│   │  └────────────┘  └─────────────┘  └──────────────┘  │    │
+│   └──────────────────────────────────────────────────────┘    │
+│                                                                │
+│   No separate cluster to run. No extra server to manage.  ✓   │
+└────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s4" data-title="StreamsConfig — Key Properties">
+<h2>StreamsConfig — Key Properties</h2>
+<p>Four properties are required to get Kafka Streams running. Think of <code>application.id</code> exactly like a consumer <code>group.id</code> — it identifies your application group and is used to name the internal topics Kafka creates for you.</p>
+<div class="dia">application.properties
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│  spring.kafka.streams.application-id = order-analytics          │
+│      │                                                           │
+│      │  Like consumer group.id — identifies the application.    │
+│      │  Also used as the prefix for auto-created topic names.   │
+│      │                                                           │
+│  spring.kafka.bootstrap-servers = localhost:9092                 │
+│      │                                                           │
+│      │  Broker to connect to for metadata. Same as always.      │
+│      │                                                           │
+│  spring.kafka.streams.properties.num.stream.threads = 2         │
+│      │                                                           │
+│      │  How many stream processing threads to create inside      │
+│      │  this single JVM. Tasks are spread across these threads.  │
+│      │                                                           │
+│  spring.kafka.streams.state-dir = /tmp/kafka-streams            │
+│      │                                                           │
+│      └  Path on local disk where RocksDB files are stored.      │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s5" data-title="@EnableKafkaStreams — Activating the Framework">
+<h2>@EnableKafkaStreams — Activating the Framework</h2>
+<p>You add this annotation to one configuration class. It tells the Spring Boot auto-configuration to load all Kafka Streams beans — you do not need to manually create a <code>KafkaStreams</code> object or start it yourself.</p>
+<div class="dia">@SpringBootApplication
+@EnableKafkaStreams              ← one annotation is all it takes
+public class OrderAnalyticsApp {
+    public static void main(String[] args) {
+        SpringApplication.run(OrderAnalyticsApp.class, args);
+    }
+}
+
+Without it:                         With it:
+┌────────────────────────┐          ┌────────────────────────────────┐
+│  No Streams beans      │          │  StreamsBuilder bean     ✓     │
+│  Nothing starts        │          │  KafkaStreams object     ✓     │
+│  Topology ignored      │          │  Auto start on startup   ✓     │
+└────────────────────────┘          │  Graceful shutdown hook  ✓     │
+                                    └────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s6" data-title="Defining the Topology — What You Write">
+<h2>Defining the Topology — What You Write</h2>
+<p>All you write is the topology. Everything else — sub-topologies, repartition topics, changelog topics, task creation — is handled automatically by the framework. Think of the topology as a recipe: you describe the steps, Kafka executes them.</p>
+<div class="dia">Topology for this example:
+
+  @Bean
+  public KStream&lt;String, Order&gt; buildTopology(StreamsBuilder builder) {
+
+    KStream&lt;String, Order&gt; stream =
+      builder.stream("order-events")            ← SOURCE
+        .filter((k, v) -&gt; v.amount &gt; 100)       ← PROCESSOR 1: filter
+        .selectKey((k, v) -&gt; v.productId)       ← PROCESSOR 2: repartition
+        .groupByKey()                           ← PROCESSOR 3: group
+        .count(Materialized.as("product-count-store"))  ← PROCESSOR 4: count + RocksDB
+        .toStream()
+        .to("product-counts");                  ← SINK
+
+    return stream;
+  }
+
+Data flow (what you define):
+─────────────────────────────────────────────────────────────────────
+  [order-events]
+       │
+       ▼
+  filter(amount &gt; 100)
+       │
+       ▼
+  selectKey(productId)   ← repartition step — framework splits here
+       │
+       ▼
+  groupByKey → count(stored in "product-count-store" RocksDB)
+       │
+       ▼
+  [product-counts]</div>
+</div>
+<div class="slide" id="s7" data-title="Auto-Created Topics — What Kafka Streams Creates for You">
+<h2>Auto-Created Topics — What Kafka Streams Creates for You</h2>
+<p>When your application starts, Kafka Streams inspects your topology and automatically creates the internal topics it needs. You do not create these manually.</p>
+<div class="dia">BEFORE starting Kafka Streams app:
+  Topics in cluster:
+  ┌──────────────────────┐
+  │  order-events (P0,P1,P2)  ← you created this
+  └──────────────────────┘
+
+AFTER starting Kafka Streams app:
+  Topics in cluster:
+  ┌───────────────────────────────────────────────────────────────┐
+  │                                                               │
+  │  order-events               (3 partitions)  ← existed before │
+  │                                                               │
+  │  order-analytics-product-count-store-repartition             │
+  │                             (3 partitions)  ← auto-created   │
+  │      prefix = application.id ──┘                             │
+  │                                                               │
+  │  order-analytics-product-count-store-changelog               │
+  │                             (3 partitions)  ← auto-created   │
+  │      prefix = application.id ──┘                             │
+  │      backing up RocksDB for crash recovery                   │
+  │                                                               │
+  │  __consumer_offsets         (50 partitions) ← Kafka internal │
+  │                                                               │
+  └───────────────────────────────────────────────────────────────┘
+
+Naming rule:
+  {application.id} - {state-store-name} - repartition
+  {application.id} - {state-store-name} - changelog</div>
+</div>
+<div class="slide" id="s8" data-title="Sub-Topology Split — What Kafka Creates Internally">
+<h2>Sub-Topology Split — What Kafka Creates Internally</h2>
+<p>Because the topology contains a <code>selectKey</code> (a repartition step), Kafka Streams automatically splits it into two sub-topologies at runtime. You write one topology; Kafka sees two.</p>
+<div class="dia">YOUR TOPOLOGY (one thing you write):
+─────────────────────────────────────────────────────────────────────
+  order-events → filter → selectKey(productId) → groupByKey → count → product-counts
+
+
+WHAT KAFKA CREATES INTERNALLY (two sub-topologies):
+─────────────────────────────────────────────────────────────────────
+
+  Sub-Topology 0:
+  ┌─────────────────────────────────────────────────────┐
+  │  source: order-events          (3 partitions)       │
+  │  processor: filter(amount&gt;100)                      │
+  │  processor: selectKey(productId)                    │
+  │  sink: ...repartition-topic    (3 partitions) ──────┼──► auto-created
+  └─────────────────────────────────────────────────────┘
+                          │
+                          │  (repartition topic is the bridge)
+                          ▼
+  Sub-Topology 1:
+  ┌─────────────────────────────────────────────────────┐
+  │  source: ...repartition-topic  (3 partitions)       │
+  │  processor: groupByKey → count                      │
+  │  state-store: product-count-store (RocksDB)         │
+  │  changelog: ...changelog-topic (3 partitions) ──────┼──► auto-created
+  │  sink: product-counts                               │
+  └─────────────────────────────────────────────────────┘
+
+The split point is ALWAYS at a repartition step.
+Kafka creates sub-topologies — you never write them directly.</div>
+</div>
+<div class="slide" id="s9" data-title="Task Count — Six Tasks from Three Partitions">
+<h2>Task Count — Six Tasks from Three Partitions</h2>
+<p>Each sub-topology creates one task per partition of its source topic. With 3 partitions and 2 sub-topologies, you get 6 tasks total.</p>
+<div class="dia">Source: order-events (3 partitions)
+    │
+    ├──► Sub-Topology 0 → 3 tasks (one per partition)
+    │    Task-0-0  reads order-events P0
+    │    Task-0-1  reads order-events P1
+    │    Task-0-2  reads order-events P2
+    │
+    └──► repartition-topic (3 partitions — same count as source)
+         │
+         └──► Sub-Topology 1 → 3 tasks (one per partition)
+              Task-1-0  reads repartition-topic P0
+              Task-1-1  reads repartition-topic P1
+              Task-1-2  reads repartition-topic P2
+
+Total tasks = 3 + 3 = 6
+
+Rule:
+  tasks per sub-topology = number of partitions in that sub-topology's source topic
+  repartition topic partition count = source topic partition count (auto-matched)</div>
+</div>
+<div class="slide" id="s10" data-title="Thread Distribution — Six Tasks Across Two Threads">
+<h2>Thread Distribution — Six Tasks Across Two Threads</h2>
+<p>The <code>num.stream.threads = 2</code> property creates two stream processing threads inside your single JVM. The 6 tasks are distributed evenly across them.</p>
+<div class="dia">Application Instance (one JVM, two threads)
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│  Stream-Thread-1                  Stream-Thread-2               │
+│  ┌──────────────────────────┐     ┌──────────────────────────┐  │
+│  │  Task-0-0                │     │  Task-0-1                │  │
+│  │  reads: order-events P0  │     │  reads: order-events P1  │  │
+│  │  ─────────────────────── │     │  ─────────────────────── │  │
+│  │  Task-0-2                │     │  Task-1-0                │  │
+│  │  reads: order-events P2  │     │  reads: repartition P0   │  │
+│  │  ─────────────────────── │     │  ─────────────────────── │  │
+│  │  Task-1-1                │     │  Task-1-2                │  │
+│  │  reads: repartition P1   │     │  reads: repartition P2   │  │
+│  └──────────────────────────┘     └──────────────────────────┘  │
+│          3 tasks                          3 tasks                │
+└──────────────────────────────────────────────────────────────────┘
+
+Each task runs its COMPLETE sub-topology independently.
+Events inside one task are processed one at a time (sequential).
+Two tasks on different threads run in PARALLEL.</div>
+</div>
+<div class="slide" id="s11" data-title="RocksDB State Directory — File Layout on Disk">
+<h2>RocksDB State Directory — File Layout on Disk</h2>
+<p>Each task that uses a state store (like <code>count</code>) gets its own RocksDB directory on local disk. The path is controlled by <code>state.dir</code> in your config. You cannot open these files in a text editor — they are binary key-value files.</p>
+<div class="dia">state.dir = /tmp/kafka-streams
+
+/tmp/kafka-streams/
+└── order-analytics/                     ← your application.id
+    ├── 0_0/                             ← Sub-Topology 0, Partition 0
+    │   └── (RocksDB files for task 0-0)
+    ├── 0_1/                             ← Sub-Topology 0, Partition 1
+    │   └── (RocksDB files for task 0-1)
+    ├── 0_2/                             ← Sub-Topology 0, Partition 2
+    │   └── (RocksDB files for task 0-2)
+    ├── 1_0/                             ← Sub-Topology 1, Partition 0
+    │   └── product-count-store/         ← your named state store
+    │       └── (binary key-value data)
+    ├── 1_1/                             ← Sub-Topology 1, Partition 1
+    │   └── product-count-store/
+    └── 1_2/                             ← Sub-Topology 1, Partition 2
+        └── product-count-store/
+
+Naming pattern:  {sub-topology-id}_{partition-id}/
+6 directories = 6 tasks  ✓</div>
+</div>
+<div class="slide" id="s12" data-title="Key Transformation at Repartition">
+<h2>Key Transformation at Repartition</h2>
+<p>When <code>selectKey(productId)</code> runs, the event's key changes from the original <code>orderId</code> to <code>productId</code>. This is what guarantees all orders for the same product end up in the same partition after repartition.</p>
+<div class="dia">BEFORE repartition (in order-events topic):
+─────────────────────────────────────────────────────────────────────
+  Message in order-events P0:
+  ┌─────────────────────────────────────────┐
+  │  key:   "O-1"          ← orderId        │
+  │  value: { orderId: O-1, productId: P1,  │
+  │           amount: 250 }                 │
+  └─────────────────────────────────────────┘
+
+AFTER repartition (in repartition topic):
+─────────────────────────────────────────────────────────────────────
+  Message in ...repartition-topic P0:
+  ┌─────────────────────────────────────────┐
+  │  key:   "P1"           ← productId  ✓  │
+  │  value: { orderId: O-1, productId: P1,  │
+  │           amount: 250 }                 │
+  └─────────────────────────────────────────┘
+
+  Same payload, different key.
+  Now all "P1" events hash to the SAME partition → correct count.
+
+Without repartition:        With repartition:
+  P1 split across tasks       P1 owned by one task
+  Task-0: P1 = 1  ✗          Task-1-0: P1 = 2  ✓
+  Task-1: P1 = 1  ✗</div>
+</div>
+<div class="slide" id="s13" data-title="Application Startup Sequence">
+<h2>Application Startup Sequence</h2>
+<p>When you run the application, Kafka Streams goes through a fixed sequence before it begins processing events. The startup is automatic — <code>@EnableKafkaStreams</code> handles it.</p>
+<div class="dia">Step 1   App starts → @EnableKafkaStreams loads beans
+         │
+Step 2   Read StreamsConfig (application.id, bootstrap.servers, threads, state.dir)
+         │
+Step 3   Discover topology (your @Bean StreamsBuilder method runs)
+         │
+Step 4   Connect to Kafka broker using bootstrap.servers
+         │
+Step 5   Join consumer group using application.id as group.id
+         │
+Step 6   Stream Partition Assigner runs:
+         ├── Inspect topology → detect repartition steps
+         ├── Create sub-topologies (ST-0, ST-1)
+         ├── Create repartition topics  (if not already present)
+         ├── Create changelog topics    (if not already present)
+         ├── Calculate tasks (6 tasks for 3-partition source)
+         └── Assign tasks to threads (3 per thread)
+         │
+Step 7   For each stateful task → restore RocksDB from changelog topic
+         │
+Step 8   Fetch last committed offsets for source partitions
+         │
+Step 9   Start reading events → run through sub-topology → commit offset
+         │
+Step 10  Repeat forever  ↺</div>
+</div>
+<div class="slide" id="s14" data-title="Graceful Shutdown — Runtime Hook">
+<h2>Graceful Shutdown — Runtime Hook</h2>
+<p>Kafka Streams registers a JVM shutdown hook automatically so it can close cleanly when the process is stopped (Ctrl+C or SIGTERM). No manual code is needed for this when using Spring Boot.</p>
+<div class="dia">  SIGTERM / Ctrl+C received
+           │
+           ▼
+  JVM Shutdown Hook fires
+  ┌───────────────────────────────────────────────────────────┐
+  │  1. Stop reading new events from source topics            │
+  │  2. Finish processing events currently in-flight          │
+  │  3. Commit current offsets to __consumer_offsets          │
+  │  4. Flush RocksDB writes to local disk                    │
+  │  5. Close KafkaStreams object                             │
+  │  6. JVM exits cleanly                                     │
+  └───────────────────────────────────────────────────────────┘
+
+  Abrupt kill (kill -9):
+  ┌───────────────────────────────────────────────────────────┐
+  │  Shutdown hook does NOT run                               │
+  │  Last committed offset is used on restart        ✓       │
+  │  RocksDB rebuilt from changelog topic on restart ✓       │
+  │  No data loss — Kafka handles recovery                    │
+  └───────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s15" data-title="Validating the Setup — Commands to Verify">
+<h2>Validating the Setup — Commands to Verify</h2>
+<p>After starting your Kafka Streams application, these commands let you confirm that everything is working exactly as the architecture predicts.</p>
+<div class="dia">1. Check auto-created topics:
+─────────────────────────────────────────────────────────────────────
+  kafka-topics.sh --list --bootstrap-server localhost:9092
+
+  Expected output:
+  __consumer_offsets
+  order-events                                     ← your source
+  order-analytics-product-count-store-repartition  ← auto-created ✓
+  order-analytics-product-count-store-changelog    ← auto-created ✓
+  product-counts                                   ← your sink
+
+
+2. Check task distribution (describes the consumer group):
+─────────────────────────────────────────────────────────────────────
+  kafka-consumer-groups.sh --describe --group order-analytics \
+    --bootstrap-server localhost:9092
+
+  Expected: 6 rows, 3 reading order-events (P0,P1,P2),
+            3 reading repartition topic (P0,P1,P2)
+  consumer-id column shows: stream-thread-1 or stream-thread-2  ✓
+
+
+3. Check repartition topic key change:
+─────────────────────────────────────────────────────────────────────
+  In order-events:        key = orderId  (e.g. "O-1")
+  In repartition topic:   key = productId (e.g. "P1")  ✓
+
+
+4. Check RocksDB directories on disk:
+─────────────────────────────────────────────────────────────────────
+  ls /tmp/kafka-streams/order-analytics/
+
+  Expected: 6 directories (0_0, 0_1, 0_2, 1_0, 1_1, 1_2)  ✓</div>
+</div>
+<div class="slide" id="s16" data-title="Complete Picture — All Components Together">
+<h2>Complete Picture — All Components Together</h2>
+<div class="dia">KAFKA CLUSTER
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│  order-events           repartition-topic      product-counts       │
+│  ┌────┬────┬────┐       ┌────┬────┬────┐       ┌───────────────┐   │
+│  │ P0 │ P1 │ P2 │       │ P0 │ P1 │ P2 │       │ (any # parts) │   │
+│  └────┴────┴────┘       └────┴────┴────┘       └───────────────┘   │
+│        ↑ source               ↑ source                ↑ sink        │
+│                                                                     │
+│  product-count-store-changelog                                      │
+│  ┌────┬────┬────┐       ← backs up RocksDB for crash recovery       │
+│  │ P0 │ P1 │ P2 │                                                   │
+│  └────┴────┴────┘                                                   │
+└─────────────────────────────────────────────────────────────────────┘
+           ▲ reads/writes from all topics
+           │
+STREAM APPLICATION  (application.id = order-analytics)
+┌─────────────────────────────────────────────────────────────────────┐
+│  StreamsConfig: 2 threads, state.dir=/tmp/kafka-streams             │
+│                                                                     │
+│  Stream-Thread-1                   Stream-Thread-2                  │
+│  ┌───────────────────────────┐     ┌───────────────────────────┐   │
+│  │ Task-0-0                  │     │ Task-0-1                  │   │
+│  │ Sub-Topology 0, P0        │     │ Sub-Topology 0, P1        │   │
+│  │ reads: order-events P0    │     │ reads: order-events P1    │   │
+│  │ filter → selectKey        │     │ filter → selectKey        │   │
+│  ├───────────────────────────┤     ├───────────────────────────┤   │
+│  │ Task-0-2                  │     │ Task-1-0                  │   │
+│  │ Sub-Topology 0, P2        │     │ Sub-Topology 1, P0        │   │
+│  │ reads: order-events P2    │     │ reads: repartition P0     │   │
+│  │ filter → selectKey        │     │ groupByKey → count        │   │
+│  ├───────────────────────────┤     │ RocksDB: /tmp/.../1_0/    │   │
+│  │ Task-1-1                  │     ├───────────────────────────┤   │
+│  │ Sub-Topology 1, P1        │     │ Task-1-2                  │   │
+│  │ reads: repartition P1     │     │ Sub-Topology 1, P2        │   │
+│  │ groupByKey → count        │     │ reads: repartition P2     │   │
+│  │ RocksDB: /tmp/.../1_1/    │     │ groupByKey → count        │   │
+│  └───────────────────────────┘     │ RocksDB: /tmp/.../1_2/    │   │
+│                                    └───────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s17" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                   What it does                              Key detail
+────────────────────────  ────────────────────────────────────────  ──────────────────────────────────
+kafka-streams dependency  Adds stream processing to your app        Just a JAR — no separate server
+application.id            Identifies your Streams app group         Like consumer group.id
+bootstrap.servers         Broker to connect to for metadata         Same as any Kafka client
+num.stream.threads        Threads inside one JVM                    Tasks are spread across threads
+state.dir                 Where RocksDB files are stored on disk    {dir}/{app-id}/{subtopology}_{partition}
+@EnableKafkaStreams        Loads all Kafka Streams beans             One annotation on a config class
+StreamsBuilder            Builder object for defining topology      Injected as a Spring bean
+KStream                   Represents the stream of events           Obtained via builder.stream(topic)
+selectKey(...)            Changes the key of each event             Triggers repartition split
+Repartition topic         Bridge between sub-topologies             Auto-named: {app-id}-{store}-repartition
+Changelog topic           Kafka backup of RocksDB                   Auto-named: {app-id}-{store}-changelog
+Task naming               {sub-topology-id}_{partition-id}          e.g. 1_0 = sub-topology 1, partition 0
+Shutdown hook             Registered automatically                  Commits offsets and flushes RocksDB
+
+How many tasks?    → (source partitions) × (number of sub-topologies)
+How many threads?  → set by num.stream.threads in config
+How many topics?   → 1 repartition + 1 changelog per repartition step (auto-created on startup)</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 17;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Streams Setup — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

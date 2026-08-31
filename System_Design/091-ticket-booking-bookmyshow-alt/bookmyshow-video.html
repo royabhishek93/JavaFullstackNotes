@@ -1,0 +1,784 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BookMyShow System Design</title>
+<link rel="stylesheet" href="../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">BookMyShow — Cinema Booking System</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <div class="slide active" id="s1" data-title="BookMyShow — System Design">
+      <h1>🎬 BookMyShow</h1>
+      <h2>Cinema Ticket Booking — System Design Interview</h2>
+      <div class="badges">
+        <span class="badge">PostgreSQL</span>
+        <span class="badge">MySQL</span>
+        <span class="badge">Elasticsearch</span>
+        <span class="badge">Redis Pub/Sub</span>
+        <span class="badge">Kafka</span>
+        <span class="badge">WebSocket</span>
+        <span class="badge">Stripe</span>
+        <span class="badge">Kong API GW</span>
+      </div>
+      <div class="key-points">
+        <div class="point">🎯 Level: Senior / Production Scale</div>
+        <div class="point">⚡ 50,000 concurrent users at peak</div>
+        <div class="point">🔒 Zero double-bookings — ACID transactions</div>
+        <div class="point">⏱️ Search &lt; 200ms · Booking &lt; 1s</div>
+        <div class="point">📡 Real-time seat updates via WebSocket</div>
+        <div class="point">💳 Payment atomicity — 3-phase commit</div>
+      </div>
+    </div>
+
+    <div class="slide" id="s2" data-title="Interview Scenario">
+      <h2>🎤 Interview Opening</h2>
+      <div class="scenario-box">
+        <strong>Interviewer:</strong> "Design a movie booking platform like BookMyShow. A user opens the app, searches for a movie in their city, selects seats, and pays — all within 10 minutes. Meanwhile 50,000 concurrent users are doing the same on a release day. How do you ensure:"
+      </div>
+      <div class="key-points">
+        <div class="point">❓ No double-booking of the same seat</div>
+        <div class="point">❓ Payment atomicity — seat reserved OR payment fails, never both stuck</div>
+        <div class="point">❓ Sub-200ms search for "theaters near me"</div>
+        <div class="point">❓ Real-time seat availability for all users</div>
+        <div class="point">❓ Handle 10x traffic spikes during blockbuster releases</div>
+      </div>
+      <div class="answer-box">
+        <strong>Your opener:</strong> "I'll start with clarifying requirements, then walk through the architecture layer by layer — starting with the user journey, then data model, concurrency strategy, and scaling plan."
+      </div>
+    </div>
+
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <h2>✅ Functional Requirements</h2>
+      <div class="two-col">
+        <div>
+          <h3>Core User Flows</h3>
+          <div class="key-points">
+            <div class="point">🔍 <strong>Search</strong> — movies by city, title, genre, showtime</div>
+            <div class="point">🏛️ <strong>Browse Theaters</strong> — filter by location, amenities, ratings</div>
+            <div class="point">🪑 <strong>Seat Selection</strong> — real-time availability map</div>
+            <div class="point">💳 <strong>Payment</strong> — credit card, wallet, UPI</div>
+            <div class="point">🎟️ <strong>Confirmation</strong> — instant ticket + QR code</div>
+            <div class="point">❌ <strong>Cancellation</strong> — refund logic, deadline rules</div>
+            <div class="point">⭐ <strong>Reviews</strong> — ratings for movies &amp; theaters</div>
+          </div>
+        </div>
+        <div>
+          <h3>Out of Scope (State Clearly)</h3>
+          <div class="key-points">
+            <div class="point">🚫 Food ordering / concession</div>
+            <div class="point">🚫 Streaming / OTT features</div>
+            <div class="point">🚫 Theater management portal</div>
+            <div class="point">🚫 Multi-region global expansion</div>
+          </div>
+          <h3>Key Entities</h3>
+          <div class="key-points">
+            <div class="point">City → Theater → Screen → Seat</div>
+            <div class="point">Movie → Show → Booking → Payment</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s4" data-title="Non-Functional Requirements">
+      <h2>📊 Non-Functional Requirements</h2>
+      <table class="data-table">
+        <thead><tr><th>Category</th><th>Target</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>Search Latency</td><td>&lt; 200ms (p99)</td><td>Cache + Elasticsearch</td></tr>
+          <tr><td>Booking Latency</td><td>&lt; 1s</td><td>Including payment round-trip</td></tr>
+          <tr><td>Availability</td><td>99.9% uptime</td><td>~8.7 hrs/yr downtime</td></tr>
+          <tr><td>Consistency</td><td>Strong (booking)</td><td>Eventual OK for search</td></tr>
+          <tr><td>Peak QPS</td><td>100k concurrent</td><td>50k writes/min at peak</td></tr>
+          <tr><td>Seat Hold TTL</td><td>15 minutes</td><td>Auto-release on timeout</td></tr>
+          <tr><td>Double Booking</td><td>Zero tolerance</td><td>ACID + row-level locks</td></tr>
+          <tr><td>Payment Idempotency</td><td>Required</td><td>Deduplication via key</td></tr>
+        </tbody>
+      </table>
+      <div class="highlight-box">
+        <strong>Key tension:</strong> Strong consistency for bookings (ACID) vs. high availability for search (eventual). We use different databases for each — PostgreSQL for transactions, Elasticsearch for search.
+      </div>
+    </div>
+
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <h2>🏗️ High-Level Architecture</h2>
+      <pre class="arch-diagram">
+┌─────────────────────────────────────────────────┐
+│         CLIENT  Web · Mobile · PWA              │
+└───────────────────────┬─────────────────────────┘
+                        │ HTTPS/TLS
+              ┌─────────▼─────────┐
+              │  CDN (CloudFlare) │  Static assets, posters
+              └─────────┬─────────┘
+              ┌─────────▼─────────┐
+              │   API Gateway     │  Rate limit · JWT · Routing
+              │   (Kong/AWS)      │  100 req/min per user
+              └──┬──────┬──────┬──┘
+                 │      │      │
+          ┌──────▼─┐ ┌──▼───┐ ┌▼──────┐
+          │ SEARCH │ │BOOKING│ │PAYMENT│
+          │SERVICE │ │SERVICE│ │SERVICE│
+          │Stateles│ │Statefull  Bridge │
+          └──────┬─┘ └──┬───┘ └┬──────┘
+                 └───────┼──────┘
+              ┌──────────▼──────────┐
+              │  Redis Cluster      │ Seat status · Search cache
+              └──────────┬──────────┘
+         ┌────────────────┼────────────────┐
+   ┌─────▼────┐    ┌──────▼───┐   ┌───────▼──────┐
+   │PostgreSQL│    │  MySQL   │   │Elasticsearch │
+   │ Bookings │    │ Catalog  │   │    Search    │
+   └──────────┘    └──────────┘   └──────────────┘
+              ┌──────────▼──────────┐
+              │  Kafka — Async      │ booking.confirmed · seat.expired
+              └─────────────────────┘</pre>
+    </div>
+
+    <div class="slide" id="s6" data-title="Service Layer Responsibilities">
+      <h2>⚙️ Service Layer Deep Dive</h2>
+      <div class="two-col">
+        <div>
+          <h3>Search Service (Stateless)</h3>
+          <div class="key-points">
+            <div class="point">Read-heavy · horizontally scalable</div>
+            <div class="point">Queries Elasticsearch for text/geo search</div>
+            <div class="point">Cache-aside from Redis (TTL 5 mins)</div>
+            <div class="point">Falls back to MySQL read replicas</div>
+          </div>
+          <h3>Booking Service (Stateful)</h3>
+          <div class="key-points">
+            <div class="point">Write-heavy · manages seat locks</div>
+            <div class="point">Owns PostgreSQL transactions</div>
+            <div class="point">Publishes Redis Pub/Sub on seat change</div>
+            <div class="point">Publishes Kafka on booking confirmed</div>
+          </div>
+        </div>
+        <div>
+          <h3>Payment Service (Bridge)</h3>
+          <div class="key-points">
+            <div class="point">Bridges to Stripe / PayU gateway</div>
+            <div class="point">Idempotency key per attempt</div>
+            <div class="point">Webhook listener for async confirms</div>
+            <div class="point">Triggers refund on cancellation</div>
+          </div>
+          <h3>Background Workers</h3>
+          <div class="key-points">
+            <div class="point">Seat Expiry Job — cron every 5 mins</div>
+            <div class="point">Email/SMS — SendGrid, Twilio via Kafka</div>
+            <div class="point">Analytics Worker — process logs</div>
+            <div class="point">ES Indexer — sync MySQL → Elasticsearch</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s7" data-title="Booking Flow — Select &amp; Lock">
+      <h2>🎟️ Booking Flow — Steps 1 &amp; 2: Select &amp; Lock</h2>
+      <pre class="arch-diagram">
+STEP 1: GET SEAT MAP
+User → GET /shows/123/seats
+  ├─ Cache hit? → Redis returns in 50ms ✅
+  └─ Cache miss → Booking Svc → PostgreSQL → cache update
+
+STEP 2: INITIATE BOOKING (Acquire Row Lock)
+User → POST /bookings { showId:123, seatIds:[5] }
+
+  BEGIN TRANSACTION (READ_COMMITTED + FOR UPDATE)
+  │
+  ├─ SELECT * FROM seat_availability
+  │  WHERE show_id=123 AND seat_id=5
+  │  FOR UPDATE;          ← Exclusive row lock acquired
+  │                       ← User B BLOCKS here if same seat
+  │
+  ├─ Check status = AVAILABLE?
+  │   NO  → ROLLBACK → 409 "Seat already taken"
+  │   YES → continue
+  │
+  ├─ INSERT INTO booking (status=PENDING, expires_at=NOW()+15m)
+  ├─ UPDATE seat_availability SET status='RESERVED'
+  └─ COMMIT              ← Lock released
+
+Response: { bookingId: 999, expiresIn: "15 minutes" }</pre>
+    </div>
+
+    <div class="slide" id="s8" data-title="Booking Flow — Payment &amp; Real-Time">
+      <h2>💳 Booking Flow — Steps 3 &amp; 4: Payment &amp; Real-Time</h2>
+      <pre class="arch-diagram">
+STEP 3: CONFIRM PAYMENT
+User → POST /bookings/999/confirm { paymentToken }
+  │
+  ├─ Validate booking not expired → YES → release seat, 410
+  │
+  ├─ Call Stripe.charge($50, idempotency_key="booking_999_1")
+  │   FAIL  → release seat, mark FAILED, return error
+  │   SUCCESS → continue
+  │
+  ├─ BEGIN TRANSACTION
+  │   UPDATE booking SET status='CONFIRMED', payment_id='stripe_123'
+  │   UPDATE seat_availability SET status='BOOKED'
+  │   UPDATE show SET available_seats = available_seats - 1
+  │   COMMIT
+  │
+  └─ Async (Kafka + Redis):
+      ├─ Kafka.publish("booking.confirmed") → email/SMS workers
+      ├─ Redis.publish("show:123:update")   → WebSocket servers
+      └─ Generate QR ticket
+
+STEP 4: REAL-TIME UPDATE (Other Users)
+Redis Pub/Sub "show:123:update"
+  → 3 WebSocket server instances
+    → Push to all browsers watching Show 123
+      → User B sees: Seat 5 now BOOKED (real-time)</pre>
+    </div>
+
+    <div class="slide" id="s9" data-title="Seat Expiry — Background Cleanup">
+      <h2>⏰ Step 5: Seat Expiry &amp; Background Cleanup</h2>
+      <pre class="arch-diagram">
+SCENARIO: User selected seats but abandoned checkout
+
+Timeline:
+  10:00 AM → User clicks seat 5
+             booking.status = PENDING
+             seat_availability.reserved_until = 10:15 AM
+
+  10:16 AM → Cron Job runs (every 5 minutes)
+             ┌─────────────────────────────────────────┐
+             │ SELECT booking_id FROM booking           │
+             │ WHERE status = 'PENDING'                 │
+             │   AND expires_at &lt; NOW()                │
+             └──────────────┬──────────────────────────┘
+                            │ For each expired booking:
+                            ▼
+             BEGIN TRANSACTION
+               UPDATE seat_availability
+               SET status = 'AVAILABLE', reserved_until = NULL
+               WHERE booking_id IN (...)
+
+               UPDATE booking
+               SET status = 'CANCELLED'
+               WHERE booking_id IN (...)
+             COMMIT</pre>
+      <div class="key-points">
+        <div class="point">✅ Seats automatically freed — other users can book</div>
+        <div class="point">✅ No orphaned RESERVED seats accumulating in DB</div>
+        <div class="point">✅ Redis updated via Pub/Sub → real-time UI refresh</div>
+        <div class="point">💡 Alternative: Redis TTL key triggers expiry event (sub-second precision)</div>
+      </div>
+    </div>
+
+    <div class="slide" id="s10" data-title="Concurrency Control — FOR UPDATE">
+      <h2>🔐 Concurrency Control — Pessimistic Locking</h2>
+      <pre class="arch-diagram">
+USER A                              USER B
+ │ Click Seat 5                      │ Click Seat 5
+ ▼                                   ▼
+BEGIN TX                           BEGIN TX
+ │                                   │
+ │ SELECT * FROM seat_availability   │ SELECT * FROM seat_availability
+ │ WHERE show_id=123 AND seat_id=5   │ WHERE show_id=123 AND seat_id=5
+ │ FOR UPDATE;                       │ FOR UPDATE;
+ │                                   │
+ ▼ LOCK ACQUIRED ✅                  ▼ BLOCKED ⏳ (waits for User A)
+ │
+ │ status = AVAILABLE? YES
+ │ UPDATE → status = 'RESERVED'
+ ▼
+COMMIT  ← lock released
+                                    │ UNBLOCKED
+                                    ▼ LOCK ACQUIRED
+                                    │ status = AVAILABLE? NO ❌
+                                    │ ROLLBACK
+                                    ▼ Error: "Seat already taken"</pre>
+      <div class="highlight-box">
+        <strong>Key SQL:</strong> <code>SELECT * FROM seat_availability WHERE show_id=? AND seat_id=? FOR UPDATE;</code>
+        — acquires exclusive row lock; competing transactions must wait until commit/rollback.
+      </div>
+    </div>
+
+    <div class="slide" id="s11" data-title="Optimistic vs Pessimistic Locking">
+      <h2>⚖️ Optimistic vs Pessimistic Locking</h2>
+      <div class="two-col">
+        <div>
+          <h3>Pessimistic — FOR UPDATE</h3>
+          <pre class="code-block">SELECT * FROM seat_availability
+WHERE seat_id = 5
+FOR UPDATE;
+-- User B BLOCKS until commit</pre>
+          <div class="key-points">
+            <div class="point">✅ Safe for high-contention seats (hot show)</div>
+            <div class="point">✅ No retry logic needed</div>
+            <div class="point">❌ Lock wait → reduced throughput</div>
+            <div class="point">❌ Deadlock risk under extreme concurrency</div>
+          </div>
+        </div>
+        <div>
+          <h3>Optimistic — Version Column</h3>
+          <pre class="code-block">UPDATE seat_availability
+SET status='BOOKED',
+    version = version + 1
+WHERE seat_id = 5
+  AND version = 10;
+-- 0 rows affected = retry</pre>
+          <div class="key-points">
+            <div class="point">✅ No blocking — better throughput</div>
+            <div class="point">✅ Great for low-contention scenarios</div>
+            <div class="point">❌ Requires retry on conflict (ABA problem)</div>
+            <div class="point">❌ Starvation risk if contention is high</div>
+          </div>
+        </div>
+      </div>
+      <div class="answer-box">
+        <strong>Production choice:</strong> Pessimistic (FOR UPDATE) for seat booking — contention is expected; fairness matters. Optimistic for show-level counters where conflicts are rare.
+      </div>
+    </div>
+
+    <div class="slide" id="s12" data-title="Payment Atomicity — 3-Phase Commit">
+      <h2>💳 Payment Atomicity — 3-Phase Commit</h2>
+      <pre class="arch-diagram">
+PHASE 1: RESERVE          PHASE 2: CHARGE          PHASE 3: CONFIRM
+──────────────────        ───────────────          ─────────────────
+ booking = PENDING    →    Stripe.charge()    →    booking = CONFIRMED
+ seat    = RESERVED        idempotency_key         seat    = BOOKED
+ expires = NOW()+15m       webhook registered      Kafka event
+                                                   QR ticket generated
+
+ROLLBACK TRIGGERS:
+ Phase 1: seat taken, show full
+ Phase 2: payment declined, timeout → exponential retry
+ Phase 3: server crash → webhook retries 10x (Stripe)
+
+FAILURE: Payment Success, Server Crashes Before Confirm
+ Solution: Stripe webhook POST /webhook/payment-success
+           Server recovers, checks idempotency_key
+           Re-runs Phase 3 idempotently
+
+DOUBLE SUBMISSION (user clicks Pay twice):
+ Request 1: idempotency_key = "booking_999_attempt_1"
+ Request 2: idempotency_key = "booking_999_attempt_1" ← SAME
+ Result: Stripe deduplicates → charged once only ✅
+
+NETWORK TIMEOUT (response lost):
+ Client polls: GET /bookings/999/status → checks actual state</pre>
+    </div>
+
+    <div class="slide" id="s13" data-title="Payment Failure Scenarios">
+      <h2>⚠️ Payment Failure Scenarios &amp; Handling</h2>
+      <div class="key-points">
+        <div class="point"><strong>1. Payment declined</strong> → Release seat (AVAILABLE), return 402. User can retry with another card.</div>
+        <div class="point"><strong>2. Payment gateway timeout</strong> → Poll gateway status with exponential backoff (1s, 2s, 4s, max 3 attempts). Release seat only if confirmed failed.</div>
+        <div class="point"><strong>3. Payment success, server crash</strong> → Stripe retries webhook up to 10x with exponential backoff. Server recovers, processes ticket idempotently.</div>
+        <div class="point"><strong>4. Seat hold expired mid-payment</strong> → Validate booking not expired before charging. Return 410 Gone, user must restart.</div>
+        <div class="point"><strong>5. Duplicate charge (user refresh)</strong> → Idempotency key = "booking_{id}_attempt_{n}". Same key = same result, no double charge.</div>
+        <div class="point"><strong>6. Cancellation refund</strong> → Policy: &gt;4h before showtime = full refund. Stripe refund API → wallet/original method within 24h.</div>
+      </div>
+      <div class="highlight-box">
+        <strong>Saga pattern:</strong> Each phase has a compensating transaction. Reserve → compensate = release. Charge → compensate = refund. This prevents money-without-ticket scenarios.
+      </div>
+    </div>
+
+    <div class="slide" id="s14" data-title="Real-Time Seat Updates">
+      <h2>📡 Real-Time Seat Updates — WebSocket + Redis Pub/Sub</h2>
+      <pre class="arch-diagram">
+BOOKING CONFIRMED
+       │
+       ▼
+Booking Service
+  redisTemplate.convertAndSend(
+    "show:123:seats_update",
+    SeatUpdateEvent(showId=123, seats=[5])
+  )
+       │
+       ▼  Redis Pub/Sub broadcast
+  ┌────┴────────────┬─────────────────┐
+  ▼                 ▼                 ▼
+WS-Server-1      WS-Server-2       WS-Server-3
+(subscribed)     (subscribed)      (subscribed)
+  │                 │                 │
+  ▼                 ▼                 ▼
+Users watching   Users watching   Users watching
+ Show 123         Show 123          Show 123
+ → Seat 5: BOOKED (real-time push)</pre>
+      <div class="key-points">
+        <div class="point">🔑 <strong>Why Redis Pub/Sub?</strong> Multiple WS servers need the event — can't use in-process events</div>
+        <div class="point">🔑 <strong>Why not polling?</strong> 50k users polling every 2s = 25k req/s on booking DB — too expensive</div>
+        <div class="point">🔑 <strong>Fallback:</strong> If WS disconnects, client re-fetches seat map on reconnect</div>
+        <div class="point">🔑 <strong>Scale:</strong> Redis Pub/Sub is fire-and-forget; use Redis Streams if at-least-once delivery needed</div>
+      </div>
+    </div>
+
+    <div class="slide" id="s15" data-title="Traffic Management — Peak Load">
+      <h2>🚦 Traffic Management — 1M Users on Release Day</h2>
+      <pre class="arch-diagram">
+1,000,000 concurrent users (Avengers release!)
+                │
+                ▼
+         Rate Limiter (Token Bucket)
+         5 bookings per user per day
+                │
+       ┌────────┼────────┐
+       ▼        ▼        ▼
+    TIER 1    TIER 2   TIER 3
+   100k users 400k     500k
+   Accept     Queue    Reject
+   Immediately  5s     HTTP 429
+       │        │        │
+   Process    Kafka    "Retry
+   booking    topic     Later"
+   (sync)     │
+              ▼ async consumer
+           Process
+           booking</pre>
+      <div class="two-col">
+        <div>
+          <h3>Strategies</h3>
+          <div class="key-points">
+            <div class="point">Pre-booking opens 1 week before</div>
+            <div class="point">Virtual queue with position tracking</div>
+            <div class="point">Cache show availability (TTL 30s)</div>
+          </div>
+        </div>
+        <div>
+          <h3>Auto-scaling</h3>
+          <div class="key-points">
+            <div class="point">HPA on booking service pods</div>
+            <div class="point">Read replicas for search spike</div>
+            <div class="point">CDN absorbs static asset load</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s16" data-title="Redis Cache Patterns">
+      <h2>🧠 Redis Cache Key Design</h2>
+      <pre class="code-block">
+# 1. SEARCH RESULTS (Hot Data)
+Key:   "search:city:{cityId}:date:{date}"
+Value: [movieId:123, movieId:456, ...]
+TTL:   300s (5 mins)
+
+# 2. SEAT MAP (Critical — Write-Through)
+Key:   "show:{showId}:seats"
+Value: { "seat_1":"AVAILABLE", "seat_5":"RESERVED", ... }
+TTL:   30s  ← stale is acceptable; source of truth is DB
+
+# 3. SHOW AVAILABILITY COUNTER
+Key:   "show:{showId}:available_seats"
+Value: 150
+TTL:   30s
+
+# 4. USER SESSION / CART
+Key:   "session:{userId}"
+Value: { cart:[seat_5], expiresAt:... }
+TTL:   900s (15 mins)
+
+# INVALIDATION ON BOOKING:
+Event: Seat booked
+  → Redis HSET show:{id}:seats seat_5 "BOOKED"
+  → Redis DECR show:{id}:available_seats
+  → Redis PUBLISH show:{id}:update → WebSocket servers</pre>
+    </div>
+
+    <div class="slide" id="s17" data-title="Why 3 Databases?">
+      <h2>🗄️ Why Three Different Databases?</h2>
+      <table class="data-table">
+        <thead><tr><th>Database</th><th>Used For</th><th>Why This DB</th></tr></thead>
+        <tbody>
+          <tr><td><strong>PostgreSQL</strong></td><td>Bookings, Payments, Seats</td><td>ACID strict · FOR UPDATE · SERIALIZABLE · JSONB</td></tr>
+          <tr><td><strong>MySQL</strong></td><td>Movies, Theaters, Screens</td><td>Read-heavy · 10+ replicas · mature replication · catalog data</td></tr>
+          <tr><td><strong>Elasticsearch</strong></td><td>Search &amp; Geo Filters</td><td>Full-text · faceted filters · geo-distance · no joins</td></tr>
+        </tbody>
+      </table>
+      <div class="key-points">
+        <div class="point"><strong>Q: Why not one DB for everything?</strong></div>
+        <div class="point">✅ Different consistency needs: ACID for booking, eventual OK for search</div>
+        <div class="point">✅ Workload fit: Postgres for concurrent writes, MySQL for read scale, ES for text search</div>
+        <div class="point">✅ Blast radius isolation: search outage doesn't break booking</div>
+        <div class="point">✅ Cost: ES search is 10× faster than SQL LIKE; MySQL replicas cheaper for static data</div>
+        <div class="point">⚠️ Trade-off: more ops complexity + need MySQL→ES sync via Kafka (~5s lag — acceptable)</div>
+      </div>
+    </div>
+
+    <div class="slide" id="s18" data-title="Database Sharding by City">
+      <h2>📊 Database Sharding Strategy</h2>
+      <pre class="arch-diagram">
+SHARD BY CITY (Horizontal Partitioning)
+
+         Application Layer
+       (Route by city_id hash)
+      ┌──────────┬──────────┬──────────┐
+      ▼          ▼          ▼          ▼
+  Shard 1     Shard 2    Shard 3    Shard N
+  Mumbai       Delhi      Bangalore   ...
+  Pune         Gurgaon    Hyderabad
+  Cities 1-10  11-20      21-30</pre>
+      <div class="two-col">
+        <div>
+          <h3>Why City Sharding?</h3>
+          <div class="key-points">
+            <div class="point">✅ Users always search ONE city (locality)</div>
+            <div class="point">✅ No cross-shard joins needed</div>
+            <div class="point">✅ Easy to add new city (new shard)</div>
+            <div class="point">✅ Theater capacity tied to geography</div>
+          </div>
+        </div>
+        <div>
+          <h3>What Stays Global (Unsharded)?</h3>
+          <div class="key-points">
+            <div class="point">Users table — &lt;100M records, small</div>
+            <div class="point">Movies table — ~10k active movies</div>
+            <div class="point">Reviews — shard by movie_id separately</div>
+          </div>
+          <h3>Latency Breakdown</h3>
+          <div class="key-points">
+            <div class="point">Cache hit path: 80ms total</div>
+            <div class="point">ES search path: 150ms total</div>
+            <div class="point">Booking write: ~1000ms total</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s19" data-title="API Design">
+      <h2>🌐 Core API Endpoints</h2>
+      <pre class="code-block">
+# SEARCH
+GET /api/v1/movies/search?city=Mumbai&amp;genre=Action&amp;date=2024-04-01
+→ [{ movieId, title, languages, genres, rating, theaters: [...] }]
+
+# SHOW TIMES
+GET /api/v1/shows/{movieId}?theater={id}&amp;date=2024-04-01
+→ [{ showId, startTime, availableSeats, pricePerSeat }]
+
+# SEAT MAP (cache-first, 30s TTL)
+GET /api/v1/shows/{showId}/seats
+→ [{ seatId, row, number, status, type, priceMultiplier }]
+
+# INITIATE BOOKING (acquires seat lock)
+POST /api/v1/bookings
+Body: { userId, showId, seatIds:[1,2,3], paymentMode }
+→ { bookingId, totalPrice, expiresIn:"15 minutes" }
+
+# CONFIRM PAYMENT
+POST /api/v1/bookings/{bookingId}/confirm
+Body: { paymentGatewayToken }
+→ { ticketId, qrCode, confirmationEmail }
+
+# CANCEL
+DELETE /api/v1/bookings/{bookingId}
+→ { refundStatus, refundAmount, timeline:"3-5 days" }
+
+# STATUS POLL (for timeout recovery)
+GET /api/v1/bookings/{bookingId}/status
+→ { status: PENDING | CONFIRMED | CANCELLED }</pre>
+    </div>
+
+    <div class="slide" id="s20" data-title="ER Diagram — Core Entities">
+      <h2>🗂️ ER Diagram — Core Entities</h2>
+      <pre class="arch-diagram">
+CITY ──────── THEATER ──── SCREEN ──── SEAT
+(city_id)     (city_id FK)  (theater_id FK) (screen_id FK)
+ name          name          name            row_number
+ state         address       screen_type     seat_number
+ lat/lon       lat/lon       total_rows      seat_type (NORMAL/PREMIUM)
+               amenities[]   seats_per_row   price_multiplier
+
+MOVIE ─────────────────── SHOW ──────────────────────────────────────
+(movie_id)                 (show_id)
+ title                      screen_id FK ─── SCREEN
+ genre                      movie_id FK ──── MOVIE
+ duration_mins              show_date
+ language                   start_time
+ rating (UA/15/18)          available_seats (denorm counter)
+ poster_url                 price_per_seat
+ synopsis                   is_running
+
+USER ──── BOOKING* ──── BOOKING_SEAT ──── SEAT
+          (booking_id)   (junction)
+           user_id FK     booking_id FK
+           show_id FK     seat_id FK
+           status: PENDING/CONFIRMED/CANCELLED
+           expires_at (15-min hold)
+           payment_id FK ──── PAYMENT*
+                              amount, mode, status
+                              transaction_id (idempotency)
+           ▼
+       SEAT_AVAILABILITY*
+       (show_id, seat_id) PK
+       status: AVAILABLE/RESERVED/BOOKED
+       reserved_until</pre>
+      <div class="highlight-box">* = Stored in PostgreSQL for ACID. Others in MySQL.</div>
+    </div>
+
+    <div class="slide" id="s21" data-title="DB Schema — booking &amp; seat_availability">
+      <h2>🗃️ Schema — booking &amp; seat_availability (PostgreSQL)</h2>
+      <pre class="code-block">CREATE TABLE booking (
+    booking_id   BIGINT PRIMARY KEY,
+    user_id      BIGINT NOT NULL,
+    show_id      BIGINT NOT NULL,
+    total_seats  INT,
+    total_price  DECIMAL(12,2),
+    booking_status ENUM('PENDING','CONFIRMED','CANCELLED'),
+    created_at   TIMESTAMP,
+    expires_at   TIMESTAMP,       -- 15-min seat hold
+    payment_id   VARCHAR(255),    -- nullable until confirmed
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (show_id) REFERENCES shows(show_id),
+    INDEX idx_user_show (user_id, show_id),
+    INDEX idx_expires_at (expires_at)  -- expiry cron query
+);
+
+CREATE TABLE seat_availability (
+    show_id        BIGINT,
+    seat_id        BIGINT,
+    status         ENUM('AVAILABLE','RESERVED','BOOKED'),
+    reserved_until TIMESTAMP,     -- cleared on commit/expiry
+    booking_id     BIGINT,
+    PRIMARY KEY (show_id, seat_id),
+    FOREIGN KEY (booking_id) REFERENCES booking(booking_id),
+    INDEX idx_status (status)
+);
+
+CREATE TABLE booking_seat (
+    booking_seat_id BIGINT PRIMARY KEY,
+    booking_id BIGINT,
+    seat_id    BIGINT,
+    FOREIGN KEY (booking_id) REFERENCES booking(booking_id)
+        ON DELETE CASCADE,
+    UNIQUE (booking_id, seat_id)
+);</pre>
+    </div>
+
+    <div class="slide" id="s22" data-title="DB Schema — payment &amp; shows">
+      <h2>🗃️ Schema — payment &amp; shows (PostgreSQL / MySQL)</h2>
+      <pre class="code-block">-- PostgreSQL
+CREATE TABLE payment (
+    payment_id     VARCHAR(255) PRIMARY KEY,
+    booking_id     BIGINT,
+    user_id        BIGINT,
+    amount         DECIMAL(12,2),
+    payment_mode   VARCHAR(50),      -- CREDIT_CARD, UPI, WALLET
+    transaction_id VARCHAR(255),     -- from Stripe / PayU
+    status  ENUM('PENDING','SUCCESS','FAILED','REFUNDED'),
+    created_at     TIMESTAMP,
+    processed_at   TIMESTAMP,
+    UNIQUE (transaction_id),         -- idempotency
+    INDEX idx_user_created (user_id, created_at)
+);
+
+-- MySQL (catalog)
+CREATE TABLE shows (
+    show_id         BIGINT PRIMARY KEY,
+    screen_id       BIGINT,
+    movie_id        BIGINT,
+    show_date       DATE,
+    start_time      TIME,
+    duration_mins   INT,
+    available_seats INT,             -- denorm counter
+    price_per_seat  DECIMAL(8,2),
+    is_running      BOOLEAN,
+    FOREIGN KEY (screen_id) REFERENCES screens(screen_id),
+    FOREIGN KEY (movie_id)  REFERENCES movies(movie_id),
+    INDEX idx_show_date_theater (show_date, screen_id),
+    INDEX idx_is_running (is_running)
+);</pre>
+    </div>
+
+    <div class="slide" id="s23" data-title="Isolation Levels — Deep Dive">
+      <h2>🔬 Isolation Levels — Which One for Booking?</h2>
+      <table class="data-table">
+        <thead><tr><th>Level</th><th>Dirty Read</th><th>Non-Repeatable</th><th>Phantom</th><th>Performance</th></tr></thead>
+        <tbody>
+          <tr><td>READ_UNCOMMITTED</td><td>YES ❌</td><td>YES ❌</td><td>YES ❌</td><td>⚡⚡⚡</td></tr>
+          <tr><td>READ_COMMITTED</td><td>No ✅</td><td>YES ❌</td><td>YES ❌</td><td>⚡⚡</td></tr>
+          <tr><td>REPEATABLE_READ</td><td>No ✅</td><td>No ✅</td><td>YES (MySQL)</td><td>⚡</td></tr>
+          <tr><td>SERIALIZABLE</td><td>No ✅</td><td>No ✅</td><td>No ✅</td><td>🐢</td></tr>
+        </tbody>
+      </table>
+      <div class="highlight-box">
+        <strong>Production answer:</strong> READ_COMMITTED + FOR UPDATE — NOT full SERIALIZABLE
+      </div>
+      <div class="key-points">
+        <div class="point">✅ <code>FOR UPDATE</code> acquires exclusive row lock — User B blocks until User A commits</div>
+        <div class="point">✅ Prevents the actual race condition (double-booking specific seat rows)</div>
+        <div class="point">❌ SERIALIZABLE is 5× slower: 2k vs 10k bookings/sec; deadlock rate 5–10%</div>
+        <div class="point">❌ SERIALIZABLE prevents phantom reads we don't have (we lock specific rows, not ranges)</div>
+        <div class="point">💡 Stripe, Google Cloud Spanner, PostgreSQL 98% of real cases → READ_COMMITTED + FOR UPDATE</div>
+      </div>
+    </div>
+
+    <div class="slide" id="s24" data-title="Interview Q&amp;A — Part 1">
+      <h2>🎤 Senior Interview Q&amp;A — Part 1</h2>
+      <div class="qa-block">
+        <div class="question">Q: How do you prevent double-booking?</div>
+        <div class="answer">Row-level lock with <code>FOR UPDATE</code> inside a DB transaction. Only one transaction holds the lock at a time. Alternative: optimistic locking (version field) for low-contention seats.</div>
+      </div>
+      <div class="qa-block">
+        <div class="question">Q: Two users pay for the same seat simultaneously — who's charged?</div>
+        <div class="answer">User 1 acquires lock, books, commits. User 2's transaction sees RESERVED and rolls back before hitting the payment gateway — so only User 1 is charged. Payment gateway never gets called for User 2.</div>
+      </div>
+      <div class="qa-block">
+        <div class="question">Q: Design for 1M users on Avengers release day.</div>
+        <div class="answer">Pre-booking 1 week ahead · Token-bucket rate limiting · 3-tier queue (accept / queue / reject) · Kafka async processing · Redis cache for seat maps (TTL 30s) · CDN for static assets · City-sharded DB · HPA auto-scale booking pods.</div>
+      </div>
+      <div class="qa-block">
+        <div class="question">Q: How do you keep search &lt; 200ms at scale?</div>
+        <div class="answer">Elasticsearch for full-text + geo filters. Redis cache for popular searches (5 min TTL). MySQL read replicas for catalog. Denormalised schema (no joins). Paginate results (20/page).</div>
+      </div>
+    </div>
+
+    <div class="slide" id="s25" data-title="Key Numbers + Closing">
+      <h2>🔢 Key Numbers to Know + Closing</h2>
+      <div class="two-col">
+        <div>
+          <h3>Quick Numbers</h3>
+          <table class="data-table">
+            <tbody>
+              <tr><td>Seat hold TTL</td><td>15 minutes</td></tr>
+              <tr><td>Cron expiry job</td><td>Every 5 mins</td></tr>
+              <tr><td>Redis TTL (search)</td><td>300s (5 min)</td></tr>
+              <tr><td>Redis TTL (seat map)</td><td>30s</td></tr>
+              <tr><td>Search latency</td><td>&lt;200ms p99</td></tr>
+              <tr><td>Booking latency</td><td>&lt;1s</td></tr>
+              <tr><td>Rate limit</td><td>100 req/min/user</td></tr>
+              <tr><td>ES sync lag</td><td>~5 seconds</td></tr>
+              <tr><td>Payment retries</td><td>3× exponential</td></tr>
+              <tr><td>Webhook retries</td><td>10× (Stripe)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <h3>Key Takeaways</h3>
+          <div class="key-points">
+            <div class="point">🔒 <strong>No double-booking:</strong> FOR UPDATE + ACID</div>
+            <div class="point">💳 <strong>Payment safety:</strong> 3-phase commit + idempotency</div>
+            <div class="point">⏰ <strong>Seat expiry:</strong> 15-min hold + cron cleanup</div>
+            <div class="point">📡 <strong>Real-time:</strong> Redis Pub/Sub → WebSocket</div>
+            <div class="point">🚦 <strong>Peak traffic:</strong> Queue + load shedding</div>
+            <div class="point">🔍 <strong>Search speed:</strong> ES + Redis + read replicas</div>
+            <div class="point">🗄️ <strong>3 DBs:</strong> Postgres (ACID), MySQL (catalog), ES (search)</div>
+            <div class="point">🏙️ <strong>Sharding:</strong> By city — no cross-shard joins</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

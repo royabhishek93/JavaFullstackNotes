@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Producer Important Configurations — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Producer Important Configurations — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 22</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:6.25%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">📤</div>
+  <h1 class="gradient-text">Kafka Producer Important Configurations — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Duplicate Messages</span><span class="badge">Message Reordering</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: retries, max.in.flight.requests.per.connection, duplicate messages, message reordering, idempotent producer, sequence numbers, producer ID, producer epoch, exactly-once semantics, batch.size, linger.ms, buffer.memory, compression.type</p>
+</div>
+<div class="slide" id="s3" data-title="The Two Config Settings That Cause Problems">
+<h2>The Two Config Settings That Cause Problems</h2>
+<p>When <code>retries &gt; 0</code> AND <code>max.in.flight.requests.per.connection &gt; 1</code> are both set, two serious problems can occur: <strong>duplicate messages</strong> and <strong>message reordering</strong>. These configs are related — understanding both is the foundation for understanding idempotence.</p>
+<div class="dia">Producer configuration:
+
+  retries = 3
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  If broker doesn't acknowledge a batch, the producer sends it again  │
+  │  up to 3 times before giving up.                                     │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  max.in.flight.requests.per.connection = 5
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  Up to 5 batches can be "in flight" at the same time — sent but      │
+  │  not yet acknowledged. The producer doesn't wait for ack before      │
+  │  sending the next batch.                                             │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  BOTH enabled together:
+  ┌───────────────────┐     ┌───────────────────┐
+  │  retries &gt; 0      │ AND │  in-flight &gt; 1    │  ──► PROBLEMS
+  └───────────────────┘     └───────────────────┘</div>
+</div>
+<div class="slide" id="s4" data-title="Problem 1 — Duplicate Message">
+<h2>Problem 1 — Duplicate Message</h2>
+<p>When a batch reaches the broker successfully but the <strong>acknowledgement is lost</strong> on the way back, the producer retries — and the broker has no way to know it already wrote that event.</p>
+<div class="dia">NORMAL FLOW (no problem):
+─────────────────────────────────────────────────────────────────────────
+  Producer                                           Broker
+  ─────────                                          ──────
+    │── Batch [event-1] ──────────────────────────►  │  writes event-1 at offset 1
+    │◄─ ACK ────────────────────────────────────────  │
+    ✓ done — one copy in log
+
+
+DUPLICATE PROBLEM:
+─────────────────────────────────────────────────────────────────────────
+  Producer                                           Broker
+  ─────────                                          ──────
+    │── Batch [event-1] ──────────────────────────►  │  writes event-1 at offset 1
+    │◄── ACK ─── ✗ LOST (network issue) ─────────    │
+    │                                                 │
+    │  (producer waits... timeout!)                   │
+    │  retries &gt; 0, so retry...                       │
+    │                                                 │
+    │── Batch [event-1] again ────────────────────►  │  writes event-1 at offset 2
+    │◄─ ACK ────────────────────────────────────────  │
+    ✓ producer thinks first send was OK now          │
+
+  LOG RESULT:
+  ┌───────────────────────────────────────────────────┐
+  │  offset 1 →  event-1   ← first write             │
+  │  offset 2 →  event-1   ← DUPLICATE               │
+  └───────────────────────────────────────────────────┘
+  Broker has no way to detect it already stored event-1.</div>
+</div>
+<div class="slide" id="s5" data-title="Problem 2 — Message Reordering">
+<h2>Problem 2 — Message Reordering</h2>
+<p>When <code>max.in.flight &gt; 1</code>, two batches can be in-flight simultaneously. If batch-1 is lost and batch-2 arrives first, and then batch-1 is retried — <strong>events end up in the wrong order in the log</strong>.</p>
+<div class="dia">SCENARIO: Producer sends batch-1 (event-1) and batch-2 (event-2) simultaneously
+
+  Producer                                           Broker
+  ─────────                                          ──────
+    │── Batch-1 [event-1: "order-created"] ──────►  │
+    │── Batch-2 [event-2: "payment-made"]  ──────►  │
+
+
+  BATCH-1 IS LOST (network issue)
+  ─────────────────────────────────────────────────────────────────────────
+    │   Batch-1  ✗  never arrived                     │
+    │── Batch-2 ────────────────────────────────────► │  writes event-2 at offset 1
+    │◄─ ACK for batch-2 ────────────────────────────  │
+
+
+  PRODUCER RETRIES BATCH-1
+  ─────────────────────────────────────────────────────────────────────────
+    │  (no ack for batch-1, timeout hit...)            │
+    │── Batch-1 retry ──────────────────────────────► │  writes event-1 at offset 2
+    │◄─ ACK for batch-1 ────────────────────────────  │
+
+
+  LOG RESULT:
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  offset 1 →  event-2  "payment-made"    ← HAPPENED FIRST in log    │
+  │  offset 2 →  event-1  "order-created"   ← HAPPENED SECOND in log   │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  WRONG ORDER: payment was recorded before the order was even created!
+
+  WHY: Broker has no way to know that batch-1 was supposed to come
+       before batch-2. It just writes whatever arrives.</div>
+</div>
+<div class="slide" id="s6" data-title="The Solution — Idempotent Producer">
+<h2>The Solution — Idempotent Producer</h2>
+<p>Setting <code>enable.idempotence=true</code> solves <strong>both</strong> the duplicate problem and the reordering problem at once. In Kafka 3+, this is the default.</p>
+<div class="dia">  spring.kafka.producer.properties.enable.idempotence=true
+
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  Kafka version &lt; 3   →  default FALSE, must set manually            │
+  │  Kafka version &gt;= 3  →  default TRUE, nothing to configure          │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  What idempotence adds:
+  ┌─────────────────────────────┐    ┌─────────────────────────────┐
+  │  BEFORE (no idempotence)    │    │  AFTER (idempotence=true)   │
+  ├─────────────────────────────┤    ├─────────────────────────────┤
+  │  Broker: no memory of       │    │  Broker: tracks each        │
+  │  what it already stored     │    │  producer + each partition  │
+  │                             │    │  with sequence numbers      │
+  │  retries → duplicates  ✗    │    │  retries → safe         ✓  │
+  │  in-flight &gt; 1 → reorder ✗  │    │  ordering guaranteed    ✓  │
+  └─────────────────────────────┘    └─────────────────────────────┘</div>
+</div>
+<div class="slide" id="s7" data-title="How Idempotence Works — Step 1: Producer Gets a PID">
+<h2>How Idempotence Works — Step 1: Producer Gets a PID</h2>
+<p>When the producer application starts up, it immediately requests a unique <strong>Producer ID (PID)</strong> from the cluster. This ID is used to identify this producer instance for the lifetime of the application run.</p>
+<div class="dia">STARTUP FLOW:
+─────────────────────────────────────────────────────────────────────────
+
+  Producer App                  Broker                  Controller
+  ────────────                  ──────                  ──────────
+      │                             │                       │
+      │── "Give me a unique ID" ──► │                       │
+      │                             │── forward request ──► │
+      │                             │                       │  generates next
+      │                             │                       │  available PID
+      │                             │                       │  e.g. 1001
+      │                             │◄─ return PID 1001 ─── │
+      │◄── PID = 1001 ─────────────  │                       │
+      │                             │                       │
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Producer now holds:  PID = 1001                                 │
+  │                                                                  │
+  │  NOTE: This PID is NOT stored anywhere permanently.              │
+  │  Controller just increments a counter and returns the value.     │
+  │  If the producer restarts → it gets a NEW PID (loophole — see   │
+  │  section 11).                                                    │
+  └──────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s8" data-title="How Idempotence Works — Step 2: Sequence Numbers in Record Accumulator">
+<h2>How Idempotence Works — Step 2: Sequence Numbers in Record Accumulator</h2>
+<p>The <strong>record accumulator</strong> creates batches per topic-partition. With idempotence enabled, each batch also carries the PID, a base sequence number, and a last sequence number. Each individual event inside the batch gets its own sequence number.</p>
+<div class="dia">  Record Accumulator (with idempotence=true):
+  ─────────────────────────────────────────────────────────────────────────
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  BATCH 1 — Topic A, Partition P0                                    │
+  │  ┌────────────────────────────────────────────────────────────────┐ │
+  │  │  HEADER: PID=1001 │ base_seq=0 │ last_seq=2                   │ │
+  │  ├────────────────────────────────────────────────────────────────┤ │
+  │  │  event-1   seq=0                                               │ │
+  │  │  event-2   seq=1                                               │ │
+  │  │  event-3   seq=2                                               │ │
+  │  └────────────────────────────────────────────────────────────────┘ │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  BATCH 2 — Topic A, Partition P1   (own separate sequence)          │
+  │  ┌────────────────────────────────────────────────────────────────┐ │
+  │  │  HEADER: PID=1001 │ base_seq=0 │ last_seq=1                   │ │
+  │  ├────────────────────────────────────────────────────────────────┤ │
+  │  │  event-8   seq=0                                               │ │
+  │  │  event-9   seq=1                                               │ │
+  │  └────────────────────────────────────────────────────────────────┘ │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  BATCH 3 — Topic B, Partition P0   (own separate sequence)          │
+  │  ┌────────────────────────────────────────────────────────────────┐ │
+  │  │  HEADER: PID=1001 │ base_seq=0 │ last_seq=3                   │ │
+  │  ├────────────────────────────────────────────────────────────────┤ │
+  │  │  event-1   seq=0                                               │ │
+  │  │  event-2   seq=1                                               │ │
+  │  │  event-3   seq=2                                               │ │
+  │  │  event-4   seq=3                                               │ │
+  │  └────────────────────────────────────────────────────────────────┘ │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  KEY RULE: Sequences are maintained PER TOPIC PER PARTITION.
+  Topic A P0 and Topic A P1 each have their own independent counter.</div>
+</div>
+<div class="slide" id="s9" data-title="How Idempotence Works — Step 3: Broker Validates With an In-Memory Map">
+<h2>How Idempotence Works — Step 3: Broker Validates With an In-Memory Map</h2>
+<p>When a batch arrives, the broker checks its in-memory map to see whether the base sequence is exactly what it expected next. If yes, accept and update the map. If no, reject and force a retry.</p>
+<div class="dia">  BROKER IN-MEMORY MAP  (keyed by PID + Topic + Partition):
+
+  ┌──────────────┬─────────┬───────────┬───────────────────┐
+  │  Producer ID │  Topic  │ Partition │  last_seq written  │
+  ├──────────────┼─────────┼───────────┼───────────────────┤
+  │  1001        │  A      │  P0       │  2                 │
+  │  1001        │  A      │  P1       │  1                 │
+  │  1001        │  B      │  P0       │  3                 │
+  └──────────────┴─────────┴───────────┴───────────────────┘
+
+
+  VALIDATION LOGIC ON EACH INCOMING BATCH:
+  ─────────────────────────────────────────────────────────────────────────
+
+  Batch arrives: PID=1001, Topic A, P0, base_seq=0
+
+    1. Look up map: PID=1001, Topic A, P0
+    2. No entry found → this is the FIRST request
+    3. Expect base_seq = 0    ✓ matches
+    4. Accept batch, write events to log
+    5. Insert into map: last_seq = 2
+
+  Next batch arrives: PID=1001, Topic A, P0, base_seq=3
+
+    1. Look up map: PID=1001, Topic A, P0 → last_seq = 2
+    2. Expected next base_seq = 2 + 1 = 3
+    3. Incoming base_seq = 3    ✓ matches
+    4. Accept batch, write to log
+    5. Update map: last_seq = 5
+
+  RETRY arrives (duplicate): PID=1001, Topic A, P0, base_seq=3 AGAIN
+
+    1. Look up map: PID=1001, Topic A, P0 → last_seq = 5
+    2. Expected next base_seq = 5 + 1 = 6
+    3. Incoming base_seq = 3    ✗ does NOT match (too old)
+    4. REJECT — duplicate detected   ✓ problem solved
+
+
+  OUT-OF-ORDER batch arrives: PID=1001, Topic A, P0, base_seq=6
+  (but seq=3 batch hasn't arrived yet)
+
+    1. Look up map: last_seq = 2
+    2. Expected next = 3
+    3. Incoming base_seq = 6    ✗ does NOT match (gap detected)
+    4. REJECT — producer must retry in order   ✓ reordering prevented</div>
+</div>
+<div class="slide" id="s10" data-title="How Sequence Numbers Fix the Reordering Problem">
+<h2>How Sequence Numbers Fix the Reordering Problem</h2>
+<p>With idempotence, the same scenario from section 3 now plays out differently — the out-of-order batch is <strong>rejected</strong>, forcing the producer to send things in the correct sequence.</p>
+<div class="dia">  SAME SCENARIO as section 3, but now with idempotence=true:
+
+  Producer (PID=1001)                               Broker
+  ───────────────────                               ──────
+    │── Batch-1 [event-1, seq=0, base=0, last=0] ─► │
+    │── Batch-2 [event-2, seq=0, base=0, last=0] ─► │
+    │   (Topic A P0)          (Topic A P1)           │
+
+
+  BATCH-1 IS LOST (same network issue as before)
+  ─────────────────────────────────────────────────────────────────────────
+    │   Batch-1  ✗  never arrived                     │
+    │── Batch-2 (Topic A P1) ───────────────────────► │
+    │                                                  │  checks map for PID=1001
+    │                                                  │  Topic A P1 → no entry
+    │                                                  │  expects base_seq=0 ✓
+    │◄─ ACK for batch-2 ─────────────────────────────  │  map: Topic A P1 last=0
+
+
+  PRODUCER RETRIES BATCH-1
+  ─────────────────────────────────────────────────────────────────────────
+    │  (no ack for batch-1, timeout hit...)            │
+    │── Batch-1 retry (Topic A P0, base=0) ──────────► │
+    │                                                  │  checks map for PID=1001
+    │                                                  │  Topic A P0 → no entry
+    │                                                  │  expects base_seq=0 ✓
+    │◄─ ACK for batch-1 ─────────────────────────────  │  map: Topic A P0 last=0
+
+
+  LOG RESULT:
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  Topic A Partition P0:  offset 1 → event-1 "order-created"    ✓    │
+  │  Topic A Partition P1:  offset 1 → event-2 "payment-made"     ✓    │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  NOTE: The broker enforces seq=0 must come before seq=1. If batch-2
+  (seq=1) arrived before batch-1 (seq=0) on the SAME partition, the
+  broker would reject batch-2 until batch-1 arrives first.</div>
+</div>
+<div class="slide" id="s11" data-title="Idempotence Constraints — Three Required Settings">
+<h2>Idempotence Constraints — Three Required Settings</h2>
+<p>When <code>enable.idempotence=true</code>, Kafka enforces three related settings. These are automatically applied in Kafka 3+ but worth knowing for interviews.</p>
+<div class="dia">  ┌─────────────────────────────────────────────────────────────────────┐
+  │  Constraint 1: acks = all                                           │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │                                                                     │
+  │  acks=1 (leader only)         acks=all (leader + all ISR)           │
+  │  ┌──────────────────────┐     ┌──────────────────────────────────┐  │
+  │  │  Leader ✓            │     │  Leader ✓                        │  │
+  │  │  Follower-1  ✗ crash │     │  Follower-1 ✓                   │  │
+  │  │  Follower-2  ✗ crash │     │  Follower-2 ✓                   │  │
+  │  │                      │     │                                  │  │
+  │  │  If leader crashes → │     │  Either all replicas have it     │  │
+  │  │  event is lost       │     │  or none do. Safe.               │  │
+  │  └──────────────────────┘     └──────────────────────────────────┘  │
+  │  With acks=1 + idempotence, a crash can still cause duplicates.     │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  Constraint 2: retries = MAX_INT (Integer.MAX_VALUE)                │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │                                                                     │
+  │  Without idempotence: retries are risky → can cause duplicates      │
+  │  With idempotence:    retries are SAFE → broker deduplicates        │
+  │                                                                     │
+  │  So retries is set to MAX_INT — retry as many times as needed.      │
+  │  The sender thread retries indefinitely without risk.               │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  Constraint 3: max.in.flight.requests.per.connection &lt;= 5           │
+  ├─────────────────────────────────────────────────────────────────────┤
+  │                                                                     │
+  │  The broker maintains an ordering buffer for 5 sequences only.      │
+  │                                                                     │
+  │  ┌───────────────────────────────────────────────────────────────┐  │
+  │  │  Per topic-partition, broker holds a window of 5 in-flight    │  │
+  │  │  sequences in its validation buffer:                          │  │
+  │  │                                                               │  │
+  │  │  [ seq-0 | seq-1 | seq-2 | seq-3 | seq-4 ]  ← buffer of 5   │  │
+  │  │                                                               │  │
+  │  │  If in-flight &gt; 5, the 6th batch falls outside the buffer    │  │
+  │  │  → ordering guarantee is LOST                                │  │
+  │  │  → Kafka throws an exception when idempotence=true and       │  │
+  │  │    max.in.flight &gt; 5                                         │  │
+  │  └───────────────────────────────────────────────────────────────┘  │
+  │                                                                     │
+  │  Kafka docs: buffer of 5 was chosen after testing many iterations. │
+  │  More than 5 = too much complexity + memory per partition.          │
+  └─────────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s12" data-title="Exactly-Once Semantics at Producer Level">
+<h2>Exactly-Once Semantics at Producer Level</h2>
+<p>Combining these guarantees, idempotence achieves <strong>exactly-once</strong> delivery per producer session — each event lands in the broker log exactly one time, no matter how many retries occur.</p>
+<div class="dia">  THREE DELIVERY SEMANTICS:
+
+  At-most-once     At-least-once       Exactly-once
+  ─────────────    ─────────────────   ────────────────────────────
+  retries = 0      retries &gt; 0         retries &gt; 0
+  acks = 0         acks = 1 or all     acks = all
+                                       enable.idempotence = true
+                                       max.in.flight &lt;= 5
+
+  ┌────────────┐   ┌──────────────┐    ┌──────────────────────────┐
+  │  May lose  │   │  May write   │    │  Writes event exactly    │
+  │  messages  │   │  duplicates  │    │  once — no loss, no dup  │
+  └────────────┘   └──────────────┘    └──────────────────────────┘
+
+  SCOPE: Exactly-once here is PRODUCER-LEVEL only.
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  Covers:   producer → broker (same session, same PID)               │
+  │  Does NOT cover:  producer restart → gets new PID → can re-write    │
+  │  Does NOT cover:  consumer re-processing after failure              │
+  │                                                                      │
+  │  For full end-to-end exactly-once → use Kafka Transactions          │
+  └──────────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s13" data-title="The Loophole — Producer Restart Gets a New PID">
+<h2>The Loophole — Producer Restart Gets a New PID</h2>
+<p>Idempotence only works within a single producer session. If the producer <strong>restarts</strong>, the controller issues a brand-new PID and the broker can no longer detect cross-session duplicates.</p>
+<div class="dia">  PRODUCER RESTART SCENARIO:
+  ─────────────────────────────────────────────────────────────────────────
+
+  Session 1:   PID = 1001
+  ──────────────────────────────────────────────────────────────────────
+    Producer sends:  Topic A, P0, PID=1001, base_seq=3, last_seq=5
+    Broker writes:   event-1, event-2, event-3  at offsets ...
+    Broker map:      PID=1001 | Topic A | P0 | last_seq=5
+    Producer CRASHES before receiving ACK
+
+  Session 2:   PID = 2001  (NEW PID after restart)
+  ──────────────────────────────────────────────────────────────────────
+    Producer retries the same batch:
+      Topic A, P0, PID=2001, base_seq=3, last_seq=5
+
+    Broker lookup:   PID=2001 | Topic A | P0 → NO ENTRY (new PID)
+    Broker expects:  base_seq = 0 (first request for this PID)
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  RESULT: Broker accepts the batch again → DUPLICATE written  ✗      │
+  │                                                                     │
+  │  WHY: The PID changed. The broker's map is keyed by PID.            │
+  │       The old map entry for PID=1001 is useless.                    │
+  │       The broker has no way to link PID=2001 to PID=1001.           │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  WHY DOESN'T CONTROLLER REMEMBER OLD PIDs?
+  ──────────────────────────────────────────
+    Idempotence design: controller only increments a counter.
+    It does NOT maintain a "this producer ↔ this PID" registry.
+    PID is meant to be ephemeral — valid for one session only.
+
+  THE FIX → KAFKA TRANSACTIONS
+  ──────────────────────────────────────────────────────────────────────
+    With transactions, the producer has a stable transactional.id
+    that persists across restarts. The controller maps transactional.id
+    → PID and issues the SAME logical identity even after restart.
+
+    ┌──────────────────────────────────────────────────────────────────┐
+    │  transactional.id = "payment-service-producer-1"                 │
+    │                                                                  │
+    │  Restart 1:  transactional.id → PID=1001 (epoch=0)              │
+    │  Restart 2:  transactional.id → PID=1001 (epoch=1) ← same PID,  │
+    │                                             new epoch            │
+    │                                                                  │
+    │  Old epoch batches are FENCED — broker rejects them.             │
+    └──────────────────────────────────────────────────────────────────┘
+    Covered separately after consumer and consumer group setup.</div>
+</div>
+<div class="slide" id="s14" data-title="Batching — batch.size and linger.ms">
+<h2>Batching — batch.size and linger.ms</h2>
+<p>Before sending, the producer accumulates events into batches inside the <strong>record accumulator</strong>. These two settings control when a batch is flushed.</p>
+<div class="dia">  Record Accumulator (in-memory buffer):
+
+  ┌─────────────────────────────────────────────────────────────────────┐
+  │  Topic A, Partition P0:   [ event-1 | event-2 | event-3 | ...     ]│
+  │  Topic A, Partition P1:   [ event-8 | event-9 ]                    │
+  │  Topic B, Partition P0:   [ event-X ]                              │
+  └─────────────────────────────────────────────────────────────────────┘
+
+  batch.size (default: 16 KB)
+  ─────────────────────────────────────────────────────────────────────
+  Maximum size of a single batch. When the batch reaches this size,
+  it is sent immediately — no waiting.
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  batch filling up:                                               │
+  │  [ev1][ev2][ev3]...[evN] ──► FULL (16 KB hit) ──► SEND NOW      │
+  └──────────────────────────────────────────────────────────────────┘
+
+  linger.ms (default: 0 ms)
+  ─────────────────────────────────────────────────────────────────────
+  How long to wait before sending an INCOMPLETE batch. A value of 0
+  means send immediately. A higher value batches more events together.
+
+  linger.ms = 0ms                    linger.ms = 5ms
+  ┌──────────────────────┐           ┌──────────────────────────────┐
+  │  [ev1] → SEND        │           │  [ev1] → wait...             │
+  │  [ev2] → SEND        │           │  [ev1, ev2] → wait...        │
+  │  [ev3] → SEND        │           │  [ev1, ev2, ev3] → 5ms up    │
+  │  3 batches, 3 trips  │           │  → SEND 1 batch, 1 trip  ✓   │
+  └──────────────────────┘           └──────────────────────────────┘
+  Low latency, low throughput         Higher latency, higher throughput
+
+  TUNING TRADE-OFF:
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  High-throughput pipeline:  linger.ms=5–20, batch.size=32–64KB     │
+  │  Low-latency pipeline:      linger.ms=0,    batch.size=16KB        │
+  └──────────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s15" data-title="Buffer Memory and Compression — buffer.memory and compression.type">
+<h2>Buffer Memory and Compression — buffer.memory and compression.type</h2>
+<p>Once batches are ready, they wait in the <strong>send buffer</strong> before being dispatched. If the buffer fills up, the producer blocks. Compression reduces the byte size of each batch before it leaves the buffer.</p>
+<div class="dia">  buffer.memory (default: 32 MB)
+  ─────────────────────────────────────────────────────────────────────
+  Total memory allocated to the producer's record accumulator.
+  If full, the producer BLOCKS until space frees up (or times out).
+
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │                     buffer.memory = 32 MB                           │
+  │  ┌─────────────────────────────────────────────────┐                │
+  │  │  batch(A,P0) │ batch(A,P1) │ batch(B,P0) │ ...  │                │
+  │  └─────────────────────────────────────────────────┘                │
+  │                                                                      │
+  │  If broker is slow and batches pile up:                             │
+  │  Buffer full → producer.send() BLOCKS → back-pressure               │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  compression.type (options: none | gzip | snappy | lz4 | zstd)
+  ─────────────────────────────────────────────────────────────────────
+  Applied to the batch as a whole before sending. More events in a
+  batch = better compression ratio (repetitive data compresses well).
+
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │                                                                      │
+  │  Record Accumulator                                                  │
+  │  ┌──────────────────────────────────────────────┐                   │
+  │  │  batch: [event-1, event-2, event-3 ... ]     │  100 KB raw       │
+  │  └────────────────────┬─────────────────────────┘                   │
+  │                       │  compression.type = snappy                  │
+  │                       ▼                                             │
+  │  ┌──────────────────────────────────────────────┐                   │
+  │  │  compressed batch: ████████████████░░░░░░░░  │  ~40 KB          │
+  │  └────────────────────┬─────────────────────────┘                   │
+  │                       │                                             │
+  │                       ▼  sent to broker                             │
+  │               60% less network bytes  ✓                             │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  COMPRESSION COMPARISON:
+  ┌──────────────┬────────────────┬─────────────────────────────────────┐
+  │  Algorithm   │  Ratio         │  Best use case                      │
+  ├──────────────┼────────────────┼─────────────────────────────────────┤
+  │  none        │  no reduction  │  testing / already-compressed data  │
+  │  snappy      │  moderate      │  balanced speed + size              │
+  │  lz4         │  moderate      │  best speed, decent size            │
+  │  gzip        │  high          │  smallest size, more CPU            │
+  │  zstd        │  highest       │  best ratio with low CPU (Kafka 2+) │
+  └──────────────┴────────────────┴─────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s16" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Config                                   Default         Notes
+───────────────────────────────────────  ──────────────  ──────────────────────────────────────────────
+retries                                  2147483647*     retries=0 → at-most-once; idempotence sets MAX
+max.in.flight.requests.per.connection    5               must be &lt;=5 when idempotence=true
+enable.idempotence                       false (&lt;v3)     true in Kafka 3+; solves dup + reorder
+                                         true  (&gt;=v3)
+acks (when idempotence=true)             all             enforced; ensures all replicas confirm write
+batch.size                               16384 (16 KB)   increase for higher throughput workloads
+linger.ms                                0               set 5–20ms to batch more before sending
+buffer.memory                            33554432 (32MB) producer blocks if full; tune for throughput
+compression.type                         none            snappy/lz4 = balanced; zstd = best ratio
+
+Concept                   What it solves
+────────────────────────  ───────────────────────────────────────────────────────────────────────
+Idempotence (same PID)    Duplicates from ack loss + reordering from in-flight &gt; 1
+Sequence numbers          Give broker a way to detect gaps and duplicates per partition
+PID (producer ID)         Unique identity for one producer session; changes on restart
+Producer epoch            Used in transactions to fence old producer instances after restart
+Transactions              Cross-session exactly-once; solves the producer-restart loophole
+
+Idempotence does NOT solve producer restart duplicates → use Kafka Transactions for that.
+Idempotence scope: producer → broker, within one session (one PID lifetime).</div>
+</div>
+<div class="slide" id="s17" data-title="Architecture — Idempotent Producer in the CDC Publisher">
+<h2>Architecture — Idempotence Protecting the CDC Publisher</h2>
+<p>"Here's exactly where this matters for the Notification System: the CDC Publisher retries on transient broker errors constantly — idempotence is what keeps those retries from becoming duplicate emails."</p>
+<div class="dia">  CDC Publisher (PID=4821, epoch=0)
+        │  send(P7, seq=100, event) → network blip, no ack received
+        │  retry: send(P7, seq=100, event) again (SAME seq number)
+        ▼
+  Broker-2 (leader, P7): "seq 100 already in my in-memory map for PID 4821"
+        │  → silently drops the duplicate, re-sends the ORIGINAL ack
+        ▼
+  CDC Publisher receives ack, moves on — exactly one copy in the log</div>
+<p><strong>Scenario-first:</strong> "Without idempotence, that same retry scenario writes the event TWICE to the partition — the broker has no way to know it's a retry vs a genuinely new message. Idempotence gives the broker the sequence-number bookkeeping needed to tell the difference."</p>
+</div>
+<div class="slide" id="s18" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why does idempotence require max.in.flight.requests.per.connection &lt;= 5?
+A: The broker can only track and reorder up to 5 in-flight sequence numbers
+   per partition safely — beyond that, correctly detecting gaps/duplicates
+   while preserving order becomes unreliable.
+
+Q: Does idempotence protect against the CDC Publisher restarting entirely?
+A: No — a restart gets a brand-new PID, so the broker has no memory of the
+   old session's sequence numbers. Any in-flight duplicate risk from BEFORE
+   the crash isn't covered; that's specifically what Kafka transactions with
+   a stable transactional.id solve instead.
+
+Q: Why does idempotence force acks=all internally?
+A: Exactly-once-per-session only holds if every acknowledged write actually
+   survived — acks=1 could ack a write that's later lost on leader failure,
+   which would break the "same seq = definitely already written" guarantee.</div>
+</div>
+<div class="slide" id="s19" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision              Choice     Alternative   Why ours                              When to flip
+──────────────────────  ─────────  ────────────  ────────────────────────────────────  ─────────────────────
+Idempotence             Enabled    Disabled       Near-zero cost, eliminates an entire   Essentially never —
+                          everywhere                class of producer-retry duplicates    no real reason to disable
+Duplicate protection    Idempotence Transactions   Session-scoped guarantee is enough     Need protection across
+                          alone       (stronger)     for single-topic, non-restart risk     producer restarts too</div>
+</div>
+<div class="slide" id="s20" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "You enabled idempotence and acks=all, but you're STILL seeing
+  occasional duplicate NotificationEvents downstream. Why?"
+  Answer: "Idempotence guarantees exactly-once per producer SESSION, per
+  partition — at the broker level. It does not protect against the
+  APPLICATION retrying the entire outbox-publish operation after a crash,
+  which creates a brand-new producer session (new PID) and a logically
+  duplicate — but not broker-duplicate — event. That's solved at the
+  consumer with idempotent processing, not at the producer."
+
+Trap 2 — "A teammate wants to disable idempotence 'to squeeze out a bit
+  more throughput.' What do you tell them?"
+  Answer: "The throughput cost of idempotence is close to negligible on
+  modern Kafka — it's essentially free correctness. Disabling it
+  reintroduces silent duplicate-on-retry risk for a throughput gain that's
+  rarely measurable in practice. I'd ask them to profile first; in nearly
+  every case the actual bottleneck is elsewhere (batch size, compression,
+  broker I/O), not idempotence overhead."</div>
+</div>
+<div class="slide" id="s21" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why idempotence is enabled everywhere: eliminates producer-retry
+  duplicates at near-zero cost — no reason not to.
+- Why max.in.flight &lt;= 5 with idempotence: the broker's sequence-tracking
+  can only safely reorder within that window.
+- Why idempotence alone isn't enough for the CDC Publisher: it doesn't
+  survive a full producer restart — that's a job for transactions.
+- Why acks=all is enforced under idempotence: the "same seq = already
+  written" guarantee only holds if acked writes are truly durable.</div>
+</div>
+<div class="slide" id="s22" data-title="Top 2 Technologies — Duplicate Prevention Strength">
+<h2>Top 2 Technologies — Producer-Side Duplicate Prevention</h2>
+<div class="dia">Idempotent Producer (session-scoped)  vs  Kafka Transactions (cross-session)
+
+Why pick Idempotent Producer alone (our default): free, simple, solves the
+  overwhelming majority of duplicate risk — in-flight retries within a
+  live session.
+Why pick Transactions: needed when a producer might RESTART mid-work and
+  you must guarantee no duplicate/lost writes across that restart boundary,
+  or when publishing atomically to multiple topics/partitions.
+
+Example 1 (Idempotent alone): Notification System's CDC Publisher for a
+  single-topic publish where transient network retries are the main risk.
+Example 2 (Transactions): The same CDC Publisher when it must publish to
+  BOTH a primary topic and an audit topic atomically for one outbox row.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 22;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Producer Important Configurations — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

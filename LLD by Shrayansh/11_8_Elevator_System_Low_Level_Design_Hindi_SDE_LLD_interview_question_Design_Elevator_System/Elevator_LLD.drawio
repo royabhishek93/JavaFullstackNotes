@@ -1,0 +1,124 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Elevator System LLD" id="elevator">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1400">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (LOOK/SCAN Algorithm with Priority Queues)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1200" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Building -->
+        <mxCell id="building_class" value="Building&#xa;&#xa;- floors: List&lt;Floor&gt;&#xa;&#xa;+ addFloor(Floor)&#xa;+ getFloor(int)" style="swimlane;fontStyle=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="180" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Floor -->
+        <mxCell id="floor_class" value="Floor&#xa;&#xa;- floorNumber: int&#xa;- externalButton: ExternalButton&#xa;&#xa;+ pressButton(Direction)" style="swimlane;fontStyle=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="80" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- ExternalButton -->
+        <mxCell id="ext_button_class" value="ExternalButton&#xa;&#xa;- buttonDispatcher: ExternalButtonDispatcher&#xa;&#xa;+ pressButton(int floor, Direction)" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="500" y="80" width="260" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- ExternalButtonDispatcher -->
+        <mxCell id="ext_dispatcher_class" value="ExternalButtonDispatcher&#xa;&#xa;- elevatorControllers: List&lt;ElevatorController&gt;&#xa;- algorithm: SelectionAlgorithm&#xa;&#xa;+ submitExternalRequest(int floor, Direction)&#xa;+ selectElevator()&#xa;  // ODD-EVEN, NEAREST, SHORTEST_WAIT" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="800" y="80" width="320" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- ElevatorController -->
+        <mxCell id="controller_class" value="ElevatorController&#xa;&#xa;- elevator: ElevatorCar&#xa;- upMinPQ: PriorityQueue&lt;Integer&gt; // MinHeap&#xa;- downMaxPQ: PriorityQueue&lt;Integer&gt; // MaxHeap&#xa;- pendingJobs: Queue&lt;Integer&gt;&#xa;&#xa;+ acceptNewRequest(int floor, Direction)&#xa;+ submitInternalRequest(int floor)&#xa;+ controlElevator()&#xa;  // LOOK algorithm execution" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="340" height="220" as="geometry" />
+        </mxCell>
+        
+        <!-- ElevatorCar -->
+        <mxCell id="car_class" value="ElevatorCar&#xa;&#xa;- elevatorId: int&#xa;- display: Display&#xa;- internalButton: InternalButton&#xa;- currentFloor: int&#xa;- direction: Direction&#xa;- status: Status&#xa;- door: Door&#xa;&#xa;+ moveElevator(Direction)&#xa;+ setDisplay(int, Direction)&#xa;+ openDoor()&#xa;+ closeDoor()" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="420" y="240" width="240" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- InternalButton -->
+        <mxCell id="int_button_class" value="InternalButton&#xa;&#xa;- buttonDispatcher: InternalButtonDispatcher&#xa;- availableButtons: int[]&#xa;&#xa;+ pressButton(int floor, ElevatorCar)" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="700" y="280" width="260" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- InternalButtonDispatcher -->
+        <mxCell id="int_dispatcher_class" value="InternalButtonDispatcher&#xa;&#xa;- elevatorControllers: List&lt;ElevatorController&gt;&#xa;&#xa;+ submitInternalRequest(int floor, ElevatorCar)" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="280" width="320" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Display -->
+        <mxCell id="display_class" value="Display&#xa;&#xa;- floor: int&#xa;- direction: Direction&#xa;&#xa;+ setDisplay(int, Direction)&#xa;+ showDisplay()" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="700" y="420" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Door -->
+        <mxCell id="door_class" value="Door&#xa;&#xa;- doorStatus: DoorStatus&#xa;&#xa;+ open()&#xa;+ close()" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="940" y="420" width="160" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Enums -->
+        <mxCell id="direction_enum" value="&lt;&lt;enum&gt;&gt;&#xa;Direction&#xa;&#xa;UP&#xa;DOWN" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="420" width="120" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="status_enum" value="&lt;&lt;enum&gt;&gt;&#xa;Status&#xa;&#xa;MOVING&#xa;IDLE" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="420" width="120" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- LOOK Algorithm Explanation -->
+        <mxCell id="algo_title" value="LOOK/SCAN ALGORITHM VISUALIZATION" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="600" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="algo_box" value="Current Floor: 3, Direction: UP&#xa;New Requests: 6 (UP), 4 (UP), 2 (DOWN), 7 (DOWN)&#xa;&#xa;DATA STRUCTURES:&#xa;upMinPQ (MinHeap for UP):   [4, 6]    ← current direction&#xa;downMaxPQ (MaxHeap for DOWN): []     ← empty&#xa;pendingJobs (Queue):          [2, 7]  ← opposite direction&#xa;&#xa;EXECUTION ORDER:&#xa;1. Serve 4 (from upMinPQ) → Stop, open door, serve&#xa;2. Serve 6 (from upMinPQ) → Stop, open door, serve&#xa;3. upMinPQ empty → Check if more UP requests? NO&#xa;4. Change direction to DOWN&#xa;5. Move pendingJobs to downMaxPQ: [7, 2]&#xa;6. Serve 7 (from downMaxPQ)&#xa;7. Serve 2 (from downMaxPQ)&#xa;8. Done&#xa;&#xa;LOOK-AHEAD OPTIMIZATION:&#xa;- After serving floor 6, check if more UP requests exist&#xa;- If NO, immediately change to DOWN (don't go to top floor unnecessarily)&#xa;- This is LOOK algorithm (vs SCAN which goes to end)" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="600" height="380" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="980" width="600" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Building Table -->
+        <mxCell id="er_building" value="Building&#xa;&#xa;PK  buildingId: INT&#xa;    buildingName: VARCHAR(200)&#xa;    address: VARCHAR(500)&#xa;    totalFloors: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1040" width="220" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Floor Table -->
+        <mxCell id="er_floor" value="Floor&#xa;&#xa;PK  floorId: INT&#xa;FK  buildingId: INT&#xa;    floorNumber: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1040" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- ElevatorCar Table -->
+        <mxCell id="er_elevator" value="ElevatorCar&#xa;&#xa;PK  elevatorId: INT&#xa;FK  buildingId: INT&#xa;    currentFloor: INT&#xa;    direction: ENUM&#xa;    status: ENUM" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="540" y="1040" width="200" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- ElevatorRequest Table -->
+        <mxCell id="er_request" value="ElevatorRequest&#xa;&#xa;PK  requestId: INT&#xa;FK  elevatorId: INT&#xa;    requestedFloor: INT&#xa;    direction: ENUM&#xa;    requestType: ENUM (INTERNAL/EXTERNAL)&#xa;    timestamp: DATETIME&#xa;    status: ENUM (PENDING/COMPLETED)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1200" width="300" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS (Failure Cases, Scale, Algorithms)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="680" y="560" width="1200" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: Elevator at floor 5 going UP. Request from floor 3 going DOWN. When served?&#xa;A1: LOOK algorithm: Elevator continues UP, serves all upMinPQ requests. When upMinPQ empty, changes direction to DOWN. Moves pendingJobs (floor 3) to downMaxPQ. Then serves floor 3. Prevents thrashing.&#xa;&#xa;Q2: Elevator going UP to floor 10. Last request was floor 7. Should it continue to 10?&#xa;A2: NO! Look-ahead optimization. After serving floor 7, check if more UP requests exist. If upMinPQ empty, immediately change to DOWN. Don't waste time going to floor 10. This is LOOK vs SCAN difference.&#xa;&#xa;Q3: 3 elevators. User at floor 5 presses UP. Which elevator comes?&#xa;A3: Depends on ExternalButtonDispatcher algorithm:&#xa;   - ODD-EVEN: Floor 5 is odd, send odd-numbered elevator (Elevator 1 or 3)&#xa;   - NEAREST: Calculate |currentFloor - requestedFloor| for each, pick minimum&#xa;   - SHORTEST_WAIT: Calculate ETA based on pending requests, direction, distance. Pick fastest.&#xa;   Let interviewer decide. SHORTEST_WAIT is most optimal but complex.&#xa;&#xa;Q4: Elevator at floor 3 going UP. Requests: 6 (UP), 4 (UP), 2 (DOWN). What order?&#xa;A4: upMinPQ = [4, 6] (current direction). downMaxPQ = []. pendingJobs = [2].&#xa;   Order: 4 → 6 → (change direction) → 2. &#xa;   MinHeap ensures UP requests served in ascending order. MaxHeap ensures DOWN in descending order.&#xa;&#xa;Q5: How to scale for 100-floor building with 20 elevators?&#xa;A5: &#xa;   - Zone-based dispatching: Floors 1-25 → Elevators 1-5, 26-50 → 6-10, etc.&#xa;   - Express elevators: Skip intermediate floors, serve only major floors (1, 25, 50, 75, 100)&#xa;   - Load balancing: Track pending request count per elevator, dispatch to least loaded&#xa;   - Emergency prioritization: Separate elevator for emergencies&#xa;   - Maintenance mode: Mark elevator out-of-service, redistribute requests" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="680" y="620" width="1200" height="500" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS & ALGORITHMS:&#xa;&#xa;1. Strategy Pattern - Different elevator selection algorithms (ODD-EVEN, NEAREST, SHORTEST_WAIT)&#xa;2. LOOK/SCAN Algorithm - Elevator movement optimization&#xa;&#xa;DATA STRUCTURES:&#xa;- PriorityQueue (MinHeap): UP direction requests → serve in ascending order&#xa;- PriorityQueue (MaxHeap): DOWN direction requests → serve in descending order&#xa;- Queue: Pending jobs for opposite direction&#xa;&#xa;DISPATCHER ALGORITHMS:&#xa;- ODD-EVEN: Simple, fair, but not optimal&#xa;- NEAREST: Better, but doesn't consider direction&#xa;- SHORTEST_WAIT: Most optimal, considers direction, pending requests, distance" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="680" y="1160" width="1200" height="220" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

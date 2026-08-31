@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Streams STATELESS Processing Nodes — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Streams STATELESS Processing Nodes — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 17</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:9.09%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">⏱️</div>
+  <h1 class="gradient-text">Kafka Streams STATELESS Processing Nodes — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">filter</span><span class="badge">map</span><span class="badge">Stateless Operators</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: filter, map, mapValues, selectKey, split/branch, merge, KStream topology stage, repartition eligibility</p>
+</div>
+<div class="slide" id="s3" data-title="KStream Is a Pipeline Stage, Not a Data Container">
+<h2>KStream Is a Pipeline Stage, Not a Data Container</h2>
+<p>A KStream object is a <strong>reference point</strong> in your topology — it does not hold records. It marks where you can attach the next processing node.</p>
+<div class="dia">TOPOLOGY TREE — each KStream is a handle you can build from:
+
+  [order-events topic]
+        │
+        ▼ builder.stream("order-events")
+     ┌──────┐   ◄── "orders" KStream  (reference to source node)
+     │source│
+     └──────┘
+        │
+        ▼ orders.filter(amount &gt; 1000)
+  ┌───────────┐  ◄── "highOrders" KStream  (reference to filter node)
+  │  filter   │
+  │amount&gt;1000│
+  └─────┬─────┘
+        │                       │
+        ▼ highOrders.mapValues() ▼ orders.filter(amount &lt;= 1000)
+   ┌─────────┐              ┌───────────┐  ◄── "lowOrders" KStream
+   │  map    │              │  filter   │
+   │ values  │              │amount≤1000│
+   └─────────┘              └───────────┘
+
+Records do NOT live inside a KStream object.
+A KStream is just a handle — grab it to add more nodes at that stage.
+Multiple KStream objects = multiple stages in the SAME pipeline.</div>
+</div>
+<div class="slide" id="s4" data-title="filter — Keep or Drop Records">
+<h2>filter — Keep or Drop Records</h2>
+<p><code>filter</code> keeps a record only if the predicate returns <code>true</code>. Records returning <code>false</code> are <strong>dropped immediately</strong> and never reach the next node.</p>
+<div class="dia">INPUT STREAM:
+  ┌──────────────┬──────────────┬──────────────┬──────────────┐
+  │ key:O1       │ key:O2       │ key:O3       │ key:O4       │
+  │ amount: 200  │ amount: 1500 │ amount: 800  │ amount: 2000 │
+  └──────────────┴──────────────┴──────────────┴──────────────┘
+
+  FILTER NODE: amount &gt; 1000
+  ┌──────────────────────────────────────────────────────────────┐
+  │  O1 (200)  → predicate? false → DROPPED  ✗                   │
+  │  O2 (1500) → predicate? true  → PASSES   ✓                   │
+  │  O3 (800)  → predicate? false → DROPPED  ✗                   │
+  │  O4 (2000) → predicate? true  → PASSES   ✓                   │
+  └──────────────────────────────────────────────────────────────┘
+
+OUTPUT STREAM:
+  ┌──────────────┬──────────────┐
+  │ key:O2       │ key:O4       │
+  │ amount: 1500 │ amount: 2000 │
+  └──────────────┴──────────────┘
+
+Key unchanged ✓   Value unchanged ✓   Repartition eligible? NO</div>
+</div>
+<div class="slide" id="s5" data-title="map — Change Key, Value, or Both">
+<h2>map — Change Key, Value, or Both</h2>
+<p><code>map</code> transforms every record into a new key-value pair. You choose what the new key and new value are — either can change.</p>
+<div class="dia">INPUT RECORD:
+  ┌─────────────────────────────────┐
+  │ key:  "O101"                    │
+  │ value: Order { amount: 500,     │
+  │                userId: "U07" }  │
+  └─────────────────────────────────┘
+           │
+           ▼ .map((key, order) → KeyValue.pair("order-" + key, order))
+  ┌─────────────────────────────────┐
+  │ key:  "order-O101"  ← CHANGED  │
+  │ value: Order { amount: 500,     │
+  │                userId: "U07" }  │  ← unchanged
+  └─────────────────────────────────┘
+
+WHAT map CAN DO:
+  ┌──────────────────┬──────────────────────────────────────────┐
+  │ Goal             │ What you return                          │
+  ├──────────────────┼──────────────────────────────────────────┤
+  │ Change key only  │ KeyValue.pair(newKey,    originalValue)  │
+  │ Change value only│ KeyValue.pair(originalKey, newValue)     │
+  │ Change both      │ KeyValue.pair(newKey,    newValue)       │
+  └──────────────────┴──────────────────────────────────────────┘
+
+Key changed? YES → eligible for repartition later  ▲</div>
+</div>
+<div class="slide" id="s6" data-title="mapValues — Change Value Only">
+<h2>mapValues — Change Value Only</h2>
+<p><code>mapValues</code> transforms only the value. The key stays the same, so <strong>no repartition is ever triggered</strong>.</p>
+<div class="dia">INPUT:
+  key: "O101"  value: Order { amount: 500, status: "pending" }
+           │
+           ▼ .mapValues(order → order.withStatus("CONFIRMED"))
+OUTPUT:
+  key: "O101"  value: Order { amount: 500, status: "CONFIRMED" }
+       ↑ key is IDENTICAL — no repartition risk
+
+SIGNATURE REMINDER:
+  mapValues( V → VR )
+             ↑     ↑
+          old    new
+          value  value    (key is passed through untouched)
+
+Repartition eligible? NO — key never changes in mapValues</div>
+</div>
+<div class="slide" id="s7" data-title="selectKey — Change Key Only">
+<h2>selectKey — Change Key Only</h2>
+<p><code>selectKey</code> assigns a brand-new key while leaving the value unchanged. Because the key changes, the record becomes <strong>eligible for repartition downstream</strong>.</p>
+<div class="dia">INPUT:
+  key: "O101"       value: Order { userId: "U07", amount: 500 }
+           │
+           ▼ .selectKey((key, order) → order.getUserId())
+OUTPUT:
+  key: "U07"   ← NEW KEY (userId extracted from value)
+  value: Order { userId: "U07", amount: 500 }   ← unchanged
+
+Repartition eligible? YES ▲
+(actual repartition happens later when groupByKey or join is called)
+
+COMMON PATTERN — prepare for a join or aggregation by user:
+  orders.selectKey((k, order) → order.getUserId())
+        .groupByKey()   ← repartition fires HERE
+        .count()</div>
+</div>
+<div class="slide" id="s8" data-title="split / branch — Conditional Routing (if-else-if)">
+<h2>split / branch — Conditional Routing (if-else-if)</h2>
+<p><code>split</code> + <code>branch</code> routes each record to <strong>at most one</strong> matching branch — like a chain of if-else-if. Once a branch matches, the remaining branches are skipped.</p>
+<div class="dia">PROBLEM WITH TWO SEPARATE FILTERS — both conditions checked for every record:
+  ┌──────────┐
+  │ record   │─── filter(amount &gt;= 2000) ──► highOrders  (checked)
+  │  comes   │
+  │   in     │─── filter(amount &gt;= 1000) ──► medOrders   (also checked!)
+  └──────────┘
+  Result: a record with amount=2500 passes BOTH → appears in both streams!
+
+SPLIT / BRANCH — only ONE branch fires per record:
+  ┌──────────┐
+  │ record   │
+  │  comes   │
+  │   in     │
+  └────┬─────┘
+       │
+       ▼ orders.split()
+  ┌─────────────────────────────────────────────────────────────┐
+  │  .branch("premium", (k,v) → v.getAmount() &gt;= 2000) ?        │
+  │       YES ──► premiumOrders KStream          stop here  ✓   │
+  │       NO  ──►                                               │
+  │  .branch("high",    (k,v) → v.getAmount() &gt;= 1000) ?        │
+  │       YES ──► highOrders KStream             stop here  ✓   │
+  │       NO  ──►                                               │
+  │  .defaultBranch("low")                                      │
+  │       ──► lowOrders KStream                                  │
+  └─────────────────────────────────────────────────────────────┘
+
+  branches.get("premium") → KStream for premium records
+  branches.get("high")    → KStream for high records
+  branches.get("low")     → KStream for low records</div>
+</div>
+<div class="slide" id="s9" data-title="merge — Combining Streams">
+<h2>merge — Combining Streams</h2>
+<p><code>merge</code> is the reverse of split. It takes two or more streams and joins them into one. The streams must share the <strong>same key type and value type</strong>.</p>
+<div class="dia">  premiumOrders  ───┐
+                    ├──► merge ──► allOrdersAbove1000
+  highOrders     ───┘
+
+  BEFORE merge:
+    premiumOrders: [ O5: 3000,  O8: 2500 ]
+    highOrders:    [ O2: 1500,  O9: 1200 ]
+
+  AFTER merge (arrival order, not sorted):
+    allOrdersAbove1000: [ O5: 3000,  O2: 1500,  O8: 2500,  O9: 1200 ]
+
+  CHAIN as many as needed:
+    premiumOrders
+      .merge(highOrders)
+      .merge(lowOrders)
+
+  RULE: key type AND value type must match across all merged streams.</div>
+</div>
+<div class="slide" id="s10" data-title="Repartition Eligibility Summary">
+<h2>Repartition Eligibility Summary</h2>
+<p>When a key changes the record is only *eligible* — actual repartition happens when <code>groupByKey</code> or a <code>join</code> is reached downstream.</p>
+<div class="dia">  Operation     │ Key changes? │ Value changes? │ Repartition eligible?
+  ──────────────┼──────────────┼────────────────┼──────────────────────
+  filter        │     NO       │      NO        │       NO
+  map           │  YES (opt.)  │   YES (opt.)   │  YES — if key changed
+  mapValues     │     NO       │     YES        │       NO
+  selectKey     │     YES      │      NO        │       YES
+  split/branch  │     NO       │      NO        │       NO
+  merge         │     NO       │      NO        │       NO
+
+  Repartition is TRIGGERED when:
+    key was changed earlier  AND  groupByKey or join is encountered
+
+  Why repartition? All records for the SAME key must end up in the SAME
+  partition so stateful nodes (count, aggregate) see the full picture.</div>
+</div>
+<div class="slide" id="s11" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Operation    │ What it does                          │ Key changes │ Value changes
+─────────────┼───────────────────────────────────────┼─────────────┼──────────────
+filter       │ Drop records where predicate = false  │ No          │ No
+map          │ Replace key and/or value freely       │ Optional    │ Optional
+mapValues    │ Replace value only                    │ No          │ Yes
+selectKey    │ Replace key only                      │ Yes         │ No
+split/branch │ Route to first matching branch only   │ No          │ No
+merge        │ Combine 2+ same-typed streams into one│ No          │ No
+
+KStream = a reference point in the topology tree, NOT a data container
+Multiple KStream objects = multiple stages you can extend from
+Repartition fires when: key changed + groupByKey/join is reached downstream</div>
+</div>
+<div class="slide" id="s12" data-title="Architecture — Stateless Stage Before Aggregation">
+<h2>Architecture — The Stateless Half of the Delivery-Rate Topology</h2>
+<p>"Before any counting happens, the delivery-rate topology runs a purely stateless stage — filter and reshape — and I always try to push as much work as possible into this cheap half."</p>
+<div class="dia">  delivery_status_events
+        │
+        ▼ filter(status in DELIVERED/FAILED/BOUNCED)   ← stateless, cheap
+        ▼ mapValues(evt -> evt.withNormalizedChannel()) ← stateless, cheap
+        │
+        └──► (only NOW do we hit groupBy → stateful territory)</div>
+<p><strong>Scenario-first:</strong> "Every record that makes it past this stateless stage is one that will eventually flow through the repartition topic and into RocksDB — filtering early means fewer records pay that more expensive downstream cost. This is a cheap, mechanical optimization that's easy to forget under deadline pressure."</p>
+</div>
+<div class="slide" id="s13" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why does mapValues never trigger a repartition, but selectKey always
+   risks one downstream?
+A: mapValues explicitly never touches the key — Streams knows partitioning
+   is unaffected. selectKey changes the key, so ANY later groupByKey or join
+   must repartition to guarantee the new key's co-location.
+
+Q: What's the actual difference between filter and split/branch when you
+   only care about one condition?
+A: They're functionally similar for a single condition, but split/branch
+   is for ROUTING to multiple different downstream paths based on several
+   conditions — using it for one simple filter is unnecessary complexity.
+
+Q: Why is "KStream is a reference point, not a data container" an
+   important mental model?
+A: It clarifies that calling .filter() doesn't mutate an existing stream —
+   it returns a NEW KStream reference representing a new stage in the
+   topology, letting you branch multiple independent processing paths from
+   one earlier stage.</div>
+</div>
+<div class="slide" id="s14" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision                Choice             Alternative          Why ours                            When to flip
+──────────────────────────  ─────────────────  ───────────────────  ──────────────────────────────────  ─────────────────────
+Filter placement             Before any rekey    After rekey/groupBy   Shrinks repartition topic volume     Never — early filter
+                                                                          to only what's necessary              is essentially always right
+Stateless reshaping           mapValues (no       map (may change       Guarantees no accidental              Genuinely need to
+                              key change)          key)                  repartition trigger                    change the key too</div>
+</div>
+<div class="slide" id="s15" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "A teammate used map() instead of mapValues() for a
+  transformation that only touches the value, 'because map is more
+  general.' Weeks later, an unrelated repartition topic mysteriously
+  shows up in the topology. Why?"
+  Answer: "map() CAN change the key even if this particular usage didn't
+  intend to — Streams' topology-optimization can't always prove the key
+  is unchanged just by looking at map()'s generic signature, unlike
+  mapValues() which structurally guarantees no key change. Using the most
+  specific operator available isn't just style — it gives Streams (and
+  future readers) a stronger guarantee about repartitioning behavior."
+
+Trap 2 — "You added a filter AFTER a groupBy instead of before, 'because
+  the logic read more naturally that way in the code.' What's the actual
+  throughput cost of that ordering choice?"
+  Answer: "Every record — including ones that will be filtered out anyway
+  — now pays the repartition cost (written to and read back from an
+  internal topic) before being discarded. Filtering first means those
+  records never enter the more expensive stateful/repartition path at
+  all. Code readability is a legitimate concern, but for high-volume
+  topologies this ordering has a real, measurable throughput difference."</div>
+</div>
+<div class="slide" id="s16" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why filter/mapValues as early as possible in every topology: shrinks
+  what actually needs to flow through the more expensive repartition/
+  stateful stages downstream.
+- Why prefer mapValues over map when only the value changes: gives
+  Streams (and readers) a structural guarantee against accidental repartitioning.
+- Why treat KStream as an immutable reference point, not a mutable
+  container: enables branching multiple independent paths cleanly from one stage.
+- Why split/branch only for genuine multi-way routing: keeps simple
+  single-condition filters simple, reserving branching for when it's actually needed.</div>
+</div>
+<div class="slide" id="s17" data-title="Top 2 Technologies — Stateless Reshaping Operator">
+<h2>Top 2 Technologies — mapValues vs map for Value-Only Transforms</h2>
+<div class="dia">mapValues (value-only transform)  vs  map (general key+value transform)
+
+Why pick mapValues (our choice when only the value changes): structurally
+  guarantees no key change — Streams never needs to consider repartitioning
+  triggered by this step.
+Why pick map: needed when you genuinely must change both key and value,
+  or want a single operator handling both in one step.
+
+Example 1 (mapValues): Notification System's delivery-rate topology
+  normalizing the channel field within the event value — key stays
+  notification_id throughout.
+Example 2 (map): A topology that both re-keys by a derived field AND
+  reshapes the value in one step, where using map's combined signature is
+  clearer than two chained operators.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 17;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Streams STATELESS Processing Nodes — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

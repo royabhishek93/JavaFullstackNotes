@@ -1,0 +1,264 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Data Model" id="data-model">
+    <mxGraphModel dx="2000" dy="1300" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2000" pageHeight="1300" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="PAYMENT SYSTEM — Data Model (MySQL Schema + Redis + Kafka + S3)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1960" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="ACID transactions + Double-entry ledger + Optimistic locking + Append-only audit trail + Idempotency caching" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="1700" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- MYSQL SCHEMA SECTION -->
+        <mxCell id="mysql-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#8e24aa;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="1200" height="680" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mysql-section-label" value="MYSQL DATABASE SCHEMA (ACID Transactions)" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="110" width="380" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Table: payments -->
+        <mxCell id="table-payments" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="160" width="360" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payments-header" value="TABLE: payments" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="60" y="160" width="360" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payments-schema" value="payment_id           VARCHAR(36) PK UUID&#xa;idempotency_key      VARCHAR(64) UNIQUE NOT NULL&#xa;amount               BIGINT NOT NULL  (paise/cents)&#xa;currency             CHAR(3) NOT NULL  ('INR', 'USD')&#xa;from_account_id      BIGINT NOT NULL  FK → accounts&#xa;to_account_id        BIGINT NOT NULL  FK → accounts&#xa;status               ENUM NOT NULL&#xa;                     ('INITIATED', 'PROCESSING',&#xa;                      'SUCCESS', 'FAILED', 'TIMEOUT')&#xa;bank_reference_id    VARCHAR(100) NULL&#xa;description          VARCHAR(500)&#xa;created_at           TIMESTAMP DEFAULT NOW()&#xa;updated_at           TIMESTAMP ON UPDATE NOW()&#xa;&#xa;INDEX idx_idempotency (idempotency_key)&#xa;INDEX idx_from_account (from_account_id)&#xa;INDEX idx_status_created (status, created_at)&#xa;&#xa;SHARD KEY: from_account_id&#xa;  (all transactions for one user on same shard)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="70" y="190" width="340" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Table: accounts -->
+        <mxCell id="table-accounts" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="160" width="360" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="accounts-header" value="TABLE: accounts" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="440" y="160" width="360" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="accounts-schema" value="account_id           BIGINT AUTO_INCREMENT PK&#xa;user_id              BIGINT NOT NULL  FK → users&#xa;balance              BIGINT NOT NULL  (paise/cents)&#xa;currency             CHAR(3) NOT NULL&#xa;version              INT NOT NULL DEFAULT 0&#xa;                     (optimistic locking)&#xa;status               ENUM ('ACTIVE', 'FROZEN', 'CLOSED')&#xa;created_at           TIMESTAMP&#xa;updated_at           TIMESTAMP&#xa;&#xa;INDEX idx_user (user_id)&#xa;&#xa;❗ OPTIMISTIC LOCK USAGE:&#xa;UPDATE accounts&#xa;SET balance = balance - 10000,&#xa;    version = version + 1&#xa;WHERE account_id = 123&#xa;  AND version = 10&#xa;  AND balance &gt;= 10000;&#xa;→ If 0 rows updated, another TX modified it" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="450" y="190" width="340" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Table: ledger_entries -->
+        <mxCell id="table-ledger" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="820" y="160" width="400" height="260" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ledger-header" value="TABLE: ledger_entries (APPEND-ONLY, NEVER UPDATE/DELETE)" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="820" y="160" width="400" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ledger-schema" value="entry_id             BIGINT AUTO_INCREMENT PK&#xa;payment_id           VARCHAR(36) NOT NULL  FK → payments&#xa;account_id           BIGINT NOT NULL  FK → accounts&#xa;amount               BIGINT NOT NULL  (signed: negative=DEBIT)&#xa;entry_type           ENUM ('DEBIT', 'CREDIT')&#xa;created_at           TIMESTAMP DEFAULT NOW()&#xa;&#xa;INDEX idx_payment (payment_id)&#xa;INDEX idx_account_created (account_id, created_at)&#xa;&#xa;❗ DOUBLE-ENTRY BOOKKEEPING:&#xa;Every payment creates TWO ledger rows:&#xa;  Row 1: account_id=alice, amount=-10000, type=DEBIT&#xa;  Row 2: account_id=bob,   amount=+10000, type=CREDIT&#xa;&#xa;SUM(amount) across ALL rows MUST = 0.&#xa;If not, money was created/destroyed by bug.&#xa;&#xa;Current balance = SUM(ledger_entries.amount)&#xa;  WHERE account_id = X&#xa;&#xa;accounts.balance is a materialized view (fast read).&#xa;If divergence detected: trust ledger, rebuild balance." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="830" y="190" width="380" height="220" as="geometry" />
+        </mxCell>
+        
+        <!-- Table: outbox_events -->
+        <mxCell id="table-outbox" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="460" width="400" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="outbox-header" value="TABLE: outbox_events (Outbox Pattern)" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="60" y="460" width="400" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="outbox-schema" value="event_id             BIGINT AUTO_INCREMENT PK&#xa;payment_id           VARCHAR(36) NOT NULL  FK → payments&#xa;event_type           VARCHAR(50) NOT NULL&#xa;                     ('payment.initiated',&#xa;                      'payment.success',&#xa;                      'payment.failed')&#xa;payload              JSON NOT NULL&#xa;published            BOOLEAN DEFAULT FALSE&#xa;created_at           TIMESTAMP DEFAULT NOW()&#xa;published_at         TIMESTAMP NULL&#xa;&#xa;INDEX idx_published (published, created_at)&#xa;&#xa;❗ OUTBOX RELAY (polls every 100ms):&#xa;SELECT * FROM outbox_events&#xa;WHERE published = false&#xa;ORDER BY created_at LIMIT 100;&#xa;&#xa;FOR EACH event:&#xa;  PUBLISH to Kafka → if success:&#xa;  UPDATE outbox_events SET published=true,&#xa;    published_at=NOW() WHERE event_id=X;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="70" y="490" width="380" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Table: users -->
+        <mxCell id="table-users" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="480" y="400" width="320" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="users-header" value="TABLE: users" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="480" y="400" width="320" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="users-schema" value="user_id              BIGINT AUTO_INCREMENT PK&#xa;email                VARCHAR(255) UNIQUE NOT NULL&#xa;phone                VARCHAR(20) UNIQUE&#xa;kyc_status           ENUM ('PENDING', 'VERIFIED')&#xa;created_at           TIMESTAMP&#xa;&#xa;INDEX idx_email (email)&#xa;INDEX idx_phone (phone)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="490" y="430" width="300" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Foreign Key Relationships -->
+        <mxCell id="fk1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;dashed=1;endArrow=ERmandOne;endFill=0;startArrow=ERzeroToMany;startFill=0" edge="1" parent="1" source="table-payments" target="table-accounts">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="420" y="250" as="sourcePoint" />
+            <mxPoint x="440" y="250" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fk1-label" value="from_account_id" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="420" y="230" width="90" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="fk2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;dashed=1;endArrow=ERmandOne;endFill=0;startArrow=ERzeroToMany;startFill=0" edge="1" parent="1" source="table-ledger" target="table-payments">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="820" y="300" as="sourcePoint" />
+            <mxPoint x="420" y="300" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="640" y="280" />
+              <mxPoint x="640" y="300" />
+              <mxPoint x="420" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fk2-label" value="payment_id" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="600" y="285" width="70" height="15" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="fk3" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;dashed=1;endArrow=ERmandOne;endFill=0;startArrow=ERzeroToMany;startFill=0" edge="1" parent="1" source="table-accounts" target="table-users">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="620" y="380" as="sourcePoint" />
+            <mxPoint x="620" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="fk3-label" value="user_id" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="630" y="380" width="50" height="15" as="geometry" />
+        </mxCell>
+        
+        <!-- REDIS SECTION -->
+        <mxCell id="redis-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="800" width="580" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-section-label" value="REDIS (In-Memory Cache)" style="text;html=1;strokeColor=none;fillColor=#c62828;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="810" width="240" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Redis: Idempotency Keys -->
+        <mxCell id="redis-idempotency" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="860" width="540" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-idem-header" value="IDEMPOTENCY KEY CACHE (TTL 24 hours)" style="text;html=1;strokeColor=none;fillColor=#c62828;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="60" y="860" width="540" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-idem-schema" value="KEY: idempotency:{idempotencyKey}&#xa;VALUE: JSON {paymentId, status, createdAt}&#xa;TTL: 86400 seconds (24 hours)&#xa;&#xa;EXAMPLE:&#xa;  SET idempotency:uuid_abc123&#xa;      '{&quot;paymentId&quot;:&quot;pay_xyz789&quot;,&#xa;        &quot;status&quot;:&quot;INITIATED&quot;,&#xa;        &quot;createdAt&quot;:&quot;2025-01-21T10:30:00Z&quot;}'&#xa;      EX 86400&#xa;&#xa;WHY TTL 24hr?&#xa;  Covers all reasonable client retry windows.&#xa;  After 24hr, idempotency key expires → new payment allowed.&#xa;  (But client should generate new UUID for new order anyway.)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="70" y="885" width="520" height="85" as="geometry" />
+        </mxCell>
+        
+        <!-- Redis: Rate Limiting -->
+        <mxCell id="redis-rate-limit" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffcdd2;strokeColor=#c62828;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1000" width="540" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-rate-header" value="RATE LIMITING (Sliding Window)" style="text;html=1;strokeColor=none;fillColor=#c62828;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="60" y="1000" width="540" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-rate-schema" value="KEY: rate_limit:{userId}:payment&#xa;VALUE: Sorted Set (timestamp as score)&#xa;COMMAND: ZADD rate_limit:user_123:payment {current_timestamp} {uuid}&#xa;         ZREMRANGEBYSCORE rate_limit:user_123:payment 0 {now - 60sec}&#xa;         ZCARD rate_limit:user_123:payment → if &gt; 10, reject (max 10/min)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="70" y="1025" width="520" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- KAFKA SECTION -->
+        <mxCell id="kafka-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="640" y="800" width="600" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-section-label" value="KAFKA (Event Streaming)" style="text;html=1;strokeColor=none;fillColor=#01579b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="650" y="810" width="220" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Topic: payment.commands -->
+        <mxCell id="kafka-topic1" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#b3e5fc;strokeColor=#01579b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="660" y="860" width="560" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topic1-header" value="TOPIC: payment.commands (Partition by from_account_id)" style="text;html=1;strokeColor=none;fillColor=#01579b;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="660" y="860" width="560" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topic1-schema" value="MESSAGE SCHEMA (JSON):&#xa;{&#xa;  &quot;paymentId&quot;: &quot;pay_xyz789&quot;,&#xa;  &quot;eventType&quot;: &quot;payment.initiated&quot;,&#xa;  &quot;fromAccountId&quot;: 123,&#xa;  &quot;toAccountId&quot;: 456,&#xa;  &quot;amount&quot;: 10000,&#xa;  &quot;currency&quot;: &quot;INR&quot;,&#xa;  &quot;timestamp&quot;: &quot;2025-01-21T10:30:00Z&quot;&#xa;}&#xa;&#xa;PARTITIONS: 10 (partitioned by from_account_id % 10)&#xa;REPLICATION: 3&#xa;RETENTION: 7 days&#xa;&#xa;PRODUCERS: Outbox Relay Service&#xa;CONSUMERS: Payment Processor Service (consumer group: payment-processor)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="670" y="885" width="540" height="65" as="geometry" />
+        </mxCell>
+        
+        <!-- Topic: payment.success -->
+        <mxCell id="kafka-topic2" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#b3e5fc;strokeColor=#01579b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="660" y="980" width="560" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topic2-header" value="TOPIC: payment.success / payment.failed" style="text;html=1;strokeColor=none;fillColor=#01579b;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="660" y="980" width="560" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topic2-schema" value="MESSAGE:&#xa;{ &quot;paymentId&quot;: &quot;pay_xyz789&quot;, &quot;status&quot;: &quot;SUCCESS&quot;,&#xa;  &quot;bankRefId&quot;: &quot;HDFC_XYZ&quot;, &quot;completedAt&quot;: &quot;...&quot; }&#xa;&#xa;CONSUMERS:&#xa;  • Notification Service (email/SMS)&#xa;  • Webhook Service (notify merchant)&#xa;  • Analytics Service (dashboards)&#xa;  • Fraud Detection Service (post-txn review)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="670" y="1005" width="540" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- S3 SECTION -->
+        <mxCell id="s3-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="100" width="720" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="s3-section-label" value="S3 (Bank Statement Storage — Reconciliation)" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1270" y="110" width="380" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="s3-schema" value="BUCKET: bank-statements&#xa;PATH STRUCTURE: /year/month/day/bank_name_YYYYMMDD.csv&#xa;&#xa;EXAMPLE:&#xa;  s3://bank-statements/2025/01/21/hdfc_20250121.csv&#xa;  s3://bank-statements/2025/01/21/sbi_20250121.csv&#xa;&#xa;CSV FORMAT (bank statement):&#xa;  txn_id, payment_ref_id, amount, currency, from_account,&#xa;  to_account, timestamp, status&#xa;&#xa;RECONCILIATION PROCESS (nightly job at 02:00 AM):&#xa;  1. Download yesterday's bank CSV from S3&#xa;  2. Parse each row → lookup payment_id in our DB&#xa;  3. Compare:&#xa;     • Bank amount vs our ledger amount&#xa;     • Bank status vs our payment status&#xa;     • Bank timestamp vs our created_at&#xa;  4. Mismatch found:&#xa;     • Insert into reconciliation_discrepancies table&#xa;     • Alert ops via Slack/PagerDuty&#xa;     • Freeze account if discrepancy &gt; Rs.10,000&#xa;  5. If all match → mark reconciliation_date in payments table&#xa;&#xa;RETENTION: 7 years (regulatory requirement)&#xa;ENCRYPTION: Server-side encryption (SSE-S3)&#xa;LIFECYCLE: Archive to Glacier after 2 years" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1280" y="150" width="690" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY BOXES -->
+        <mxCell id="why-bigint" value="❓ WHY BIGINT FOR MONEY?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1260" y="320" width="360" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-bigint-text" value="Floating point precision errors:&#xa;&#xa;  0.1 + 0.2 = 0.30000000000000004 (NOT 0.3!)&#xa;&#xa;In production: Rs.1000.00 + Rs.0.01&#xa;  → stored as 1000.0099999999 → CATASTROPHIC&#xa;&#xa;SOLUTION: Store as integer paise/cents.&#xa;  Rs.100.50 = 10050 paise (BIGINT)&#xa;  $1.99 = 199 cents (BIGINT)&#xa;&#xa;Division: always ROUND at display layer.&#xa;  10050 paise ÷ 100 = Rs.100.50&#xa;&#xa;MySQL: amount BIGINT NOT NULL&#xa;API response: convert paise → rupees with 2 decimals" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1270" y="350" width="340" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-append-only" value="❓ WHY APPEND-ONLY LEDGER?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1640" y="320" width="340" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-append-text" value="Regulatory requirement (SOX, PCI-DSS):&#xa;Every financial event must have immutable audit trail.&#xa;&#xa;If ledger allows UPDATE/DELETE:&#xa;  • Fraud: change past transaction to hide theft&#xa;  • No proof of what originally happened&#xa;  • Auditors reject the system&#xa;&#xa;Append-only means:&#xa;  • INSERT only, NEVER UPDATE/DELETE&#xa;  • Correction = new entry (reversal)&#xa;  • Every row timestamped, never modified&#xa;  • Investigation: trace full history&#xa;&#xa;Example correction:&#xa;  Original: DEBIT alice -Rs.100 (wrong amount)&#xa;  Fix: INSERT CREDIT alice +Rs.100 (reversal)&#xa;        INSERT DEBIT alice -Rs.50 (correct amount)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1650" y="350" width="320" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-sharding" value="❓ WHY SHARD BY account_id?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1260" y="480" width="360" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-sharding-text" value="Transaction locality:&#xa;  All payments for one account on same MySQL shard.&#xa;  → Local transactions (fast)&#xa;  → No distributed 2PC overhead&#xa;&#xa;Cross-shard scenario:&#xa;  Alice (shard 1) pays Bob (shard 2)&#xa;  OPTION 1: 2PC across shards (slow, deadlock risk)&#xa;  OPTION 2: Saga pattern:&#xa;    1. Debit Alice on shard 1 → COMMIT&#xa;    2. Credit Bob on shard 2 → COMMIT&#xa;    3. If step 2 fails → compensating txn&#xa;       (reverse debit on shard 1)&#xa;&#xa;Most payments: same-shard (P2P within India, same PSP).&#xa;Cross-shard: &lt;5%, tolerate saga complexity.&#xa;&#xa;SHARD COUNT: 16 shards (handle 160K TPS total)&#xa;HASH: account_id % 16 → shard ID" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1270" y="510" width="340" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-reconciliation" value="❓ WHY NIGHTLY RECONCILIATION?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=12;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1640" y="480" width="340" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-recon-text" value="Final safety net: catches what all automation missed.&#xa;&#xa;Scenarios reconciliation detects:&#xa;  1. Bank charged customer but our DB write failed&#xa;     → Customer charged, no record in our system&#xa;  2. Our system shows SUCCESS but bank rejected&#xa;     → We credited merchant, bank didn't debit customer&#xa;  3. Network split: partial update&#xa;     → ledger DEBIT exists, CREDIT missing&#xa;  4. Manual ops error: direct DB UPDATE (bypassed code)&#xa;  5. Bug: race condition missed by all other checks&#xa;&#xa;Reconciliation = truth check:&#xa;  Bank statement (source of truth for money movement)&#xa;  vs our ledger (what we think happened)&#xa;&#xa;Mismatch → freeze account, alert ops, investigate.&#xa;&#xa;WHY nightly? Balance between:&#xa;  • Real-time (too expensive, bank APIs rate-limited)&#xa;  • Weekly (too late, losses compound)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1650" y="510" width="320" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- KEY NUMBERS BOX -->
+        <mxCell id="numbers-box" value="📊 KEY NUMBERS TO MEMORIZE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1260" y="660" width="720" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="numbers-text" value="• Idempotency key TTL: **24 hours** (covers all retry windows)&#xa;• Optimistic lock collision rate: **&lt;0.1%** (concurrent debits from same account)&#xa;• Bank API latency: **100ms–30sec** (never hold DB lock during call)&#xa;• Outbox relay poll interval: **100ms** (near-real-time event delivery)&#xa;• Kafka retention: **7 days** (replay capability for debugging)&#xa;• MySQL shard count: **16 shards** (handle 160K TPS total, ~10K TPS per shard)&#xa;• Reconciliation frequency: **nightly at 02:00 AM** (balance between real-time cost and detection lag)&#xa;• Ledger sum invariant: **SUM(amount) = 0** (double-entry bookkeeping guarantee)&#xa;• Payment status transitions: **INITIATED → PROCESSING → SUCCESS/FAILED/TIMEOUT** (state machine enforces legal paths)&#xa;• Cross-shard payments: **&lt;5%** of total (most P2P within same shard, tolerate saga complexity for rare cross-shard)&#xa;• Rate limit: **10 payments/min per user** (Redis sliding window ZSET)&#xa;• S3 retention: **7 years** (regulatory compliance for financial records)&#xa;• accounts.balance divergence check: **SUM(ledger_entries.amount)** (trust ledger if mismatch, rebuild balance)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1270" y="690" width="700" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- TRANSACTION FLOW EXAMPLE -->
+        <mxCell id="example-box" value="💡 EXAMPLE TRANSACTION: Alice pays Bob Rs.100" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1260" y="860" width="720" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="example-text" value="1. Client: POST /payments {idempotencyKey: uuid_abc, amount: 10000, from: alice, to: bob}&#xa;2. Redis: GET idempotency:uuid_abc → nil (MISS, first time)&#xa;3. MySQL BEGIN TX:&#xa;     INSERT payments (payment_id=pay_xyz, amount=10000, status=INITIATED)&#xa;     INSERT outbox_events (payment_id=pay_xyz, published=false)&#xa;   MySQL COMMIT ✓&#xa;4. Redis: SET idempotency:uuid_abc = '{paymentId: pay_xyz, status: INITIATED}' EX 86400&#xa;5. Client: 202 Accepted {paymentId: pay_xyz, status: INITIATED}  [100ms total]&#xa;6. Outbox Relay (polls every 100ms): SELECT * FROM outbox WHERE published=false → found event&#xa;7. Kafka: PUBLISH payment.commands {paymentId: pay_xyz, ...}&#xa;8. Outbox Relay: UPDATE outbox SET published=true&#xa;9. Payment Processor: CONSUME Kafka event → UPDATE payments SET status=PROCESSING&#xa;10. Payment Processor: SELECT balance, version FROM accounts WHERE id=alice → balance=50000, version=10&#xa;11. Payment Processor: POST bank API /charge → [3 sec] → 200 OK {status: SUCCESS, ref: HDFC_XYZ}&#xa;12. MySQL BEGIN TX:&#xa;      UPDATE payments SET status=SUCCESS, bank_ref=HDFC_XYZ&#xa;      UPDATE accounts SET balance=40000, version=11 WHERE id=alice AND version=10 (optimistic lock)&#xa;      UPDATE accounts SET balance=balance+10000 WHERE id=bob&#xa;      INSERT ledger_entries (account_id=alice, amount=-10000, type=DEBIT)&#xa;      INSERT ledger_entries (account_id=bob, amount=+10000, type=CREDIT)&#xa;    MySQL COMMIT ✓&#xa;13. Kafka: PUBLISH payment.success {paymentId: pay_xyz}&#xa;14. Notification Service: CONSUME → Send email &quot;Payment Rs.100 SUCCESS&quot;&#xa;15. Reconciliation (nightly): Download bank CSV → compare HDFC_XYZ ref vs our ledger → MATCH ✓" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1270" y="890" width="700" height="180" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

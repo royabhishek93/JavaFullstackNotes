@@ -1,0 +1,557 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkedIn System Design</title>
+<link rel="stylesheet" href="../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">LinkedIn System Design — Professional Network</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <div class="slide active" id="s1" data-title="LinkedIn System Design">
+      <h1>💼 LinkedIn System Design</h1>
+      <h2>Professional Social Network at 950M Scale</h2>
+      <div class="badges">
+        <span class="badge">Graph DB</span>
+        <span class="badge">Feed Ranking</span>
+        <span class="badge">2nd Degree</span>
+        <span class="badge">InMail</span>
+        <span class="badge">Search</span>
+        <span class="badge">Kafka</span>
+      </div>
+      <ul>
+        <li>Two hardest problems: <strong>bidirectional connection graph</strong> + <strong>hybrid feed fan-out</strong></li>
+        <li>PYMK (People You May Know): 2nd-degree traversal — O(N×M), always pre-computed</li>
+        <li>Every connection = <strong>2 Cassandra rows</strong> (A→B and B→A)</li>
+        <li>Hybrid fan-out: push for normal users (&lt;10K connections), pull for influencers (&gt;10K)</li>
+        <li>570 billion connection rows — Cassandra, not MySQL</li>
+        <li>Feed served from Redis sorted sets — sub-10ms reads</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s2" data-title="Opening Script">
+      <h2>Opening Script</h2>
+      <p class="script">"LinkedIn is a professional social network with distinct subsystems: profile management, connections (social graph), content feed, job search, and messaging. The two hardest problems are:"</p>
+      <ul>
+        <li><strong>1. Bidirectional connection graph at 950M scale</strong> — specifically PYMK, requiring 2nd-degree graph traversal pre-computed as a background job.</li>
+        <li><strong>2. Hybrid feed fan-out</strong> — similar to Instagram but with professional content quality ranking requirements.</li>
+      </ul>
+      <p class="script">"Let me clarify requirements first."</p>
+      <p><strong>Clarifying Questions to Ask:</strong></p>
+      <ul>
+        <li>Cover messaging or focus on feed + connections?</li>
+        <li>Deep into job recommendations vs. just search?</li>
+        <li>LinkedIn Premium features (who viewed profile)?</li>
+        <li>Real-time notifications or eventual-consistency OK?</li>
+        <li>India-focused or global (950M users)?</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <h2>Functional Requirements</h2>
+      <table>
+        <tr><th>Feature</th><th>Description</th></tr>
+        <tr><td>Profile</td><td>Create/edit professional profile: experience, skills, education, headline</td></tr>
+        <tr><td>Connections</td><td>Bidirectional — requires mutual acceptance; 1st/2nd/3rd degree visibility</td></tr>
+        <tr><td>Feed</td><td>Personalized posts from connections; ranked by engagement, not purely chronological</td></tr>
+        <tr><td>Messaging</td><td>1:1 messaging between connections; InMail (Premium) for non-connections</td></tr>
+        <tr><td>Job Board</td><td>Post/search/apply for jobs; filter by title, skills, location, company</td></tr>
+        <tr><td>People You May Know</td><td>Friend suggestions via 2nd-degree mutual connections + same company/school</td></tr>
+        <tr><td>Endorsements</td><td>Endorse connections for specific skills; endorsement count shown on profile</td></tr>
+        <tr><td>Notifications</td><td>Connection request, endorsement, post reaction, mention, profile view</td></tr>
+        <tr><td>Job Recommendations</td><td>Personalized job suggestions via skills, career history, location</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s4" data-title="Non-Functional Requirements">
+      <h2>Non-Functional Requirements</h2>
+      <table>
+        <tr><th>Requirement</th><th>Target / Justification</th></tr>
+        <tr><td>Scale</td><td>950M total users, 300M MAU</td></tr>
+        <tr><td>Connection rows</td><td>950M × 300 avg × 2 directions = <strong>570 billion rows</strong> (Cassandra)</td></tr>
+        <tr><td>Feed load latency</td><td>&lt;200ms — pre-computed Redis sorted set (ZREVRANGE)</td></tr>
+        <tr><td>Messaging latency</td><td>&lt;1 sec — real-time WebSocket delivery</td></tr>
+        <tr><td>Availability</td><td>99.99% uptime — multi-AZ, no single points of failure</td></tr>
+        <tr><td>PYMK freshness</td><td>1 hour stale acceptable — background job, cached in Redis</td></tr>
+        <tr><td>Job search freshness</td><td>30 sec eventual consistency (Elasticsearch index lag)</td></tr>
+        <tr><td>Posts/day</td><td>50M posts/day (~580/sec); 300 fan-outs each = 174K Redis writes/sec</td></tr>
+        <tr><td>Profile views/day</td><td>500M — Cassandra with 30-day TTL per row</td></tr>
+        <tr><td>2nd-degree network size</td><td>300 connections × 300 friends = ~90K candidates per PYMK compute</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <h2>High-Level Architecture</h2>
+      <pre>
+  Browser / Mobile App
+         │
+         ▼
+  ┌─────────────────────┐
+  │    API Gateway       │  JWT Auth · Rate Limit · Route
+  └─┬──┬──┬──┬──┬───────┘
+    │  │  │  │  └─── Msg Service  (WebSocket / InMail)
+    │  │  │  └────── Job Service  (search / recommend)
+    │  │  └───────── Feed Service (create / read / rank)
+    │  └──────────── Graph Service (connections + PYMK)
+    └─────────────── Profile Service
+         │
+  ┌──────▼──────────────────────────────────────────────┐
+  │  Kafka                                               │
+  │  post-created        → feed-fan-out-worker          │
+  │  connection-accepted → pymk-recompute-worker        │
+  │  endorsed            → notification-worker          │
+  │  job-posted          → elasticsearch-indexer        │
+  └──────────────────────────────────────────────────────┘
+  MySQL(users/companies/jobs) · Cassandra(conn/posts/msg)
+  Redis(feed/pymk/session)   · Elasticsearch(jobs/people)
+      </pre>
+    </div>
+
+    <div class="slide" id="s6" data-title="Connection Graph Design">
+      <h2>Connection Graph Design</h2>
+      <p><strong>Why NOT relational adjacency list (MySQL)?</strong></p>
+      <ul>
+        <li>570B rows in a MySQL table → catastrophic index maintenance, table scans</li>
+        <li><code>WHERE user1_id=X OR user2_id=X</code> never uses an index efficiently</li>
+      </ul>
+      <p><strong>Cassandra Two-Table Approach (bidirectional):</strong></p>
+      <pre>
+  connections_by_user          connections_by_friend
+  PK: (user_id, conn_uid)      PK: (conn_uid, user_id)
+  ─────────────────────────    ─────────────────────────
+  Alice → Bob  ✓               Bob  ← Alice ✓
+  Alice → Carol ✓              Carol ← Alice ✓
+
+  "Get Alice's connections"    "Who added Alice?" (PYMK)
+  → single partition scan      → single partition scan
+  → O(1), no JOINs             → O(1), no JOINs
+      </pre>
+      <p><strong>Two rows per connection:</strong> Alice accepts Bob → INSERT both rows via Kafka consumer. Remove connection → Kafka event → delete both rows asynchronously (brief inconsistency window is acceptable).</p>
+      <p><strong>Graph DB (Neo4j) alternative:</strong> elegant Cypher for 3rd/4th degree. Adds infra complexity — Cassandra two-table preferred for 1st/2nd degree PYMK.</p>
+    </div>
+
+    <div class="slide" id="s7" data-title="PYMK Algorithm">
+      <h2>People You May Know (PYMK) Algorithm</h2>
+      <pre>
+  Input: User Alice (300 connections)  — pre-computed hourly
+
+  Step 1 — Get 1st-degree connections
+    Cassandra: SELECT FROM connections_by_user WHERE user_id=alice
+    → [bob, carol, dave … 300 IDs]
+
+  Step 2 — Get 2nd-degree (friends of friends)
+    Batch-read each friend's connections (async parallel Cassandra IN)
+    → ~90,000 candidate user_ids (300 × 300)
+
+  Step 3 — Count mutual connections per candidate
+    HashMap&lt;userId, mutualCount&gt;
+    evan: 15 mutuals | frank: 3 | grace: 1
+
+  Step 4 — Filter
+    Remove: Alice herself, existing 1st-degree connections,
+            blocked users, inactive accounts (is_active=false)
+
+  Step 5 — Rank
+    Sort by: mutual_count DESC
+    Tiebreak: same_company + same_school + same_industry
+    Take top 25 candidates
+
+  Step 6 — Cache result
+    Redis: SETEX pymk:{aliceId} 3600 [{userId, mutualCount} …]
+
+  Recompute trigger: new connection added/removed + hourly sweep
+      </pre>
+    </div>
+
+    <div class="slide" id="s8" data-title="Feed Generation — Hybrid Fan-out">
+      <h2>Feed Generation — Hybrid Fan-out</h2>
+      <pre>
+  Normal user (Alice, 300 connections):
+  ──────────────────────────────────────────────────────
+  POST /posts → MySQL INSERT → Kafka: post-created
+                                      │
+                               Feed Fan-out Worker
+                               For each of 300 connections:
+                                 Redis ZADD feed:{conn_id} {ts} {postId}
+                                 ZREMRANGEBYRANK (keep top 1000 only)
+
+  Influencer (Bill Gates, 5M connections):
+  ──────────────────────────────────────────────────────
+  POST /posts → MySQL INSERT → Kafka: post-created
+                                      │
+                               Fan-out Worker
+                               connection_count &gt; 10K → SKIP write fan-out
+                               Mark post: influencer_post = true
+
+  Feed Read (Bob opens feed):
+  ──────────────────────────────────────────────────────
+  1. Redis ZREVRANGE feed:{bob} 0 99   (from normal connections)
+  2. For each influencer Bob follows:
+       Cassandra SELECT recent posts WHERE user_id=influencer LIMIT 5
+  3. Merge + deduplicate + re-rank by engagement score
+  4. Return top 20 posts
+      </pre>
+    </div>
+
+    <div class="slide" id="s9" data-title="Feed Ranking Model">
+      <h2>Feed Ranking Model</h2>
+      <p><strong>LinkedIn ≠ Instagram</strong> — professional quality over pure engagement maximization.</p>
+      <table>
+        <tr><th>Signal</th><th>Weight / Logic</th></tr>
+        <tr><td>Recency</td><td>Exponential decay over 72 hours — recent posts ranked higher</td></tr>
+        <tr><td>Connection strength</td><td>Frequent viewers, message history, same company → 2× boost</td></tr>
+        <tr><td>Engagement velocity</td><td>Likes + comments in first 2 hours signal quality content</td></tr>
+        <tr><td>Content type</td><td>Original thought leadership &gt; reshares &gt; pure job-post spam</td></tr>
+        <tr><td>Dwell time</td><td>Time spent reading (not scroll-past) — measured client-side</td></tr>
+        <tr><td>Comment-to-like ratio</td><td>High ratio → substantive discussion → rank up</td></tr>
+        <tr><td>Spam demotion</td><td>&gt;3 hashtags, spam-flagged account → −50% score</td></tr>
+      </table>
+      <p><strong>Implementation:</strong> Trained ML ranking model. Features extracted at fan-out time, score stored as Redis sorted set score. Merged feed (normal + influencer pull) re-ranked at read time before serving top 20.</p>
+    </div>
+
+    <div class="slide" id="s10" data-title="InMail & Messaging">
+      <h2>InMail &amp; Messaging</h2>
+      <table>
+        <tr><th></th><th>Regular Message</th><th>InMail</th></tr>
+        <tr><td>Requires connection</td><td>Yes (1st degree only)</td><td>No — Premium feature</td></tr>
+        <tr><td>Volume</td><td>High (300M MAU)</td><td>Low (~5M/day)</td></tr>
+        <tr><td>Storage flag</td><td>is_inmail = false</td><td>is_inmail = true</td></tr>
+        <tr><td>Credits</td><td>Unlimited</td><td>15–50/month for Premium</td></tr>
+      </table>
+      <p><strong>Cassandra messages schema:</strong></p>
+      <pre>
+  messages
+  PRIMARY KEY: (conversation_id, sent_at DESC)
+  Columns: message_id UUID, sender_id BIGINT,
+           content TEXT, read_at TIMESTAMP NULL, is_inmail BOOLEAN
+
+  conversation_id = hash(min(user1, user2), max(user1, user2))
+  — deterministic, same value for both participants
+
+  "Get last 50 messages between Alice and Bob"
+    SELECT WHERE conversation_id=? LIMIT 50
+      </pre>
+      <p><strong>Real-time delivery:</strong> WebSocket per user. Message → Cassandra write → push via WebSocket if recipient online, else FCM/APNs push notification.</p>
+    </div>
+
+    <div class="slide" id="s11" data-title="Job Recommendation Engine">
+      <h2>Job Recommendation Engine</h2>
+      <p><strong>Two modes: Search (explicit) + Recommendations (implicit/personalized)</strong></p>
+      <p><strong>Job Search — Elasticsearch bool query:</strong></p>
+      <pre>
+  GET /jobs/search?keywords=java+developer&amp;location=bangalore
+  {
+    must:   [ match title/description: "java developer" ]
+    filter: [ geo_distance: 50km from bangalore,
+              term: status = OPEN,
+              range: salary_min &gt;= requested ]
+    should: [ match skills: user's skill list → boost score ]
+  }
+      </pre>
+      <p><strong>Job Recommendations — personalized pipeline:</strong></p>
+      <ul>
+        <li><strong>Skills match:</strong> overlap between user skills and job required_skills</li>
+        <li><strong>Career trajectory:</strong> users in same role/company/school who took this job</li>
+        <li><strong>Location preference:</strong> from profile + past job history</li>
+        <li><strong>Seniority fit:</strong> years of experience vs. job level requirement</li>
+        <li><strong>Viewed profiles:</strong> recruiters who viewed you + their open job listings</li>
+      </ul>
+      <p>Pre-computed daily batch job → cached in Redis: <code>job_recs:{userId}</code></p>
+    </div>
+
+    <div class="slide" id="s12" data-title="LinkedIn Search">
+      <h2>LinkedIn Search — Elasticsearch</h2>
+      <p><strong>Three search domains:</strong></p>
+      <table>
+        <tr><th>Index</th><th>Fields Indexed</th><th>Facets</th></tr>
+        <tr><td>People</td><td>name, headline, company, title, skills, location</td><td>Industry, company, location, degree</td></tr>
+        <tr><td>Jobs</td><td>title, description, skills, company name</td><td>Location, salary, remote, date posted</td></tr>
+        <tr><td>Companies</td><td>name, industry, description, location</td><td>Size, industry, location</td></tr>
+      </table>
+      <p><strong>Indexing pipeline (Kafka-driven):</strong></p>
+      <ul>
+        <li>Profile update → Kafka: profile-updated → ES indexer consumer (async, &lt;30 sec)</li>
+        <li>Job posted → Kafka: job-posted → ES indexer → searchable within 30 sec</li>
+        <li>ES stores tokenized inverted index; location stored as <code>geo_point</code></li>
+      </ul>
+      <p><strong>People search privacy:</strong></p>
+      <ul>
+        <li>Private profile → only "LinkedIn Member" shown in search results to non-connections</li>
+        <li>1st/2nd degree connections boosted in ranking score at query time</li>
+        <li>Visibility tier filter applied as Elasticsearch <code>filter</code> clause (not <code>must</code>)</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s13" data-title="Profile Views & Notifications">
+      <h2>Profile Views &amp; Notifications</h2>
+      <p><strong>Profile View Tracking — Cassandra:</strong></p>
+      <pre>
+  profile_views
+  PRIMARY KEY: (viewed_user_id, viewed_at DESC)
+  Columns: viewer_id BIGINT
+  TTL: 90 days per row  (USING TTL 7776000 on INSERT)
+
+  Free users:  see aggregate count only
+               "42 people viewed your profile this week"
+  Premium:     see full viewer list + company + headline
+               SELECT WHERE viewed_user_id=? AND viewed_at &gt; 7_days_ago
+      </pre>
+      <p><strong>Notification Fan-out via Kafka:</strong></p>
+      <table>
+        <tr><th>Event</th><th>Trigger</th><th>Delivery</th></tr>
+        <tr><td>Connection request</td><td>POST /connections</td><td>FCM/APNs + SSE bell icon</td></tr>
+        <tr><td>Endorsement received</td><td>POST /endorsements</td><td>FCM/APNs push notification</td></tr>
+        <tr><td>Post reaction</td><td>POST /reactions</td><td>In-app SSE bell icon</td></tr>
+        <tr><td>Profile view</td><td>GET /users/{id}</td><td>Daily digest email (Premium: real-time)</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s14" data-title="Endorsements & Skills">
+      <h2>Endorsements &amp; Skills Graph</h2>
+      <p><strong>Skills taxonomy (MySQL):</strong> normalized table (<code>skill_id, name, category</code>). Prevents free-text chaos — "Java" = "java" = "Java programming" all map to <code>skill_id=42</code>.</p>
+      <p><strong>Cassandra endorsements schema:</strong></p>
+      <pre>
+  endorsements
+  PRIMARY KEY: (endorsed_user_id, skill_id, endorser_id)
+  Columns: endorsed_at TIMESTAMP
+
+  "Count Java endorsements for Alice"
+    SELECT COUNT(*) WHERE endorsed_user_id=alice AND skill_id=java_id
+
+  "Did Bob endorse Alice for Java?"
+    SELECT WHERE endorsed_user_id=alice AND skill_id=java AND endorser_id=bob
+      </pre>
+      <p><strong>Endorsement authority weighting (for job matching):</strong></p>
+      <ul>
+        <li>Endorser works at top company in that skill domain → 2× weight</li>
+        <li>Endorser themselves highly endorsed for same skill → credibility boost</li>
+        <li>Self-endorsement: blocked at API level</li>
+        <li>Top-endorsed skills float to top of profile + boosted in job recommendation scoring</li>
+      </ul>
+      <p>Endorsement event → Kafka → notify endorsed user + update skill sort order async.</p>
+    </div>
+
+    <div class="slide" id="s15" data-title="ER Diagram">
+      <h2>Entity-Relationship Overview</h2>
+      <pre>
+  ┌──────────────┐      ┌──────────────────┐
+  │    users      │─────▶│    companies     │
+  │   (MySQL)    │      │    (MySQL)       │
+  └──────┬───────┘      └────────┬─────────┘
+         │N                      │1 (N jobs)
+         │              ┌────────▼──────────┐
+  ┌──────▼───────┐      │   job_postings    │
+  │ connections  │      │    (MySQL)        │
+  │ (Cassandra) │      └───────────────────┘
+  │  A→B + B→A  │
+  └─────────────┘      ┌───────────────────┐
+                       │      posts        │
+  ┌─────────────┐      │   (Cassandra)    │
+  │endorsements │      │  PK(user_id, ts) │
+  │ (Cassandra)│      └───────────────────┘
+  │PK(uid,skill)│
+  └─────────────┘      ┌───────────────────┐
+                       │    messages       │
+  ┌─────────────┐      │  (Cassandra)     │
+  │    Redis    │      │ PK(conv_id, ts)  │
+  │ feed:{uid}  │      └───────────────────┘
+  │ pymk:{uid}  │
+  │ session:{t} │      ┌───────────────────┐
+  └─────────────┘      │  Elasticsearch    │
+                       │  jobs / people    │
+                       └───────────────────┘
+      </pre>
+    </div>
+
+    <div class="slide" id="s16" data-title="DB Schema DDL">
+      <h2>Key DB Schema (DDL)</h2>
+      <pre>
+  -- MySQL: users table
+  CREATE TABLE users (
+    user_id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name             VARCHAR(200),
+    email            VARCHAR(200) UNIQUE,
+    headline         VARCHAR(500),
+    location         VARCHAR(200),
+    is_active        BOOLEAN DEFAULT TRUE,   -- soft delete
+    is_premium       BOOLEAN DEFAULT FALSE,
+    connection_count INT DEFAULT 0,          -- denormalized counter
+    created_at       TIMESTAMP,
+    INDEX idx_email (email)
+  );
+
+  -- MySQL: jobs table
+  CREATE TABLE jobs (
+    job_id      BIGINT PRIMARY KEY,
+    company_id  BIGINT REFERENCES companies(company_id),
+    title       VARCHAR(200),
+    location    VARCHAR(200),
+    is_remote   BOOLEAN,
+    salary_min  BIGINT NULL,
+    status      ENUM('OPEN','CLOSED','FILLED'),
+    posted_at   TIMESTAMP,
+    INDEX idx_company_posted (company_id, posted_at)
+  );
+
+  -- Cassandra: connections_by_user
+  --   PRIMARY KEY: (user_id, connected_user_id)
+  -- Cassandra: connections_by_friend
+  --   PRIMARY KEY: (connected_user_id, user_id)
+      </pre>
+    </div>
+
+    <div class="slide" id="s17" data-title="Scaling Strategy">
+      <h2>Scaling Strategy</h2>
+      <table>
+        <tr><th>Bottleneck</th><th>Problem at Scale</th><th>Solution</th></tr>
+        <tr><td>Feed fan-out (influencers)</td><td>10K+ connections → 5.8M Redis writes/sec for top users</td><td>Hybrid: pull fan-out for &gt;10K connection users</td></tr>
+        <tr><td>PYMK at 300M MAU</td><td>300M × 90K reads/hr = 27 trillion reads/hr impossible</td><td>Active users only (last 24h = ~50M); stagger over 1hr = 14K/sec</td></tr>
+        <tr><td>570B connection rows (hot partitions)</td><td>Super-connectors cause hot partitions</td><td>Composite key: (user_id % 100, user_id) spreads super-connector load</td></tr>
+        <tr><td>Profile views (500M/day)</td><td>500M × 30d = 15B rows</td><td>Cassandra TTL per row; 15B × 50B = 750GB across 20 nodes = 37GB/node</td></tr>
+        <tr><td>MySQL users/companies/jobs</td><td>Relational reads at 300M MAU</td><td>Read replicas; Redis cache user:{id} TTL 5min; OLAP cluster (Spark) for analytics</td></tr>
+        <tr><td>Elasticsearch job index</td><td>10M active jobs, 580 QPS search</td><td>Shard by job_id; replica shards for read scaling; hot jobs cached in Redis</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s18" data-title="Trade-offs">
+      <h2>Architecture Trade-offs</h2>
+      <table>
+        <tr><th>Decision</th><th>Choice Made</th><th>Why Not Alternative</th></tr>
+        <tr><td>Connection store</td><td>Cassandra two-table</td><td>MySQL: 570B rows, OR-queries kill indexes; Neo4j: extra infra for 2nd-degree only</td></tr>
+        <tr><td>Feed delivery</td><td>Push fan-out for &lt;10K connections</td><td>Pull-only: read-time merge of 300 feeds = 300 Cassandra reads per page load</td></tr>
+        <tr><td>PYMK computation</td><td>Background pre-compute + Redis cache</td><td>Real-time: 90K Cassandra reads per API call = 500ms+ latency</td></tr>
+        <tr><td>Graph traversal for PYMK</td><td>BFS via batch Cassandra reads</td><td>DFS: goes deep quickly but misses mutual count patterns; BFS counts mutuals naturally</td></tr>
+        <tr><td>Messages storage</td><td>Cassandra (conv_id, sent_at)</td><td>MySQL: sequential time-series grows unbounded, index degradation</td></tr>
+        <tr><td>Job search</td><td>Elasticsearch</td><td>MySQL FULLTEXT: poor at compound queries (text + geo + skill scoring)</td></tr>
+        <tr><td>Notification delivery</td><td>Async via Kafka</td><td>Synchronous: endorsement write blocks until all notifications delivered</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s19" data-title="LinkedIn vs Facebook vs Twitter">
+      <h2>LinkedIn vs Facebook vs Twitter — Architecture Differences</h2>
+      <table>
+        <tr><th>Dimension</th><th>LinkedIn</th><th>Facebook</th><th>Twitter/X</th></tr>
+        <tr><td>Connection model</td><td>Bidirectional (must accept) — 2 rows/pair, 570B total</td><td>Bidirectional friend + optional follow</td><td>Unidirectional follow — 1 row/pair</td></tr>
+        <tr><td>PYMK / suggestions</td><td>PYMK critical — 2nd-degree mutual count is core signal</td><td>Mutual friends suggestion; similar algo</td><td>Who-to-follow — simpler, no degree limit</td></tr>
+        <tr><td>Fan-out threshold</td><td>&gt;10K connections → pull mode</td><td>~1K friends typical — mostly push</td><td>Celebrities (&gt;1M follows) → pull mode</td></tr>
+        <tr><td>Feed ranking goal</td><td>Professional quality — demotion rules for spam, thought leadership boosted</td><td>Engagement + time-on-screen maximization</td><td>Recency dominant; "For You" ML model</td></tr>
+        <tr><td>Primary DB</td><td>Cassandra (connections/posts) + MySQL (profiles)</td><td>MySQL (TAO graph) + Memcached</td><td>Manhattan (custom KV) + MySQL</td></tr>
+        <tr><td>Paid messaging</td><td>InMail — limited credits for non-connection contact</td><td>No paid cold-contact product</td><td>DMs — connection-optional for most accounts</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s20" data-title="Privacy & Data Residency">
+      <h2>Privacy &amp; Data Residency</h2>
+      <p><strong>GDPR Right to Erasure — Staged deletion:</strong></p>
+      <ul>
+        <li><strong>Stage 1 (immediate, sync):</strong> SET <code>is_active=false</code>, NULL out PII (name, email, photo). User invisible everywhere within seconds. Satisfies GDPR "make inaccessible" SLA.</li>
+        <li><strong>Stage 2 (async, 30 days):</strong> Background job deletes both Cassandra connection rows, posts, endorsements, profile_views. Run at 10K deletes/sec — takes minutes for super-connectors.</li>
+        <li><strong>Stage 3 (analytics):</strong> Replace user_id with hash in data warehouse and Kafka event history.</li>
+      </ul>
+      <p><strong>Profile Visibility Tiers:</strong></p>
+      <table>
+        <tr><th>Setting</th><th>Who Sees Full Profile</th></tr>
+        <tr><td>Public</td><td>Everyone including Google search indexing</td></tr>
+        <tr><td>Connections only</td><td>1st-degree connections; search shows name + headline only to others</td></tr>
+        <tr><td>Private</td><td>Only self; search shows "LinkedIn Member" — no name, no photo</td></tr>
+      </table>
+      <p><strong>Data residency:</strong> EU user data routes to EU data centers via API Gateway <code>user.region</code> header → regional cluster selection. Enforced at the gateway, not application layer.</p>
+    </div>
+
+    <div class="slide" id="s21" data-title="Senior Q&A — PYMK Cold Start">
+      <h2>Senior Q&amp;A 1 — PYMK for a New User (0 Connections)?</h2>
+      <p><em>"User signs up today with zero connections. PYMK needs connections to compute 2nd-degree suggestions. What do you show?"</em></p>
+      <p><strong>Cold-start signals (no graph traversal needed):</strong></p>
+      <ul>
+        <li><strong>Company email domain:</strong> Signup with a Google Workspace email → suggest verified employees of same company. Highest precision cold-start signal.</li>
+        <li><strong>Profile seeding:</strong> User filled in current company + school → suggest people from same company + graduating class, ranked by connection_count.</li>
+        <li><strong>Location + industry:</strong> Same city + same industry → suggest verified high-connection profiles.</li>
+        <li><strong>Phone contact sync (opt-in):</strong> Match phone numbers in address book to LinkedIn users → direct 1:1 suggestions.</li>
+        <li><strong>Invite chain:</strong> If user was invited by existing member → that member's connections are strong implicit suggestions.</li>
+      </ul>
+      <p><strong>Implementation:</strong> Onboarding flow collects company + school + phone. A one-time "cold start PYMK" job populates <code>pymk:{userId}</code> using profile signals instead of graph traversal. After first connection accepted → switch to standard 2nd-degree algorithm and recompute.</p>
+    </div>
+
+    <div class="slide" id="s22" data-title="Senior Q&A — Viral CEO Post">
+      <h2>Senior Q&amp;A 2 — CEO Posts, 50M Feeds Need Update?</h2>
+      <p><em>"Satya Nadella (8M LinkedIn connections) posts a job announcement. Hybrid fan-out says &gt;10K = pull mode. But 8M followers all load feed in the next 10 minutes. How do you handle the read surge?"</em></p>
+      <p><strong>Pull fan-out is correct</strong> — writing to 8M Redis keys would take hours and spike the cluster. Handling the read surge:</p>
+      <ul>
+        <li><strong>Influencer post cache:</strong> Satya's latest posts cached at Feed Service layer: <code>influencer_posts:{satyaId}</code> TTL 60 sec. All 8M followers read from this single cache key — not 8M individual Cassandra lookups.</li>
+        <li><strong>CDN edge caching:</strong> For public-visibility posts, cache the rendered post card at CDN edge with <code>Cache-Control: max-age=60</code>. Absorbs the spike entirely for uncustomized views.</li>
+        <li><strong>Cassandra read replicas:</strong> Influencer's posts partition reads from nearest replica; consistency level ONE — eventual consistency is acceptable for a social feed.</li>
+        <li><strong>Graceful degradation:</strong> On cache miss storm, serve stale result (last 5-min cache) rather than hammering Cassandra. User sees the post 5 min late — acceptable.</li>
+        <li><strong>Circuit breaker:</strong> Feed Service monitors Cassandra error rate. If &gt;5% errors → serve cached version only, skip influencer pull merging temporarily.</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s23" data-title="Senior Q&A — 2nd Degree at Scale">
+      <h2>Senior Q&amp;A 3 — 2nd Degree Graph Traversal at 900M Nodes?</h2>
+      <p><em>"Your PYMK does 90K Cassandra reads per user. 50M active users need hourly recompute. Walk me through how this runs at scale."</em></p>
+      <p><strong>Distributed PYMK worker fleet:</strong></p>
+      <ul>
+        <li><strong>Stagger over the hour:</strong> 50M users / 3600 sec = 13,888 PYMK computes/sec needed.</li>
+        <li><strong>Worker throughput:</strong> Each worker handles one user's PYMK. 90K Cassandra reads with async I/O → ~200ms per user. Need ~2,800 concurrent workers (13,888 × 0.2s).</li>
+        <li><strong>Cassandra capacity:</strong> 100-node cluster × 100K reads/node/sec = 10B reads/sec. Needed: 13,888 × 90K = 1.25B reads/sec. Well within capacity.</li>
+        <li><strong>Super-connector sampling:</strong> Users with &gt;10K connections → sample 500 connections instead of full traversal. 32K → 500 sample → 150K candidates (quality nearly identical per user studies). Weighted toward recent connections.</li>
+        <li><strong>Tiered recompute:</strong> Normal active users: hourly. Super-connectors (&gt;10K): daily. Inactive (&gt;30d no login): skip until next login event triggers a recompute.</li>
+        <li><strong>Kafka-triggered:</strong> New connection accepted → immediate PYMK recompute event for both users — skip waiting for hourly batch cycle.</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s24" data-title="Key Numbers">
+      <h2>Quick Numbers — Commit These to Memory</h2>
+      <table>
+        <tr><th>Metric</th><th>Number</th></tr>
+        <tr><td>Total users</td><td>950 million</td></tr>
+        <tr><td>Monthly active users</td><td>300 million</td></tr>
+        <tr><td>Avg 1st-degree connections</td><td>300 per user</td></tr>
+        <tr><td>2nd-degree candidates (PYMK)</td><td>~90K per user (300 × 300)</td></tr>
+        <tr><td>Total connection rows (Cassandra)</td><td>570 billion (both directions)</td></tr>
+        <tr><td>Posts per day</td><td>50 million (~580/sec)</td></tr>
+        <tr><td>Fan-out per normal post</td><td>300 Redis ZADD operations</td></tr>
+        <tr><td>Total Redis writes/sec (feed fan-out)</td><td>174K writes/sec (580 × 300)</td></tr>
+        <tr><td>Influencer threshold</td><td>&gt;10,000 connections → pull mode</td></tr>
+        <tr><td>PYMK cache TTL</td><td>1 hour (Redis SETEX)</td></tr>
+        <tr><td>Feed read latency (Redis ZREVRANGE)</td><td>P99 &lt;10ms</td></tr>
+        <tr><td>Feed sorted set size per user</td><td>Top 1,000 posts</td></tr>
+        <tr><td>Profile views per day</td><td>500 million (Cassandra TTL 30 days)</td></tr>
+        <tr><td>Active job postings</td><td>10 million (Elasticsearch)</td></tr>
+        <tr><td>Connections added per second</td><td>~40/sec (100M/month)</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s25" data-title="Closing Script">
+      <h2>Closing Script</h2>
+      <p class="script">"Let me summarize the key design decisions and why each matters at 950M scale."</p>
+      <ul>
+        <li><strong>Cassandra two-table for connections:</strong> 570B rows need O(1) partition-key lookups, not MySQL table scans. Two tables answer both directions — "Alice's connections" and "who connected to Alice."</li>
+        <li><strong>PYMK always pre-computed:</strong> 90K Cassandra reads per user is too expensive for real-time. Background hourly job; Redis cache. API response = 1 Redis GET = sub-millisecond.</li>
+        <li><strong>Hybrid fan-out — the celebrity problem:</strong> Push for &lt;10K connections (fast reads); pull for influencers (avoids 5M+ Redis writes per post). Feed read merges both buckets.</li>
+        <li><strong>Professional feed ranking:</strong> Not pure engagement optimization — demotion rules for spam, original content boosted, connection-strength signal weighted higher than raw engagement.</li>
+        <li><strong>GDPR at scale:</strong> Immediate soft-delete (set is_active=false) satisfies user-facing SLA within seconds; async cascading hard-delete runs over days without impacting production traffic.</li>
+        <li><strong>Kafka decouples everything:</strong> POST /posts returns in &lt;100ms. Fan-out, PYMK recompute, notifications, ES indexing — all async consumers off Kafka.</li>
+      </ul>
+      <p class="script">"The two things that make LinkedIn uniquely hard vs. Instagram: <strong>bidirectional connections</strong> requiring 2-row consistency, and <strong>PYMK</strong> requiring 2nd-degree traversal pre-computation. Any questions on those two?"</p>
+    </div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

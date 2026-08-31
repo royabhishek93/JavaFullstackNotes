@@ -1,0 +1,981 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Drive System Design</title>
+<link rel="stylesheet" href="../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Google Drive System Design — Cloud File Storage</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active" id="s1" data-title="Google Drive System Design — Cloud File Storage">
+      <h1>📁 Google Drive System Design</h1>
+      <h2>Design Google Drive / Dropbox / OneDrive</h2>
+      <div class="badge-row">
+        <span class="badge">Chunking</span>
+        <span class="badge">Dedup</span>
+        <span class="badge">Delta Sync</span>
+        <span class="badge">Metadata</span>
+        <span class="badge">CDN</span>
+        <span class="badge">Versioning</span>
+      </div>
+      <div class="key-insight">
+        <strong>Core Insight:</strong> Our servers NEVER touch file bytes — only metadata. Clients upload chunks <em>directly</em> to S3 via presigned URLs. This is why Google Drive scales to billions of files.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Two Things That Make Drive Unique</h3>
+          <ul>
+            <li>Files can be <strong>any type</strong>, up to 15 GB</li>
+            <li>Same file must sync to <strong>ALL devices</strong></li>
+            <li>Upload protocol is a 5-step chunked protocol</li>
+            <li>Sync is event-driven, not polling</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Scale Targets</h3>
+          <ul>
+            <li>500M registered users, 100M DAU</li>
+            <li>500B total files · 250 PB storage</li>
+            <li>~5,800 sync events/sec</li>
+            <li>99.99% availability</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Opening Script -->
+    <div class="slide" id="s2" data-title="Opening — How to Start Your Answer">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Opening — How to Start Your Answer</h2>
+      <div class="script-block">
+        <p><strong>Say this when the interviewer asks:</strong></p>
+        <blockquote>
+          "Great question. Google Drive is a distributed file storage platform with sync across devices. Before I design it, I want to ask a few questions — because the upload protocol and sync mechanism depend heavily on the constraints."
+        </blockquote>
+      </div>
+      <h3>Clarifying Questions to Ask</h3>
+      <table>
+        <tr><th>You Ask</th><th>Expected Answer</th></tr>
+        <tr><td>"Can users upload any file type?"</td><td>Yes — any file, up to quota</td></tr>
+        <tr><td>"Max file size?"</td><td>Up to 10–15 GB</td></tr>
+        <tr><td>"Auto-sync across all linked devices?"</td><td>Yes — all devices sync</td></tr>
+        <tr><td>"Real-time collaborative editing?"</td><td>Out of scope — that's Docs</td></tr>
+        <tr><td>"File versioning needed?"</td><td>Yes — rollback to old versions</td></tr>
+        <tr><td>"Sharing with permissions?"</td><td>Yes — view/comment/edit</td></tr>
+        <tr><td>"Storage quota per user?"</td><td>Yes — 15 GB free</td></tr>
+        <tr><td>"How many users?"</td><td>500M registered, 100M DAU</td></tr>
+      </table>
+    </div>
+
+    <!-- SLIDE 3: Functional Requirements -->
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Functional Requirements</h2>
+      <div class="two-col">
+        <div>
+          <h3>In Scope</h3>
+          <ul>
+            <li>Upload / download any file (up to 15 GB)</li>
+            <li>Auto-sync changes to all linked devices</li>
+            <li>Share files/folders: <strong>VIEW / COMMENT / EDIT</strong></li>
+            <li>Folder hierarchy — create, rename, delete, move</li>
+            <li>File versioning and rollback</li>
+            <li>Storage quota per user (15 GB free)</li>
+            <li>Resumable uploads (re-upload only failed chunks)</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Out of Scope</h3>
+          <ul>
+            <li>Real-time collaborative editing (Google Docs)</li>
+            <li>Video streaming / transcoding</li>
+            <li>Search within file contents (full-text)</li>
+          </ul>
+          <h3>Core Entities</h3>
+          <ul>
+            <li><strong>User</strong> — userId, email, quotaUsed, quotaLimit</li>
+            <li><strong>File</strong> — fileId, name, ownerId, parentFolderId</li>
+            <li><strong>FileVersion</strong> — versionId, fileId, checksum, s3Path</li>
+            <li><strong>Chunk</strong> — chunkId, fileId, chunkIndex, hash, s3Key</li>
+            <li><strong>Permission</strong> — fileId/folderId, userId, role</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Non-Functional Requirements -->
+    <div class="slide" id="s4" data-title="Non-Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Non-Functional Requirements</h2>
+      <div class="two-col">
+        <div>
+          <h3>Scale</h3>
+          <ul>
+            <li>500M users · 100M DAU</li>
+            <li>500B total files · 250 PB storage</li>
+            <li>10M new files/day · 10 TB/day ingested</li>
+            <li>~5,800 sync events/sec</li>
+          </ul>
+          <h3>Consistency</h3>
+          <ul>
+            <li><strong>High availability</strong> — 99.99% uptime</li>
+            <li><strong>Eventual consistency OK</strong> for sync (seconds lag)</li>
+            <li><strong>Strong consistency</strong> for quota — no over-quota uploads</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Durability &amp; Latency</h3>
+          <ul>
+            <li>Zero data loss once committed (11-nines S3)</li>
+            <li>Sync lag &lt; 5 seconds after commit</li>
+            <li>Presigned URL TTL: 5 minutes</li>
+            <li>Upload session TTL (Redis): 24 hours</li>
+          </ul>
+          <h3>Capacity Estimation</h3>
+          <ul>
+            <li>500M users × 1,000 files × 500KB = <strong>250 PB</strong></li>
+            <li>500B files × ~1KB metadata = <strong>500 TB metadata</strong> → sharded MySQL</li>
+            <li>100M DAU × 5 changes/day = <strong>500M sync events/day</strong></li>
+          </ul>
+        </div>
+      </div>
+      <div class="key-insight">
+        <strong>Key conclusion from capacity:</strong> 250 PB of binary blobs — MUST use blob storage (S3). 500M sync events/day — MUST be event-driven (Kafka), not polling.
+      </div>
+    </div>
+
+    <!-- SLIDE 5: HLD ASCII -->
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <div class="section-label">🏛 HLD</div>
+      <h2>High-Level Architecture</h2>
+      <pre class="ascii-diagram">
+┌─────────────────────────────────────────────────────┐
+│       CLIENT APP (Desktop / Mobile / Web)            │
+│  ┌──────────────┐  ┌─────────────────┐  ┌─────────┐ │
+│  │ File Watcher │→ │ Upload Manager  │  │  Sync   │ │
+│  │ (inotify /   │  │ • Calls INIT    │  │ Engine  │ │
+│  │  FSEvents)   │  │ • Gets sign URLs│  │push+pull│ │
+│  └──────────────┘  └────────┬────────┘  └─────────┘ │
+│   Chunker: splits file → 5 MB chunks, SHA-256/chunk  │
+│   Local Metadata Index (SQLite): chunk hashes stored │
+└───────────────────────────────┬─────────────────────┘
+                                │ HTTPS
+                                ▼
+                   ┌────────────────────────┐
+                   │   API GATEWAY          │
+                   │   Auth · Rate Limit    │
+                   └──────────┬─────────────┘
+              ┌───────────────┴────────────────┐
+              ▼                                ▼
+  ┌─────────────────────┐       ┌──────────────────────┐
+  │  FILE UPLOAD SVC    │       │  METADATA SERVICE    │
+  │  • Init session     │       │  • Folder CRUD       │
+  │  • Presigned URLs   │       │  • File metadata     │
+  │  • Redis chunk state│       │  • Permissions       │
+  │  • Trigger validator│       │  • Version history   │
+  └──────────┬──────────┘       └──────────┬───────────┘
+             │                             │
+             ▼                             ▼
+  ┌──────────────────┐       ┌──────────────────────────┐
+  │ VALIDATOR SVC    │       │  MySQL (Metadata DB)     │
+  │ Re-hash chunks   │       │  folders·files·versions  │
+  │ Confirm integrity│       │  permissions             │
+  └──────────┬───────┘       └──────────────────────────┘
+             │ publish
+             ▼                ┌─────────────────────────┐
+  ┌──────────────────┐        │  Cassandra               │
+  │  KAFKA BROKER    │        │  chunks table            │
+  │  file-events     │        │  (file_id → chunk_hash) │
+  └──────────┬───────┘        └─────────────────────────┘
+             ▼
+  ┌──────────────────────────────────────────────────┐
+  │  SYNC SERVICE — fans out to all linked devices    │
+  │  Push: WebSocket / FCM  ·  Pull: /sync?since=T   │
+  └──────────────────────────────────────────────────┘
+      ↑ S3 BLOB STORAGE — {fileId}/{chunkId}
+        CDN (CloudFront) — for downloads only
+      ↑ Redis — upload sessions · quota · perm cache</pre>
+    </div>
+
+    <!-- SLIDE 6: Chunking Strategy -->
+    <div class="slide" id="s6" data-title="Chunking Strategy — Why 5 MB Chunks">
+      <div class="section-label">📁 Upload &amp; Dedup</div>
+      <h2>Chunking Strategy — Why 5 MB Chunks</h2>
+      <div class="key-insight">
+        <strong>Problem:</strong> 15 GB files can't go in one HTTP request. LB timeout at 30–120s, network drop = restart from scratch, server buffers entire file in memory.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>How It Works</h3>
+          <ul>
+            <li>Client splits file into <strong>5 MB chunks</strong> client-side</li>
+            <li>Computes <strong>SHA-256 hash per chunk</strong> locally</li>
+            <li>Checks <code>existingChunks[]</code> on INIT → skips already-uploaded</li>
+            <li>Uploads up to <strong>3 chunks in parallel</strong></li>
+            <li>Each chunk has its own presigned S3 URL (TTL: 5 min)</li>
+          </ul>
+          <h3>Why 5 MB (Not 1 MB or 50 MB)?</h3>
+          <ul>
+            <li><strong>Too small (1 MB):</strong> too many S3 PUT calls, overhead dominates</li>
+            <li><strong>Too large (50 MB):</strong> retry cost high, progress bar jumpy</li>
+            <li><strong>5 MB:</strong> balances retry cost, parallelism, and S3 PUT count</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Benefits of Chunking</h3>
+          <ul>
+            <li><strong>Resumable:</strong> only re-upload failed chunks, not whole file</li>
+            <li><strong>Parallel:</strong> 3 chunks simultaneously = 3× throughput</li>
+            <li><strong>Progress:</strong> real upload progress indicator</li>
+            <li><strong>Dedup:</strong> identical chunks (across files/users) stored once</li>
+            <li><strong>Delta sync:</strong> on file edit, re-upload only changed chunks</li>
+          </ul>
+          <h3>Our Servers Never See File Bytes</h3>
+          <ul>
+            <li>Backend generates presigned S3 URL per chunk</li>
+            <li>Client uploads chunk <strong>directly to S3</strong></li>
+            <li>100M DAU × 10 MB would be 1 TB/sec through our LB — impossible</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Content-Based Dedup -->
+    <div class="slide" id="s7" data-title="Content-Based Deduplication">
+      <div class="section-label">📁 Upload &amp; Dedup</div>
+      <h2>Content-Based Deduplication</h2>
+      <div class="key-insight">
+        <strong>If two users upload the same file (identical hash), S3 stores it only once.</strong> Both users' metadata points to the same S3 object. Effective storage can be 30–50% less than raw file count.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>File-Level Dedup</h3>
+          <ul>
+            <li>INIT request includes <code>fileHash</code> (SHA-256 of full file)</li>
+            <li>Server queries: <code>SELECT * FROM files WHERE checksum = ?</code></li>
+            <li>If match found → <strong>skip upload entirely</strong></li>
+            <li>Create new <code>FileVersion</code> record pointing to existing S3 chunks</li>
+            <li>Quota still charged to the new user</li>
+          </ul>
+          <h3>Chunk-Level Dedup</h3>
+          <ul>
+            <li>Each chunk has a SHA-256 hash</li>
+            <li>Before uploading, server checks: <code>SELECT s3_key FROM chunks WHERE chunk_hash = ?</code></li>
+            <li>If chunk already exists → return existing <code>s3_key</code>, skip upload</li>
+            <li>Common in slides, legal docs — same boilerplate = same chunk</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Why SHA-256?</h3>
+          <ul>
+            <li>Deterministic — same content always → same hash</li>
+            <li>Collision probability: astronomically low (2⁻²⁵⁶)</li>
+            <li>Detects corruption: 1 byte change → completely different hash</li>
+            <li>Used by Git, S3 ETags, Bitcoin — battle-tested</li>
+          </ul>
+          <h3>DB Index for Dedup</h3>
+          <pre class="code-block">-- Fast dedup check on upload INIT
+CREATE INDEX idx_files_checksum
+  ON files(checksum);
+
+CREATE INDEX idx_chunks_hash
+  ON chunks(chunk_hash);</pre>
+          <p>Dedup check happens <em>before</em> quota reservation — if identical file exists, no quota consumed.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Delta Sync -->
+    <div class="slide" id="s8" data-title="Delta Sync — Upload Only What Changed">
+      <div class="section-label">📁 Upload &amp; Dedup</div>
+      <h2>Delta Sync — Upload Only What Changed</h2>
+      <div class="key-insight">
+        <strong>A 100 MB document with 1 changed paragraph → only ~5 MB re-uploaded, not 100 MB.</strong> Enabled by the Local Metadata Index (SQLite on each device).
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>How Delta Sync Works</h3>
+          <ol>
+            <li>User edits file → File Watcher (inotify/FSEvents) fires</li>
+            <li>Chunker re-hashes all chunks of the modified file</li>
+            <li>Compares each hash to <strong>Local Metadata Index</strong> (SQLite)</li>
+            <li>Chunks with <em>unchanged hash</em> → SKIP</li>
+            <li>Chunks with <em>changed hash</em> → UPLOAD only those</li>
+            <li>INIT request returns <code>existingChunks = [0,1,...,11,13,...,19]</code></li>
+            <li>Only chunk 12 uploaded → 5 MB instead of 100 MB</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Local Metadata Index</h3>
+          <ul>
+            <li>SQLite database on each device</li>
+            <li>Stores: <code>{ chunkIndex → SHA-256 hash }</code> per file per version</li>
+            <li>Updated after every successful chunk upload</li>
+            <li>Makes delta sync possible without server round-trips</li>
+          </ul>
+          <h3>Example: 100 MB File Edit</h3>
+          <pre class="code-block">20 chunks × 5 MB = 100 MB
+
+Chunk 0–11:  hash unchanged → SKIP
+Chunk 12:    hash changed   → UPLOAD (5 MB)
+Chunk 13–19: hash unchanged → SKIP
+
+Result: 5 MB uploaded instead of 100 MB
+Savings: 95% bandwidth reduction</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Upload Sequence Diagram -->
+    <div class="slide" id="s9" data-title="5-Step Upload Protocol — Sequence Diagram">
+      <div class="section-label">📁 Upload &amp; Dedup</div>
+      <h2>5-Step Upload Protocol — Sequence Diagram</h2>
+      <pre class="ascii-diagram">
+Client App   Upload Service     Redis        S3         Kafka    Validator
+    │               │              │           │            │         │
+    │ POST /upload/init            │           │            │         │
+    │ {name, size, fileHash[]}     │           │            │         │
+    │──────────────▶│              │           │            │         │
+    │               │ Lua atomic quota reserve │            │         │
+    │               │──────────────▶│          │            │         │
+    │               │ Presign S3 URL per chunk │            │         │
+    │               │─────────────────────────▶            │         │
+    │ {uploadId,    │◀─────────────────────────            │         │
+    │  chunkUrls[]} │              │           │            │         │
+    │◀──────────────│              │           │            │         │
+    │               │              │           │            │         │
+    │ PUT chunkUrl0 (direct to S3, bypasses backend)        │         │
+    │──────────────────────────────────────────▶            │         │
+    │◀──────────────────────────────────────────            │         │
+    │  [200 ETag]   │              │           │            │         │
+    │               │              │           │            │         │
+    │ PUT chunkUrl1..N in parallel │           │            │         │
+    │──────────────────────────────────────────▶            │         │
+    │◀──────────────────────────────────────────            │         │
+    │               │              │           │            │         │
+    │ POST /upload/commit          │           │            │         │
+    │ {uploadId, chunkETags[]}     │           │            │         │
+    │──────────────▶│              │           │            │         │
+    │               │ Publish upload.completed │            │         │
+    │               │──────────────────────────────────────▶─────────▶│
+    │ {fileId, v:1} │              │           │            │         │
+    │◀──────────────│              │           │  Validator re-hashes │
+    │               │              │           │  chunks in S3,       │
+    │               │              │           │  confirms integrity, │
+    │               │              │           │  saves MySQL metadata│
+</pre>
+    </div>
+
+    <!-- SLIDE 10: Download / Sync Flow -->
+    <div class="slide" id="s10" data-title="Download &amp; Sync Flow">
+      <div class="section-label">🔄 Sync &amp; Conflict</div>
+      <h2>Download &amp; Sync Flow</h2>
+      <div class="two-col">
+        <div>
+          <h3>Scenario 1: Device Online (Push Sync)</h3>
+          <ol>
+            <li>Device A commits upload → Validator confirms</li>
+            <li>MySQL metadata saved → Kafka event published</li>
+            <li>Sync Service reads event: <code>{ fileId, ownerId, version: 2 }</code></li>
+            <li>Fetches all devices linked to <code>ownerId</code> from DB</li>
+            <li>Push notification to each device: "file-123 updated to v2"</li>
+            <li>Each device's Sync Engine calls <code>GET /files/{id}/download</code></li>
+            <li>Server returns presigned S3 URL (or CDN URL)</li>
+            <li>Device downloads, updates Local Metadata Index</li>
+          </ol>
+        </div>
+        <div>
+          <h3>Scenario 2: Device Reconnects (Pull Sync)</h3>
+          <ol>
+            <li>Device B was offline for 3 hours. Reconnects.</li>
+            <li>Sync Engine calls: <code>POST /sync/pull?since=T</code></li>
+            <li>Server queries: <code>SELECT * FROM file_events WHERE owner_id=? AND created_at &gt; T</code></li>
+            <li>Returns: <code>{ changed: ["file-123"], deleted: ["file-789"] }</code></li>
+            <li>Device downloads only changed files</li>
+          </ol>
+          <h3>Download API</h3>
+          <pre class="code-block">GET /api/v1/files/{id}/download
+→ {
+  "downloadUrl": "https://cdn.example.com/...",
+  "expiresIn": 300
+}</pre>
+          <p>CDN (CloudFront) caches popular files at edge PoPs — shared company docs downloaded by 1000 employees served from edge, not S3 us-east-1.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: Metadata Service -->
+    <div class="slide" id="s11" data-title="Metadata Service — File Tree &amp; Namespace">
+      <div class="section-label">🔄 Sync &amp; Conflict</div>
+      <h2>Metadata Service — File Tree &amp; Namespace</h2>
+      <div class="key-insight">
+        <strong>A folder is NOT a real directory.</strong> It is just a metadata record with <code>type=FOLDER</code>. Creating a folder = inserting one row in MySQL. No actual directory structure in S3.
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Folder APIs</h3>
+          <table>
+            <tr><th>Method</th><th>Endpoint</th><th>Purpose</th></tr>
+            <tr><td>POST</td><td>/api/v1/folders</td><td>Create folder (1 DB row)</td></tr>
+            <tr><td>GET</td><td>/api/v1/folders/{id}/contents</td><td>List files + subfolders</td></tr>
+            <tr><td>PATCH</td><td>/api/v1/folders/{id}</td><td>Rename / move</td></tr>
+            <tr><td>DELETE</td><td>/api/v1/folders/{id}</td><td>Soft-delete + all children</td></tr>
+          </table>
+          <h3>Directory Structure in DB</h3>
+          <pre class="code-block">folders table (MySQL)
+├── folder_id UUID (PK)
+├── name VARCHAR(255)
+├── owner_id UUID (FK → users)
+└── parent_folder_id UUID (nullable)
+
+files table
+└── parent_folder_id UUID (FK → folders)</pre>
+        </div>
+        <div>
+          <h3>Namespace Design</h3>
+          <ul>
+            <li><code>parent_folder_id = NULL</code> → root folder</li>
+            <li>Full path reconstructed by traversing parent chain</li>
+            <li>Moving a file = UPDATE <code>parent_folder_id</code> — one DB write</li>
+            <li>Deleting a folder = soft-delete row + all child rows</li>
+            <li>No cascade deletes in DB — done in application layer for audit trail</li>
+          </ul>
+          <h3>Why Not a Real Directory in S3?</h3>
+          <ul>
+            <li>S3 has no real directories — objects have flat keys</li>
+            <li>Rename/move in S3 = copy + delete — expensive at scale</li>
+            <li>Our approach: rename = 1 MySQL UPDATE, S3 key unchanged</li>
+            <li>S3 key format: <code>files/{fileId}/{chunkIndex}</code> — never changes</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: File Versioning -->
+    <div class="slide" id="s12" data-title="File Versioning — Snapshot + Delta Log">
+      <div class="section-label">🔄 Sync &amp; Conflict</div>
+      <h2>File Versioning — Snapshot + Delta Log</h2>
+      <div class="two-col">
+        <div>
+          <h3>How Versioning Works</h3>
+          <ul>
+            <li>Every successful upload creates a new <code>FileVersion</code> record</li>
+            <li>Old versions kept for rollback (not deleted from S3)</li>
+            <li>Only N most recent versions stored (configurable, e.g., 100)</li>
+            <li>Older versions moved to S3 Glacier for cost savings</li>
+          </ul>
+          <h3>Version Table Schema</h3>
+          <pre class="code-block">file_versions (MySQL)
+├── version_id   UUID (PK)
+├── file_id      UUID (FK → files)
+├── version_num  INT NOT NULL
+├── size_bytes   BIGINT
+├── s3_path      VARCHAR(500)
+├── checksum     VARCHAR(64)  ← SHA-256
+├── created_by   UUID (FK → users)
+└── created_at   TIMESTAMP</pre>
+        </div>
+        <div>
+          <h3>Version Rollback API</h3>
+          <pre class="code-block">GET  /api/v1/files/{id}/versions
+→ list all versions
+
+POST /api/v1/files/{id}/restore
+{ "versionId": "ver-abc" }
+→ sets current_version = versionId
+   creates new FileVersion pointing to old chunks
+   (does not delete intervening versions)</pre>
+          <h3>Storage Lifecycle</h3>
+          <ul>
+            <li><strong>Current version:</strong> S3 Standard (~$0.023/GB)</li>
+            <li><strong>Recent versions (30d):</strong> S3 Standard-IA (~$0.012/GB)</li>
+            <li><strong>Older versions (90d+):</strong> S3 Glacier (~$0.004/GB)</li>
+            <li>Lifecycle rules configured in S3 automatically</li>
+          </ul>
+          <p>With dedup: if two versions share unchanged chunks → same S3 objects referenced → minimal extra storage cost per version.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: Conflict Resolution -->
+    <div class="slide" id="s13" data-title="Conflict Resolution — Offline Edits">
+      <div class="section-label">🔄 Sync &amp; Conflict</div>
+      <h2>Conflict Resolution — Offline Edits</h2>
+      <div class="key-insight">
+        <strong>Two devices edit the same file offline. Both sync when reconnected. Never silently lose data — use conflict copies.</strong>
+      </div>
+      <div class="two-col">
+        <div>
+          <h3>Conflict Detection</h3>
+          <ul>
+            <li>Each <code>FileVersion</code> has: <code>{ versionNumber, deviceId, modifiedAt }</code></li>
+            <li>When Device B syncs, server checks: is Device B's base version still the latest?</li>
+            <li><strong>No conflict:</strong> Device A synced, Device B's base = latest → merge/overwrite</li>
+            <li><strong>Conflict:</strong> both A and B modified same base version → conflict copy</li>
+          </ul>
+          <h3>Conflict Resolution Strategy</h3>
+          <ul>
+            <li>Create two files:
+              <br><code>report.pdf</code> (Device A's version — latest)
+              <br><code>report (conflicted copy — DeviceB 2024-01-15).pdf</code></li>
+            <li>Notify user: "Conflict found. Please resolve."</li>
+            <li>Both versions kept — user decides which to keep</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Online vs Offline Conflict</h3>
+          <table>
+            <tr><th>Scenario</th><th>Behaviour</th></tr>
+            <tr><td>Both online, sequential edits</td><td>Last-write-wins — later version stored, earlier kept as prev version</td></tr>
+            <tr><td>Both online, simultaneous edit</td><td>DB transaction detects same base version → conflict copy created</td></tr>
+            <tr><td>One offline, syncs later</td><td>Offline device version compared to latest — conflict copy if diverged</td></tr>
+            <tr><td>Auto-merge possible?</td><td>Out of scope (Google Docs level). Drive just creates conflict copy.</td></tr>
+          </table>
+          <p>This is exactly how Google Drive and Dropbox handle conflicts. Conflict copies are the safest UX — never silently lose data.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: Access Control -->
+    <div class="slide" id="s14" data-title="Access Control — Sharing &amp; Permissions">
+      <div class="section-label">🔄 Sync &amp; Conflict</div>
+      <h2>Access Control — Sharing &amp; Permissions</h2>
+      <div class="two-col">
+        <div>
+          <h3>Permission Model</h3>
+          <ul>
+            <li><strong>VIEW</strong> — read-only, can download</li>
+            <li><strong>COMMENT</strong> — can add comments, can't edit</li>
+            <li><strong>EDIT</strong> — full read/write, can upload new versions</li>
+            <li>Permissions set per <strong>file or folder</strong></li>
+            <li>Folder permissions <strong>cascade to all children</strong></li>
+          </ul>
+          <h3>Share API</h3>
+          <pre class="code-block">POST /api/v1/files/{id}/share
+{ "userId": "user_bob", "role": "EDIT" }
+
+GET /api/v1/files/{id}/share-link
+→ { "url": "https://drive.example.com/f/abc123",
+    "role": "VIEW", "expiresAt": "2024-12-31" }</pre>
+        </div>
+        <div>
+          <h3>Permission Check — Walk Up Parent Chain</h3>
+          <ol>
+            <li>Check <code>permissions</code> for <code>{ resource_id: F, user_id: X }</code></li>
+            <li>If not found: check F's parent folder G</li>
+            <li>If not found: check G's parent folder H</li>
+            <li>Continue until root or explicit permission found</li>
+            <li>No permission found at root → deny</li>
+          </ol>
+          <h3>Permission Caching (Redis)</h3>
+          <ul>
+            <li>Cache key: <code>perm:{userId}:{fileId}</code> → <code>{ allowed: true/false, role }</code></li>
+            <li>TTL: 5 minutes — balance freshness vs DB load</li>
+            <li>On permission change to parent: invalidate all child-resource cache entries</li>
+            <li>Sub-millisecond permission check on every API call</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: ER Diagram -->
+    <div class="slide" id="s15" data-title="ER Diagram — Entity Relationships">
+      <div class="section-label">🗄 DB Schema</div>
+      <h2>ER Diagram — Entity Relationships</h2>
+      <pre class="ascii-diagram">
+┌──────────────┐     ┌──────────────────────────────────┐
+│    users     │     │             files                  │
+│  (MySQL)     │     │           (MySQL)                  │
+├──────────────┤     ├──────────────────────────────────┤
+│ PK user_id   │─────│ PK file_id UUID                  │
+│    email     │ 1:N │ FK owner_id → users               │
+│    quota_used│     │    name, size_bytes, mime_type    │
+│    plan ENUM │     │    current_version INT            │
+└──────────────┘     │    is_deleted BOOL               │
+                     │    parent_folder_id UUID (FK)    │
+                     └──────────────┬───────────────────┘
+                                    │ 1:N
+                      ┌─────────────▼─────────────────┐
+                      │        file_versions (MySQL)   │
+                      ├───────────────────────────────┤
+                      │ PK version_id INT             │
+                      │ FK file_id UUID               │
+                      │    s3_key VARCHAR             │
+                      │    size_bytes, checksum_sha256│
+                      │    created_by, created_at     │
+                      └───────────────────────────────┘
+
+┌──────────────────────────────────┐  ┌───────────────────────────┐
+│     file_chunks (Cassandra)      │  │   file_shares (MySQL)     │
+├──────────────────────────────────┤  ├───────────────────────────┤
+│ PK file_id UUID  (PARTITION KEY) │  │ PK share_id UUID          │
+│    chunk_index INT (CLUSTER KEY) │  │ FK file_id UUID           │
+│    chunk_hash VARCHAR (SHA-256)  │  │ FK shared_with → users    │
+│    s3_key VARCHAR                │  │    permission ENUM        │
+│    size_bytes INT                │  │    created_at TIMESTAMP   │
+└──────────────────────────────────┘  └───────────────────────────┘</pre>
+    </div>
+
+    <!-- SLIDE 16: DB Schema -->
+    <div class="slide" id="s16" data-title="Database Schema — Full DDL">
+      <div class="section-label">🗄 DB Schema</div>
+      <h2>Database Schema — Full DDL</h2>
+      <div class="two-col">
+        <div>
+          <pre class="code-block">-- MySQL: files
+CREATE TABLE files (
+  file_id      UUID PRIMARY KEY,
+  name         VARCHAR(255) NOT NULL,
+  owner_id     UUID REFERENCES users(user_id),
+  parent_folder_id UUID REFERENCES folders,
+  status       ENUM('PROCESSING','ACTIVE','DELETED'),
+  checksum     VARCHAR(64),  -- file-level SHA-256
+  created_at   TIMESTAMP,
+  updated_at   TIMESTAMP
+);
+CREATE INDEX idx_owner   ON files(owner_id);
+CREATE INDEX idx_folder  ON files(parent_folder_id);
+CREATE INDEX idx_checksum ON files(checksum); -- dedup
+
+-- MySQL: permissions
+CREATE TABLE permissions (
+  permission_id UUID PRIMARY KEY,
+  resource_id   UUID,
+  resource_type ENUM('FILE','FOLDER'),
+  user_id       UUID REFERENCES users,
+  role          ENUM('VIEW','COMMENT','EDIT'),
+  created_at    TIMESTAMP
+);</pre>
+        </div>
+        <div>
+          <pre class="code-block">-- Cassandra: file_chunks
+-- WHY Cassandra: pure lookup by (file_id,
+-- chunk_index), high write volume, no JOINs
+CREATE TABLE file_chunks (
+  file_id      UUID,
+  version_id   UUID,
+  chunk_index  INT,
+  chunk_hash   TEXT,
+  s3_key       TEXT,
+  size_bytes   INT,
+  PRIMARY KEY (file_id, version_id, chunk_index)
+) WITH CLUSTERING ORDER BY
+    (version_id DESC, chunk_index ASC);
+
+-- Redis: upload session
+-- Key: upload:{uploadId}
+-- Value: {fileId, chunkMap:{0:hash,...}, ttl:24h}
+
+-- Redis: quota reservation (Lua script)
+-- EVAL atomicReserve quota:{userId} fileSize quotaLimit</pre>
+          <div class="key-insight" style="margin-top:8px;font-size:0.85em">
+            <strong>Why Cassandra for chunks?</strong> Pure lookup by (file_id, version_id, chunk_index). No joins needed. High write volume during commit. Idempotent chunk writes. Perfect fit.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 17: Scaling -->
+    <div class="slide" id="s17" data-title="Scaling — Google Drive at 1 Billion Users">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Scaling — Google Drive at 1 Billion Users</h2>
+      <div class="two-col">
+        <div>
+          <h3>Bottleneck 1: Storage (250 PB)</h3>
+          <ul>
+            <li>S3 lifecycle: Standard → IA (90d) → Glacier (1yr)</li>
+            <li>Cross-user dedup: if 1000 users upload same file → 1 S3 object</li>
+            <li>Result: effective storage 30–50% less than raw file count</li>
+          </ul>
+          <h3>Bottleneck 2: Sync Fan-Out</h3>
+          <ul>
+            <li>Power user has 50 devices. Each upload → 50 push notifications</li>
+            <li>100M DAU × 5 changes/day × avg 3 devices = 1.5B notifications/day</li>
+            <li>Sync Service: horizontally scalable, stateless, Kafka consumer</li>
+            <li>Scale Sync Service instances to match Kafka consumer lag</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Bottleneck 3: Metadata DB Sharding</h3>
+          <ul>
+            <li>500B files × 1KB = 500 TB metadata</li>
+            <li>Shard MySQL by <code>owner_id</code> (user ID)</li>
+            <li>All a user's files are on the same shard → no cross-shard joins</li>
+            <li>100 shards × 5 TB per shard = manageable</li>
+            <li>Read replicas per shard for read-heavy workloads</li>
+          </ul>
+          <h3>Bottleneck 4: Upload Throughput</h3>
+          <ul>
+            <li>Presigned URLs → client uploads directly to S3, bypasses backend</li>
+            <li>Our servers handle only metadata (tiny payloads)</li>
+            <li>S3 Transfer Acceleration for users far from S3 region</li>
+            <li>Regional S3 buckets: INIT response includes <code>uploadRegion</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 18: Trade-offs Table -->
+    <div class="slide" id="s18" data-title="Key Trade-offs">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Key Trade-offs</h2>
+      <table>
+        <tr><th>Decision</th><th>Choice Made</th><th>Trade-off</th></tr>
+        <tr>
+          <td>Upload protocol</td>
+          <td>Chunked upload (5 MB chunks)</td>
+          <td>Resumable on network failure, parallel chunks <em>vs.</em> client must track chunk state</td>
+        </tr>
+        <tr>
+          <td>Deduplication</td>
+          <td>SHA-256 per chunk</td>
+          <td>Same chunk stored once across users, massive savings <em>vs.</em> SHA-256 compute overhead</td>
+        </tr>
+        <tr>
+          <td>Metadata storage</td>
+          <td>MySQL (sharded)</td>
+          <td>ACID for ownership, sharing, quota + JOINs (user → files → shares) <em>vs.</em> requires sharding for 1B+ rows</td>
+        </tr>
+        <tr>
+          <td>Chunk storage</td>
+          <td>Cassandra (file_id + chunk_index)</td>
+          <td>Fast partition scan for "all chunks of file X" <em>vs.</em> no full ACID (chunk write is idempotent — fine)</td>
+        </tr>
+        <tr>
+          <td>Sync protocol</td>
+          <td>Push (inotify/FSEvents) + Pull on reconnect</td>
+          <td>Near-real-time sync <em>vs.</em> missed events while offline need full reconciliation</td>
+        </tr>
+        <tr>
+          <td>Conflict resolution</td>
+          <td>Last-writer-wins + conflict copy</td>
+          <td>Simple, no user prompt needed <em>vs.</em> conflict copy preserves both — user must manually resolve</td>
+        </tr>
+        <tr>
+          <td>Quota enforcement</td>
+          <td>Redis Lua atomic check-and-reserve</td>
+          <td>No over-quota race condition <em>vs.</em> Redis crash loses reservation (auto-heal on next request)</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- SLIDE 19: S3 vs GCS vs Azure Blob -->
+    <div class="slide" id="s19" data-title="S3 vs GCS vs Azure Blob — Blob Store Choice">
+      <div class="section-label">📈 Scaling</div>
+      <h2>S3 vs GCS vs Azure Blob — Blob Store Choice</h2>
+      <table>
+        <tr><th>Feature</th><th>AWS S3</th><th>Google Cloud Storage</th><th>Azure Blob</th></tr>
+        <tr><td>Durability</td><td>11 nines (99.999999999%)</td><td>11 nines</td><td>11 nines</td></tr>
+        <tr><td>Standard storage cost</td><td>~$0.023/GB/mo</td><td>~$0.020/GB/mo</td><td>~$0.018/GB/mo</td></tr>
+        <tr><td>Presigned URLs</td><td>Yes (5 min–7 days)</td><td>Yes (signed URLs)</td><td>Yes (SAS tokens)</td></tr>
+        <tr><td>Multipart upload</td><td>Yes (5 MB–5 TB per part)</td><td>Yes (resumable upload)</td><td>Yes (block blobs)</td></tr>
+        <tr><td>Transfer acceleration</td><td>Yes (CloudFront PoPs)</td><td>Yes (CDN)</td><td>Yes (Azure CDN)</td></tr>
+        <tr><td>Lifecycle rules</td><td>Yes (S3 IA, Glacier)</td><td>Yes (Nearline, Coldline)</td><td>Yes (Cool, Archive)</td></tr>
+        <tr><td>Cross-region replication</td><td>S3 CRR</td><td>Turbo replication</td><td>GRS / RA-GRS</td></tr>
+        <tr><td>Best for</td><td>AWS-native apps</td><td>GCP-native / ML workloads</td><td>Azure-native / Microsoft shops</td></tr>
+      </table>
+      <div class="key-insight">
+        <strong>For Google Drive specifically:</strong> Google uses GCS (Google Cloud Storage) — tight integration with their stack. For an interview, S3 is the safe default. The design pattern (presigned URLs, chunked upload, lifecycle rules) is identical across all three providers.
+      </div>
+    </div>
+
+    <!-- SLIDE 20: PostgreSQL vs DynamoDB for metadata -->
+    <div class="slide" id="s20" data-title="MySQL vs Cassandra vs DynamoDB — Metadata Store">
+      <div class="section-label">📈 Scaling</div>
+      <h2>MySQL vs Cassandra vs DynamoDB — Metadata Store</h2>
+      <table>
+        <tr><th>Criterion</th><th>MySQL (sharded)</th><th>Cassandra</th><th>DynamoDB</th></tr>
+        <tr><td>JOINs</td><td>Yes — user→files→perms→versions</td><td>No JOINs</td><td>No JOINs natively</td></tr>
+        <tr><td>ACID transactions</td><td>Yes — quota, ownership</td><td>Lightweight transactions only</td><td>Transactions (limited)</td></tr>
+        <tr><td>Horizontal scale</td><td>Shard by owner_id</td><td>Native, auto-shards</td><td>Auto-scales (managed)</td></tr>
+        <tr><td>Query flexibility</td><td>Any query, indexes</td><td>Partition key only</td><td>Partition + sort key</td></tr>
+        <tr><td>Access pattern: "all files in folder"</td><td>1 query with index</td><td>Must pre-model table</td><td>Must pre-model table</td></tr>
+        <tr><td>Access pattern: "all chunks of file"</td><td>JOIN query — slow at scale</td><td>Partition by file_id — perfect</td><td>Partition by file_id — good</td></tr>
+      </table>
+      <div class="key-insight">
+        <strong>Decision:</strong> MySQL for metadata (needs JOINs + ACID for ownership/permissions). Cassandra for chunks table (pure lookup by file_id, high write volume, idempotent writes). DynamoDB is a valid MySQL alternative for managed horizontal scaling, but adds cost and loses some SQL flexibility.
+      </div>
+    </div>
+
+    <!-- SLIDE 21: Senior Q&A 1 — Race Conditions -->
+    <div class="slide" id="s21" data-title="Senior Q&amp;A — Race Conditions">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Q&amp;A — Race Conditions</h2>
+      <div class="qa-block">
+        <div class="question">Q: "User has 10 MB quota left. Uploads two 8 MB files simultaneously. Both pass the quota check. Total = 16 MB. How do you prevent this?"</div>
+        <div class="answer">
+          <strong>A:</strong> This is a classic check-then-act race condition. Fix: <strong>Redis atomic reservation with a Lua script</strong>.
+          <pre class="code-block">-- On INIT (before any upload starts):
+EVAL (runs atomically on Redis server):
+  current = GET quota:{userId}
+  if current + fileSize > quotaLimit: return -1  -- deny
+  SET quota:{userId} (current + fileSize)
+  return 1  -- approved
+
+-- Lua script = single atomic Redis operation, no race possible
+-- On upload failure: DECRBY quota:{userId} fileSize  (release)
+-- On commit success: UPDATE users SET quota_used = quota_used + fileSize</pre>
+        </div>
+      </div>
+      <div class="qa-block" style="margin-top:12px">
+        <div class="question">Q: "Validator Service crashes after all chunks uploaded but before metadata written to MySQL?"</div>
+        <div class="answer">
+          <strong>A:</strong> Idempotent retry. All data still intact:
+          <ul>
+            <li>Chunks: in S3 (not deleted yet)</li>
+            <li>Chunk hashes: in Redis with TTL=24h (not expired)</li>
+            <li>Validator can re-run validation from scratch — same result every time</li>
+            <li>Fix: Kafka retries the commit event. DLQ after 5 retries.</li>
+            <li>Client polls <code>GET /files/{id}/status</code> → still shows PROCESSING</li>
+            <li>If corrupt chunk found: notify client with <code>{ badChunks: [7, 12] }</code> → re-upload only those</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 22: Senior Q&A 2 — Geo & Failure -->
+    <div class="slide" id="s22" data-title="Senior Q&amp;A — Geo &amp; Failure Modes">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Q&amp;A — Geo &amp; Failure Modes</h2>
+      <div class="qa-block">
+        <div class="question">Q: "User is in Mumbai. S3 bucket is in us-east-1. How do you make their 10 GB upload fast?"</div>
+        <div class="answer">
+          <strong>A:</strong> Two options:
+          <ul>
+            <li><strong>Option A — S3 Transfer Acceleration:</strong> AWS routes upload via CloudFront edge (Mumbai PoP) → AWS private backbone → us-east-1 S3. AWS backbone is much faster than public internet. Cost: ~2× more per GB. Best for large files.</li>
+            <li><strong>Option B — Regional S3 Buckets:</strong> INIT response includes <code>{ uploadRegion: "ap-south-1" }</code>. Presigned URL points to ap-south-1 bucket (~10ms latency). S3 Cross-Region Replication copies to primary bucket. Metadata written after replication completes. Server picks region from user's IP geolocation.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="qa-block" style="margin-top:12px">
+        <div class="question">Q: "How do folder permissions cascade to child files?"</div>
+        <div class="answer">
+          <strong>A:</strong> Permission check walks up the parent chain at query time.
+          <ul>
+            <li>"Can userId X read file F?" → check permissions for <code>{ resource_id: F, user_id: X }</code></li>
+            <li>If not found → check F's parent folder G → check G's parent H → … until root</li>
+            <li>Optimization: cache result in Redis <code>perm:{userId}:{fileId}</code> with TTL: 5 min</li>
+            <li>On any permission change to parent → invalidate all child-resource cache entries</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 23: Senior Q&A 3 — Design Decisions -->
+    <div class="slide" id="s23" data-title="Senior Q&amp;A — What NOT to Say">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Q&amp;A — What NOT to Say</h2>
+      <div class="two-col">
+        <div>
+          <div class="qa-block">
+            <div class="question bad">✗ "I'll route the file upload through my backend server"</div>
+            <div class="answer">100M DAU × 10 MB = 1 TB/sec through your servers. Impossible. Use presigned URLs — client uploads directly to S3.</div>
+          </div>
+          <div class="qa-block" style="margin-top:10px">
+            <div class="question bad">✗ "Just upload in one HTTP POST request"</div>
+            <div class="answer">15 GB files timeout at LB (30–120s). Network drop = restart from scratch. No progress indicator. Must use 5-step chunked upload protocol.</div>
+          </div>
+          <div class="qa-block" style="margin-top:10px">
+            <div class="question bad">✗ "A folder is a real directory in S3"</div>
+            <div class="answer">S3 has no directories. A folder = just a row in MySQL. parent_folder_id creates the hierarchy. No S3 mkdir.</div>
+          </div>
+        </div>
+        <div>
+          <div class="qa-block">
+            <div class="question bad">✗ "Use Cassandra for all metadata because it scales"</div>
+            <div class="answer">File metadata needs JOINs: files + permissions + versions. Cassandra has no joins. Use MySQL. Cassandra IS correct for chunks table (no joins, high writes).</div>
+          </div>
+          <div class="qa-block" style="margin-top:10px">
+            <div class="question bad">✗ "I'll poll for sync every 5 seconds"</div>
+            <div class="answer">100M devices × every 5s = 20M requests/sec just for polling. Use OS file watchers (inotify/FSEvents) + Kafka push. Polling is a last resort fallback only.</div>
+          </div>
+          <div class="qa-block" style="margin-top:10px">
+            <div class="question bad">✗ "On network failure, restart the upload from zero"</div>
+            <div class="answer">This is why chunked upload exists. Server stores which chunks are done (Redis). Client checks existingChunks on re-INIT. Resumes from the first failed chunk.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 24: Quick Numbers -->
+    <div class="slide" id="s24" data-title="Quick Numbers — Memorize These">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Quick Numbers — Memorize These</h2>
+      <div class="two-col">
+        <div>
+          <table>
+            <tr><th>Metric</th><th>Value</th></tr>
+            <tr><td>Registered users</td><td>500 million</td></tr>
+            <tr><td>Daily Active Users</td><td>100 million</td></tr>
+            <tr><td>Total files</td><td>500 billion</td></tr>
+            <tr><td>Average file size</td><td>500 KB</td></tr>
+            <tr><td>Total storage</td><td>250 PB</td></tr>
+            <tr><td>Max single file size</td><td>10–15 GB</td></tr>
+            <tr><td>Chunk size</td><td>5 MB</td></tr>
+            <tr><td>Free storage quota</td><td>15 GB per user</td></tr>
+            <tr><td>Daily sync events</td><td>500 million</td></tr>
+            <tr><td>Sync events per second</td><td>~5,800</td></tr>
+            <tr><td>Upload session TTL (Redis)</td><td>24 hours</td></tr>
+            <tr><td>Presigned URL TTL</td><td>5 minutes</td></tr>
+            <tr><td>Permission cache TTL</td><td>5 minutes</td></tr>
+            <tr><td>Sync push latency target</td><td>&lt; 5 seconds</td></tr>
+          </table>
+        </div>
+        <div>
+          <h3>4 Things That Show Senior Thinking</h3>
+          <ol>
+            <li><strong>Failure modes:</strong> "Validator crashes" → idempotent retry from S3 + Redis. Chunks in S3, hashes in Redis TTL=24h → re-run validation anytime.</li>
+            <li><strong>Race conditions:</strong> quota check → Redis Lua atomic reservation. check-then-act is not safe under concurrent requests.</li>
+            <li><strong>WHY decisions:</strong> MySQL vs Cassandra — joins vs no-joins. Know which access patterns demand which DB.</li>
+            <li><strong>Client architecture:</strong> delta sync, local metadata index, file watcher (inotify/FSEvents). Many candidates forget the CLIENT is half the system.</li>
+          </ol>
+          <div class="key-insight">
+            Study order: Architecture (15 min) → Upload Protocol (15 min) → Sync Deep Dive (10 min) → Capacity (5 min) → Rapid Answer (5 min)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 25: Closing -->
+    <div class="slide" id="s25" data-title="Closing — 60-Second Rapid Answer">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Closing — 60-Second Rapid Answer</h2>
+      <div class="script-block">
+        <blockquote>
+          "I'd design Google Drive with five pieces:
+          <br><br>
+          <strong>1. FILE UPLOAD (Chunked, direct to S3):</strong> Files up to 15 GB — split into 5 MB chunks client-side. SHA-256 per chunk. Backend generates presigned S3 URL per chunk. Client uploads directly to S3. Our servers never see file bytes. Validator confirms hashes. Metadata saved to MySQL.
+          <br><br>
+          <strong>2. SYNC ACROSS DEVICES (Kafka + push/pull):</strong> After commit, Kafka event → Sync Service → push notification to all linked devices. Each device downloads only CHANGED chunks (delta sync: re-hash, compare to local metadata index). Offline devices poll on reconnect.
+          <br><br>
+          <strong>3. STORAGE (S3 + MySQL + Cassandra + Redis):</strong> S3 for file bytes (250 PB). MySQL for metadata (folders, files, versions, permissions — needs JOINs). Cassandra for chunks (pure lookup by file_id, high writes). Redis for upload session state and quota reservation.
+          <br><br>
+          <strong>4. DEDUPLICATION:</strong> File-level: hash entire file on INIT. Same hash exists → skip upload, create version pointing to old chunks. Chunk-level: same chunk across files/users → stored once. 30–50% storage savings.
+          <br><br>
+          <strong>5. SHARING + PERMISSIONS:</strong> VIEW / COMMENT / EDIT per file/folder per user. Folder permissions cascade to all children. Cached in Redis (5-min TTL). Permission check walks up parent chain. Permission check on every API call."
+        </blockquote>
+      </div>
+    </div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'Google Drive';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

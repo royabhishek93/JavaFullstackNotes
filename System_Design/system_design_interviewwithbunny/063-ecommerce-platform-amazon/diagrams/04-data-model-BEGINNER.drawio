@@ -1,0 +1,169 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Data Model" id="data">
+    <mxGraphModel dx="2400" dy="1500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2400" pageHeight="1700" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="E-COMMERCE DATA MODEL — Schemas, Relationships, Caching Patterns" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="2360" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="MongoDB (Flexible Product Schema) + PostgreSQL (Inventory + Cart ACID) + MySQL (Orders) + Elasticsearch (Search Index) + Redis (Cache + Locks) + Kafka (Events)" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="50" width="2200" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== MONGODB: PRODUCTS ========== -->
+        
+        <mxCell id="mongo-box" value="🍃 MONGODB — Product Catalog (Flexible Schema)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#388e3c;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="520" height="380" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mongo-schema" value="products (Collection)&#xa;━━━━━━━━━━━━━━━━━━━&#xa;_id: ObjectId (PK, auto-generated)&#xa;product_id: String (UNIQUE, indexed) — 'PROD-12345'&#xa;title: String — 'iPhone 15 Pro Max'&#xa;category: String (indexed) — 'electronics'&#xa;price: Decimal128 — 1299.99&#xa;currency: String — 'USD'&#xa;description: String (full-text indexed via Elasticsearch)&#xa;images: Array&lt;String&gt; — ['https://cdn.../img1.jpg', ...]&#xa;rating_avg: Float — 4.7&#xa;rating_count: Int — 12340&#xa;seller_id: String (FK → sellers collection)&#xa;created_at: Date&#xa;updated_at: Date&#xa;&#xa;specifications: Object (FLEXIBLE — varies by category) {&#xa;  // For electronics (mobile phones):&#xa;  &quot;RAM&quot;: &quot;8GB&quot;,&#xa;  &quot;storage&quot;: &quot;256GB&quot;,&#xa;  &quot;processor&quot;: &quot;A17 Pro&quot;,&#xa;  &quot;screen_size&quot;: &quot;6.7 inch&quot;,&#xa;  &quot;battery&quot;: &quot;4422mAh&quot;&#xa;  &#xa;  // For books:&#xa;  &quot;author&quot;: &quot;Robert C. Martin&quot;,&#xa;  &quot;ISBN&quot;: &quot;978-0-13-235088-4&quot;,&#xa;  &quot;publisher&quot;: &quot;Prentice Hall&quot;,&#xa;  &quot;page_count&quot;: 464,&#xa;  &quot;language&quot;: &quot;English&quot;&#xa;  &#xa;  // For clothing:&#xa;  &quot;size&quot;: &quot;L&quot;,&#xa;  &quot;color&quot;: &quot;Navy Blue&quot;,&#xa;  &quot;material&quot;: &quot;Cotton&quot;,&#xa;  &quot;fit_type&quot;: &quot;Regular&quot;,&#xa;  &quot;care_instructions&quot;: &quot;Machine wash cold&quot;&#xa;}&#xa;&#xa;Sharded by: category (100M products, 10 shards × 10M each)&#xa;Indexes: {product_id: 1}, {category: 1, price: 1}, {seller_id: 1}" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="50" y="130" width="500" height="340" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== POSTGRESQL: INVENTORY ========== -->
+        
+        <mxCell id="postgres-inv-box" value="🐘 POSTGRESQL — Inventory (reserved_qty Pattern, ACID)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="600" y="100" width="520" height="260" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="postgres-inv-schema" value="inventory (Table)&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;id: SERIAL PRIMARY KEY&#xa;product_id: VARCHAR(50) UNIQUE NOT NULL (FK → products)&#xa;warehouse_id: UUID NOT NULL (FK → warehouses)&#xa;&#xa;qty: INTEGER NOT NULL CHECK (qty &gt;= 0)&#xa;  → Total warehouse stock (source of truth)&#xa;  &#xa;reserved_qty: INTEGER NOT NULL DEFAULT 0 CHECK (reserved_qty &gt;= 0)&#xa;  → In active checkouts (not yet paid)&#xa;  → Incremented during checkout, decremented on payment/timeout&#xa;  &#xa;available: INTEGER GENERATED ALWAYS AS (qty - reserved_qty) STORED&#xa;  → Virtual column: shows what users can actually buy&#xa;  → If available &lt; cart_qty → 'Out of stock'&#xa;  &#xa;last_updated: TIMESTAMP DEFAULT NOW()&#xa;created_at: TIMESTAMP DEFAULT NOW()&#xa;&#xa;CONSTRAINT check_reserved CHECK (reserved_qty &lt;= qty)&#xa;INDEX idx_product_id ON inventory(product_id);&#xa;&#xa;-- Example state:&#xa;-- qty=10, reserved_qty=3 → available=7 (10 - 3)&#xa;-- During checkout: UPDATE SET reserved_qty = reserved_qty + 1&#xa;-- After payment: UPDATE SET qty=qty-1, reserved_qty=reserved_qty-1" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="610" y="130" width="500" height="220" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== POSTGRESQL: CART ========== -->
+        
+        <mxCell id="postgres-cart-box" value="🐘 POSTGRESQL — Cart (Cross-Device Sync, ON CONFLICT)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="600" y="380" width="520" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="postgres-cart-schema" value="carts (Table)&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;cart_id: UUID PRIMARY KEY DEFAULT gen_random_uuid()&#xa;user_id: UUID NOT NULL (FK → users, indexed)&#xa;created_at: TIMESTAMP DEFAULT NOW()&#xa;updated_at: TIMESTAMP DEFAULT NOW()&#xa;&#xa;cart_items (Table)&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;cart_id: UUID NOT NULL (FK → carts)&#xa;product_id: VARCHAR(50) NOT NULL (FK → products)&#xa;qty: INTEGER NOT NULL CHECK (qty &gt; 0)&#xa;price: NUMERIC(10,2) NOT NULL&#xa;currency: VARCHAR(3) NOT NULL&#xa;added_at: TIMESTAMP DEFAULT NOW()&#xa;&#xa;PRIMARY KEY (cart_id, product_id)  ← Composite key prevents duplicates&#xa;UNIQUE (cart_id, product_id)       ← Enforces one row per product&#xa;&#xa;-- ON CONFLICT handling (mobile + web simultaneous add):&#xa;INSERT INTO cart_items (cart_id, product_id, qty, price, currency)&#xa;VALUES (?, ?, ?, ?, ?)&#xa;ON CONFLICT (cart_id, product_id)&#xa;DO UPDATE SET qty = cart_items.qty + EXCLUDED.qty,&#xa;              added_at = NOW();&#xa;&#xa;-- Cross-device sync: Cart tied to user_id, not session" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="610" y="410" width="500" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== MYSQL: ORDERS ========== -->
+        
+        <mxCell id="mysql-order-box" value="🐬 MYSQL — Orders (ACID, Partitioned by Month)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1160" y="100" width="580" height="340" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mysql-order-schema" value="orders (Table, partitioned by created_at MONTH)&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;order_id: VARCHAR(36) PRIMARY KEY — UUID, also sent as idempotency_key to payment gateway&#xa;user_id: VARCHAR(36) NOT NULL (FK → users, indexed)&#xa;&#xa;status: ENUM('PENDING_PAYMENT', 'PAYMENT_CONFIRMED', 'PROCESSING',&#xa;             'SHIPPED', 'DELIVERED', 'CANCELLED', 'REFUNDED')&#xa;  → State machine: PENDING_PAYMENT → PAYMENT_CONFIRMED → PROCESSING → SHIPPED → DELIVERED&#xa;  &#xa;items: JSON [{product_id, title, qty, price, currency}]&#xa;  → Snapshot of cart at checkout time (immutable, for audit trail)&#xa;  → Even if product price changes later, order shows original price&#xa;  &#xa;total: DECIMAL(10,2) NOT NULL&#xa;currency: VARCHAR(3) NOT NULL&#xa;&#xa;shipping_address: JSON {street, city, state, zip, country, phone}&#xa;billing_address: JSON {same structure}&#xa;&#xa;payment_id: VARCHAR(100) (FK → payments, set after webhook)&#xa;tracking_id: VARCHAR(100) (set after shipment)&#xa;&#xa;created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP (partition key)&#xa;updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP&#xa;&#xa;-- Partitioning strategy: Query historical orders efficiently&#xa;PARTITION BY RANGE (YEAR(created_at) * 100 + MONTH(created_at)) (&#xa;  PARTITION p202401 VALUES LESS THAN (202402),&#xa;  PARTITION p202402 VALUES LESS THAN (202403),&#xa;  ...&#xa;);&#xa;&#xa;INDEX idx_user_created ON orders(user_id, created_at DESC);&#xa;INDEX idx_status ON orders(status) WHERE status IN ('PENDING_PAYMENT', 'PROCESSING');" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1170" y="130" width="560" height="300" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== MYSQL: PAYMENTS ========== -->
+        
+        <mxCell id="mysql-payment-box" value="🐬 MYSQL — Payments (Idempotency via UNIQUE Constraint)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1160" y="460" width="580" height="210" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mysql-payment-schema" value="payments (Table)&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;payment_id: VARCHAR(100) PRIMARY KEY — Stripe/Razorpay payment intent ID&#xa;order_id: VARCHAR(36) UNIQUE NOT NULL (FK → orders)  ← UNIQUE prevents double-charge&#xa;&#xa;amount: DECIMAL(10,2) NOT NULL&#xa;currency: VARCHAR(3) NOT NULL&#xa;&#xa;status: ENUM('PENDING', 'SUCCESS', 'FAILED', 'REFUNDED')&#xa;payment_method: VARCHAR(20) — 'card', 'upi', 'wallet'&#xa;&#xa;gateway_response: JSON — Raw response from payment gateway (audit trail)&#xa;  {transaction_id, gateway_order_id, error_code, error_message}&#xa;  &#xa;created_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP&#xa;updated_at: TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP&#xa;&#xa;-- Idempotency check in webhook handler:&#xa;-- SELECT * FROM payments WHERE order_id = ?&#xa;-- If row exists → return 200 OK (already processed, webhook replay)&#xa;-- Else → BEGIN TRANSACTION; INSERT payments; UPDATE orders; UPDATE inventory; COMMIT;&#xa;&#xa;UNIQUE KEY uk_order_id (order_id);  ← Critical for idempotency&#xa;INDEX idx_status_created ON payments(status, created_at);" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1170" y="490" width="560" height="170" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== ELASTICSEARCH: SEARCH INDEX ========== -->
+        
+        <mxCell id="es-box" value="🔍 ELASTICSEARCH — Search Index (Synced from MongoDB CDC)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#7b1fa2;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="520" height="300" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="es-schema" value="products (Index)&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;Mapping:&#xa;{&#xa;  &quot;product_id&quot;: {&quot;type&quot;: &quot;keyword&quot;},  ← Exact match, not analyzed&#xa;  &quot;title&quot;: {&#xa;    &quot;type&quot;: &quot;text&quot;,&#xa;    &quot;analyzer&quot;: &quot;standard&quot;,&#xa;    &quot;fields&quot;: {&#xa;      &quot;keyword&quot;: {&quot;type&quot;: &quot;keyword&quot;},  ← For exact match sorting&#xa;      &quot;autocomplete&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;analyzer&quot;: &quot;edge_ngram_analyzer&quot;}&#xa;    }&#xa;  },&#xa;  &quot;description&quot;: {&quot;type&quot;: &quot;text&quot;, &quot;analyzer&quot;: &quot;standard&quot;},&#xa;  &quot;category&quot;: {&quot;type&quot;: &quot;keyword&quot;},  ← For faceted filters&#xa;  &quot;price&quot;: {&quot;type&quot;: &quot;float&quot;},&#xa;  &quot;rating_avg&quot;: {&quot;type&quot;: &quot;float&quot;},&#xa;  &quot;rating_count&quot;: {&quot;type&quot;: &quot;integer&quot;},&#xa;  &quot;brand&quot;: {&quot;type&quot;: &quot;keyword&quot;},  ← Extracted from specifications, for facets&#xa;  &quot;created_at&quot;: {&quot;type&quot;: &quot;date&quot;}&#xa;}&#xa;&#xa;Query example (multi_match with boost):&#xa;{&#xa;  &quot;query&quot;: {&#xa;    &quot;bool&quot;: {&#xa;      &quot;must&quot;: [&#xa;        {&quot;multi_match&quot;: {&#xa;          &quot;query&quot;: &quot;laptop&quot;,&#xa;          &quot;fields&quot;: [&quot;title^3&quot;, &quot;description&quot;, &quot;brand&quot;],  ← title boosted 3x&#xa;          &quot;fuzziness&quot;: &quot;AUTO&quot;  ← Fixes typos: labtop → laptop&#xa;        }}&#xa;      ],&#xa;      &quot;filter&quot;: [&#xa;        {&quot;term&quot;: {&quot;category&quot;: &quot;electronics&quot;}},&#xa;        {&quot;range&quot;: {&quot;price&quot;: {&quot;lte&quot;: 1000}}}&#xa;      ]&#xa;    }&#xa;  },&#xa;  &quot;aggs&quot;: {&#xa;    &quot;brands&quot;: {&quot;terms&quot;: {&quot;field&quot;: &quot;brand&quot;}},  ← Faceted counts&#xa;    &quot;price_ranges&quot;: {&quot;range&quot;: {&quot;field&quot;: &quot;price&quot;, &quot;ranges&quot;: [...]}}&#xa;  }&#xa;}&#xa;&#xa;CDC Sync: MongoDB oplog → Kafka topic 'product.changes' → ES indexer consumer&#xa;Lag: 1-2 seconds (eventual consistency acceptable for search)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="50" y="550" width="500" height="260" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== REDIS: CACHE + LOCKS ========== -->
+        
+        <mxCell id="redis-box" value="⚡ REDIS — Cache + Distributed Locks (TTL-based Eviction)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="850" width="700" height="350" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-schema" value="Redis Data Structures &amp; Patterns:&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;&#xa;1. DISTRIBUTED LOCK (String with TTL):&#xa;   Key: lock:inventory:{product_id}&#xa;   Value: {session_id} — Identifies which checkout holds the lock&#xa;   TTL: 30 seconds — Auto-expires if service crashes mid-checkout&#xa;   Usage: SETNX lock:inventory:PROD-123 'sess-abc-456' EX 30&#xa;          → Returns 1 if acquired, 0 if already locked&#xa;   Release: DEL lock:inventory:PROD-123&#xa;&#xa;2. PRODUCT CACHE (String):&#xa;   Key: product:{product_id}&#xa;   Value: JSON {title, price, qty, images, ...}&#xa;   TTL: 30 minutes — Balance freshness vs cache hit rate&#xa;   Cache-aside: Read from cache → if miss, fetch from MongoDB → SET with TTL&#xa;   Invalidation: On product update (CDC event), DEL product:{product_id}&#xa;&#xa;3. SEARCH RESULTS CACHE (String):&#xa;   Key: search:{hash(query + filters + sort)}&#xa;   Value: JSON [{product_id, title, price, ...}, ...]&#xa;   TTL: 10 minutes — Shorter TTL for freshness&#xa;   Example: search:md5('laptop category=electronics priceMax=1000 sort=rating') → cached results&#xa;&#xa;4. INVENTORY CACHE (String):&#xa;   Key: inventory:{product_id}&#xa;   Value: JSON {qty, reserved_qty, available}&#xa;   TTL: 5 minutes — Frequent updates, short TTL&#xa;   Invalidation: On inventory update (after payment webhook), DEL inventory:{product_id}&#xa;   WHY SHORT TTL: Inventory changes frequently during sales, stale cache = overselling risk&#xa;&#xa;5. CART CACHE (Hash):&#xa;   Key: cart:{user_id}&#xa;   Fields: {product_id: qty, ...}&#xa;   TTL: 7 days — Long TTL, cart persists across sessions&#xa;   Example: HSET cart:user-123 PROD-456 2  (2 units of PROD-456)&#xa;            HGETALL cart:user-123 → {PROD-456: 2, PROD-789: 1}&#xa;   Eviction: On checkout success (payment webhook), DEL cart:{user_id}&#xa;   WHY HASH: Efficient per-item updates (HINCRBY cart:user-123 PROD-456 1)&#xa;&#xa;6. SESSION DATA (String):&#xa;   Key: session:{session_id}&#xa;   Value: JSON {user_id, auth_token, ...}&#xa;   TTL: 1 hour (idle timeout, refreshed on activity)&#xa;&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;Eviction Policy: allkeys-lru (evict least recently used keys when memory full)&#xa;Memory: 50GB (cart 20GB + product cache 15GB + search cache 10GB + locks/misc 5GB)&#xa;Persistence: RDB snapshots every 5 min + AOF (appendonly.aof) for durability (cart recovery after crash)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="50" y="880" width="680" height="310" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== KAFKA: EVENTS ========== -->
+        
+        <mxCell id="kafka-box" value="📨 KAFKA — Event Streaming (Decoupled Post-Checkout Workflow)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="770" y="850" width="970" height="350" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-schema" value="Kafka Topics &amp; Event Schemas:&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;&#xa;1. product.changes (CDC from MongoDB oplog)&#xa;   Partitioned by: product_id (preserves ordering per product)&#xa;   Schema: {event_type: 'INSERT'|'UPDATE'|'DELETE', product_id, fullDocument: {...}, timestamp}&#xa;   Consumers:&#xa;     • ES Indexer → Bulk index to Elasticsearch (eventual consistency, lag 1-2 sec)&#xa;     • Redis Cache Invalidator → DEL product:{product_id} (cache-aside pattern)&#xa;     • Analytics Service → ETL to data warehouse (offline processing)&#xa;   Retention: 7 days (enable replay to rebuild ES index if corrupted)&#xa;&#xa;2. order.created&#xa;   Partitioned by: user_id (orders from same user processed in order)&#xa;   Schema: {order_id, user_id, items: [{product_id, qty, price}], total, status: 'PENDING_PAYMENT', timestamp}&#xa;   Consumers:&#xa;     • Notification Service → Send &quot;Order placed, awaiting payment&quot; email/SMS&#xa;     • Analytics Service → Track order funnel metrics (checkout → payment conversion)&#xa;   Retention: 7 days&#xa;&#xa;3. payment.success&#xa;   Partitioned by: order_id&#xa;   Schema: {payment_id, order_id, user_id, amount, currency, payment_method, timestamp}&#xa;   Consumers:&#xa;     • Notification Service → Send &quot;Payment confirmed&quot; email/SMS with invoice PDF&#xa;     • Warehouse Service → Trigger pick/pack/ship workflow (async, can retry on failure)&#xa;     • Inventory Service → Invalidate Redis cache: DEL inventory:{product_id}&#xa;     • Analytics Service → Revenue tracking, payment method analytics&#xa;   Retention: 30 days (audit trail, longer retention for financial events)&#xa;&#xa;4. order.confirmed (published after payment webhook completes)&#xa;   Partitioned by: order_id&#xa;   Schema: {order_id, user_id, items, shipping_address, status: 'PAYMENT_CONFIRMED', timestamp}&#xa;   Consumers:&#xa;     • Warehouse Service → Generate picking list, assign to warehouse worker&#xa;     • Recommendation Service → Update user purchase history for ML model&#xa;   Retention: 7 days&#xa;&#xa;5. order.shipped&#xa;   Partitioned by: order_id&#xa;   Schema: {order_id, user_id, tracking_id, carrier: 'FedEx', estimated_delivery, timestamp}&#xa;   Consumers:&#xa;     • Notification Service → Send &quot;Order shipped&quot; email/SMS with tracking link&#xa;     • Order Service → Update order.status = 'SHIPPED', order.tracking_id = ...&#xa;   Retention: 7 days&#xa;&#xa;6. inventory.updated (published after stock replenishment from warehouse)&#xa;   Partitioned by: product_id&#xa;   Schema: {product_id, qty_change: +100, new_qty: 150, warehouse_id, timestamp}&#xa;   Consumers:&#xa;     • Redis Cache Invalidator → DEL inventory:{product_id}&#xa;     • Notification Service → If previously out-of-stock, notify waitlist users&#xa;   Retention: 7 days&#xa;&#xa;━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━&#xa;Consumer Groups: Each service has its own group (e.g., 'notification-service-group', 'warehouse-service-group')&#xa;  → Each partition consumed by exactly one member of group → horizontal scaling&#xa;  → At-least-once delivery (consumer commits offset after processing) → idempotent handlers required&#xa;Dead Letter Queue: Failed events (after 3 retries) → {topic}.dlq → manual investigation by ops team&#xa;Partitions: 12 partitions per topic (supports 12 parallel consumers for horizontal scaling)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="780" y="880" width="950" height="310" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== RELATIONSHIPS ========== -->
+        
+        <mxCell id="rel-product-inventory" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="220" as="sourcePoint" />
+            <mxPoint x="600" y="220" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-product-inventory-label" value="product_id FK" style="text;html=1;strokeColor=none;fillColor=#c8e6c9;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="540" y="195" width="80" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel-cart-product" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="400" as="sourcePoint" />
+            <mxPoint x="600" y="490" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-cart-product-label" value="product_id FK" style="text;html=1;strokeColor=none;fillColor=#c8e6c9;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="500" y="430" width="80" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel-order-payment" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#e65100;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1450" y="440" as="sourcePoint" />
+            <mxPoint x="1450" y="460" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-order-payment-label" value="payment_id FK" style="text;html=1;strokeColor=none;fillColor=#fff3e0;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="1390" y="435" width="80" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel-mongo-kafka" value="CDC" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#7b1fa2;dashed=1;endArrow=classic;endFill=1;fontSize=9;fontStyle=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="300" y="480" as="sourcePoint" />
+            <mxPoint x="300" y="850" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel-mongo-kafka-label" value="oplog → Kafka&#xa;product.changes" style="text;html=1;strokeColor=none;fillColor=#e1bee7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="230" y="650" width="80" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rel-kafka-es" value="ES Indexer" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#7b1fa2;dashed=1;endArrow=classic;endFill=1;fontSize=9;fontStyle=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="400" y="850" as="sourcePoint" />
+            <mxPoint x="400" y="820" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- ========== KEY PATTERNS ========== -->
+        
+        <mxCell id="patterns-box" value="🔑 KEY DATA PATTERNS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="1230" width="2340" height="230" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="patterns-text" value="1. **reserved_qty Pattern (Inventory)**: available = qty - reserved_qty. During checkout: increment reserved_qty (stock removed from pool but NOT deducted). After payment webhook: decrement both qty and reserved_qty atomically. Prevents overselling without permanently locking stock.&#xa;&#xa;2. **Idempotency via UNIQUE Constraint (Payments)**: UNIQUE(order_id) on payments table. Webhook handler: SELECT before INSERT. If row exists → 200 OK (already processed, safe to replay). If not → BEGIN; INSERT; UPDATE orders; UPDATE inventory; COMMIT. Prevents double-charge on webhook retry.&#xa;&#xa;3. **ON CONFLICT Upsert (Cart)**: Composite PRIMARY KEY (cart_id, product_id). INSERT ... ON CONFLICT DO UPDATE SET qty = qty + EXCLUDED.qty. Handles race: user adds same product from mobile + web simultaneously. One row per product guaranteed.&#xa;&#xa;4. **CDC for Search Sync (MongoDB → Elasticsearch)**: Product Service writes only to MongoDB. MongoDB oplog → Kafka topic → ES indexer consumer. Decoupled, eventual consistency (1-2 sec lag acceptable for search). ES down? Kafka offset replay rebuilds index.&#xa;&#xa;5. **Cache-Aside Pattern (Redis)**: Read from cache first. If miss → fetch from DB → SET with TTL. On update → DEL cache key (invalidation). Write-through NOT used (inventory changes frequently, cache would thrash).&#xa;&#xa;6. **Distributed Lock Auto-Expiry (Redis SETNX)**: SETNX lock:inventory:{pid} {session} EX 30. If service crashes mid-checkout, lock expires after 30 sec. Next user can proceed. No manual cleanup, no deadlock risk.&#xa;&#xa;7. **Event-Driven Decoupling (Kafka)**: Payment Service publishes payment.success event, returns 200 immediately. Notification, Warehouse, Analytics consume independently. One slow/failed consumer doesn't block checkout. Retry from Kafka offset.&#xa;&#xa;8. **Flexible Schema (MongoDB)**: Products stored as documents with category-specific fields in 'specifications' object. Mobile: {RAM, storage}. Books: {author, ISBN}. No ALTER TABLE for new categories. Elasticsearch extracts common fields (brand, color) for faceted search.&#xa;&#xa;9. **Partitioned Orders (MySQL)**: PARTITION BY RANGE (YEAR*100 + MONTH). Historical queries (user's past 6 months) scan fewer partitions. Archival: old partitions moved to cold storage (S3). Query performance stays constant as data grows.&#xa;&#xa;10. **At-Least-Once Delivery (Kafka)**: Consumer commits offset AFTER processing. If consumer crashes mid-processing, event replayed. Handlers MUST be idempotent (webhook uses SELECT before INSERT, warehouse checks shipment_id before shipping)." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="50" y="1260" width="2320" height="190" as="geometry" />
+        </mxCell>
+        
+        <!-- ========== SCALE NUMBERS ========== -->
+        
+        <mxCell id="scale-box" value="📊 SCALE &amp; CAPACITY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="1480" width="2340" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="scale-text" value="**MongoDB**: 100M products × 5KB = 500GB. Sharded by category (10 shards × 50GB each). 3-replica set per shard. Write: 1K products/sec (sellers uploading). Read: 10K reads/sec (product pages). Index size: 50GB (product_id, category+price).&#xa;&#xa;**PostgreSQL Inventory**: 100M products × 200 bytes = 20GB. Single primary (multi-AZ failover). Write: 100 checkouts/sec peak (reservations). Read: 1K inventory checks/sec. Connection pool: 200 conns (PgBouncer). SELECT FOR UPDATE contention mitigated by Redis distributed lock layer.&#xa;&#xa;**MySQL Orders**: 1M orders/day × 2KB = 2GB/day = 730GB/year. Partitioned monthly (12 partitions active, old partitions archived). Write: 100 orders/sec peak. Read: 5K order status checks/sec (user polling). Index: (user_id, created_at) for &quot;my orders&quot; queries.&#xa;&#xa;**Elasticsearch**: 100M products × 3KB indexed = 300GB. 10-node cluster (30GB per node). Queries: 100K search/sec peak (60% cached by Redis). Refresh interval: 1s (near real-time). CDC lag: 1-2 sec avg, 10 sec p99 (bulk import spikes).&#xa;&#xa;**Redis**: 50GB total. Cart: 10M users × 2KB = 20GB (HSET). Product cache: 10M hot products × 1KB = 10GB. Search cache: 10M queries × 1KB = 10GB. Locks: 1000 concurrent checkouts × 100 bytes = 100KB (negligible). Eviction: allkeys-lru. Persistence: RDB + AOF.&#xa;&#xa;**Kafka**: 6 topics × 12 partitions = 72 partitions. Throughput: 10K events/sec. Retention: 7 days (financial events 30 days). Storage: 10K events/sec × 1KB × 604800 sec = 6GB/week. Replication factor: 3 (durability). Consumer lag: &lt;1 sec p99." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="50" y="1510" width="2320" height="80" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

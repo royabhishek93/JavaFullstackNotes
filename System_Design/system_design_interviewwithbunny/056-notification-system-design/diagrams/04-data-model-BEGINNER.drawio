@@ -1,0 +1,105 @@
+<mxfile host="app.diagrams.net" modified="2026-08-30T12:00:00.000Z" agent="5.0" version="24.0.0">
+  <diagram name="Notification-Data-Model" id="datamodel">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="2000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="💾 Notification System — Data Model (5 Tables, 3 Databases)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="1200" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Subtitle -->
+        <mxCell id="subtitle" value="Each database has a different access pattern. Separating them allows independent scaling and caching strategies." style="text;html=1;strokeColor=none;fillColor=#FFF3CD;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="300" y="80" width="1200" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Database 1: Notification DB -->
+        <mxCell id="db1-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#EBF5FB;strokeColor=#2E86C1;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="150" width="1650" height="450" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db1-title" value="📦 DATABASE 1: Notification DB (PostgreSQL) — The Audit Log" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1B4F72;" vertex="1" parent="1">
+          <mxGeometry x="120" y="160" width="1000" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db1-why" value="❓ WHY Separate Database?&#xa;&#xa;• High write volume (1M notifications/min)&#xa;• Append-only audit log (never updated, only inserted)&#xa;• Long retention (7 years for compliance)&#xa;• Can scale independently with sharding/read replicas" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#D6EAF8;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="160" width="480" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Table 1: notifications -->
+        <mxCell id="notif-table" value="📋 TABLE: notifications (Main audit record)&#xa;&#xa;notification_id | UUID PRIMARY KEY | Unique ID for this notification&#xa;client_id | VARCHAR(100) | Which app sent this (amazon, uber)&#xa;ext_user_id | VARCHAR(255) | Client's user ID (we don't store PII)&#xa;template_id | UUID FOREIGN KEY → templates | Which template was used&#xa;channel | ENUM(EMAIL, SMS, PUSH, INAPP) | Which channel(s)&#xa;payload | JSONB | Rendered message (subject, body, variables)&#xa;status | ENUM(PENDING, SENT, DELIVERED, FAILED) | Current state&#xa;priority | ENUM(CRITICAL, HIGH, NORMAL, LOW) | Which Kafka topic&#xa;scheduled_at | TIMESTAMP | When to send (NULL = immediate)&#xa;created_at | TIMESTAMP | When API received request&#xa;metadata | JSONB | Campaign ID, idempotency key, etc.&#xa;&#xa;WHY JSONB for payload?&#xa;• Email has {subject, body, html}, SMS has {body}, Push has {title, body, badge}&#xa;• Avoids wide table with 20 nullable columns&#xa;• Fast JSON queries: payload->>'subject' indexed with GIN" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#AED6F1;strokeColor=#2E86C1;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="270" width="750" height="300" as="geometry" />
+        </mxCell>
+        
+        <!-- Table 2: notifications_outbox -->
+        <mxCell id="outbox-table" value="📤 TABLE: notifications_outbox (Transactional Outbox Pattern)&#xa;&#xa;outbox_id | UUID PRIMARY KEY&#xa;notification_id | UUID FOREIGN KEY → notifications&#xa;event_type | VARCHAR(50) | 'notification.created'&#xa;payload | JSONB | Copy of notification data for Kafka&#xa;published | BOOLEAN DEFAULT false | Has CDC pushed to Kafka?&#xa;published_at | TIMESTAMP | When CDC published&#xa;created_at | TIMESTAMP | When inserted&#xa;&#xa;WHY This Table Exists? (Critical for No Data Loss!)&#xa;&#xa;Problem: Writing to notifications table THEN publishing to Kafka = 2 operations&#xa;If service crashes between them → notification in DB but NOT in Kafka = stuck forever&#xa;&#xa;Solution: Write BOTH to notifications + outbox in SINGLE DB transaction&#xa;BEGIN TRANSACTION&#xa;  INSERT INTO notifications (...)&#xa;  INSERT INTO notifications_outbox (published=false)&#xa;COMMIT&#xa;&#xa;CDC poller reads: SELECT * FROM outbox WHERE published=false&#xa;Publishes to Kafka → UPDATE outbox SET published=true&#xa;&#xa;If Kafka is down? Outbox rows wait. CDC retries every 100ms.&#xa;Notification NEVER lost!" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#85C1E9;strokeColor=#1B4F72;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="900" y="270" width="830" height="300" as="geometry" />
+        </mxCell>
+        
+        <!-- Database 2: Template DB -->
+        <mxCell id="db2-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FADBD8;strokeColor=#E74C3C;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="640" width="1650" height="420" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db2-title" value="📝 DATABASE 2: Template DB (PostgreSQL) — Message Content Store" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#922B21;" vertex="1" parent="1">
+          <mxGeometry x="120" y="650" width="1000" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db2-why" value="❓ WHY Separate Database?&#xa;&#xa;• Read on EVERY notification (1M/min)&#xa;• Written RARELY (marketing updates text)&#xa;• Perfect for aggressive Redis caching (1hr TTL, 99% hit rate)&#xa;• Version control (immutable templates)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FADBD8;strokeColor=#E74C3C;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="650" width="480" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Table 3: templates -->
+        <mxCell id="template-table" value="📋 TABLE: templates (Versioned message templates)&#xa;&#xa;template_id | UUID | Logical template ID&#xa;version | INT | Version number (starts at 1)&#xa;PRIMARY KEY (template_id, version) ← COMPOSITE KEY!&#xa;&#xa;name | VARCHAR(255) | Human-readable name&#xa;channel | ENUM(EMAIL, SMS, PUSH, INAPP)&#xa;subject | TEXT | Email subject (NULL for SMS/PUSH)&#xa;body | TEXT | Message body with {{placeholders}}&#xa;variables | JSONB | Required variables: ['name', 'order_id']&#xa;is_active | BOOLEAN | Only one version active per template_id&#xa;created_at | TIMESTAMP&#xa;&#xa;WHY Composite Primary Key (template_id + version)?&#xa;&#xa;Templates are IMMUTABLE. Never UPDATE in place.&#xa;&#xa;Scenario: 50,000 notifications in Kafka using v1 template.&#xa;Marketing updates subject line. What happens?&#xa;&#xa;❌ BAD: UPDATE templates SET subject = 'New text' WHERE id = X&#xa;   → In-flight notifications suddenly have different content = inconsistent&#xa;&#xa;✅ GOOD: INSERT new version&#xa;   INSERT INTO templates (template_id, version=2, subject='New text', is_active=true)&#xa;   UPDATE templates SET is_active=false WHERE template_id=X AND version=1&#xa;   → v1 notifications keep v1 text, v2 notifications use v2 text&#xa;&#xa;Gives you: Rollback capability, A/B testing, audit trail" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#F5B7B1;strokeColor=#CB4335;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="760" width="1610" height="280" as="geometry" />
+        </mxCell>
+        
+        <!-- Database 3: User Preferences DB -->
+        <mxCell id="db3-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D5F4E6;strokeColor=#27AE60;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1100" width="1650" height="420" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db3-title" value="🔕 DATABASE 3: User Preferences DB (PostgreSQL) — Opt-in/Opt-out Store" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#145A32;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1110" width="1000" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db3-why" value="❓ WHY Separate Database?&#xa;&#xa;• Read on EVERY notification (GDPR check)&#xa;• Updated RARELY (user changes preferences)&#xa;• Heavily cached (Redis 24h TTL)&#xa;• Legally critical (wrong data = GDPR violation)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#D5F5E3;strokeColor=#27AE60;strokeWidth=2;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="1110" width="480" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Table 4: user_preferences -->
+        <mxCell id="pref-table" value="📋 TABLE: user_preferences (Opt-in/Opt-out per user per channel)&#xa;&#xa;client_id | VARCHAR(100) | Which app (amazon, uber)&#xa;ext_user_id | VARCHAR(255) | Client's user ID&#xa;PRIMARY KEY (client_id, ext_user_id) ← Multi-tenant&#xa;&#xa;channels | JSONB | { &quot;email&quot;: true, &quot;sms&quot;: false, &quot;push&quot;: true, &quot;inapp&quot;: true }&#xa;types | JSONB | { &quot;promotional&quot;: false, &quot;transactional&quot;: true, &quot;alerts&quot;: true }&#xa;do_not_disturb | BOOLEAN | Global mute (overrides all)&#xa;dnd_window | JSONB | { &quot;start&quot;: &quot;22:00&quot;, &quot;end&quot;: &quot;08:00&quot;, &quot;timezone&quot;: &quot;Asia/Kolkata&quot; }&#xa;updated_at | TIMESTAMP&#xa;&#xa;WHY This Table Exists? (GDPR Compliance!)&#xa;&#xa;Scenario:&#xa;User clicks 'Unsubscribe from promotional emails' at 8:00pm.&#xa;At 8:01pm, Marketing sends Black Friday campaign to 10M users.&#xa;&#xa;Without preference check: User receives email → GDPR violation → €20M fine&#xa;With preference check (Layer 2, Step 4): Filter user out BEFORE Kafka publish&#xa;&#xa;Check happens in Notification Service BEFORE outbox write:&#xa;if (preferences.channels.email == false) { skip_email() }&#xa;if (preferences.types.promotional == false &amp;&amp; notification.type == 'promotional') { skip() }&#xa;if (preferences.do_not_disturb == true &amp;&amp; current_time in dnd_window) { skip() }&#xa;&#xa;Cache Strategy:&#xa;Redis GET user_pref:{client_id}:{user_id} (24h TTL)&#xa;On preference update: Publish to Kafka → Consumer invalidates Redis cache&#xa;&#xa;WHY JSONB not separate columns?&#xa;• Flexible: new channel types (WhatsApp, Telegram) don't need schema migration&#xa;• Fast: GIN index on JSONB for queries like channels->>'email' = 'true'" style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#ABEBC6;strokeColor=#1D8348;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1220" width="1610" height="280" as="geometry" />
+        </mxCell>
+        
+        <!-- Table 5: delivery_status -->
+        <mxCell id="delivery-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E8DAEF;strokeColor=#8E44AD;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1560" width="1650" height="380" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="delivery-title" value="📡 TABLE: delivery_status (Per-channel delivery tracking)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#6C3483;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1570" width="800" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="delivery-table" value="delivery_id | UUID PRIMARY KEY&#xa;notification_id | UUID FOREIGN KEY → notifications | Which notification&#xa;channel | ENUM(EMAIL, SMS, PUSH, INAPP) | Which channel this record is for&#xa;provider | VARCHAR(50) | 'sendgrid', 'twilio', 'fcm', 'apns'&#xa;provider_msg_id | VARCHAR(255) | SendGrid message ID (for webhook matching)&#xa;status | ENUM(SENT, DELIVERED, FAILED, BOUNCED) | Current state&#xa;sent_at | TIMESTAMP | When we called provider API&#xa;delivered_at | TIMESTAMP | When provider confirmed delivery (webhook)&#xa;error_message | TEXT | Failure reason (if failed)&#xa;retry_count | INT DEFAULT 0 | How many retries so far&#xa;&#xa;WHY This Table? (Idempotency + Multi-channel tracking)&#xa;&#xa;Problem 1: Kafka at-least-once delivery&#xa;Kafka consumer receives message, calls SendGrid, crashes before committing offset.&#xa;Kafka replays message → Consumer calls SendGrid AGAIN → User gets 2 emails!&#xa;&#xa;Solution: Idempotency check&#xa;SELECT COUNT(*) FROM delivery_status&#xa;WHERE notification_id = 'X' AND channel = 'email'&#xa;if count > 0: skip() // Already sent&#xa;&#xa;Problem 2: One notification → multiple channels&#xa;notification_id = 'N1', channels = [email, sms, push]&#xa;Need separate status per channel:&#xa;- Email: DELIVERED&#xa;- SMS: FAILED (invalid phone)&#xa;- Push: SENT (waiting for webhook)&#xa;&#xa;Why NOT just status column on notifications table?&#xa;→ Can't represent per-channel status. One-to-many relationship." style="rounded=1;whiteSpace=wrap;html=1;fontSize=10;fillColor=#EBDEF0;strokeColor=#8E44AD;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1620" width="1610" height="300" as="geometry" />
+        </mxCell>
+        
+        <!-- Redis Cache Layer -->
+        <mxCell id="redis-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FCF3CF;strokeColor=#F39C12;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1980" width="1650" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-title" value="🧊 REDIS CACHE LAYER — Not SQL but part of data model" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#9A7D0A;" vertex="1" parent="1">
+          <mxGeometry x="120" y="1990" width="800" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-keys" value="Key Pattern | TTL | Purpose | Hit Rate&#xa;──────────────────────────────────────────────────────────────────────────────&#xa;template:{id}:{version} | 1h | Template content | 99% (updated rarely)&#xa;user_pref:{client}:{user} | 24h | Opt-in/opt-out status | 95% (updated rarely)&#xa;rate_limit:{channel}:{provider} | none | Token bucket counter | 100% (always in Redis)&#xa;otp:{user}:{purpose} | 5min | OTP code for validation | 100% (ephemeral)&#xa;&#xa;WHY Cache Templates &amp; Preferences?&#xa;• Template DB: Read 1M times/min, written 10 times/day → 99.999% reads&#xa;• User Pref DB: Read 1M times/min, written 100 times/min → 99.99% reads&#xa;• Redis L1 cache absorbs reads, DB only sees cache misses (~1%)&#xa;&#xa;Cache Invalidation:&#xa;• Template update → DELETE template:{id}:{old_version} (immediate)&#xa;• Preference update → Kafka event → Consumer invalidates Redis key" style="rounded=1;whiteSpace=wrap;html=1;fontSize=11;fillColor=#FEF5E7;strokeColor=#F39C12;strokeWidth=2;align=left;spacingLeft=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="120" y="2040" width="1610" height="110" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

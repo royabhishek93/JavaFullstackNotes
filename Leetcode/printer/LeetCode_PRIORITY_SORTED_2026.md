@@ -2097,7 +2097,7 @@ public boolean hasCycle(ListNode head) {
 
 **Problem:** Check if parentheses are valid
 
-**Example:** `s = "()[]{"` → `true`
+**Example:** `s = "()[]{"` → `false`
 
 ```java
 public boolean isValid(String s) {
@@ -2432,7 +2432,7 @@ class WordDistance {
 
 **LC 739 - Daily Temperatures**
 - Q: Previous warmer day instead of next?
-- A: Iterate from right to left, maintain decreasing stack.
+- A: Iterate from left to right. Pop values that are not warmer than the current value; the remaining stack top, if any, is the nearest previous warmer day.
 
 ### Backtracking
 

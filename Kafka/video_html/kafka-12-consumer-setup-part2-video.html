@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Consumer Setup Part 2 — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Consumer Setup Part 2 — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 14</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:7.14%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">📥</div>
+  <h1 class="gradient-text">Kafka Consumer Setup Part 2 — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Fetch Request Optimization</span><span class="badge">ConsumerRecords Structure</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: one consumer multiple topics, ConsumerRecord structure, fetch request per broker, manual JSON mapping, JSON deserialization flow, type-id header, use-type-header, type mapping, trusted packages, auto mapping, multiple consumers different topics, shared ConsumerFactory problem, custom ConsumerFactory solution, concurrency for same topic</p>
+</div>
+<div class="slide" id="s3" data-title="Use Cases Overview">
+<h2>Use Cases Overview</h2>
+<p>Part 1 covered one consumer reading one topic. Part 2 covers every other realistic combination.</p>
+<div class="dia">  USE CASE 1: one consumer, multiple topics
+  ──────────────────────────────────────────────────────
+  ┌─────────────┐     order-events ──────────────────►┐
+  │  Consumer 1 │                                     │
+  └─────────────┘     payment-events ─────────────────┘
+
+  USE CASE 2: multiple consumers, different topics
+  ──────────────────────────────────────────────────────
+  ┌─────────────┐ ──► order-events
+  │  Consumer 1 │
+  └─────────────┘
+  ┌─────────────┐ ──► payment-events
+  │  Consumer 2 │
+  └─────────────┘
+
+  USE CASE 3: multiple consumers, same topic
+  ──────────────────────────────────────────────────────
+  ┌─────────────┐ ──► order-events P0
+  │  Consumer 1 │
+  └─────────────┘
+  ┌─────────────┐ ──► order-events P1
+  │  Consumer 2 │
+  └─────────────┘
+  ┌─────────────┐ ──► order-events P2
+  │  Consumer 3 │
+  └─────────────┘</div>
+</div>
+<div class="slide" id="s4" data-title="Fetch Request Optimization — One Request Per Broker">
+<h2>Fetch Request Optimization — One Request Per Broker</h2>
+<p>When a consumer is assigned multiple partitions, it does NOT send one network request per partition. It sends one request per broker, bundling all partitions that broker leads.</p>
+<div class="dia">  Topic: order-events (3 partitions)
+  ┌──────────────────────────────────────────────────┐
+  │  P0 leader = Broker 1                            │
+  │  P1 leader = Broker 2                            │
+  │  P2 leader = Broker 1                            │
+  └──────────────────────────────────────────────────┘
+
+  Consumer assigned P0, P1, P2:
+  ──────────────────────────────────────────────────────
+  ✗ WRONG mental model (3 separate requests):
+    Consumer → Broker 1 (P0)
+    Consumer → Broker 2 (P1)
+    Consumer → Broker 1 (P2)
+
+  ✓ ACTUAL behavior (1 request per broker):
+    Consumer ──► Broker 1:  "Give me P0 from offset 5,
+                              AND P2 from offset 12"   (1 request)
+    Consumer ──► Broker 2:  "Give me P1 from offset 8" (1 request)
+
+    Broker 1 responds → Broker 2 responds
+    Consumer merges both responses into one ConsumerRecords object
+    Then iterates record by record</div>
+</div>
+<div class="slide" id="s5" data-title="ConsumerRecords Structure After Merge">
+<h2>ConsumerRecords Structure After Merge</h2>
+<p>After the poll returns, all records from all partitions are merged into one object and iterated one by one.</p>
+<div class="dia">  ConsumerRecords (merged result of all broker responses)
+  ┌────────────────────────────────────────────────────────┐
+  │  topic: order-events, partition: P0                    │
+  │  ┌────────────────┐ ┌────────────────┐                 │
+  │  │ ConsumerRecord │ │ ConsumerRecord │  ← 2 records    │
+  │  │ offset:5 key:A │ │ offset:6 key:B │                 │
+  │  └────────────────┘ └────────────────┘                 │
+  │                                                        │
+  │  topic: order-events, partition: P2                    │
+  │  ┌────────────────┐                                    │
+  │  │ ConsumerRecord │  ← 1 record                        │
+  │  │ offset:12 key:C│                                    │
+  │  └────────────────┘                                    │
+  │                                                        │
+  │  topic: order-events, partition: P1                    │
+  │  ┌────────────────┐ ┌────────────────┐                 │
+  │  │ ConsumerRecord │ │ ConsumerRecord │  ← 2 records    │
+  │  │ offset:8 key:D │ │ offset:9 key:E │                 │
+  │  └────────────────┘ └────────────────┘                 │
+  └────────────────────────────────────────────────────────┘
+  Iterated one by one: A → B → C → D → E
+  @KafkaListener method invoked once per record</div>
+</div>
+<div class="slide" id="s6" data-title="Use Case 1 — One Consumer, Multiple Topics (Manual Mapping)">
+<h2>Use Case 1 — One Consumer, Multiple Topics (Manual Mapping)</h2>
+<p>Declare multiple topics in the <code>@KafkaListener</code> annotation. Accept <code>ConsumerRecord&lt;String, String&gt;</code> and map JSON to the right class yourself.</p>
+<div class="dia">  application.properties:
+  ────────────────────────────────────────────────────────
+    value-deserializer = StringDeserializer   ← NOT JSON
+    (no default-type needed — no JSON deserializer)
+
+  @KafkaListener code:
+  ────────────────────────────────────────────────────────
+    @KafkaListener(topics = {"order-events", "payment-events"})
+    public void consume(ConsumerRecord&lt;String, String&gt; record) {
+
+        if (record.topic().equals("order-events")) {
+            Order o = objectMapper.readValue(record.value(), Order.class);
+        } else if (record.topic().equals("payment-events")) {
+            Payment p = objectMapper.readValue(record.value(), Payment.class);
+        }
+    }
+
+  Data flow:
+  ────────────────────────────────────────────────────────
+  order-events  ──► Consumer ──► raw JSON string
+                                    │ objectMapper.readValue()
+                                    ▼
+                                  Order object
+
+  payment-events ─► Consumer ──► raw JSON string
+                                    │ objectMapper.readValue()
+                                    ▼
+                                  Payment object
+
+  Tradeoff: more code, full control over which class to use</div>
+</div>
+<div class="slide" id="s7" data-title="JSON Deserialization Flow — The Full Decision Tree">
+<h2>JSON Deserialization Flow — The Full Decision Tree</h2>
+<p>This flow runs inside the JSON deserializer for EVERY event when <code>value-deserializer = JsonDeserializer</code>. Understanding it unlocks all auto-mapping scenarios.</p>
+<div class="dia">  New event arrives at consumer
+          │
+          ▼
+  Is value-deserializer = JsonDeserializer?
+  ──────────────────────────────────────────
+  NO  → deserialize as String/bytes, done. This flow does not apply.
+  YES → continue ↓
+
+          ▼
+  Is spring.json.use-type-header = true? (DEFAULT = true)
+  ──────────────────────────────────────────────────────────────
+  NO (false) ──────────────────────────────────────────────────►┐
+                                                                │
+  YES ↓                                                         │
+                                                                │
+  Does the event header contain a type-id key?                  │
+  ──────────────────────────────────────────────────────────────│
+  NO ──────────────────────────────────────────────────────────►┤
+                                                                │
+  YES ↓                                                         │
+  type-id = "com.eda.producer.Order"                            │
+                                                                │
+  Is a type mapping configured?                                 │
+  (spring.json.type.mapping=producer-order:com.eda.consumer.Order)  │
+  ────────────────────────────────────────────────────────────  │
+  YES ──► map "com.eda.producer.Order" → Order.class            │
+         deserialize JSON → Order object                        │
+         invoke @KafkaListener method  ✓                        │
+                                                                │
+  NO ↓                                                          │
+                                                                │
+  Is "com.eda.producer.Order" in trusted packages?              │
+  (spring.json.trusted-packages=com.eda.producer)               │
+  ────────────────────────────────────────────────────────────  │
+  YES ──► load class "com.eda.producer.Order" from classpath    │
+         found? ──► deserialize JSON → Order object  ✓         │
+         NOT found? ──► ClassNotFoundException  ✗              │
+                                                                │
+  NO ──► IllegalArgumentException: not in trusted packages ✗   │
+                                                                │
+  ◄──────────────────────────────────────────────────────────── ┘
+  Use default-type config
+  (spring.json.value-default-type=com.eda.consumer.model.Order)
+  ────────────────────────────────────────────────────────────
+  → deserialize JSON → default class object
+  → invoke @KafkaListener method ✓</div>
+</div>
+<div class="slide" id="s8" data-title="Type-ID Header — When Producers Add It">
+<h2>Type-ID Header — When Producers Add It</h2>
+<p>The producer's <code>JsonSerializer</code> can embed the source class path into the event header under key <code>type-id</code>. This lets the consumer know what kind of object was serialized.</p>
+<div class="dia">  Producer side:
+  ──────────────────────────────────────────────────────
+  spring.kafka.producer.properties.spring.json.add-type-headers=true
+  (this is the DEFAULT — you don't need to write it)
+
+  KafkaTemplate&lt;String, Object&gt; template;   ← generic Object
+  template.send("order-events", order);
+
+  Published event header:
+  ┌──────────────────────────────────────────────────────┐
+  │  headers: { type-id: "com.eda.producer.model.Order" }│
+  │  value:   { "id": 332700, "amount": 500 }            │
+  └──────────────────────────────────────────────────────┘
+
+  ⚠ Caveat: type-id is added when you use a generic type (Object).
+    If you declare KafkaTemplate&lt;String, Order&gt; with the specific
+    class, type-id may NOT be added. Always verify your headers.</div>
+</div>
+<div class="slide" id="s9" data-title="Use Case 1 — Auto Mapping With Type Mapping Config">
+<h2>Use Case 1 — Auto Mapping With Type Mapping Config</h2>
+<p>Instead of checking <code>record.topic()</code> manually, let the JSON deserializer do the conversion automatically using a type mapping.</p>
+<div class="dia">  application.properties:
+  ────────────────────────────────────────────────────────────────
+    value-deserializer = JsonDeserializer
+    default-type = com.eda.consumer.model.Order   ← fallback
+
+    spring.kafka.consumer.properties.spring.json.type.mapping=\
+      com.eda.producer.model.Order:com.eda.consumer.model.Order,\
+      com.eda.producer.model.Payment:com.eda.consumer.model.Payment
+
+    (no trusted-packages needed when mapping is provided)
+
+  @KafkaListener code:
+  ────────────────────────────────────────────────────────────────
+    @KafkaListener(topics = {"order-events", "payment-events"})
+    public void consume(ConsumerRecord&lt;String, Object&gt; record) {
+
+        if (record.topic().equals("order-events")) {
+            Order o = (Order) record.value();   ← just a cast, no parsing
+        } else if (record.topic().equals("payment-events")) {
+            Payment p = (Payment) record.value();
+        }
+    }
+
+  Data flow:
+  ────────────────────────────────────────────────────────────────
+  event arrives → type-id in header = "com.eda.producer.model.Order"
+                       │
+                       ▼  type mapping lookup
+                  "com.eda.consumer.model.Order"
+                       │
+                       ▼  JSON deserializer maps automatically
+                  Order object ready in record.value()
+                       │
+                       ▼  your code just casts it</div>
+</div>
+<div class="slide" id="s10" data-title="Use Case 2 — Multiple Consumers, Different Topics (Shared Factory Problem)">
+<h2>Use Case 2 — Multiple Consumers, Different Topics (Shared Factory Problem)</h2>
+<p>Creating two <code>@KafkaListener</code>s — one for orders, one for payments — hits a problem when <code>use-type-header=false</code>: both consumers share one <code>ConsumerFactory</code>, which has only one <code>default-type</code>.</p>
+<div class="dia">  application.properties:
+  ────────────────────────────────────────────────────────────────
+    spring.json.use-type-header=false
+    spring.json.value-default-type=com.eda.consumer.model.Order
+
+  Two @KafkaListeners:
+  ────────────────────────────────────────────────────────────────
+    @KafkaListener(topics = "order-events")
+    public void consumeOrder(Order order) { ... }
+
+    @KafkaListener(topics = "payment-events")
+    public void consumePayment(Payment payment) { ... }
+
+  What Spring Boot creates:
+  ────────────────────────────────────────────────────────────────
+  ┌──────────────────────────────────────────────────┐
+  │  ONE ConsumerFactory (from application.properties)│
+  │  default-type = Order.class                      │
+  │        │               │                         │
+  │        ▼               ▼                         │
+  │  KafkaConsumer-1  KafkaConsumer-2                │
+  │  (order-events)   (payment-events)               │
+  │                        │                         │
+  │                        ▼                         │
+  │              uses same default-type = Order ✗    │
+  └──────────────────────────────────────────────────┘
+
+  Result when payment event arrives:
+    deserializer tries to map payment JSON → Order.class
+    FAILS — wrong type ✗</div>
+</div>
+<div class="slide" id="s11" data-title="Use Case 2 — Solution: Custom ConsumerFactory Per Listener">
+<h2>Use Case 2 — Solution: Custom ConsumerFactory Per Listener</h2>
+<p>Create two separate <code>ConsumerFactory</code> beans, each with its own <code>default-type</code>. Wire each factory to its own <code>ConcurrentKafkaListenerContainerFactory</code>, then point each <code>@KafkaListener</code> at the right factory.</p>
+<div class="dia">  @Configuration class:
+  ────────────────────────────────────────────────────────────────
+
+  @Bean
+  ConsumerFactory&lt;String, Order&gt; orderConsumerFactory(KafkaProperties props) {
+      Map&lt;String, Object&gt; config = props.buildConsumerProperties();
+      config.put(JsonDeserializer.VALUE_DEFAULT_TYPE, Order.class); ← override
+      return new DefaultKafkaConsumerFactory&lt;&gt;(config);
+  }
+
+  @Bean
+  ConsumerFactory&lt;String, Payment&gt; paymentConsumerFactory(KafkaProperties props) {
+      Map&lt;String, Object&gt; config = props.buildConsumerProperties();
+      config.put(JsonDeserializer.VALUE_DEFAULT_TYPE, Payment.class); ← override
+      return new DefaultKafkaConsumerFactory&lt;&gt;(config);
+  }
+
+  @Bean ConcurrentKafkaListenerContainerFactory orderFactory(...) {
+      factory.setConsumerFactory(orderConsumerFactory);
+      return factory;
+  }
+
+  @Bean ConcurrentKafkaListenerContainerFactory paymentFactory(...) {
+      factory.setConsumerFactory(paymentConsumerFactory);
+      return factory;
+  }
+
+  Result:
+  ────────────────────────────────────────────────────────────────
+  ┌──────────────────────────────┐  ┌──────────────────────────────┐
+  │  orderConsumerFactory        │  │  paymentConsumerFactory       │
+  │  default-type = Order.class  │  │  default-type = Payment.class │
+  │        │                     │  │        │                      │
+  │        ▼                     │  │        ▼                      │
+  │  KafkaConsumer               │  │  KafkaConsumer                │
+  │  (order-events)        ✓     │  │  (payment-events)       ✓     │
+  └──────────────────────────────┘  └──────────────────────────────┘
+
+  @KafkaListener(topics = "order-events",
+                 containerFactory = "orderFactory")
+  public void consumeOrder(Order order) { ... }
+
+  @KafkaListener(topics = "payment-events",
+                 containerFactory = "paymentFactory")
+  public void consumePayment(Payment payment) { ... }</div>
+</div>
+<div class="slide" id="s12" data-title="Use Case 3 — Multiple Consumers Reading the Same Topic (Concurrency)">
+<h2>Use Case 3 — Multiple Consumers Reading the Same Topic (Concurrency)</h2>
+<p>To spin up multiple consumers for one topic within a single application, set <code>concurrency</code> in <code>application.properties</code>. Spring Boot creates that many <code>KafkaConsumer</code> objects for the same <code>@KafkaListener</code>.</p>
+<div class="dia">  application.properties:
+  ────────────────────────────────────────────────────────────────
+    spring.kafka.listener.concurrency=3
+
+  @KafkaListener(topics = "order-events")
+  public void consume(Order order) { ... }
+
+  What Spring Boot creates:
+  ────────────────────────────────────────────────────────────────
+  ConcurrentKafkaListenerContainerFactory
+  concurrency = 3
+        │
+        ├──► KafkaConsumer-1  ──► order-events P0 (assigned by coordinator)
+        ├──► KafkaConsumer-2  ──► order-events P1
+        └──► KafkaConsumer-3  ──► order-events P2
+
+  Group coordinator decides which consumer gets which partition.
+  You only say "I want 3 consumers" — assignment is automatic.
+
+  Rule: concurrency &gt; number of partitions → extra consumers sit idle
+  ────────────────────────────────────────────────────────────────
+  Topic has 3 partitions, concurrency=5:
+    Consumer-1 ──► P0  ✓
+    Consumer-2 ──► P1  ✓
+    Consumer-3 ──► P2  ✓
+    Consumer-4 ──► (no partition)  idle ✗
+    Consumer-5 ──► (no partition)  idle ✗</div>
+</div>
+<div class="slide" id="s13" data-title="Summary — All Three Use Cases Side by Side">
+<h2>Summary — All Three Use Cases Side by Side</h2>
+<div class="dia">  USE CASE 1: one consumer, multiple topics
+  ────────────────────────────────────────────────────────────────
+  Code:   topics = {"order-events", "payment-events"} in one @KafkaListener
+  Check:  record.topic() to route to the right class
+  Note:   one KafkaConsumer reads both topics
+
+  USE CASE 2: multiple consumers, different topics
+  ────────────────────────────────────────────────────────────────
+  Code:   two @KafkaListeners, each with its own topic
+  If use-type-header=true + mapping:  works with default setup
+  If use-type-header=false:           must create custom ConsumerFactory per listener
+
+  USE CASE 3: multiple consumers, same topic
+  ────────────────────────────────────────────────────────────────
+  Code:   spring.kafka.listener.concurrency=N in application.properties
+  Result: N KafkaConsumers created, group coordinator assigns partitions
+  Limit:  max useful concurrency = number of partitions in the topic</div>
+</div>
+<div class="slide" id="s14" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                        What it does                                    Key point
+─────────────────────────────  ──────────────────────────────────────────────  ──────────────────────────────────────
+topics = {t1, t2}              Subscribe one consumer to multiple topics       One KafkaConsumer reads both
+ConsumerRecord&lt;K, V&gt;           Full event envelope                             Has topic, partition, offset, key, value, headers
+Fetch per broker               Consumer sends 1 request per broker             Bundles all partitions that broker leads
+use-type-header=true (default) Read class info from event header type-id       Lets deserializer pick the right class automatically
+use-type-header=false          Ignore header, use default-type instead         All events deserialized to same class
+type-id header                 Producer embeds source class path in header     Added when KafkaTemplate uses generic Object type
+spring.json.type.mapping       Map producer class path → consumer class        Avoids trusted-packages and class-not-found issues
+trusted-packages               List of packages the deserializer may load      Required when using type-id without type.mapping
+default-type                   Fallback class when no header/mapping found     Always required when value-deserializer=JSON
+Custom ConsumerFactory         Override default-type per listener              Solution for use-type-header=false + multiple types
+containerFactory               Points @KafkaListener at a specific factory     Required when you have multiple factories
+concurrency=N                  Creates N KafkaConsumers for one @KafkaListener Group coordinator assigns partitions automatically
+Max useful concurrency         Equals number of partitions in the topic        Extra consumers above that count stay idle</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 14;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Consumer Setup Part 2 — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

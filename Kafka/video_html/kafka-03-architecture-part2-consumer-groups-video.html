@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Architecture Part 2 — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Architecture Part 2 — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 13</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:7.69%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🏗️</div>
+  <h1 class="gradient-text">Kafka Architecture Part 2 — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Consumer Groups</span><span class="badge">Offsets</span><span class="badge">__consumer_offsets</span><span class="badge">Cluster</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Consumer Groups, Offsets, <code>__consumer_offsets</code>, Leader/Follower, Cluster, Commit Strategies</p>
+</div>
+<div class="slide" id="s3" data-title="Consumer Groups">
+<h2>Consumer Groups</h2>
+<p>A <strong>consumer group</strong> is a team of consumers that split the work of reading a topic together. Each consumer in the group handles different partitions — no two consumers in the same group read the same partition.</p>
+<div class="dia">                       KAFKA BROKER
+             ┌──────────────────────────────┐
+             │  Topic: order-events         │
+             │  ┌──────┐ ┌──────┐ ┌──────┐ │
+             │  │ P-0  │ │ P-1  │ │ P-2  │ │
+             └──┴──┬───┴─┴──┬───┴─┴──┬───┘─┘
+                   │        │        │
+          ┌────────┘   ┌────┘   ┌───┘
+          │            │        │
+          ▼            ▼        ▼
+
+Group: "notification"              Group: "analytics"
+┌──────────────────────┐           ┌──────────────────────┐
+│  Consumer1 → P-0     │           │  Consumer4 → P-0     │
+│  Consumer2 → P-1     │           │  Consumer5 → P-1,P-2 │
+│  Consumer3 → P-2     │           └──────────────────────┘
+└──────────────────────┘</div>
+<p><strong>Key Rules:</strong></p>
+<ul><li>Same group → each partition goes to only one consumer</li><li>Different groups → same partition can be read by consumers in both groups simultaneously</li></ul>
+</div>
+<div class="slide" id="s4" data-title="Partition Assignment Scenarios">
+<h2>Partition Assignment Scenarios</h2>
+<p>How partitions get assigned depends on the number of consumers vs partitions:</p>
+<div class="dia">Scenario A: consumers == partitions  (ideal 1-to-1)
+──────────────────────────────────────────────────
+  P-0 ──► Consumer1
+  P-1 ──► Consumer2
+  P-2 ──► Consumer3
+
+Scenario B: consumers &lt; partitions  (some consumers handle more)
+──────────────────────────────────────────────────────────────────
+  P-0 ──► Consumer1
+  P-1 ──► Consumer1   ← Consumer1 handles 2 partitions
+  P-2 ──► Consumer2
+
+Scenario C: consumers &gt; partitions  (some sit idle)
+───────────────────────────────────────────────────
+  P-0 ──► Consumer1
+  P-1 ──► Consumer2
+  P-2 ──► Consumer3
+  Consumer4 ← IDLE, no partition assigned!</div>
+</div>
+<div class="slide" id="s5" data-title="Offset — The Bookmark">
+<h2>Offset — The Bookmark</h2>
+<p>An <strong>offset</strong> is just a number — the position of the last successfully processed message. Each consumer group tracks its own offset per partition, independently.</p>
+<div class="dia">Topic: order-events, Partition-0
+─────────────────────────────────────────────────────────────
+Events:  [0][1][2]...[299][300][301]...[499][500][501]...
+                          ▲                   ▲
+                          │                   │
+              analytics group           notification group
+              "I've read up to 300"     "I've read up to 500"</div>
+<p>Same partition, two groups, two different bookmarks — completely independent!</p>
+</div>
+<div class="slide" id="s6" data-title="Where Is the Offset Stored? (`__consumer_offsets`)">
+<h2>Where Is the Offset Stored? (<code>__consumer_offsets</code>)</h2>
+<p>Kafka stores offsets <strong>inside Kafka itself</strong> — in a special internal topic called <code>__consumer_offsets</code>. Kafka auto-creates this topic with <strong>50 partitions</strong> by default.</p>
+<div class="dia">Step 1: Consumer finishes reading P-0, reaches offset 500
+
+  Consumer (group: notification)
+       │
+       │  builds this commit message:
+       ▼
+  ┌─────────────────────────────────────────┐
+  │  group_id  = "notification"             │
+  │  topic     = "order-events"             │
+  │  partition = 0                          │
+  │  offset    = 500                        │
+  └─────────────────────────────────────────┘
+
+Step 2: Figure out which partition of __consumer_offsets to write to
+
+  hash("notification") % 50  =  23
+                                  │
+                                  ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │          __consumer_offsets  (50 partitions)             │
+  │   P-0  P-1 ... P-22 [ P-23: notification data ] P-24 ...│
+  └──────────────────────────────────────────────────────────┘
+
+Why hash? So the same group ALWAYS maps to the same partition — consistent reads &amp; writes.
+Why 50 partitions? Many groups can store offsets in parallel without a bottleneck.</div>
+</div>
+<div class="slide" id="s7" data-title="Consumer Crash &amp; Recovery">
+<h2>Consumer Crash &amp; Recovery</h2>
+<p>This is the payoff of storing offsets in Kafka — consumers can resume after a crash with no data loss.</p>
+<div class="dia">BEFORE CRASH:
+─────────────────────────────────────────────────────────────
+  Consumer1 (notification group) reads order-events P-0
+  Reaches offset 500 → commits to __consumer_offsets
+  Stored: {notification, order-events, P-0} = 500
+
+  Consumer1  ✗  CRASHES
+
+RECOVERY:
+─────────────────────────────────────────────────────────────
+  Consumer2 is assigned P-0 (takes over)
+       │
+       │  1. Compute: hash("notification") % 50 → partition 23
+       │  2. Ask broker holding partition 23:
+       │     "For group=notification, topic=order-events, P-0 — last offset?"
+       │  3. Gets back: 500
+       │
+       ▼
+  Consumer2 starts reading from offset 501  ✓</div>
+</div>
+<div class="slide" id="s8" data-title="Kafka Cluster — Multiple Brokers">
+<h2>Kafka Cluster — Multiple Brokers</h2>
+<p>A <strong>Kafka cluster</strong> is just multiple brokers (servers) working together. Each broker holds some partitions. No single broker holds everything.</p>
+<div class="dia">┌────────────────────────────────────────────────────────────────────┐
+│                         KAFKA CLUSTER                              │
+│                                                                    │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐   │
+│  │    Broker 1     │  │    Broker 2     │  │    Broker 3     │   │
+│  │                 │  │                 │  │                 │   │
+│  │  P-0 (LEADER)   │  │  P-1 (LEADER)   │  │  P-2 (LEADER)   │   │
+│  │  P-1 (follower) │  │  P-2 (follower) │  │  P-0 (follower) │   │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘   │
+│                                                                    │
+│  Topic: order-events  |  3 partitions  |  replication factor = 2  │
+└────────────────────────────────────────────────────────────────────┘</div>
+<p><strong>Benefits:</strong></p>
+<ul><li><strong>Scalability</strong> — load is spread across multiple servers</li><li><strong>Fault Tolerance</strong> — if one broker dies, others keep running</li><li><strong>High Availability</strong> — no single point of failure</li></ul>
+</div>
+<div class="slide" id="s9" data-title="Leader vs Follower">
+<h2>Leader vs Follower</h2>
+<p>For every partition, one broker is the <strong>leader</strong> (does real work) and others are <strong>followers</strong> (silent backups).</p>
+<div class="dia">Producer writes to P-0:
+─────────────────────────────────────────────────────────────
+  Producer ──────────────────────► Broker 1  (P-0 LEADER)
+                                        │
+                                        │  replicates automatically
+                                        ▼
+                                   Broker 3  (P-0 follower)
+                                   [stays in sync, never serves clients]
+
+Consumer reads from P-0:
+─────────────────────────────────────────────────────────────
+  Consumer ──────────────────────► Broker 1  (P-0 LEADER)
+                                   Follower is invisible to consumers.
+
+Broker 1 crashes:
+─────────────────────────────────────────────────────────────
+  Broker 1  ✗  DOWN
+
+  Broker 3's P-0 follower ──────► promotes to NEW LEADER
+  Cluster stays up, no data lost  ✓</div>
+<p><strong>Leader responsibilities:</strong></p>
+<ul><li>Handle all producer writes</li><li>Handle all consumer reads</li><li>Maintain partition logs</li><li>Sync data to followers</li></ul>
+<p><strong>Follower responsibilities:</strong></p>
+<ul><li>Replicate data from leader</li><li>Stay in sync</li><li>Be ready to become leader if needed</li><li>Never serve clients directly</li></ul>
+</div>
+<div class="slide" id="s10" data-title="Who Decides Which Broker Holds What?">
+<h2>Who Decides Which Broker Holds What?</h2>
+<p>A special broker called the <strong>Controller</strong> makes all assignment decisions.</p>
+<div class="dia">Kafka Cluster
+┌─────────────────────────────────────────────────────┐
+│                                                     │
+│  ┌──────────────┐                                   │
+│  │  CONTROLLER  │  ← one of the brokers takes       │
+│  │  (Broker 1)  │    this special role              │
+│  └──────┬───────┘                                   │
+│         │  decides:                                 │
+│         │  - which broker hosts which partition     │
+│         │  - which replica is leader                │
+│         │  - which replica is follower              │
+│         │  - re-assigns when a broker dies          │
+│         ▼                                           │
+│    Broker 2,  Broker 3  follow controller's orders  │
+└─────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s11" data-title="Offset Commit Strategies">
+<h2>Offset Commit Strategies</h2>
+<p>How and when consumers commit (save) their offset bookmark.</p>
+<div class="dia">AUTO COMMIT  (risky — can lose data)
+─────────────────────────────────────────────────────────────────────
+Timeline:
+  t=0s   Poll → receive events [0..99]
+  t=1s   Start processing...
+  t=5s   AUTO COMMIT fires → stores "99 processed" in __consumer_offsets
+  t=6s   Consumer CRASHES at event 70  ✗
+
+Restart:
+  Asks "__consumer_offsets" → gets back 99
+  Starts from 100  ← events 70–99 are LOST FOREVER!
+
+Problem: commit happened before processing was done.</div>
+<div class="dia">MANUAL COMMIT — full batch  (recommended)
+─────────────────────────────────────────────────────────────────────
+Timeline:
+  t=0s   Poll → receive batch [0..99]
+  t=1s   Processing events...
+  t=3s   Consumer CRASHES at event 70  ✗
+
+Restart:
+  Asks "__consumer_offsets" → gets back last manual commit (e.g. -1 / 0)
+  Re-processes events 0–69 (duplicates, but safe)  ✓
+  Continues and finishes batch [0..99]
+  COMMITS → stores 99 in __consumer_offsets  ✓
+  Next poll starts from 100  ✓
+
+Trade-off: possible duplicate processing, but ZERO data loss.</div>
+<div class="dia">MANUAL COMMIT — per event  (not recommended)
+─────────────────────────────────────────────────────────────────────
+  Process event 0 → commit(0)
+  Process event 1 → commit(1)
+  Process event 2 → commit(2)
+  ...
+
+Problem: 1 network call per event → huge overhead when processing
+         millions of messages. Kafka is built for high throughput;
+         per-event commits kill performance.</div>
+<p><strong>Recommendation:</strong> Manual commit with an appropriate batch size based on your use case.</p>
+</div>
+<div class="slide" id="s12" data-title="Full Picture — Everything Together">
+<h2>Full Picture — Everything Together</h2>
+<div class="dia">                         KAFKA CLUSTER
+┌───────────────────────────────────────────────────────────────────┐
+│                                                                   │
+│   ┌──────────┐    ┌──────────┐    ┌──────────┐                   │
+│   │ Broker 1 │    │ Broker 2 │    │ Broker 3 │                   │
+│   │ P-0(L)   │    │ P-1(L)   │    │ P-2(L)   │  ← order-events  │
+│   │ P-1(f)   │    │ P-2(f)   │    │ P-0(f)   │    topic         │
+│   │          │    │          │    │          │                   │
+│   │ __co P23 │    │          │    │ __co P1  │  ← __consumer_   │
+│   │ (offsets)│    │          │    │          │    offsets topic  │
+│   └──────────┘    └──────────┘    └──────────┘                   │
+└───────────────────────────────────────────────────────────────────┘
+        ▲                                   ▲
+        │                                   │
+   Producer                         Consumer Groups
+   (writes to                        ┌─────────────────┐
+    partition                        │ Group:notification│
+    leader only)                     │  C1 → P-0        │
+                                     │  C2 → P-1        │
+                                     │  C3 → P-2        │
+                                     └─────────────────┘
+                                     ┌─────────────────┐
+                                     │ Group: analytics │
+                                     │  C4 → P-0,P-1   │
+                                     │  C5 → P-2        │
+                                     └─────────────────┘
+                                     Each group tracks its
+                                     own offsets independently
+                                     in __consumer_offsets</div>
+</div>
+<div class="slide" id="s13" data-title="Quick Reference Card">
+<h2>Quick Reference Card</h2>
+<p>| Concept | What it is | Key point | |---|---|---| | Consumer Group | Team of consumers sharing a topic | Each partition goes to only 1 consumer in a group | | Offset | Bookmark (message position) | Stored per group, per partition | | <code>__consumer_offsets</code> | Internal Kafka topic | 50 partitions, stores all group offsets | | Leader partition | The active replica | Handles all reads &amp; writes | | Follower partition | Backup replica | Syncs silently, takes over if leader dies | | Controller | Special broker | Assigns leaders/followers, manages cluster | | Auto commit | Kafka commits on a timer | Risky — can lose messages on crash | | Manual commit | You decide when to commit | Safe — use batch-level commits |</p>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 13;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Architecture Part 2 — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

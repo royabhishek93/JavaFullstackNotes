@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Architecture Part 2 — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Architecture Part 2 — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 24</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:5.88%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🏗️</div>
+  <h1 class="gradient-text">Kafka Architecture Part 2 — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Producer Write Flow</span><span class="badge">Metadata</span><span class="badge">Partition Calculation</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Producer Write Flow, Metadata Refresh, Partition Calculation, Group Coordinator, Consumer Read Flow, Consumer Offset, Log Compaction, Delete Policy, Compact Policy, Page Cache, Zero Copy, Sequential Write</p>
+</div>
+<div class="slide" id="s3" data-title="Complete Producer Write Flow — Overview">
+<h2>Complete Producer Write Flow — Overview</h2>
+<p>When a producer publishes one event, it goes through several steps: get metadata, calculate which partition to write to, find the leader broker, write the event, and wait for acknowledgement.</p>
+<div class="dia">  PRODUCER WRITE FLOW (end to end)
+  ─────────────────────────────────────────────────────────────────────
+  Step 1: Producer creates the event
+          { topic: "order-events", key: "order-123", value: {...}, acks: all }
+
+  Step 2: Producer needs metadata (which broker holds which partition leader?)
+          └─► ask any broker → broker asks controller if needed
+              → receives: "partition 1 leader = Broker 2"
+
+  Step 3: Calculate target partition
+          hash("order-123") % 3  =  1   ← partition 1
+
+  Step 4: Look up leader from metadata
+          partition 1 → leader = Broker 2
+
+  Step 5: Send write request directly to Broker 2
+
+  Step 6: Broker 2 writes the event to its partition 1 log
+          segment file → offset 101 written
+
+  Step 7: Broker 2 checks acks setting → "all"
+          waits for all ISR replicas (Broker 1 and Broker 3) to confirm
+
+  Step 8: Followers poll → write → respond "done"
+          Broker 2 sends "published successfully" back to producer ✓</div>
+</div>
+<div class="slide" id="s4" data-title="Metadata — What the Producer Needs">
+<h2>Metadata — What the Producer Needs</h2>
+<p>Before writing, the producer needs a map of the cluster: which broker is the leader for each partition. This metadata can expire and be refreshed.</p>
+<div class="dia">  Producer metadata cache:
+  ┌────────────────────────────────────────────────────────────┐
+  │  Topic: order-events                                       │
+  │    Partition 0 → Leader: Broker 1                         │
+  │    Partition 1 → Leader: Broker 2  ◄── I need to write here│
+  │    Partition 2 → Leader: Broker 3                         │
+  └────────────────────────────────────────────────────────────┘
+
+  How producer gets metadata:
+  ─────────────────────────────────────────────────────────────
+  Producer ──► Any broker: "give me metadata for order-events"
+                    │
+                    │  if broker has it → returns directly
+                    │  if broker's copy is expired:
+                    │        │
+                    │        ▼
+                    │   Active Controller: "here is the latest metadata"
+                    │        │
+                    ▼        ▼
+  Producer ◄── Broker: "here is the metadata"
+
+  Producer caches this locally and reuses until it expires.</div>
+</div>
+<div class="slide" id="s5" data-title="Partition Calculation">
+<h2>Partition Calculation</h2>
+<p>The producer uses the message key to deterministically decide which partition to write to. Same key always lands in the same partition.</p>
+<div class="dia">  Topic: order-events  (3 partitions)
+
+  hash(key) % number_of_partitions = target partition
+
+  ┌────────────────────────────────────────────────────────┐
+  │  key = "order-123"   → hash = 4892731 % 3 = 1  → P1  │
+  │  key = "order-456"   → hash = 9123456 % 3 = 0  → P0  │
+  │  key = "order-123"   → hash = 4892731 % 3 = 1  → P1  │  ← same key
+  │  key = null          → round-robin across P0, P1, P2  │
+  └────────────────────────────────────────────────────────┘
+
+  WHY this matters:
+  ┌────────────────────────────────────────────────────────┐
+  │  Same key → same partition → same consumer reads it   │
+  │  Guarantees ORDER for all events of one key           │
+  │                                                        │
+  │  order-123: placed → paid → shipped → delivered       │
+  │  All go to P1 → consumed in order ✓                   │
+  └────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s6" data-title="The Write — Broker Appends to Segment Log">
+<h2>The Write — Broker Appends to Segment Log</h2>
+<p>Once the producer calls the leader broker, the event is appended to the correct partition's segment file at the next sequential offset.</p>
+<div class="dia">  Broker 2 — Topic: order-events — Partition 1
+  ┌───────────────────────────────────────────────────────┐
+  │  segment-0000000000000000000.log                      │
+  │  ┌──────────────────────────────────────────────────┐ │
+  │  │  offset 98: { key: "order-100", value: {...} }   │ │
+  │  │  offset 99: { key: "order-101", value: {...} }   │ │
+  │  │  offset 100: { key: "order-102", value: {...} }  │ │
+  │  │  offset 101: { key: "order-123", value: {...} }  │ ◄── new event appended here
+  │  └──────────────────────────────────────────────────┘ │
+  └───────────────────────────────────────────────────────┘
+
+  Kafka only APPENDS — never inserts, never modifies.
+  Always sequential writes → very fast on disk.</div>
+</div>
+<div class="slide" id="s7" data-title="Complete Consumer Read Flow — Overview">
+<h2>Complete Consumer Read Flow — Overview</h2>
+<p>A consumer joining a group goes through its own multi-step dance: find the group coordinator, join the group, discover its assigned partition, find the last processed offset, then start fetching.</p>
+<div class="dia">  CONSUMER READ FLOW (end to end)
+  ─────────────────────────────────────────────────────────────────────
+  Step 1: Consumer starts, wants to join group "notification-service"
+
+  Step 2: Find which partition of __consumer_offsets handles this group
+          hash("notification-service") % 50 = 23
+          → partition 23 of __consumer_offsets
+          → Broker 3 holds the leader replica of partition 23
+
+  Step 3: Consumer gets cluster metadata (same as producer does)
+          → learns which broker holds each topic/partition leader
+
+  Step 4: Consumer invokes Broker 3 → "I want to join notification-service group"
+          Broker 3 is now acting as GROUP COORDINATOR for this group
+
+  Step 5: Group coordinator assigns consumer a partition
+          → consumer 3 gets: order-events partition 2
+
+  Step 6: Consumer asks group coordinator: "what was my last committed offset?"
+          → Group coordinator reads __consumer_offsets → returns: "start from 101"
+
+  Step 7: Consumer invokes leader broker for order-events partition 2
+          → "fetch me 200 bytes starting at offset 101"
+          → Broker 2 (leader of order-events P2) returns offsets 101–500
+
+  Step 8: Consumer processes events 101–500
+
+  Step 9: Consumer commits offset 500 back to group coordinator (Broker 3)
+          Group coordinator writes to __consumer_offsets partition 23
+
+  Step 10: Consumer loops back to Step 7 → polls again from 501 ↺</div>
+</div>
+<div class="slide" id="s8" data-title="What Is a Group Coordinator?">
+<h2>What Is a Group Coordinator?</h2>
+<p>The group coordinator is just a regular broker that happens to hold the leader replica of the <code>__consumer_offsets</code> partition assigned to your consumer group. It manages all group membership and offset bookkeeping.</p>
+<div class="dia">  __consumer_offsets topic (50 partitions, spread across brokers)
+  ┌────┬────┬────┬─────┬────┬────┬────┐
+  │ P0 │ P1 │ P2 │ ... │P23 │ ...│P49 │
+  └────┴────┴────┴─────┴────┴────┴────┘
+                         │
+                    Leader = Broker 3
+
+  Consumer group: "notification-service"
+  hash("notification-service") % 50 = 23
+  → Partition 23 → Leader = Broker 3
+  → Broker 3 IS the group coordinator for "notification-service"
+
+  Every call for this group ALWAYS goes to Broker 3:
+  ┌────────────────────────────────────────────────────────┐
+  │  join group request     → Broker 3                    │
+  │  fetch last offset      → Broker 3                    │
+  │  commit processed offset→ Broker 3                    │
+  │  heartbeat              → Broker 3                    │
+  └────────────────────────────────────────────────────────┘
+
+  Different group → different hash → different partition → different coordinator broker</div>
+</div>
+<div class="slide" id="s9" data-title="Consumer Offset — Where Progress Is Stored">
+<h2>Consumer Offset — Where Progress Is Stored</h2>
+<p>The consumer's position is stored inside Kafka itself (in <code>__consumer_offsets</code>), not in the consumer application. This allows any consumer instance to pick up where another left off.</p>
+<div class="dia">  __consumer_offsets partition 23 — segment file contents:
+
+  Key (what to look up):              Value (what was stored):
+  ┌──────────────────────────────┐    ┌─────────────────────┐
+  │  group:    notification-svc  │ →  │  last offset: 500   │
+  │  topic:    order-events      │    │                     │
+  │  partition: 2                │    │                     │
+  └──────────────────────────────┘    └─────────────────────┘
+
+  Consumer 3 crashes → Consumer 4 takes over partition 2:
+  Consumer 4: "what was the last offset for notification-svc / order-events / P2?"
+  Group coordinator: "500"
+  Consumer 4: starts fetching from 501 ✓
+
+  Consumer-side metadata (group membership, partition assignment) lives here.
+  Cluster metadata (broker, topic, partition leaders) lives in controller.
+  They are separate and stored separately.</div>
+</div>
+<div class="slide" id="s10" data-title="The Polling Loop">
+<h2>The Polling Loop</h2>
+<p>Kafka consumers are <strong>pull-based</strong> — they ask for data, Kafka does not push it. The consumer keeps polling in an infinite loop.</p>
+<div class="dia">  Consumer polling loop:
+  ─────────────────────────────────────────────────────────────────
+  ┌───────────────────────────────────────────────────────────┐
+  │                                                           │
+  │  ┌──────────────────────────────────────────────────┐    │
+  │  │  poll(order-events P2, from=501, max=200 bytes)  │    │
+  │  └──────────────────────────────────────────────────┘    │
+  │                  │                                        │
+  │                  ▼                                        │
+  │         Broker 2 returns offsets 501–900                  │
+  │                  │                                        │
+  │                  ▼                                        │
+  │         consumer.process(events 501–900)                  │
+  │                  │                                        │
+  │                  ▼                                        │
+  │         commitOffset(900) → group coordinator             │
+  │                  │                                        │
+  │                  └──────────────────────────────────────► │ loop ↺
+  │                     poll again from 901                   │
+  └───────────────────────────────────────────────────────────┘
+
+  Kafka: pull-based  (consumer asks when ready)
+  vs.
+  Push-based: server decides when to send (consumer may be overwhelmed)</div>
+</div>
+<div class="slide" id="s11" data-title="Log Compaction — Delete Policy">
+<h2>Log Compaction — Delete Policy</h2>
+<p>The default cleanup strategy is <strong>delete</strong>: old segments are removed based on time or total size. This keeps disk usage bounded.</p>
+<div class="dia">  cleanup.policy = delete   (default)
+  retention.ms   = 604800000  (7 days)
+  retention.bytes = 1073741824 (1 GB per partition)
+
+  Partition segments over time:
+  ┌────────────────┬────────────────┬────────────────┬─────────────┐
+  │  segment-1     │  segment-2     │  segment-3     │  segment-4  │
+  │  (8 days old)  │  (5 days old)  │  (3 days old)  │  (1 day old)│
+  │  400 MB        │  400 MB        │  150 MB        │  50 MB      │
+  └────────────────┴────────────────┴────────────────┴─────────────┘
+         │
+         │  retention.ms check: 8 days &gt; 7 days → DELETE ✗
+         │
+         ▼  result after cleanup:
+  ┌────────────────┬────────────────┬─────────────┐
+  │  segment-2     │  segment-3     │  segment-4  │
+  │  (5 days old)  │  (3 days old)  │  (1 day old)│
+  │  400 MB        │  150 MB        │  50 MB      │
+  └────────────────┴────────────────┴─────────────┘
+
+  Size check: total = 600 MB &lt; 1 GB → no size-based deletion needed
+  If total exceeded 1 GB, the OLDEST segment would be deleted.
+
+  Rule: deletion always works on entire SEGMENTS, not individual records.</div>
+</div>
+<div class="slide" id="s12" data-title="Log Compaction — Compact Policy">
+<h2>Log Compaction — Compact Policy</h2>
+<p>The <strong>compact</strong> strategy keeps only the <strong>latest value for each key</strong>. Perfect for "current state" topics where only the most recent record per key matters (e.g., user profiles, product prices).</p>
+<div class="dia">  cleanup.policy = compact
+
+  Segment before compaction:
+  ┌──────────────────────────────────────────────────────────┐
+  │  offset 100: key=user-1, value=version-1                 │
+  │  offset 101: key=user-2, value=version-1                 │
+  │  offset 102: key=user-1, value=version-2  ← newer user-1 │
+  │  offset 103: key=user-3, value=version-1                 │
+  │  offset 104: key=user-2, value=version-2  ← newer user-2 │
+  │  offset 105: key=user-1, value=version-3  ← newest user-1│
+  └──────────────────────────────────────────────────────────┘
+              │
+              │  background compaction job runs (async, non-blocking)
+              ▼
+  Segment after compaction:
+  ┌──────────────────────────────────────────────────────────┐
+  │  offset 103: key=user-3, value=version-1  ← only entry  │
+  │  offset 104: key=user-2, value=version-2  ← latest      │
+  │  offset 105: key=user-1, value=version-3  ← latest      │
+  └──────────────────────────────────────────────────────────┘
+
+  user-1: had 3 versions → kept only version-3 ✓
+  user-2: had 2 versions → kept only version-2 ✓
+  user-3: had 1 version  → kept as-is ✓
+
+  Important: compaction is ASYNC — not instant, writes never blocked.</div>
+</div>
+<div class="slide" id="s13" data-title="Page Cache — Write Optimization">
+<h2>Page Cache — Write Optimization</h2>
+<p>Kafka does not write directly to disk. It first writes to the OS <strong>page cache</strong> (RAM) and lets the operating system flush to disk asynchronously. This removes the bottleneck of synchronous disk writes.</p>
+<div class="dia">  WITHOUT page cache (slow):
+  ─────────────────────────────────────────────────────────
+  Producer → Kafka → write to disk ← blocking disk I/O, slow
+
+  WITH page cache (Kafka's approach):
+  ─────────────────────────────────────────────────────────
+  Producer ──► Kafka ──► OS page cache (RAM)
+                                │
+                                │  async flush (OS handles this)
+                                ▼
+                              Disk
+                         (non-blocking for Kafka)
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  Kafka trusts the OS to manage cache efficiently        │
+  │  Writes are non-blocking → extremely high throughput    │
+  │  Follower reads also served from page cache (RAM fast)  │
+  └─────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s14" data-title="Sequential Writes — Why Disk Is Fast for Kafka">
+<h2>Sequential Writes — Why Disk Is Fast for Kafka</h2>
+<p>Random disk writes are slow because the disk head must jump around. Kafka avoids this completely — it only ever <strong>appends</strong> to the end of a file, making every write sequential.</p>
+<div class="dia">  Random writes (databases, typical apps):
+  ─────────────────────────────────────────────────────────
+  Write record at position 1024 → disk head moves ─────────►
+  Write record at position 45   → disk head moves ◄────────
+  Write record at position 3200 → disk head moves ──────────►
+  = lots of head movement = slow
+
+  Sequential writes (Kafka's append-only model):
+  ─────────────────────────────────────────────────────────
+  offset 100 ──► offset 101 ──► offset 102 ──► offset 103
+  [append]       [append]       [append]       [append]
+  disk head keeps moving in ONE direction = very fast ✓
+
+  Kafka rules that make this possible:
+  ┌─────────────────────────────────────────────────────────┐
+  │  ✗  Never insert a record in the middle                 │
+  │  ✗  Never modify an existing record                     │
+  │  ✗  Never update a record in place                      │
+  │  ✓  Only ever append at the end with a new offset       │
+  └─────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s15" data-title="Zero Copy — Read Optimization">
+<h2>Zero Copy — Read Optimization</h2>
+<p>When a consumer fetches data, Kafka uses a special OS system call called <code>sendfile</code> to skip copying data into Kafka's own memory — data goes straight from disk to the network.</p>
+<div class="dia">  Normal file serving (WITHOUT zero copy):
+  ─────────────────────────────────────────────────────────
+  Disk
+   │  1. read into OS page cache (RAM)
+   ▼
+  OS page cache (RAM)
+   │  2. copy into Kafka JVM user space
+   ▼
+  Kafka JVM (user space)
+   │  3. copy to network buffer
+   ▼
+  Network → Consumer
+  = 3 hops, data copied multiple times, wastes memory + CPU
+
+  Kafka's zero copy (sendfile system call):
+  ─────────────────────────────────────────────────────────
+  Disk
+   │  1. read into OS page cache (RAM)
+   ▼
+  OS page cache (RAM)
+   │  2. sendfile() ── bypasses Kafka JVM entirely
+   ▼
+  Network → Consumer
+  = 2 hops, Kafka JVM never touches the data
+
+  ┌─────────────────────────────────────────────────────────┐
+  │  Benefits of zero copy:                                 │
+  │  ─ Saves one full data copy                             │
+  │  ─ Saves Kafka JVM memory                               │
+  │  ─ Saves CPU cycles                                     │
+  │  ─ Much higher read throughput                          │
+  └─────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s16" data-title="Performance Summary — Read and Write Together">
+<h2>Performance Summary — Read and Write Together</h2>
+<div class="dia">  WRITE PATH (producer → Kafka)
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Producer writes event                                       │
+  │       │                                                      │
+  │       ▼                                                      │
+  │  Broker appends to OS page cache (RAM) ← non-blocking       │
+  │       │                                                      │
+  │       │  async                                               │
+  │       ▼                                                      │
+  │  Disk (sequential append) ← best-case disk I/O pattern      │
+  │                                                              │
+  │  Optimizations: page cache + sequential write                │
+  └──────────────────────────────────────────────────────────────┘
+
+  READ PATH (Kafka → consumer)
+  ┌──────────────────────────────────────────────────────────────┐
+  │  Consumer sends fetch request                                │
+  │       │                                                      │
+  │       ▼                                                      │
+  │  Data loaded into OS page cache (if not already there)       │
+  │       │                                                      │
+  │       │  sendfile() — zero copy                              │
+  │       ▼                                                      │
+  │  Network → Consumer (Kafka JVM never touched the data)       │
+  │                                                              │
+  │  Optimization: zero copy (sendfile system call)              │
+  └──────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s17" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                   What it is                                   Key point
+────────────────────────  ───────────────────────────────────────────  ─────────────────────────────────────
+Producer write flow       8-step journey: create → metadata → write    Always goes to partition LEADER only
+Metadata                  Map of broker → topic → partition leaders     Producer caches it locally, refreshes as needed
+Partition calculation     hash(key) % numPartitions                    Same key → same partition → ordered delivery
+Group coordinator         Broker holding leader of consumer group's    All group calls go to the same broker
+                          __consumer_offsets partition
+Consumer read flow        10-step journey: join → get offset → fetch   Consumer is PULL-based, not push-based
+__consumer_offsets        Internal Kafka topic storing consumer state   Where last processed offset is saved
+Polling loop              Consumer repeatedly fetches in a loop        Never stops — infinite loop until shutdown
+Delete policy             Remove old segments by time or total size    Works at segment level, not record level
+Compact policy            Keep only latest value per key               Background async job, never blocks writes
+Page cache                OS RAM buffer for writes                     Kafka writes to RAM first, OS flushes to disk async
+Sequential write          All writes append at the end                 Best-case disk pattern — extremely fast
+Zero copy                 sendfile() skips Kafka JVM memory            Data goes disk → OS cache → network directly</div>
+</div>
+<div class="slide" id="s18" data-title="Architecture — Write/Read Path for the Notification System">
+<h2>Architecture — Producer Write + Consumer Read Path End to End</h2>
+<p>"Let's trace this with real numbers: the CDC Publisher writing to notifications.standard.email, and an email-workers consumer reading it back."</p>
+<div class="dia">  CDC Publisher: metadata cache says "P7 leader = Broker-2"
+        │  hash(notification_id) % 100 = 7
+        ▼
+  Broker-2 (leader, P7) ── appends to segment log (sequential write, page cache)
+        │
+        │  async: OS flushes page cache → disk, replicates to followers
+        ▼
+  email-workers consumer polls Broker-2
+        │  sendfile() zero-copy: disk → OS cache → network socket directly
+        │  (Kafka JVM heap never touches the bytes)
+        ▼
+  Consumer processes, commits offset to __consumer_offsets</div>
+<p><strong>Scenario-first:</strong> "Zero-copy and page cache are why a 3-broker cluster can push far more throughput than you'd expect from 'just append to a log' — the JVM is barely in the hot path for either the write or the read."</p>
+</div>
+<div class="slide" id="s19" data-title="ER + Sequence — Metadata-Driven Partition Routing">
+<h2>ER Relationship + Sequence — How a Key Finds Its Partition</h2>
+<div class="dia">ER: ProducerRecord (key, value) ──hashed──> Partition (via hash(key)%N)
+    Partition (1) ──has──> Leader Broker (1) ──cached in──> Producer Metadata
+
+SEQUENCE — first send vs cached send:
+Producer          MetadataCache        Broker(any)         Broker(leader,P7)
+   │  send(key=notifId)  │                   │                    │
+   │  cache empty?        │                   │                    │
+   │─────────────────────►│ metadata request  │                    │
+   │                      │──────────────────►│ "P7 leader=Broker-2"│
+   │                      │◄──────────────────│                    │
+   │◄─────────────────────│ cached now         │                    │
+   │  route directly ─────────────────────────────────────────────►│ append</div>
+<p><strong>Scenario-first:</strong> "The metadata fetch only happens once (or on a refresh interval / leader change) — every subsequent send for a cached topic skips straight to the known leader, which is why producer throughput doesn't collapse under constant metadata lookups."</p>
+</div>
+<div class="slide" id="s20" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why does the producer only ever write to the partition LEADER, never a follower?
+A: Followers are passive replicas — writing directly to one would bypass the
+   leader's ordering and ISR-ack guarantees entirely, breaking consistency.
+
+Q: When would you use compact policy over delete policy?
+A: Compact keeps "latest value per key" forever — ideal for a changelog-style
+   topic like user preferences, where only the current state matters. Delete
+   is right for time-ordered event streams like notifications, where history
+   matters but old events eventually become irrelevant.
+
+Q: Why is zero-copy only possible for the CONSUMER read path, not the producer write?
+A: Writes require the broker to actually process and append the incoming
+   bytes (can't skip that), but reads can bypass the JVM entirely since the
+   broker is just relaying already-stored bytes straight from disk/page cache.</div>
+</div>
+<div class="slide" id="s21" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision              Choice          Alternative       Why ours                            When to flip
+──────────────────────  ──────────────  ────────────────  ──────────────────────────────────  ─────────────────────
+Cleanup policy           Delete (events)  Compact           Time-ordered history matters more     Latest-state-only topics
+                                                              than deduping by key                  (e.g. user preferences)
+Partition key            notification_id  user_id           Even load spread across partitions    Need strict per-user
+                                                                                                       ordering across types</div>
+</div>
+<div class="slide" id="s22" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "You added partitions to a topic that used compact cleanup policy.
+  Two months later, a consumer complains it's seeing 'old' values for some keys
+  it thought were already updated. Why?"
+  Answer: "Compaction is per-partition, and adding partitions rehashes where
+  NEW records for a key land — but OLD records for that same key remain on
+  the original partition, uncompacted against the new one. The consumer may
+  read a stale value from the old partition before ever seeing the new
+  partition's fresher one, since there's no cross-partition ordering."
+
+Trap 2 — "Sequential writes and zero-copy are both praised as 'why Kafka is
+  fast,' but explain why they matter at completely different points in the
+  pipeline."
+  Answer: "Sequential writes optimize the WRITE path — avoiding random disk
+  seeks when appending to the segment log. Zero-copy optimizes the READ
+  path — skipping JVM buffer copies when serving already-written bytes to a
+  consumer. Conflating them misses that Kafka's speed comes from optimizing
+  two entirely separate operations, not one trick applied twice."</div>
+</div>
+<div class="slide" id="s23" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why key by notification_id: even partition load distribution beats a
+  cross-notification ordering guarantee we don't actually need.
+- Why delete (not compact) cleanup policy for notification events: we care
+  about the full time-ordered history, not just the latest state per key.
+- Why rely on page cache instead of forcing fsync on every write: massive
+  throughput win; durability instead comes from replication across brokers.
+- Why zero-copy for consumer reads: removes JVM heap copying entirely from
+  the hottest, highest-volume path in the whole system.</div>
+</div>
+<div class="slide" id="s24" data-title="Top 2 Technologies — Cleanup Policy">
+<h2>Top 2 Technologies — Topic Cleanup Policy</h2>
+<div class="dia">Delete Policy  vs  Compact Policy
+
+Why pick Delete: full historical event stream preserved (up to retention),
+  ideal for audit trails and time-ordered processing like notifications.
+Why pick Compact: only the LATEST value per key matters, older versions are
+  noise — ideal for changelog-style state (user preferences, config).
+
+Example 1 (Delete): Notification System's notifications.standard.email —
+  every historical send matters for reporting and replay.
+Example 2 (Compact): A user_preferences changelog topic — only the current
+  opt-in/opt-out state per user is ever relevant, old states are pure waste.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 24;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Architecture Part 2 — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

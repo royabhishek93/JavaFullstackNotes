@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LC 394 Decode String | Code Dry Run</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box}:root{--bg:#07111d;--s:#0c1a2a;--line:#25435b;--ink:#e8f1f7;--muted:#9cb5c9;--blue:#5eb5ff;--cyan:#5eead4;--amber:#fbbf24;--lime:#a3e635}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif}main{max-width:1180px;margin:auto;padding:22px}
+.eye{font:700 10px 'IBM Plex Mono',monospace;color:var(--cyan);letter-spacing:.08em}h1{margin:7px 0}p{color:var(--muted)}
+.ops{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.op{font:12px 'IBM Plex Mono',monospace;border:1px solid var(--line);border-radius:4px;padding:5px 7px;color:var(--muted)}
+.op.active{background:var(--amber);border-color:var(--amber);color:#07111d}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--s);border:1px solid var(--line);border-radius:8px;padding:15px}.panel h2{font-size:.85rem;color:var(--cyan);margin:0 0 10px}
+.state,.code{font:13px/1.65 'IBM Plex Mono',monospace;white-space:pre-wrap;min-height:125px}.code{max-height:365px;overflow:auto;color:#b7cede}
+.code div{padding:0 7px;border-left:3px solid transparent}.code .active{background:#173955;border-left-color:var(--amber);color:#fff}
+.note{margin-top:12px;background:#092033;border-left:3px solid var(--cyan);padding:12px;line-height:1.55}
+.why{margin-top:10px;background:#102311;border-left:3px solid var(--lime);padding:11px;color:#d9f99d}
+.btn{margin:14px 6px 0 0;background:#10253a;border:1px solid var(--line);color:var(--ink);padding:8px 13px;border-radius:5px;cursor:pointer}
+.meter{float:right;margin-top:22px;color:var(--muted);font:12px 'IBM Plex Mono',monospace}
+@media(max-width:720px){main{padding:15px}.grid{grid-template-columns:1fr}}</style>
+</head><body><main>
+<div class="eye">LC 394 | VISUAL CODE DRY RUN</div>
+<h1>Decode String</h1>
+<p>Pattern: Stack for nested structures | Example: <code>s = "3[a]2[bc]"</code></p>
+<div class="ops" id="ops"></div>
+<div class="grid">
+  <section class="panel"><h2>Algorithm State</h2><div class="state" id="state"></div></section>
+  <section class="panel"><h2>Full Java Code: Active Line Executing</h2><div class="code" id="code"></div></section>
+</div>
+<div class="grid" style="margin-top:14px">
+  <section class="panel"><h2>What Changed?</h2><div class="note" id="note"></div><div class="why" id="why"></div></section>
+  <section class="panel"><h2>Problem Statement</h2><div class="state">Decode encoded string</div></section>
+</div>
+<button class="btn" id="play">Pause</button>
+<button class="btn" id="previous">Previous</button>
+<button class="btn" id="next">Next</button>
+<button class="btn" id="reset">Reset</button>
+<span class="meter" id="meter"></span>
+</main>
+<script>
+const codeLines=["public String decodeString(String s) {", "    Stack<Integer> countStack = new Stack<>();", "    Stack<StringBuilder> stringStack = new Stack<>();", "    StringBuilder current = new StringBuilder();", "    int k = 0;", "    ", "    for (char c : s.toCharArray()) {", "        if (Character.isDigit(c)) {", "            k = k * 10 + (c - '0');", "        } else if (c == '[') {", "            countStack.push(k);", "            stringStack.push(current);", "            current = new StringBuilder();", "            k = 0;", "        } else if (c == ']') {", "            StringBuilder decoded = stringStack.pop();", "            int repeat = countStack.pop();", "            for (int i = 0; i < repeat; i++) {", "                decoded.append(current);", "            }", "            current = decoded;", "        } else {", "            current.append(c);", "        }", "    }", "    return current.toString();", "}"];
+const steps=[
+  {
+    "op": "1. Initialize stack",
+    "line": 0,
+    "state": "Input: s = \"3[a]2[bc]\"\\nstack: []",
+    "text": "Create empty stack for LIFO processing",
+    "why": "Stack maintains elements in reverse order"
+  },
+  {
+    "op": "2. Stack operation",
+    "line": 0,
+    "state": "stack: [bottom, ..., top]\\ncurrent: X",
+    "text": "public String decodeString(String s) {",
+    "why": "LIFO order enables backtracking and pairing"
+  },
+  {
+    "op": "3. Stack operation",
+    "line": 1,
+    "state": "stack: [bottom, ..., top]\\ncurrent: X",
+    "text": "Stack<Integer> countStack = new Stack<>();",
+    "why": "LIFO order enables backtracking and pairing"
+  },
+  {
+    "op": "4. Stack operation",
+    "line": 2,
+    "state": "stack: [bottom, ..., top]\\ncurrent: X",
+    "text": "Stack<StringBuilder> stringStack = new Stack<>();",
+    "why": "LIFO order enables backtracking and pairing"
+  },
+  {
+    "op": "5. Stack operation",
+    "line": 3,
+    "state": "stack: [bottom, ..., top]\\ncurrent: X",
+    "text": "StringBuilder current = new StringBuilder();",
+    "why": "LIFO order enables backtracking and pairing"
+  },
+  {
+    "op": "6. Stack operation",
+    "line": 4,
+    "state": "stack: [bottom, ..., top]\\ncurrent: X",
+    "text": "int k = 0;",
+    "why": "LIFO order enables backtracking and pairing"
+  },
+  {
+    "op": "7. Stack operation",
+    "line": 6,
+    "state": "stack: [bottom, ..., top]\\ncurrent: X",
+    "text": "for (char c : s.toCharArray()) {",
+    "why": "LIFO order enables backtracking and pairing"
+  },
+  {
+    "op": "8. Stack operation",
+    "line": 7,
+    "state": "stack: [bottom, ..., top]\\ncurrent: X",
+    "text": "if (Character.isDigit(c)) {",
+    "why": "LIFO order enables backtracking and pairing"
+  },
+  {
+    "op": "9. Stack operation",
+    "line": 8,
+    "state": "stack: [bottom, ..., top]\\ncurrent: X",
+    "text": "k = k * 10 + (c - '0');",
+    "why": "LIFO order enables backtracking and pairing"
+  }
+];
+const code=document.querySelector('#code'),ops=document.querySelector('#ops'),state=document.querySelector('#state'),note=document.querySelector('#note'),why=document.querySelector('#why'),meter=document.querySelector('#meter');
+codeLines.forEach((line,i)=>{const row=document.createElement('div');row.textContent=`${i+1}. ${line}`;code.append(row)});
+steps.forEach(step=>{const item=document.createElement('span');item.className='op';item.textContent=step.op;ops.append(item)});
+let index=0,running=false,timer;
+function render(){const step=steps[index];[...ops.children].forEach((item,i)=>item.classList.toggle('active',i===index));
+[...code.children].forEach((row,i)=>row.classList.toggle('active',i===step.line));
+code.children[step.line].scrollIntoView({block:'nearest'});state.textContent=step.state;note.textContent=step.text;
+why.innerHTML='<strong>Why:</strong> '+step.why;meter.textContent=`${index+1} / ${steps.length}`}
+function schedule(){clearInterval(timer);if(running)timer=setInterval(()=>{index=(index+1)%steps.length;render()},4200);
+document.querySelector('#play').textContent=running?'Pause':'Play'}
+document.querySelector('#play').onclick=()=>{running=!running;schedule()};
+document.querySelector('#next').onclick=()=>{running=false;schedule();index=Math.min(index+1,steps.length-1);render()};
+document.querySelector('#previous').onclick=()=>{running=false;schedule();index=Math.max(index-1,0);render()};
+document.querySelector('#reset').onclick=()=>{running=false;schedule();index=0;render()};
+render();
+</script></body></html>

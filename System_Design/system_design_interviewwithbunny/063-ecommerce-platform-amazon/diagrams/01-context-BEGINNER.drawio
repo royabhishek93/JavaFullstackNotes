@@ -1,0 +1,247 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="System Context" id="context">
+    <mxGraphModel dx="1700" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1700" pageHeight="1100" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="E-COMMERCE PLATFORM (Amazon/Flipkart) — System Context" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1660" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="Inventory Consistency + Distributed Locks + CDC Search Sync + Event-Driven Architecture + Strong ACID for Checkout" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="1400" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- System Boundary -->
+        <mxCell id="system-boundary" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#ff6f00;strokeWidth=4;" vertex="1" parent="1">
+          <mxGeometry x="300" y="120" width="1100" height="850" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="system-label" value="E-COMMERCE PLATFORM (Amazon/Flipkart)" style="text;html=1;strokeColor=none;fillColor=#ff6f00;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="310" y="130" width="380" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Core Services Inside System -->
+        <mxCell id="services-box" value="MICROSERVICES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="320" y="180" width="520" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="service-list" value="• User Service (registration, authentication, profile)&#xa;• Product Service (catalog, CRUD, MongoDB flexible schema)&#xa;• Search Service (Elasticsearch full-text, faceted filters)&#xa;• Cart Service (add/remove items, cross-device sync)&#xa;• Checkout Service (orchestrator: lock → reserve → payment)&#xa;• Inventory Service (qty + reserved_qty pattern, ACID)&#xa;• Order Service (status tracking, lifecycle management)&#xa;• Payment Service (webhook handler, idempotency check)&#xa;• Notification Service (email/SMS on order events)&#xa;• Warehouse Service (pick, pack, ship workflow)&#xa;• Review/Rating Service (product reviews, aggregations)&#xa;• Recommendation Service (ML-based, user purchase history)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="330" y="210" width="500" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Data Stores -->
+        <mxCell id="data-stores-box" value="DATA STORES &amp; INFRASTRUCTURE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="860" y="180" width="520" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="data-stores-list" value="• MongoDB (Product catalog — flexible schema for categories)&#xa;  100M products × 5KB = 500GB, sharded by category&#xa;&#xa;• PostgreSQL (Inventory — qty + reserved_qty, ACID locks)&#xa;  SELECT FOR UPDATE during checkout (row-level locking)&#xa;  Prevents overselling, strong consistency required&#xa;&#xa;• PostgreSQL (Cart — cross-device sync, ACID upserts)&#xa;  ON CONFLICT for concurrent add-to-cart&#xa;&#xa;• MySQL (Orders — ACID transactions, partitioned by month)&#xa;  Order lifecycle, payment references, shipping details&#xa;&#xa;• Elasticsearch (Search — full-text, fuzzy, faceted filters)&#xa;  Synced from MongoDB via CDC (oplog → Kafka → ES indexer)&#xa;  100K searches/sec during sales events&#xa;&#xa;• Redis (Cache + Distributed Locks)&#xa;  SETNX lock:inventory:{product_id} EX 30 (thundering herd)&#xa;  Cache: product, search results, cart (HSET)&#xa;&#xa;• Kafka (Event streaming — order.created, payment.success)&#xa;  Decouples post-checkout workflow (warehouse, notifications)&#xa;&#xa;• S3 + CloudFront (Product images — 500TB, CDN for fast delivery)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="870" y="210" width="500" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Key Design Principles -->
+        <mxCell id="principles-box" value="KEY DESIGN PRINCIPLES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="320" y="480" width="1060" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="principles-list" value="1. INVENTORY CONSISTENCY: Strong ACID required (no overselling). Redis distributed lock (SETNX) prevents&#xa;   thundering herd. PostgreSQL SELECT FOR UPDATE during reservation. reserved_qty column holds stock during&#xa;   checkout→payment window. Actual deduction ONLY after payment.success webhook.&#xa;&#xa;2. CDC FOR SEARCH SYNC: Product Service writes only to MongoDB. CDC pipeline (oplog → Kafka → ES indexer)&#xa;   keeps Elasticsearch fresh within 1-2 sec. No dual-writes, eventual consistency acceptable for search.&#xa;&#xa;3. FLEXIBLE PRODUCT SCHEMA: MongoDB handles different product categories (mobiles have RAM/storage, books&#xa;   have author/ISBN, clothing has size/color) without sparse NULL columns or ALTER TABLE for new categories.&#xa;&#xa;4. TWO-LAYER LOCKING: Layer 1 (Redis SETNX): Fast rejection &lt;1ms, prevents 10K concurrent users hitting DB.&#xa;   Layer 2 (PostgreSQL FOR UPDATE): ACID row lock during inventory read/reserve (500ms). Auto-expires if crash.&#xa;&#xa;5. IDEMPOTENT PAYMENT WEBHOOK: order_id as idempotency key to payment gateway. UNIQUE constraint on&#xa;   payments(order_id) prevents double-charge. Webhook signature validation (HMAC) prevents forgery.&#xa;&#xa;6. EVENT-DRIVEN POST-CHECKOUT: Kafka decouples all work after payment (warehouse pick, email, analytics).&#xa;   Each consumer scales independently, fails independently. 7-day retention enables replay.&#xa;&#xa;7. CART CROSS-DEVICE SYNC: Cart tied to user_id (not session). PostgreSQL source of truth, Redis cache (HSET)&#xa;   for fast reads. Survives cache eviction, syncs across mobile/web/tablet." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="330" y="510" width="1040" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Critical Challenges -->
+        <mxCell id="challenges-box" value="🔥 CRITICAL TECHNICAL CHALLENGES" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="320" y="700" width="1060" height="250" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="challenges-list" value="1. OVERSELLING PREVENTION: Flash sale, 1 unit left, 10K concurrent checkouts. Without locking:&#xa;   all 10K read qty=1 (sufficient), all reserve, 9999 oversold. Solution: Redis SETNX (fast reject 9999)&#xa;   + PostgreSQL FOR UPDATE (serialize the 1 winner's reservation).&#xa;&#xa;2. INVENTORY LOCK DEADLOCK: User starts checkout, network fails, lock held forever. Solution: Redis lock&#xa;   auto-expires (EX 30 sec). PostgreSQL row lock released on transaction COMMIT/ROLLBACK. Idempotent retry safe.&#xa;&#xa;3. PAYMENT WEBHOOK REPLAY: Payment gateway retries webhook on timeout. Without idempotency: inventory&#xa;   deducted twice for same payment. Solution: UNIQUE constraint on payments(order_id), SELECT before INSERT.&#xa;&#xa;4. CART RACE CONDITION: User adds same product from mobile and web simultaneously. Without ON CONFLICT:&#xa;   two cart_items rows for same product_id. Solution: composite UNIQUE (cart_id, product_id) + ON CONFLICT UPDATE.&#xa;&#xa;5. SEARCH STALENESS AT SCALE: 100M products, update propagation to ES. CDC lag spikes to 10 sec during bulk&#xa;   imports. Acceptable: search shows recently-sold-out item briefly → checkout validates inventory anyway.&#xa;&#xa;6. THUNDERING HERD ON DB: 10K users hit checkout simultaneously. PostgreSQL connection pool (200 conns)&#xa;   exhausted in 50ms, all fail. Solution: Redis distributed lock as early rejection before DB touched.&#xa;&#xa;7. PAYMENT FAILURE RECOVERY: Payment succeeds at gateway but webhook delivery fails (network error).&#xa;   Inventory stays reserved forever → stock leak. Solution: Cron job finds orders PENDING_PAYMENT &gt;30min,&#xa;   polls payment gateway status API, reconciles.&#xa;&#xa;8. CROSS-DEVICE CART SYNC LAG: User adds item on mobile, immediately opens web, sees old cart. Solution:&#xa;   Cache-aside pattern — write to PostgreSQL first, invalidate Redis cache, next read rebuilds from DB." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="330" y="730" width="1040" height="210" as="geometry" />
+        </mxCell>
+        
+        <!-- EXTERNAL ACTORS -->
+        
+        <!-- Buyer -->
+        <mxCell id="actor-buyer" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="220" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="buyer-title" value="🛒 BUYER (Customer)" style="text;html=1;strokeColor=none;fillColor=#1976d2;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="210" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="buyer-actions" value="Actions:&#xa;• Search products (keyword,&#xa;  filters, sort by rating/price)&#xa;• View product details + reviews&#xa;• Add items to cart&#xa;• Checkout + payment&#xa;• Track order status&#xa;• Write product reviews&#xa;• Manage addresses" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="60" y="245" width="180" height="125" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-buyer" value="Browse, search,&#xa;checkout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#1976d2;fontSize=10;fontStyle=1;endArrow=classic;endFill=1;startArrow=classic;startFill=1" edge="1" parent="1" source="actor-buyer" target="system-boundary">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="290" as="sourcePoint" />
+            <mxPoint x="300" y="290" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Seller -->
+        <mxCell id="actor-seller" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="220" height="150" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seller-title" value="🏪 SELLER (Merchant)" style="text;html=1;strokeColor=none;fillColor=#388e3c;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="430" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seller-actions" value="Actions:&#xa;• Add/update products&#xa;• Manage inventory stock levels&#xa;• View order notifications&#xa;• Fulfill orders (pack, ship)&#xa;• Respond to reviews&#xa;• View sales analytics" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="60" y="465" width="180" height="95" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-seller" value="Manage products,&#xa;inventory" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#388e3c;fontSize=10;fontStyle=1;endArrow=classic;endFill=1;startArrow=classic;startFill=1" edge="1" parent="1" source="actor-seller" target="system-boundary">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="495" as="sourcePoint" />
+            <mxPoint x="300" y="495" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Admin -->
+        <mxCell id="actor-admin" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="610" width="220" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="admin-title" value="👨‍💼 ADMIN / OPS" style="text;html=1;strokeColor=none;fillColor=#f57f17;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="620" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="admin-actions" value="Actions:&#xa;• Monitor inventory discrepancies&#xa;• Reconcile payment failures&#xa;• Manage flash sales (stock limits)&#xa;• View system health dashboards&#xa;• Handle customer disputes" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="60" y="655" width="180" height="75" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-admin" value="Admin ops" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#f57f17;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="actor-admin" target="system-boundary">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="260" y="675" as="sourcePoint" />
+            <mxPoint x="300" y="675" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- EXTERNAL SYSTEMS -->
+        
+        <!-- Payment Gateway -->
+        <mxCell id="ext-payment" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="200" width="220" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payment-title" value="💳 PAYMENT GATEWAY" style="text;html=1;strokeColor=none;fillColor=#01579b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="210" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payment-usage" value="• Stripe / Razorpay&#xa;• Card/UPI processing&#xa;• Payment intent creation&#xa;• Webhook delivery&#xa;  (payment.success/failed)&#xa;• Idempotency via order_id&#xa;• PCI-DSS compliance" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="1460" y="245" width="180" height="85" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-payment" value="Create intent,&#xa;webhook notify" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#01579b;fontSize=10;fontStyle=1;endArrow=classic;endFill=1;startArrow=classic;startFill=1" edge="1" parent="1" source="system-boundary" target="ext-payment">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="270" as="sourcePoint" />
+            <mxPoint x="1440" y="270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Shipping Provider -->
+        <mxCell id="ext-shipping" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="360" width="220" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="shipping-title" value="📦 SHIPPING PROVIDER" style="text;html=1;strokeColor=none;fillColor=#2e7d32;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="370" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="shipping-usage" value="• FedEx / BlueDart / DHL&#xa;• Label generation&#xa;• Real-time tracking updates&#xa;• Delivery confirmation&#xa;• Returns processing" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="1460" y="405" width="180" height="75" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-shipping" value="Track shipment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#2e7d32;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="system-boundary" target="ext-shipping">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="425" as="sourcePoint" />
+            <mxPoint x="1440" y="425" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Email/SMS Service -->
+        <mxCell id="ext-notify" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="510" width="220" height="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="notify-title" value="📧 EMAIL/SMS SERVICE" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="520" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="notify-usage" value="• SendGrid / Twilio&#xa;• Order confirmation&#xa;• Shipping updates&#xa;• Delivery notifications&#xa;• Marketing campaigns" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="1460" y="555" width="180" height="55" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-notify" value="Send notif" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#e65100;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="system-boundary" target="ext-notify">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="565" as="sourcePoint" />
+            <mxPoint x="1440" y="565" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- CDN -->
+        <mxCell id="ext-cdn" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fce4ec;strokeColor=#c2185b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="640" width="220" height="90" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cdn-title" value="🌐 CDN (CloudFront)" style="text;html=1;strokeColor=none;fillColor=#c2185b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="650" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cdn-usage" value="• S3 origin (product images)&#xa;• Edge caching (low latency)&#xa;• 500TB image delivery" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="1460" y="685" width="180" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-cdn" value="Serve images" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#c2185b;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="system-boundary" target="ext-cdn">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="685" as="sourcePoint" />
+            <mxPoint x="1440" y="685" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Analytics/ML -->
+        <mxCell id="ext-analytics" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8eaf6;strokeColor=#3f51b5;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="750" width="220" height="90" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analytics-title" value="📊 ANALYTICS / ML" style="text;html=1;strokeColor=none;fillColor=#3f51b5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1450" y="760" width="200" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analytics-usage" value="• User behavior tracking&#xa;• Product recommendations&#xa;• Sales trend analysis" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="1460" y="795" width="180" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-analytics" value="ETL events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#3f51b5;fontSize=10;fontStyle=1;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="system-boundary" target="ext-analytics">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1400" y="795" as="sourcePoint" />
+            <mxPoint x="1440" y="795" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Real-World Analogy -->
+        <mxCell id="analogy-box" value="🏪 REAL-WORLD ANALOGY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="780" width="1620" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analogy-text" value="Physical store during Black Friday flash sale: 1 TV left, 100 customers rush to checkout. Cashier (distributed lock) lets only 1 person hold the TV while scanning items (inventory reservation). Others wait in line (Redis SETNX queue). If holder's credit card declines (payment fails), TV goes back on shelf (reserved_qty decremented, qty unchanged). If payment succeeds, TV leaves warehouse (qty decremented, order confirmed). Stockroom ledger (inventory DB) is source of truth — never trust display shelf count during chaos. Product catalog = shelf labels with specs. Search = store directory that tells you which aisle. Cart = shopping basket you carry around. Checkout = register transaction. Payment webhook = credit card approval from bank. Warehouse = backroom where fulfilled orders are picked/packed/shipped. The hard part: preventing that 1 TV from being sold to 2 people when both reach the cashier simultaneously." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="50" y="810" width="1600" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Monitoring Box -->
+        <mxCell id="monitoring-box" value="📈 MONITORING &amp; OBSERVABILITY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="880" width="1620" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="monitoring-text" value="• **Inventory Discrepancy Alert**: SUM(orders.qty) - SUM(inventory.deducted) != 0 → overselling detected • **Checkout Success Rate**: &lt;95% → investigate lock timeouts • **Search Latency**: p99 &gt;500ms → ES cluster under load • **Payment Webhook Lag**: &gt;5 min → check gateway health • **Cart Abandonment Rate**: &gt;70% → UX issue or pricing problem • **Redis Lock Timeout Rate**: &gt;1% → increase lock TTL or optimize checkout flow • **CDC Lag (MongoDB → ES)**: &gt;10 sec → Kafka consumer backlog, scale indexer • **PostgreSQL Connection Pool**: &gt;90% utilization → increase pool size or add read replicas • **Distributed Lock Contention**: SETNX failure rate per product_id → hot product, scale horizontally • **Order PENDING_PAYMENT &gt;30min**: Cron reconciliation job, poll payment gateway API for true status" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=8" vertex="1" parent="1">
+          <mxGeometry x="50" y="910" width="1600" height="40" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

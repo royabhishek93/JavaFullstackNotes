@@ -1,0 +1,108 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Snake and Ladder LLD" id="snakeladder">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (Game Design with Queue-based Turn Management)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1000" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Game Class -->
+        <mxCell id="game_class" value="Game&#xa;&#xa;- board: Board&#xa;- dice: Dice&#xa;- players: Queue&lt;Player&gt;&#xa;- winner: Player&#xa;&#xa;+ startGame()&#xa;+ playGame()&#xa;+ checkWinner(Player): boolean" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="240" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Board Class -->
+        <mxCell id="board_class" value="Board&#xa;&#xa;- size: int&#xa;- cells: Cell[]&#xa;- snakes: List&lt;Snake&gt;&#xa;- ladders: List&lt;Ladder&gt;&#xa;&#xa;+ getCell(int position): Cell&#xa;+ addSnake(Snake)&#xa;+ addLadder(Ladder)&#xa;+ initializeBoard()" style="swimlane;fontStyle=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="320" y="80" width="220" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Cell Class -->
+        <mxCell id="cell_class" value="Cell&#xa;&#xa;- position: int&#xa;- jump: Jump&#xa;&#xa;+ getPosition(): int&#xa;+ getJump(): Jump&#xa;+ setJump(Jump)" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="580" y="80" width="180" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Jump Hierarchy -->
+        <mxCell id="jump_class" value="&lt;&lt;abstract&gt;&gt;&#xa;Jump&#xa;&#xa;- start: int&#xa;- end: int&#xa;&#xa;+ getStart(): int&#xa;+ getEnd(): int" style="swimlane;fontStyle=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="800" y="80" width="160" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="snake_class" value="Snake&#xa;&#xa;+ Snake(int start, int end)&#xa;  // start &gt; end&#xa;  // Downward jump" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="80" width="180" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ladder_class" value="Ladder&#xa;&#xa;+ Ladder(int start, int end)&#xa;  // start &lt; end&#xa;  // Upward jump" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="200" width="180" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Player Class -->
+        <mxCell id="player_class" value="Player&#xa;&#xa;- playerId: String&#xa;- playerName: String&#xa;- currentPosition: int&#xa;&#xa;+ move(int steps)&#xa;+ getCurrentPosition(): int&#xa;+ setCurrentPosition(int)" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="220" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Dice Class -->
+        <mxCell id="dice_class" value="Dice&#xa;&#xa;- numberOfDice: int&#xa;- minValue: int&#xa;- maxValue: int&#xa;&#xa;+ rollDice(): int&#xa;  // Returns random [minValue, maxValue]&#xa;  // Sum of all dice" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="300" y="320" width="260" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Game Flow -->
+        <mxCell id="flow_title" value="GAME FLOW ALGORITHM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="flow_box" value="1. Initialize board (100 cells)&#xa;2. Add snakes (e.g., 99→12, 88→24, 76→8, etc.)&#xa;3. Add ladders (e.g., 4→56, 12→50, 20→59, etc.)&#xa;4. Create players and add to queue&#xa;5. Start game loop:&#xa;&#xa;WHILE (no winner):&#xa;  a. Remove player from front of queue&#xa;  b. Roll dice (1-6 for single die)&#xa;  c. New position = current + dice value&#xa;  d. Check if new position &gt; 100:&#xa;     - If YES: Player stays at current position (try next turn)&#xa;     - If NO: Move to new position&#xa;  e. Check if cell has jump (snake or ladder):&#xa;     - If Snake: Position = snake.end (go down)&#xa;     - If Ladder: Position = ladder.end (go up)&#xa;  f. Check if position == 100:&#xa;     - If YES: Player wins, game ends&#xa;     - If NO: Add player to back of queue, continue&#xa;&#xa;6. Announce winner" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="520" width="600" height="440" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="680" y="340" width="600" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Game Table -->
+        <mxCell id="er_game" value="Game&#xa;&#xa;PK  gameId: INT&#xa;    boardSize: INT&#xa;FK  winnerId: INT (playerId)&#xa;    startTime: DATETIME&#xa;    endTime: DATETIME&#xa;    status: ENUM" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="400" width="220" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- Player Table -->
+        <mxCell id="er_player" value="Player&#xa;&#xa;PK  playerId: INT&#xa;    playerName: VARCHAR(100)&#xa;    currentPosition: INT&#xa;FK  gameId: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="940" y="400" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Snake Table -->
+        <mxCell id="er_snake" value="Snake&#xa;&#xa;PK  snakeId: INT&#xa;FK  gameId: INT&#xa;    startPosition: INT&#xa;    endPosition: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="600" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Ladder Table -->
+        <mxCell id="er_ladder" value="Ladder&#xa;&#xa;PK  ladderId: INT&#xa;FK  gameId: INT&#xa;    startPosition: INT&#xa;    endPosition: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="920" y="600" width="200" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Move Table (Game History) -->
+        <mxCell id="er_move" value="Move&#xa;&#xa;PK  moveId: INT&#xa;FK  gameId: INT&#xa;FK  playerId: INT&#xa;    diceValue: INT&#xa;    fromPosition: INT&#xa;    toPosition: INT&#xa;    jumpType: ENUM (NONE/SNAKE/LADDER)&#xa;    timestamp: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="760" width="240" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1220" y="80" width="660" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: Player at position 95, rolls 6. New position = 101 (&gt; 100). What happens?&#xa;A1: Player stays at position 95. Rule: Can only win by landing EXACTLY on 100. If dice roll exceeds 100, ignore move and wait for next turn. This prevents 'overshooting' the finish line.&#xa;&#xa;Q2: Player lands on position 99 which has snake to position 12. Then what?&#xa;A2: Player moves to 99 first. Immediately check if cell has jump. Cell 99 has Snake(99→12). Player slides down to position 12. Turn ends at position 12. Next turn player continues from position 12. Snake can dramatically change game state.&#xa;&#xa;Q3: Player lands on position 4 which has ladder to position 56. Then lands on another ladder?&#xa;A3: Player moves to 4. Check jump: Ladder(4→56). Player climbs to 56. Check position 56 for jump. If position 56 also has ladder (e.g., 56→85), player climbs again to 85. Chain of jumps allowed in single turn. Keep checking until cell has no jump.&#xa;&#xa;Q4: How to extend game for 2 dice instead of 1?&#xa;A4: Dice class already supports numberOfDice parameter. For 2 dice: Dice(2, 1, 6). rollDice() returns sum of both dice (2-12 range). Game logic remains same, just larger dice values. Player can move faster but overshooting 100 becomes more likely.&#xa;&#xa;Q5: How to scale for multiplayer online version with millions of concurrent games?&#xa;A5: &#xa;   - Stateless game sessions (store state in Redis/DB, not memory)&#xa;   - Microservices: Game service, Player service, Board service&#xa;   - WebSocket for real-time updates to all players&#xa;   - Database sharding by gameId&#xa;   - Event sourcing: Store each move as event, replay to rebuild state&#xa;   - Load balancer for game sessions&#xa;   - Cache common board configurations" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="140" width="660" height="520" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS & PRINCIPLES:&#xa;&#xa;1. Template Method Pattern - Jump abstract class, Snake/Ladder concrete&#xa;2. Queue-based Turn Management - Fair turn rotation using Queue&#xa;3. Composition - Board has Cells, Cell has Jump, Game has Board&#xa;&#xa;DATA STRUCTURES:&#xa;- Queue&lt;Player&gt;: Turn management (FIFO - First In First Out)&#xa;- Array: Cell[] for board positions (indexed 0-99 for positions 1-100)&#xa;- List&lt;Snake&gt;, List&lt;Ladder&gt;: Store all jumps&#xa;&#xa;GAME RULES:&#xa;- Board size: Typically 100 cells (10×10 grid)&#xa;- Dice: Usually 1 die (1-6), can be extended to 2 dice (2-12)&#xa;- Win condition: Land EXACTLY on position 100&#xa;- Overshoot: If dice roll &gt; remaining cells, stay at current position&#xa;- Jumps: Immediately applied when landing on snake/ladder cell&#xa;- Chain jumps: If destination cell also has jump, apply recursively&#xa;&#xa;EXTENSIBILITY:&#xa;- Add more jump types (e.g., Teleport, Freeze)&#xa;- Different board sizes (50, 150, custom)&#xa;- Special dice (weighted, bonus rolls)&#xa;- Power-ups (extra turn, immunity from snakes)&#xa;- Team play mode" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="700" width="660" height="380" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,73 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Null Object Pattern" id="nullobject">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="NULL OBJECT PATTERN - Eliminate Null Checks Everywhere!" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1520" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- PROBLEM -->
+        <mxCell id="problem_title" value="THE PROBLEM: NULL POINTER EXCEPTIONS EVERYWHERE" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="700" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="problem_code" value="WITHOUT NULL OBJECT PATTERN:&#xa;&#xa;// Typical code FULL of null checks:&#xa;&#xa;class Client {&#xa;  void processVehicle(Vehicle vehicle) {&#xa;    if (vehicle != null) {  // NULL CHECK!&#xa;      System.out.println(vehicle.getSeatingCapacity());&#xa;      System.out.println(vehicle.getTankCapacity());&#xa;    } else {&#xa;      System.out.println('No vehicle');&#xa;    }&#xa;  }&#xa;}&#xa;&#xa;&#xa;PROBLEMS:&#xa;✗ Every method has 'if (obj != null)' checks&#xa;✗ Codebase cluttered with null checks&#xa;✗ Forgetting null check → NullPointerException&#xa;✗ Large projects: thousands of null checks&#xa;✗ Unnecessary complexity&#xa;&#xa;&#xa;REAL SCENARIO:&#xa;&#xa;class EmployeeService {&#xa;  void updateEmployee(Employee emp) {&#xa;    if (emp != null) {  // Check 1&#xa;      if (emp.getDepartment() != null) {  // Check 2&#xa;        if (emp.getDepartment().getManager() != null) {  // Check 3&#xa;          emp.getDepartment().getManager().notify();&#xa;        }&#xa;      }&#xa;    }&#xa;  }&#xa;}&#xa;&#xa;3 LEVELS OF NULL CHECKS!&#xa;This is what Null Object Pattern eliminates." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="700" height="620" as="geometry" />
+        </mxCell>
+        
+        <!-- SOLUTION -->
+        <mxCell id="solution_title" value="THE SOLUTION: NULL OBJECT PATTERN" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="780" y="70" width="780" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="solution_code" value="WITH NULL OBJECT PATTERN:&#xa;&#xa;// Interface&#xa;interface Vehicle {&#xa;  int getSeatingCapacity();&#xa;  int getTankCapacity();&#xa;}&#xa;&#xa;// Real Object&#xa;class Car implements Vehicle {&#xa;  public int getSeatingCapacity() { return 5; }&#xa;  public int getTankCapacity() { return 40; }&#xa;}&#xa;&#xa;// NULL OBJECT (replaces null!)&#xa;class NullVehicle implements Vehicle {&#xa;  public int getSeatingCapacity() { return 0; }  // Default behavior&#xa;  public int getTankCapacity() { return 0; }    // Default behavior&#xa;}&#xa;&#xa;// Client code (NO NULL CHECKS!)&#xa;class Client {&#xa;  void processVehicle(Vehicle vehicle) {&#xa;    // NO 'if (vehicle != null)' needed!&#xa;    System.out.println(vehicle.getSeatingCapacity());&#xa;    System.out.println(vehicle.getTankCapacity());&#xa;  }&#xa;}&#xa;&#xa;// Factory (returns Null Object instead of null)&#xa;class VehicleFactory {&#xa;  Vehicle getVehicle(String type) {&#xa;    if ('Car'.equals(type)) {&#xa;      return new Car();&#xa;    } else if ('Bike'.equals(type)) {&#xa;      return new Bike();&#xa;    }&#xa;    // NEVER return null, return Null Object!&#xa;    return new NullVehicle();&#xa;  }&#xa;}&#xa;&#xa;&#xa;BENEFITS:&#xa;✓ NO null checks needed&#xa;✓ NO NullPointerException risk&#xa;✓ Clean, readable code&#xa;✓ Default behavior for 'no object' scenario&#xa;✓ Polymorphism: NullVehicle IS-A Vehicle&#xa;&#xa;&#xa;KEY PRINCIPLE:&#xa;'Null Object replaces null return type'&#xa;'No need to put 'if != null' checks'&#xa;&#xa;&#xa;EXECUTION FLOW:&#xa;&#xa;Vehicle v = factory.getVehicle('Truck');  // No 'Truck' type&#xa;// v = NullVehicle (NOT null!)&#xa;&#xa;v.getSeatingCapacity();  // Returns 0 (safe, no NPE!)&#xa;v.getTankCapacity();     // Returns 0 (safe, no NPE!)&#xa;&#xa;&#xa;vs NULL CHECK APPROACH:&#xa;&#xa;WITHOUT NULL OBJECT:&#xa;  Vehicle v = factory.getVehicle('Truck');  // returns null&#xa;  if (v != null) {  // MUST check&#xa;    v.getSeatingCapacity();&#xa;  }&#xa;&#xa;WITH NULL OBJECT:&#xa;  Vehicle v = factory.getVehicle('Truck');  // returns NullVehicle&#xa;  v.getSeatingCapacity();  // NO check needed! Safe!&#xa;" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="780" y="110" width="780" height="900" as="geometry" />
+        </mxCell>
+        
+        <!-- CLASS DIAGRAM -->
+        <mxCell id="class_title" value="CLASS DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="760" width="700" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="interface" value="&lt;&lt;interface&gt;&gt;&#xa;Vehicle&#xa;&#xa;+ getSeatingCapacity(): int&#xa;+ getTankCapacity(): int" style="swimlane;fontStyle=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="280" y="810" width="220" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="car_class" value="Car (Real Object)&#xa;&#xa;+ getSeatingCapacity(): 5&#xa;+ getTankCapacity(): 40" style="swimlane;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="80" y="960" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="bike_class" value="Bike (Real Object)&#xa;&#xa;+ getSeatingCapacity(): 2&#xa;+ getTankCapacity(): 15" style="swimlane;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="320" y="960" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="null_class" value="NullVehicle (Null Object)&#xa;&#xa;+ getSeatingCapacity(): 0&#xa;+ getTankCapacity(): 0&#xa;&#xa;// Empty/default behavior" style="swimlane;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="560" y="960" width="240" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- WHEN TO USE -->
+        <mxCell id="when_title" value="WHEN TO USE NULL OBJECT PATTERN" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="1120" width="1520" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="when_use" value="USE NULL OBJECT WHEN:&#xa;&#xa;✓ Many null checks scattered across codebase&#xa;✓ Default/empty behavior makes sense for 'no object'&#xa;✓ Want to avoid NullPointerException&#xa;✓ Polymorphism can handle null case&#xa;✓ No object is a valid state (not an error)&#xa;&#xa;EXAMPLES:&#xa;- Default logger (logs to /dev/null)&#xa;- Empty collection instead of null&#xa;- Anonymous user instead of null&#xa;- No-op command instead of null&#xa;&#xa;&#xa;DON'T USE WHEN:&#xa;✗ Null represents an error condition (use Optional or throw exception)&#xa;✗ Caller needs to distinguish between 'real object' and 'no object'&#xa;✗ Default behavior unclear or dangerous&#xa;✗ Null check is intentional business logic" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1170" width="1520" height="320" as="geometry" />
+        </mxCell>
+        
+        <!-- SCENARIO QUESTIONS -->
+        <mxCell id="q_title" value="INTERVIEW QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="1520" width="1520" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="questions" value="Q1: Null Object Pattern vs Optional&lt;T&gt; in Java?&#xa;A1: Optional is a WRAPPER that explicitly represents presence/absence. Forces caller to check (isPresent()). Null Object is POLYMORPHIC replacement for null — caller doesn't need to check. Use Optional when absence is exceptional; use Null Object when absence is normal and has default behavior.&#xa;&#xa;Q2: How to implement Null Object for complex objects with many methods?&#xa;A2: Null Object implements ALL interface methods with empty/default behavior. For complex objects: (1) Return empty collections (not null), (2) Return 0/false for primitives, (3) Return empty strings, (4) For void methods: do nothing (no-op). Example: NullLogger.log() does nothing, NullUser.getName() returns 'Anonymous'.&#xa;&#xa;Q3: Null Object Pattern violates fail-fast principle. Silent failures bad?&#xa;A3: Context-dependent. If 'no object' is a VALID state, Null Object prevents crashes with reasonable defaults. If 'no object' is ERROR, use Optional or throw exception. Example: UserService.getUser(id) → null is error (throw), but UserService.getCurrentUser() → NullUser (anonymous) is valid.&#xa;&#xa;Q4: How to distinguish NullVehicle from real Car at runtime?&#xa;A4: Usually DON'T need to! That's the point — polymorphism handles it. But if needed: (1) Add isNull() method to interface (NullVehicle returns true), (2) Use instanceof check (last resort), (3) Use different interfaces for Real vs Null (violates pattern). Needing distinction suggests Null Object might not fit.&#xa;&#xa;Q5: Performance overhead of creating NullObject instances vs returning null?&#xa;A5: Minimal. Modern JVMs optimize object allocation. Can use SINGLETON pattern for Null Objects (one NullVehicle instance reused). Trade-off: tiny memory cost vs eliminating thousands of null checks (cleaner code, fewer bugs). Benchmark: null check in hot path might be faster, but Null Object wins in real-world maintainability." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1570" width="1520" height="420" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,144 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Cricbuzz LLD" id="cricbuzz">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (Observer Pattern for Score Updates)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Match Class -->
+        <mxCell id="match_class" value="Match&#xa;&#xa;- matchId: int&#xa;- teamA: Team&#xa;- teamB: Team&#xa;- venue: String&#xa;- matchDate: Date&#xa;- innings: List&lt;Innings&gt;&#xa;- matchType: MatchType&#xa;- tossWinner: Team&#xa;&#xa;+ startMatch()&#xa;+ getMatchSummary()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="240" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Team Class -->
+        <mxCell id="team_class" value="Team&#xa;&#xa;- teamName: String&#xa;- players: List&lt;Player&gt;&#xa;- battingController: PlayerBattingController&#xa;- bowlingController: PlayerBowlingController&#xa;&#xa;+ addPlayer(Player)&#xa;+ getPlayers()&#xa;+ chooseNextBatsman()&#xa;+ chooseNextBowler()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="320" y="80" width="260" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- Player Class -->
+        <mxCell id="player_class" value="Player&#xa;&#xa;- playerId: int&#xa;- person: Person&#xa;- playerType: PlayerType&#xa;- battingScoreCard: BattingScoreCard&#xa;- bowlingScoreCard: BowlingScoreCard&#xa;&#xa;+ updateBattingScore()&#xa;+ updateBowlingScore()&#xa;+ getStats()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="620" y="80" width="260" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- BattingScoreCard Class -->
+        <mxCell id="batting_class" value="BattingScoreCard&#xa;&#xa;- totalRuns: int&#xa;- totalBalls: int&#xa;- totalFours: int&#xa;- totalSixes: int&#xa;- strikeRate: double&#xa;&#xa;+ updateScore(Ball)&#xa;+ getStrikeRate()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="80" width="220" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- BowlingScoreCard Class -->
+        <mxCell id="bowling_class" value="BowlingScoreCard&#xa;&#xa;- totalOvers: int&#xa;- totalRunsGiven: int&#xa;- totalWickets: int&#xa;- noBalls: int&#xa;- wideBalls: int&#xa;- economyRate: double&#xa;&#xa;+ updateScore(Ball)&#xa;+ getEconomyRate()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="80" width="220" height="220" as="geometry" />
+        </mxCell>
+        
+        <!-- Innings Class -->
+        <mxCell id="innings_class" value="Innings&#xa;&#xa;- battingTeam: Team&#xa;- bowlingTeam: Team&#xa;- overs: List&lt;Over&gt;&#xa;&#xa;+ addOver(Over)&#xa;+ getTotalRuns()&#xa;+ getTotalWickets()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="240" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Over Class -->
+        <mxCell id="over_class" value="Over&#xa;&#xa;- overNumber: int&#xa;- balls: List&lt;Ball&gt;&#xa;- bowledBy: Player&#xa;&#xa;+ addBall(Ball)&#xa;+ getRunsInOver()&#xa;+ isCompleted()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="320" y="360" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Ball Class (Subject in Observer Pattern) -->
+        <mxCell id="ball_class" value="Ball&#xa;&#xa;- ballNumber: int&#xa;- ballType: BallType&#xa;- runType: RunType&#xa;- playedBy: Player&#xa;- bowledBy: Player&#xa;- observers: List&lt;ScoreUpdater&gt;&#xa;&#xa;+ notifyObservers()&#xa;+ addObserver(ScoreUpdater)&#xa;+ updateScore()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="560" y="360" width="240" height="240" as="geometry" />
+        </mxCell>
+        
+        <!-- ScoreUpdater Interface (Observer) -->
+        <mxCell id="observer_interface" value="&lt;&lt;interface&gt;&gt;&#xa;ScoreUpdater&#xa;&#xa;+ update(Ball)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="840" y="360" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- BattingScoreCardUpdater -->
+        <mxCell id="batting_updater" value="BattingScoreCardUpdater&#xa;&#xa;+ update(Ball)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="840" y="500" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- BowlingScoreCardUpdater -->
+        <mxCell id="bowling_updater" value="BowlingScoreCardUpdater&#xa;&#xa;+ update(Ball)" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=26;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="500" width="220" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- Enums -->
+        <mxCell id="balltype_enum" value="&lt;&lt;enum&gt;&gt;&#xa;BallType&#xa;&#xa;NORMAL&#xa;NO_BALL&#xa;WIDE_BALL" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="360" width="140" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="runtype_enum" value="&lt;&lt;enum&gt;&gt;&#xa;RunType&#xa;&#xa;ZERO&#xa;ONE&#xa;TWO&#xa;THREE&#xa;FOUR&#xa;SIX&#xa;WICKET" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="360" width="120" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="playertype_enum" value="&lt;&lt;enum&gt;&gt;&#xa;PlayerType&#xa;&#xa;BATSMAN&#xa;BOWLER&#xa;WICKET_KEEPER&#xa;ALL_ROUNDER&#xa;CAPTAIN" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="80" width="160" height="160" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM (Database Schema)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="660" width="900" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Match Table -->
+        <mxCell id="er_match" value="Match&#xa;&#xa;PK  matchId: INT&#xa;FK  teamAId: INT&#xa;FK  teamBId: INT&#xa;    venue: VARCHAR(200)&#xa;    matchDate: DATETIME&#xa;    matchType: ENUM&#xa;FK  tossWinnerId: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="720" width="220" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- Team Table -->
+        <mxCell id="er_team" value="Team&#xa;&#xa;PK  teamId: INT&#xa;    teamName: VARCHAR(100)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="720" width="220" height="90" as="geometry" />
+        </mxCell>
+        
+        <!-- Player Table -->
+        <mxCell id="er_player" value="Player&#xa;&#xa;PK  playerId: INT&#xa;FK  teamId: INT&#xa;    playerName: VARCHAR(100)&#xa;    playerType: ENUM&#xa;    address: VARCHAR(500)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="720" width="220" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- BattingScoreCard Table -->
+        <mxCell id="er_batting" value="BattingScoreCard&#xa;&#xa;PK  scoreCardId: INT&#xa;FK  playerId: INT&#xa;FK  matchId: INT&#xa;    totalRuns: INT&#xa;    totalBalls: INT&#xa;    totalFours: INT&#xa;    totalSixes: INT&#xa;    strikeRate: DECIMAL(5,2)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="820" y="720" width="240" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- BowlingScoreCard Table -->
+        <mxCell id="er_bowling" value="BowlingScoreCard&#xa;&#xa;PK  scoreCardId: INT&#xa;FK  playerId: INT&#xa;FK  matchId: INT&#xa;    oversDelivered: DECIMAL(3,1)&#xa;    runsGiven: INT&#xa;    wicketsTaken: INT&#xa;    noBalls: INT&#xa;    wideBalls: INT&#xa;    economyRate: DECIMAL(5,2)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="720" width="260" height="220" as="geometry" />
+        </mxCell>
+        
+        <!-- Innings Table -->
+        <mxCell id="er_innings" value="Innings&#xa;&#xa;PK  inningsId: INT&#xa;FK  matchId: INT&#xa;FK  battingTeamId: INT&#xa;FK  bowlingTeamId: INT&#xa;    inningsNumber: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="940" width="220" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Over Table -->
+        <mxCell id="er_over" value="Over&#xa;&#xa;PK  overId: INT&#xa;FK  inningsId: INT&#xa;FK  bowledBy: INT (playerId)&#xa;    overNumber: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="940" width="220" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- Ball Table -->
+        <mxCell id="er_ball" value="Ball&#xa;&#xa;PK  ballId: INT&#xa;FK  overId: INT&#xa;FK  playedBy: INT (playerId)&#xa;FK  bowledBy: INT (playerId)&#xa;    ballNumber: INT&#xa;    ballType: ENUM&#xa;    runType: ENUM&#xa;    timestamp: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="940" width="240" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS (Real-time Score Updates)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1430" y="660" width="450" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: Ball is bowled, multiple scorecards need update. How to ensure all update?&#xa;A1: Observer pattern. Ball maintains list of ScoreUpdaters. After ball bowled, notifyObservers() called. Each observer (BattingUpdater, BowlingUpdater) updates respective scorecard. Decoupled design.&#xa;&#xa;Q2: Same bowler tries to bowl consecutive overs. How to prevent?&#xa;A2: PlayerBowlingController uses Deque. After over complete, remove bowler from front. Check remaining overs allowed. If allowed, add to back. Next bowler always from front of queue.&#xa;&#xa;Q3: Need to support T20, ODI, Test matches. Different rules. How?&#xa;A3: Strategy pattern with MatchType. T20Strategy: 20 overs, max 4 per bowler. ODI: 50 overs, max 10. Test: unlimited. Each strategy implements getMaxOvers(), getMaxOversPerBowler().&#xa;&#xa;Q4: Mid-match need current run rate, required rate. How to calculate?&#xa;A4: Query BattingScoreCard for total runs, total balls. Current RR = (runs * 6) / balls. Required RR = ((target - runs) * 6) / balls_remaining. Real-time computation from scorecards.&#xa;&#xa;Q5: 10,000 users refreshing scorecard every second. How to scale?&#xa;A5: WebSocket for push updates (not polling). Redis cache for current score. Read replicas for historical data. CDN for static assets. Event-driven architecture with message queue." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="720" width="450" height="420" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS:&#xa;&#xa;1. Observer Pattern - Ball notifies multiple ScoreUpdaters&#xa;2. Strategy Pattern - Different match types (T20, ODI, Test)&#xa;3. Queue/Deque - Batting order, bowling rotation&#xa;&#xa;DATA STRUCTURES:&#xa;- Queue: Batsmen yet to play (FIFO)&#xa;- Deque: Bowler rotation (remove from front, add to back)&#xa;- Map: Bowler → over count tracking" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="840" y="960" width="520" height="180" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

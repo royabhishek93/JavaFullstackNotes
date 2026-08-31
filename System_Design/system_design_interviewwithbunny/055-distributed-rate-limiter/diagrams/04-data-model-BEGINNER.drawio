@@ -1,0 +1,148 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Rate Limiter Data Model - BEGINNER" id="data-model">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="1400" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="RATE LIMITER DATA MODEL — Database + Redis" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1000" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="🎯 Shows: Postgres tables (policy storage) + Redis structures (hot token state)" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="300" y="70" width="800" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Database Section -->
+        <mxCell id="db-title" value="🗄️ POSTGRES DATABASE (Policy Storage — Written Rarely, Cached Always)" style="text;html=1;strokeColor=#9673a6;fillColor=#e1d5e7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="130" width="1300" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Table 1: rate_limit_rules -->
+        <mxCell id="table1-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="190" width="600" height="420" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table1-name" value="rate_limit_rules" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="50" y="195" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table1-fields" value="rule_id           UUID PRIMARY KEY&#xa;subject_type      ENUM('USER_ID', 'API_KEY', 'IP', 'TIER', 'GLOBAL')&#xa;subject_value     VARCHAR(255)  ← 'user_123' or 'PREMIUM' or NULL (global)&#xa;endpoint          VARCHAR(500)  ← '/api/users' or '*' (all endpoints)&#xa;algorithm         ENUM('TOKEN_BUCKET', 'FIXED_WINDOW', 'SLIDING_WINDOW')&#xa;request_limit     INT           ← 100 (max requests)&#xa;window_sec        INT           ← 60 (time window in seconds)&#xa;burst_capacity    INT           ← 100 (Token Bucket capacity)&#xa;refill_rate       DECIMAL(10,2) ← 10.0 (tokens per second)&#xa;enforce_by        VARCHAR(50)   ← 'USER_ID' or 'TENANT_ID' or 'IP'&#xa;is_active         BOOLEAN DEFAULT true&#xa;created_at        TIMESTAMPTZ&#xa;updated_at        TIMESTAMPTZ&#xa;&#xa;INDEX idx_lookup (subject_type, subject_value, endpoint)" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="240" width="560" height="230" as="geometry" />
+        </mxCell>
+
+        <mxCell id="table1-example" value="EXAMPLE ROWS:&#xa;&#xa;rule_id=001, subject_type=TIER, subject_value='FREE',&#xa;  endpoint='*', algorithm='TOKEN_BUCKET',&#xa;  limit=100, window=60, burst_capacity=100, refill_rate=10,&#xa;  enforce_by='USER_ID' → Each free user: 100 req/min&#xa;&#xa;rule_id=002, subject_type=TIER, subject_value='PREMIUM',&#xa;  endpoint='*', limit=1000, refill_rate=100&#xa;  enforce_by='USER_ID' → Each premium user: 1000 req/min" style="text;html=1;strokeColor=#9673a6;fillColor=#f3e5f5;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="485" width="560" height="115" as="geometry" />
+        </mxCell>
+
+        <!-- WHY Explanations for DB -->
+        <mxCell id="why-db-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="700" y="190" width="650" height="420" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why-db-title" value="❓ WHY EACH FIELD EXISTS" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="700" y="195" width="650" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why1" value="✅ subject_type + subject_value:&#xa;Allows multi-level limits: per-user, per-IP, per-tier (FREE/PREMIUM), global.&#xa;Example: subject_type='TIER', subject_value='FREE' applies to all free users.&#xa;Example: subject_type='USER_ID', subject_value='user_123' applies to one specific user." style="text;html=1;strokeColor=none;fillColor=#ffe6cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="240" width="610" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why2" value="✅ endpoint:&#xa;Different endpoints can have different limits.&#xa;Example: '/api/search' → 10/min (expensive), '/api/health' → 1000/min (cheap).&#xa;Use '*' for global limit across all endpoints." style="text;html=1;strokeColor=none;fillColor=#ffe6cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="310" width="610" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why3" value="✅ burst_capacity vs refill_rate (Token Bucket):&#xa;burst_capacity = max instant burst (e.g., 100 requests at once if bucket full).&#xa;refill_rate = sustained throughput (e.g., 10/sec = 600/min long-term).&#xa;Mobile apps opening: 20 requests instant burst → need burst_capacity ≥ 20." style="text;html=1;strokeColor=none;fillColor=#ffe6cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="375" width="610" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why4" value="✅ enforce_by (PER-USER vs PER-TENANT):&#xa;enforce_by='USER_ID' → Each user has their own bucket (1000/min per user).&#xa;enforce_by='TENANT_ID' → All users in org share ONE bucket (10K/min for entire org).&#xa;Example: SaaS app where Organization A (100 users) shares 10K/min quota." style="text;html=1;strokeColor=none;fillColor=#ffe6cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="445" width="610" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why5" value="✅ is_active:&#xa;Soft-delete rules without hard DELETE. Set is_active=false to disable.&#xa;Allows auditing: who changed limits when?" style="text;html=1;strokeColor=none;fillColor=#ffe6cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="720" y="515" width="610" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="why-index" value="📊 INDEX EXPLANATION:&#xa;idx_lookup(subject_type, subject_value, endpoint) → O(log n) lookup.&#xa;Query: WHERE subject_type='TIER' AND subject_value='FREE' AND endpoint='/api/users'&#xa;Typical lookup time: &lt;5ms (but cached in Redis with 1hr TTL → 99% cache hit)" style="text;html=1;strokeColor=#d6b656;fillColor=#fff9e6;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="720" y="570" width="610" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Section -->
+        <mxCell id="redis-title" value="⚡ REDIS (Hot Token State — Read/Write on EVERY Request)" style="text;html=1;strokeColor=#d79b00;fillColor=#ffe6cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="650" width="1300" height="35" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Structure 1: Token State -->
+        <mxCell id="redis1-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="710" width="600" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis1-title" value="1. Token Bucket State (HASH)" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="50" y="715" width="600" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis1-key" value="KEY FORMAT:&#xa;rate_limit:{subject}:{endpoint}&#xa;&#xa;EXAMPLES:&#xa;rate_limit:user_123:/api/users&#xa;rate_limit:tenant_ABC:/api/orders&#xa;rate_limit:ip_192.168.1.1:*&#xa;&#xa;HASH FIELDS:&#xa;  tokens      → 95 (current token count)&#xa;  last_refill → 1706270445 (unix timestamp)&#xa;&#xa;TTL: 3600 seconds (auto-expire inactive buckets)" style="text;html=1;strokeColor=none;fillColor=#fff9e6;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="760" width="560" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis1-why" value="💡 WHY HASH (not STRING)?&#xa;HASH stores multiple fields per key (tokens + last_refill).&#xa;Atomic update: HMSET updates both fields in one command.&#xa;Memory efficient: Redis optimizes HASH encoding for small field counts." style="text;html=1;strokeColor=#d79b00;fillColor=#fff2cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="70" y="970" width="560" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- Redis Structure 2: Policy Cache -->
+        <mxCell id="redis2-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="700" y="710" width="650" height="280" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis2-title" value="2. Policy Cache (STRING - JSON)" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="700" y="715" width="650" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis2-key" value="KEY FORMAT:&#xa;policy:{subject}:{endpoint}&#xa;&#xa;EXAMPLE KEY:&#xa;policy:user_123:/api/users&#xa;&#xa;VALUE (JSON):&#xa;{&#xa;  &quot;rule_id&quot;: &quot;001&quot;,&#xa;  &quot;algorithm&quot;: &quot;TOKEN_BUCKET&quot;,&#xa;  &quot;request_limit&quot;: 100,&#xa;  &quot;window_sec&quot;: 60,&#xa;  &quot;burst_capacity&quot;: 100,&#xa;  &quot;refill_rate&quot;: 10.0,&#xa;  &quot;enforce_by&quot;: &quot;USER_ID&quot;&#xa;}&#xa;&#xa;TTL: 3600 seconds (1 hour, write-through on policy update)" style="text;html=1;strokeColor=none;fillColor=#fff9e6;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="720" y="760" width="610" height="200" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis2-why" value="💡 WHY POLICY CACHE?&#xa;Reading from Postgres on every request = 10-50ms added latency.&#xa;Cache hit rate: 99%+ (policies rarely change).&#xa;On cache miss: Query Postgres → write to Redis → proceed.&#xa;On policy update: UPDATE Postgres + SET Redis (write-through) + PUBLISH invalidation." style="text;html=1;strokeColor=#d79b00;fillColor=#fff2cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="720" y="970" width="610" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Memory Calculation -->
+        <mxCell id="memory-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1040" width="1300" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="memory-title" value="📊 REDIS MEMORY CALCULATION (Scale: 50M users, 3 endpoints avg)" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="1050" width="1300" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mem-calc1" value="TOKEN STATE:&#xa;Key size: 40 bytes (rate_limit:user_123:/api/users)&#xa;HASH: 30 bytes (2 fields × 8 bytes + overhead)&#xa;Redis overhead: 100 bytes per key&#xa;Total per bucket: ~170 bytes&#xa;&#xa;50M users × 3 endpoints × 170 bytes = 25.5 GB&#xa;&#xa;With TTL expiration (only 10% active hourly):&#xa;25.5 GB × 0.1 = 2.5 GB actual" style="text;html=1;strokeColor=none;fillColor=#e6f2ff;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1100" width="400" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mem-calc2" value="POLICY CACHE:&#xa;Key size: 35 bytes (policy:user_123:/api/users)&#xa;JSON value: 200 bytes (serialized policy)&#xa;Total per policy: ~235 bytes&#xa;&#xa;50M users × 3 endpoints × 235 bytes = 35 GB&#xa;&#xa;With 99% cache hit (only 5% hot users):&#xa;35 GB × 0.05 = 1.75 GB actual" style="text;html=1;strokeColor=none;fillColor=#e6f2ff;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="500" y="1100" width="400" height="85" as="geometry" />
+        </mxCell>
+
+        <mxCell id="mem-total" value="TOTAL REDIS MEMORY:&#xa;Token state: 2.5 GB&#xa;Policy cache: 1.75 GB&#xa;──────────────────&#xa;~4-5 GB for 50M users&#xa;&#xa;Fits on single Redis instance,&#xa;but recommend 8-shard cluster&#xa;for throughput (1M req/sec)" style="text;html=1;strokeColor=#6c8ebf;fillColor=#dae8fc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="930" y="1100" width="400" height="85" as="geometry" />
+        </mxCell>
+
+        <!-- Data Flow Diagram -->
+        <mxCell id="flow-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1240" width="1300" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="flow-title" value="🔄 DATA FLOW: Policy Update (Write-Through Cache Pattern)" style="text;html=1;strokeColor=none;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="1250" width="1300" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="flow-steps" value="ADMIN UPDATES LIMIT (e.g., FREE tier: 100 → 200 req/min):&#xa;&#xa;1. POST /admin/rules/001 {limit: 200}&#xa;2. UPDATE rate_limit_rules SET request_limit=200 WHERE rule_id='001'  ← Postgres (source of truth)&#xa;3. SET policy:TIER_FREE:* '{...limit:200...}' EX 3600                 ← Redis write-through&#xa;4. PUBLISH policy_update '{rule_id: 001}'                             ← Redis Pub/Sub&#xa;5. All API Gateway instances subscribe → receive message → DEL local in-memory cache&#xa;6. Next request: Gateway reads fresh policy from Redis → new limit enforced immediately&#xa;&#xa;PROPAGATION TIME: &lt;1 second (vs 1 hour if relying on TTL expiration alone)" style="text;html=1;strokeColor=none;fillColor=#ffffff;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=12;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1295" width="1260" height="70" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,733 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Distributed Rate Limiter</title><link rel="stylesheet" href="../../sd-player.css"></head><body>
+<div id="player"><div id="topbar"><span id="slide-title">Distributed Rate Limiter</span><span id="counter">1 / 25</span></div><div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div><div id="slide-area">
+
+<div class="slide active" id="s1" data-title="Distributed Rate Limiter">
+  <h1>&#x1F6A6; Distributed Rate Limiter</h1>
+  <h2>System Design Interview Guide</h2>
+  <p>Control how many requests a client can make in a time window, at scale, without becoming a bottleneck.</p>
+  <div class="badges">
+    <span class="badge">Token Bucket</span>
+    <span class="badge">Leaky Bucket</span>
+    <span class="badge">Sliding Window</span>
+    <span class="badge">Redis Lua</span>
+    <span class="badge">Fixed Window</span>
+    <span class="badge">Distributed</span>
+  </div>
+  <div class="highlight-box">
+    <strong>Core Idea:</strong> A rate limiter sits between the Load Balancer and backend services.
+    Every request hits the API Gateway, which extracts the client identity
+    and asks Redis: does this client have budget left?
+    Reject excess requests with HTTP 429.
+  </div>
+  <p>Real-world users: <strong>AWS API Gateway &middot; Stripe &middot; GitHub REST API &middot; Twitter &middot; Twilio</strong></p>
+</div>
+
+<div class="slide" id="s2" data-title="2-Minute Answer Script">
+  <h2>Opening Script &mdash; Speak This in 2&ndash;3 Minutes</h2>
+  <pre class="code-block">"A rate limiter sits between the Load Balancer and your backend services.
+ Every request hits the API Gateway, which extracts the client identity —
+ user ID, API key, or IP — and asks Redis: does this client have budget left?
+
+ I'd implement Token Bucket with a Redis Lua script.
+ Each user gets a bucket with 100 tokens that refills at 10 tokens/sec.
+ The Lua script atomically reads the current token count, calculates how
+ many tokens refilled since the last request, deducts one, and returns
+ allow or reject. Atomic execution means two simultaneous requests on
+ different Gateway instances can never both see 'tokens = 1' and both go.
+
+ On rejection I return HTTP 429 with Retry-After and X-RateLimit-Reset
+ headers so the client can back off intelligently.
+
+ Rate-limit policies — who gets 100/min vs 1000/min — live in a Postgres
+ table, cached in Redis for an hour so the hot path never touches the DB.
+
+ The whole check adds less than 5 ms to every request."</pre>
+  <div class="highlight-box">
+    <strong>Key phrase to open with:</strong> "Token Bucket in Redis Lua — atomic, burst-friendly,
+    proven at AWS and Stripe, adds under 5ms per request."
+  </div>
+</div>
+
+<div class="slide" id="s3" data-title="Functional Requirements">
+  <h2>Functional Requirements</h2>
+  <table>
+    <tr><th>ID</th><th>Requirement</th><th>Detail</th></tr>
+    <tr><td>FR1</td><td>Limit requests per client</td><td>Key by User ID / API Key / IP within a time window</td></tr>
+    <tr><td>FR2</td><td>Runtime-configurable rules</td><td>No redeploy needed — update Postgres, propagate via Redis Pub/Sub in &lt;1 sec</td></tr>
+    <tr><td>FR3</td><td>Reject with HTTP 429</td><td>Include Retry-After header so client can back off intelligently</td></tr>
+    <tr><td>FR4</td><td>Tier-based limits</td><td>Free = 100 req/min &middot; Premium = 1,000 req/min &middot; Enterprise = 10K/min</td></tr>
+    <tr><td>FR5</td><td>Multi-level limiting</td><td>per-user AND per-IP AND per-endpoint simultaneously — ANY exceeded &rarr; 429</td></tr>
+    <tr><td>FR6</td><td>Burst support</td><td>burst_capacity separate from refill_rate; Token Bucket supports this natively</td></tr>
+  </table>
+  <div class="highlight-box">
+    <strong>Clarification script:</strong> "What do we key on — user ID, API key, IP, or all three?
+    Is slight over-limiting acceptable? Should limits be configurable at runtime without a redeploy?
+    What happens if Redis goes down — fail open or fail closed?"
+  </div>
+</div>
+
+<div class="slide" id="s4" data-title="Non-Functional Requirements">
+  <h2>Non-Functional Requirements</h2>
+  <table>
+    <tr><th>Property</th><th>Target</th><th>Reasoning</th></tr>
+    <tr><td>Scale</td><td>1,000,000 req/sec</td><td>Multiple API Gateway instances sharing Redis state</td></tr>
+    <tr><td>Latency</td><td>&lt;5 ms added per request</td><td>Rate limit check must NOT be the bottleneck on the hot path</td></tr>
+    <tr><td>CAP</td><td>Availability &gt; Consistency</td><td>Slight over-limit is acceptable — never block availability for correctness</td></tr>
+    <tr><td>Durability</td><td>Survives replica failover</td><td>Redis replication lag &lt;1 ms — token state is not lost on failover</td></tr>
+    <tr><td>Accuracy</td><td>~good (not perfect)</td><td>Token Bucket: good accuracy without O(requests) memory cost</td></tr>
+    <tr><td>Availability</td><td>99.99%</td><td>Circuit breaker + fail-open keeps users served even if Redis is down</td></tr>
+  </table>
+  <div class="highlight-box">
+    <strong>CAP decision line:</strong> "At 1M rps, slight over-limit is fine.
+    Trading strict consistency for availability is the right call.
+    Redis Lua gives us atomicity per-node without cross-node locks."
+  </div>
+</div>
+
+<div class="slide" id="s5" data-title="High-Level Design">
+  <h2>High-Level Architecture</h2>
+  <pre class="code-block">Client
+  │
+  ▼
+┌──────────────────────────────────┐
+│          Load Balancer            │
+└──────────┬───────────────────────┘
+           │  routes to any stateless gateway
+           ▼
+┌──────────────────────────────────────────────────────────────┐
+│   API Gateway 1       API Gateway 2      ...  Gateway N      │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Rate Limit Middleware                                  │  │
+│  │  1. Extract subject (user_id / API key / IP)           │  │
+│  │  2. GET policy from Redis (TTL 1hr cache)              │  │
+│  │  3. EVAL Lua script → allow / reject                   │  │
+│  │  4. Reject → 429 + Retry-After + X-RateLimit headers   │  │
+│  │  5. Allow → forward to backend service                 │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+           │  all gateways share same Redis cluster
+           ▼
+┌──────────────────────────────────────────────────────────────┐
+│           Redis Cluster (8 shards, consistent hashing)        │
+│   Token State HASH  |  Policy Cache JSON  |  ZSET (SWL)      │
+└──────────────────────────────────────────────────────────────┘
+           │  policy cache miss → DB lookup
+           ▼
+┌──────────────────────────────────────────────────────────────┐
+│    Policy DB (Postgres)  —  rate_limit_rules table            │
+└──────────────────────────────────────────────────────────────┘
+           │  allow path only
+           ▼
+┌──────────────────────────────────────────────────────────────┐
+│    Backend Services: UserSvc  OrderSvc  PaymentSvc           │
+└──────────────────────────────────────────────────────────────┘</pre>
+</div>
+
+<div class="slide" id="s6" data-title="Fixed Window Counter">
+  <h2>Algorithm 1: Fixed Window Counter</h2>
+  <pre class="code-block">TIMELINE  (window = 60 sec, limit = 100 req/window)
+
+  09:59:00         10:00:00          10:01:00
+      |                |                 |
+      |&lt;-- Window A ---&gt;|&lt;-- Window B ---&gt;|
+
+  BOUNDARY SPIKE PROBLEM:
+     99 req at 10:00:59 ─── last second of Window A ───► allowed (count=99)
+    100 req at 10:01:00 ─── first second of Window B ──► allowed (count=100)
+    ──────────────────────────────────────────────────────────────────────
+    199 requests in 2 seconds  ← violates 100/min spirit!
+
+Redis implementation:
+  Key  : rate_limit:{user_id}:{window_start_unix}
+  INCR   rate_limit:user123:1706270400
+  EXPIRE rate_limit:user123:1706270400 60
+  GET    rate_limit:user123:1706270400
+  → if value &lt; 100 → allow  else → 429</pre>
+  <div class="two-col">
+    <div class="pro-con"><strong>Pick when:</strong> Internal microservice-to-microservice calls, not user-facing</div>
+    <div class="pro-con warn"><strong>Avoid when:</strong> User-facing APIs &mdash; boundary abuse is exploitable and deterministic</div>
+  </div>
+</div>
+
+<div class="slide" id="s7" data-title="Sliding Window Log">
+  <h2>Algorithm 2: Sliding Window Log</h2>
+  <pre class="code-block">TIMELINE  (window=60s, limit=100, now=10:00:45)
+
+  Redis ZSET — score = unix timestamp, member = request UUID
+  ┌────────────────────────────────────────────────────────┐
+  │  score=10:00:05  req_id=abc                            │
+  │  score=10:00:12  req_id=def                            │
+  │  score=10:00:30  req_id=ghi  ← 85 entries total       │
+  │  score=10:00:44  req_id=jkl                            │
+  └────────────────────────────────────────────────────────┘
+
+  Window boundary: 10:00:45 - 60 = 09:59:45
+
+  ZREMRANGEBYSCORE key 0 09:59:44       ← prune expired entries
+  ZCOUNT key 09:59:45 10:00:45          ← count = 85
+  85 &lt; 100 → allow
+  ZADD key 10:00:45 new_req_uuid        ← record this request
+
+  Memory cost: 50M users × 100 req = 5 BILLION entries in Redis
+  → NOT viable for high-traffic public APIs</pre>
+  <div class="two-col">
+    <div class="pro-con"><strong>Pick when:</strong> Low-traffic, accuracy-critical APIs (fraud detection, login attempts)</div>
+    <div class="pro-con warn"><strong>Avoid when:</strong> High-traffic — memory explodes O(requests_per_window) per user</div>
+  </div>
+</div>
+
+<div class="slide" id="s8" data-title="Sliding Window Counter">
+  <h2>Algorithm 3: Sliding Window Counter (Hybrid)</h2>
+  <pre class="code-block">TIMELINE  (window=60s, limit=100, now=10:00:45)
+
+  Previous window (09:59:00–09:59:59): counter = 80
+  Current  window (10:00:00–10:00:59): counter = 30
+  Elapsed in current window: 45 sec → 75% of window complete
+
+  Weighted count formula:
+  ┌─────────────────────────────────────────────────────────┐
+  │  weighted = (prev × (1 - elapsed_fraction)) + current   │
+  │           = (80  × (1 - 0.75))              + 30        │
+  │           = (80  × 0.25)                    + 30        │
+  │           = 20 + 30 = 50                               │
+  └─────────────────────────────────────────────────────────┘
+  50 &lt; 100 → allow
+
+  Redis: only 2 integer keys per user (current + previous window)
+    rate_limit:user123:current   = 30   TTL = 60s
+    rate_limit:user123:previous  = 80   TTL = 120s
+
+  Memory: 2 integers vs 100 timestamps → ~50× saving vs Sliding Log</pre>
+  <div class="two-col">
+    <div class="pro-con"><strong>Pick when:</strong> Good accuracy needed without full log memory cost</div>
+    <div class="pro-con warn"><strong>Avoid when:</strong> Burst support needed (use Token Bucket) or perfect accuracy (use Sliding Log)</div>
+  </div>
+</div>
+
+<div class="slide" id="s9" data-title="Token Bucket (Recommended)">
+  <h2>Algorithm 4: Token Bucket &#x2605; (Recommended)</h2>
+  <pre class="code-block">BUCKET STATE  (capacity=100 tokens, refill_rate=10 tokens/sec)
+
+  t=0s   [████████████████████] 100 tokens ← full bucket
+  t=0s   100 req arrive instantly → ALL 100 ALLOWED (burst!)
+         [                    ]   0 tokens
+  t=5s   Refill: 5s × 10/s = 50 tokens added
+         [██████████          ]  50 tokens
+  t=5s   50 more requests → all ALLOWED
+         [                    ]   0 tokens
+  t=1s   Only 10 tokens refilled → 1st req allowed, 11th → 429
+
+KEY INSIGHT:
+  capacity    = max burst  (all at once — empty the bucket instantly)
+  refill_rate = sustained throughput  (tokens/sec replenished)
+
+Redis HASH state per user per endpoint:
+  rate_limit:user123:/api/users
+    tokens      → 95
+    last_refill → 1706270445   (unix timestamp, float)
+  TTL: 3600 sec (auto-expire inactive buckets → saves memory)</pre>
+  <p>Real-world use: <strong>AWS API Gateway &middot; Stripe &middot; GitHub REST API</strong></p>
+</div>
+
+<div class="slide" id="s10" data-title="Leaky Bucket">
+  <h2>Algorithm 5: Leaky Bucket</h2>
+  <pre class="code-block">QUEUE MODEL  (capacity=100, leak_rate=10 req/sec)
+
+  Requests
+  arriving ──► [■■■■■■■■■■■■■■■■■■■■] ──► Backend (10/sec, fixed)
+  randomly      FIFO queue (cap=100)        smooth, constant output
+
+  t=0s   50 requests arrive instantly → queued in bucket
+  t=5s   50 processed (10/sec × 5s), bucket now empty
+  t=0s   100 requests arrive → bucket at capacity
+  t=0s   101st request → bucket full → REJECT 429
+
+CRITICAL DIFFERENCE FROM TOKEN BUCKET:
+  Token Bucket  → burst of 100 hits backend ALL AT ONCE
+  Leaky Bucket  → burst of 100 exits at 10/sec (smooth, metered output)
+
+Redis implementation:
+  LPUSH rate_limit_queue:user123 {req_id}
+  LLEN  rate_limit_queue:user123  → if &gt; 100 → reject 429
+  Worker: RPOP at fixed interval → forward to backend service</pre>
+  <div class="two-col">
+    <div class="pro-con"><strong>Pick when:</strong> Traffic shaping &mdash; smoothing bursts before a rate-sensitive downstream (webhooks, 3rd-party APIs)</div>
+    <div class="pro-con warn"><strong>Avoid when:</strong> Synchronous user-facing APIs (queuing adds latency, users wait longer)</div>
+  </div>
+</div>
+
+<div class="slide" id="s11" data-title="Token Bucket vs Leaky Bucket">
+  <h2>Token Bucket vs Leaky Bucket &mdash; Comparison Table</h2>
+  <table>
+    <tr><th>Property</th><th>Token Bucket &#x2605;</th><th>Leaky Bucket</th></tr>
+    <tr><td>Burst handling</td><td>Burst hits backend immediately (burst_capacity)</td><td>Burst queued, exits at fixed drain rate</td></tr>
+    <tr><td>Output pattern</td><td>Bursty &mdash; matches input spikes</td><td>Smooth &mdash; constant drain rate always</td></tr>
+    <tr><td>Backend impact</td><td>Backend sees traffic spikes</td><td>Backend sees perfectly steady stream</td></tr>
+    <tr><td>User-facing latency</td><td>Immediate allow / reject decision</td><td>Queued requests may wait before processing</td></tr>
+    <tr><td>Memory per user</td><td>2 integers (tokens + last_refill)</td><td>Queue of pending request objects</td></tr>
+    <tr><td>Best for</td><td>Public APIs (AWS, Stripe, GitHub)</td><td>Outbound shaping to 3rd-party services</td></tr>
+    <tr><td>Parameters</td><td>capacity + refill_rate</td><td>queue_capacity + leak_rate</td></tr>
+  </table>
+  <div class="highlight-box">
+    <strong>Interview line:</strong> "Token Bucket for our API Gateway — users get immediate allow/reject and bursts reach
+    the backend instantly. Leaky Bucket for shaping outbound traffic to external webhooks that charge per call
+    or have their own rate limit we must respect."
+  </div>
+</div>
+
+<div class="slide" id="s12" data-title="Redis Lua Atomic Script">
+  <h2>Redis Lua Script &mdash; Atomic Token Bucket</h2>
+  <pre class="code-block">-- Called via: EVAL script 1 {key} {capacity} {refill_rate} {now}
+-- Runs ATOMICALLY inside Redis — no other command can interleave
+
+local key      = KEYS[1]
+local capacity = tonumber(ARGV[1])   -- e.g. 100 tokens (burst_capacity)
+local rate     = tonumber(ARGV[2])   -- e.g. 10 tokens/sec (refill_rate)
+local now      = tonumber(ARGV[3])   -- unix timestamp (float seconds)
+
+local data     = redis.call('HMGET', key, 'tokens', 'last_refill')
+local tokens   = tonumber(data[1]) or capacity   -- default: full bucket
+local last     = tonumber(data[2]) or now
+
+local elapsed  = now - last
+local refilled = math.min(capacity, tokens + elapsed * rate)
+
+if refilled &gt;= 1 then
+  redis.call('HMSET', key, 'tokens', refilled - 1, 'last_refill', now)
+  redis.call('EXPIRE', key, 3600)
+  return 1   -- ALLOW request
+else
+  return 0   -- REJECT → 429 Too Many Requests
+end
+
+-- WHY LUA? HMGET + HMSET are two commands. Without Lua:
+-- GW1 reads tokens=1, GW2 reads tokens=1, BOTH allow → race condition!
+-- With Lua: entire read-compute-write is ONE atomic Redis command.</pre>
+</div>
+
+<div class="slide" id="s13" data-title="Redis Sliding Window Lua">
+  <h2>Redis Sliding Window Log &mdash; Lua Script</h2>
+  <pre class="code-block">-- Called via: EVAL script 1 {key} {limit} {window_sec} {now} {req_uuid}
+-- ZSET approach: score = unix timestamp, member = unique request UUID
+
+local key        = KEYS[1]
+local limit      = tonumber(ARGV[1])   -- e.g. 100 requests
+local window     = tonumber(ARGV[2])   -- e.g. 60 seconds
+local now        = tonumber(ARGV[3])   -- current unix timestamp
+local req_id     = ARGV[4]            -- unique request UUID
+
+local min_score  = now - window        -- rolling window start boundary
+
+-- Step 1: Remove timestamps older than the window
+redis.call('ZREMRANGEBYSCORE', key, '-inf', min_score)
+
+-- Step 2: Count requests currently inside the window
+local count = redis.call('ZCOUNT', key, min_score, '+inf')
+
+if count &lt; limit then
+  -- Step 3: Record this request in the log
+  redis.call('ZADD', key, now, req_id)
+  redis.call('EXPIRE', key, window + 1)
+  return 1   -- ALLOW
+else
+  return 0   -- REJECT 429
+end
+
+-- Memory warning: O(requests_per_window) per user key
+-- At 50M users × 100 req = 5B ZSET members — avoid for high-traffic!</pre>
+</div>
+
+<div class="slide" id="s14" data-title="Distributed Challenges">
+  <h2>Distributed Challenges</h2>
+  <table>
+    <tr><th>Challenge</th><th>Problem</th><th>Solution</th></tr>
+    <tr>
+      <td>Race Condition</td>
+      <td>GW1 and GW2 both read tokens=1 simultaneously, both allow &rarr; tokens=-1</td>
+      <td>Redis Lua script: atomic EVAL, no command can interleave between read and write</td>
+    </tr>
+    <tr>
+      <td>Clock Skew</td>
+      <td>Different servers have different clocks &rarr; wrong refill calculations across nodes</td>
+      <td>Pass Redis server time via TIME command &mdash; never trust client system clock</td>
+    </tr>
+    <tr>
+      <td>Shard Routing</td>
+      <td>User's token key must land on the same Redis shard every time</td>
+      <td>Consistent hashing: hash(user_id) &rarr; deterministic shard assignment</td>
+    </tr>
+    <tr>
+      <td>Replica Lag</td>
+      <td>Reading from replica may show stale token count &rarr; double-allow</td>
+      <td>Always EVAL Lua on MASTER; replicas only for read-only policy cache GETs</td>
+    </tr>
+    <tr>
+      <td>Network Partition</td>
+      <td>Gateway can't reach Redis &rarr; should we allow or block all traffic?</td>
+      <td>Circuit breaker: 10 failures &rarr; open circuit 30 sec &rarr; fail open (log + alert)</td>
+    </tr>
+  </table>
+  <div class="highlight-box">
+    <strong>Interviewer trap:</strong> "Why not use Redis SETNX for distributed locks?"
+    Answer: Redis is single-threaded &mdash; Lua makes the operation atomic WITHOUT locks.
+    Locks add deadlock risk, timeout complexity, and extra round-trip latency.
+  </div>
+</div>
+
+<div class="slide" id="s15" data-title="Distributed Token Bucket Strategies">
+  <h2>Distributed Token Bucket &mdash; Centralized vs Gossip</h2>
+  <div class="two-col">
+    <div>
+      <h3>Option A &mdash; Centralized Redis (Recommended)</h3>
+      <pre class="code-block">All gateways → same Redis Cluster
+
+  GW1 ─┐
+  GW2 ─┼─► Redis Cluster ─► exact limit
+  GW3 ─┘   (8 shards, consistent hash)
+
+Pros:
+  ─ Exact global limit enforced
+  ─ Simple implementation
+  ─ No synchronization logic needed
+
+Cons:
+  ─ Redis becomes bottleneck
+    if under-provisioned
+  ─ Cross-region adds latency
+    (50–100ms for distant regions)</pre>
+    </div>
+    <div>
+      <h3>Option B &mdash; Gossip / CRDT (Complex)</h3>
+      <pre class="code-block">Each region tracks local count.
+Periodically sync deltas globally.
+
+  us-east: 60 req counted locally
+  eu-west: 45 req counted locally
+  Gossip sync: total ≈ 105 (slight over)
+
+Pros:
+  ─ Low latency (local Redis)
+  ─ No single point of failure
+  ─ No cross-region overhead
+
+Cons:
+  ─ Approximate global limit only
+  ─ Complex eventual consistency
+  ─ Overshoots limit during sync gap</pre>
+    </div>
+  </div>
+  <div class="highlight-box">
+    <strong>Multi-region recommendation:</strong> Option A per-region with per-region quotas
+    (user gets 100/min per region &rarr; slight global over-limit acceptable).
+    Use Option B or global Redis only for strict compliance (fintech, healthcare).
+  </div>
+</div>
+
+<div class="slide" id="s16" data-title="Rate Limit Rules Configuration">
+  <h2>Rate Limit Rules &mdash; Config &amp; Hierarchy</h2>
+  <table>
+    <tr><th>subject_type</th><th>subject_value</th><th>endpoint</th><th>limit</th><th>enforce_by</th><th>algorithm</th></tr>
+    <tr><td>GLOBAL</td><td>null</td><td>*</td><td>1M/min</td><td>GLOBAL</td><td>TOKEN_BUCKET</td></tr>
+    <tr><td>TIER</td><td>FREE</td><td>*</td><td>100/min</td><td>USER_ID</td><td>TOKEN_BUCKET</td></tr>
+    <tr><td>TIER</td><td>PREMIUM</td><td>*</td><td>1,000/min</td><td>USER_ID</td><td>TOKEN_BUCKET</td></tr>
+    <tr><td>TIER</td><td>ENTERPRISE</td><td>*</td><td>10,000/min</td><td>TENANT_ID</td><td>TOKEN_BUCKET</td></tr>
+    <tr><td>ENDPOINT</td><td>null</td><td>/login</td><td>10/min</td><td>IP</td><td>SLIDING_WINDOW</td></tr>
+    <tr><td>USER_ID</td><td>user123</td><td>/api/payments</td><td>50/min</td><td>USER_ID</td><td>TOKEN_BUCKET</td></tr>
+  </table>
+  <div class="highlight-box">
+    <strong>enforce_by is the key design decision:</strong><br>
+    USER_ID &rarr; each user has their own bucket (1000/min each)<br>
+    TENANT_ID &rarr; all users in an org share one bucket (10K/min total for the org)<br><br>
+    Redis key: <code>rate_limit:{enforce_by_value}:{endpoint}</code><br>
+    e.g. <code>rate_limit:user123:/api/users</code> vs <code>rate_limit:tenant-ABC:/api/users</code>
+  </div>
+  <p><strong>Policy resolution:</strong> most specific rule wins. USER_ID &gt; TIER &gt; GLOBAL. ALL applicable limits checked.</p>
+</div>
+
+<div class="slide" id="s17" data-title="Response Headers">
+  <h2>Rate Limit Response Headers</h2>
+  <pre class="code-block">── ALLOWED RESPONSE (HTTP 200) ──────────────────────────────────────────
+HTTP/1.1 200 OK
+X-RateLimit-Limit:     100          ← total quota for this window
+X-RateLimit-Remaining: 99           ← tokens left after this request
+X-RateLimit-Reset:     1712340788   ← unix timestamp when bucket refills
+
+── REJECTED RESPONSE (HTTP 429 Too Many Requests) ───────────────────────
+HTTP/1.1 429 Too Many Requests
+X-RateLimit-Limit:     100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset:     1712340789
+Retry-After:           1            ← seconds until next token available
+Content-Type: application/json
+
+{
+  "error":       "rate_limit_exceeded",
+  "limit":       100,
+  "remaining":   0,
+  "reset_at":    "2024-04-05T10:01:29Z",   ← ISO 8601 for mobile clients
+  "retry_after": 1
+}
+
+Retry-After formula : ceil((1 - tokens) / refill_rate)
+Reset formula       : now + ceil((1 - tokens) / refill_rate)</pre>
+  <div class="highlight-box">
+    <strong>Why these headers matter:</strong> Clients implement exponential backoff using Retry-After,
+    preventing thundering herd on recovery. Must know all 4 headers in an interview.
+  </div>
+</div>
+
+<div class="slide" id="s18" data-title="Graceful Degradation">
+  <h2>Graceful Degradation &mdash; Fail Open vs Fail Closed</h2>
+  <div class="two-col">
+    <div>
+      <h3>Fail Open (Recommended for most APIs)</h3>
+      <pre class="code-block">Redis down → ALLOW all requests
+Log error + increment alert counter
+
+Circuit Breaker state machine:
+  CLOSED ──(10 failures)──► OPEN
+    ▲                          │
+    └── HALF-OPEN ◄──(30s)────┘
+    success?  │  fail?
+    CLOSED    │  back OPEN
+
+CLOSED:    Normal operation (Lua EVAL)
+OPEN:      Allow all, log errors, alert
+HALF-OPEN: Probe 1 request → result
+           decides CLOSE or stay OPEN</pre>
+      <p>Pro: Zero availability impact<br>Con: Brief unmetered access window</p>
+    </div>
+    <div>
+      <h3>Fail Closed (Compliance only)</h3>
+      <pre class="code-block">Redis down → return 503 ALL users
+
+ → Complete availability collapse
+ → No user can make ANY request
+ → Full outage for all traffic
+
+Use only for:
+ ─ Financial APIs (over-limit = fraud)
+ ─ Healthcare (compliance mandate)
+ ─ Payment processing endpoints</pre>
+      <p>Pro: No abuse window, strict compliance<br>Con: ALL users blocked during outage</p>
+    </div>
+  </div>
+  <div class="highlight-box">
+    <strong>Local fallback:</strong> Each gateway keeps an in-memory token bucket during Redis outage.
+    Effective limit = per_instance_limit &times; num_instances. Rough protection &mdash; better than nothing.
+  </div>
+</div>
+
+<div class="slide" id="s19" data-title="Multi-Tier Rate Limiting">
+  <h2>Multi-Tier Rate Limiting &mdash; CDN &rarr; API GW &rarr; Service</h2>
+  <pre class="code-block">TIER 1 — CDN / Edge  (Cloudflare, AWS CloudFront)
+  ─ IP-based rate limiting at global PoP level
+  ─ Blocks DDoS before traffic enters your data center
+  ─ Limit: 10,000 req/sec per IP  (coarse infrastructure protection)
+  ─ No business logic; pure volume-based filtering
+
+TIER 2 — API Gateway  (YOUR rate limiter — this is what you design)
+  ─ User + API-key + endpoint-based limits
+  ─ Enforces business rules: Free=100/min, Premium=1000/min
+  ─ Redis Lua Token Bucket (atomic, &lt;5ms added latency)
+  ─ Returns 429 + Retry-After + X-RateLimit-* headers
+
+TIER 3 — Service Level  (self-protection)
+  ─ PaymentSvc limits itself to 500 req/sec regardless of upstream
+  ─ Circuit breaker inside each service
+  ─ Prevents cascading failure if upstream limits are misconfigured
+
+MULTI-LEVEL CHECK ORDER PER REQUEST:
+  1. Check per-IP limit        → exceeded? → 429 immediately
+  2. Check per-user limit      → exceeded? → 429 immediately
+  3. Check per-endpoint limit  → exceeded? → 429 immediately
+  4. Check global cluster cap  → exceeded? → 429 immediately
+  5. All pass → forward to backend service
+
+STRICTEST WINS: ANY level exceeded → reject immediately, no further checks</pre>
+</div>
+
+<div class="slide" id="s20" data-title="Database Schema">
+  <h2>Database Schema &mdash; Postgres</h2>
+  <pre class="code-block">CREATE TABLE rate_limit_rules (
+  rule_id        UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject_type   VARCHAR(20)  NOT NULL,   -- USER_ID|API_KEY|IP|TIER|GLOBAL
+  subject_value  VARCHAR(255),            -- 'user123', 'PREMIUM', NULL=GLOBAL
+  endpoint       VARCHAR(500) NOT NULL DEFAULT '*',
+  algorithm      VARCHAR(20)  NOT NULL DEFAULT 'TOKEN_BUCKET',
+  request_limit  INT          NOT NULL,
+  window_sec     INT          NOT NULL,
+  burst_capacity INT,                     -- Token Bucket: max burst tokens
+  refill_rate    DECIMAL(10,2),           -- tokens per second
+  enforce_by     VARCHAR(50)  NOT NULL,   -- USER_ID|TENANT_ID|IP
+  is_active      BOOLEAN      DEFAULT true,
+  created_at     TIMESTAMPTZ  DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ  DEFAULT NOW()
+);
+
+CREATE INDEX idx_rules_lookup
+  ON rate_limit_rules(subject_type, subject_value, endpoint)
+  WHERE is_active = true;
+
+CREATE TABLE rate_limit_violations (
+  violation_id  UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  subject_value VARCHAR(255),
+  endpoint      VARCHAR(500),
+  rule_id       UUID        REFERENCES rate_limit_rules(rule_id),
+  violated_at   TIMESTAMPTZ DEFAULT NOW()
+);</pre>
+</div>
+
+<div class="slide" id="s21" data-title="Redis Scaling">
+  <h2>Redis Scaling &mdash; Cluster &amp; Memory Math</h2>
+  <pre class="code-block">CAPACITY MATH  (1M rps, 50M active users)
+
+Token state per user per endpoint:
+  key size    ≈  40 bytes  (rate_limit:user123:/api/users)
+  value size  ≈  30 bytes  (HASH: tokens=int, last_refill=int)
+  overhead    ≈ 100 bytes  (Redis per-key overhead)
+  total/key   ≈ 170 bytes
+
+50M users × 3 endpoints × 170 bytes = 25.5 GB active keys
+  (TTL=3600s; ~5–10% hot at any time → actual ≈ 1.5–2.5 GB)
+
+THROUGHPUT:
+  1M rps → 1M Lua EVAL/sec
+  Redis single node: ~300K–500K ops/sec
+  Need: 1M / 300K ≈ 4 master shards minimum
+  With 2× safety headroom → 8 master shards recommended
+  Each shard: 1 master + 1 replica (for failover)
+  Routing: consistent hash(user_id) → same shard every time
+
+LATENCY BUDGET (target &lt;5ms added per request):
+  Policy cache GET  : 0.5 ms  (Redis read replica)
+  Lua EVAL          : 1.0 ms  (Redis master write)
+  Network roundtrip : 1.0 ms  (co-located in same AZ)
+  Total             : ~2.5 ms ✓ within 5ms budget
+
+OPTIMIZATIONS:
+  ─ TTL=3600s on inactive buckets: auto-expire → saves memory
+  ─ Connection pool: 50 connections per gateway instance
+  ─ Pipelining: batch multiple EVAL calls in one round-trip</pre>
+</div>
+
+<div class="slide" id="s22" data-title="Algorithm Trade-offs">
+  <h2>Algorithm Trade-offs &mdash; Full Comparison</h2>
+  <table>
+    <tr><th>Algorithm</th><th>Memory</th><th>Accuracy</th><th>Burst Support</th><th>Boundary Bug</th><th>Best For</th></tr>
+    <tr><td>Fixed Window</td><td>Very Low</td><td>Low</td><td>Yes (edge spike)</td><td>YES &mdash; exploitable</td><td>Internal microservices</td></tr>
+    <tr><td>Sliding Window Log</td><td>Very High O(n)</td><td>Perfect</td><td>No</td><td>None</td><td>Fraud / low-traffic</td></tr>
+    <tr><td>Sliding Window Counter</td><td>Low (2 ints)</td><td>Good (~approx)</td><td>No</td><td>Minor</td><td>Middle-ground APIs</td></tr>
+    <tr><td><strong>Token Bucket &#x2605;</strong></td><td><strong>Low (2 ints)</strong></td><td><strong>Good</strong></td><td><strong>Yes (by design)</strong></td><td><strong>None</strong></td><td><strong>Production APIs</strong></td></tr>
+    <tr><td>Leaky Bucket</td><td>Medium (queue)</td><td>Good</td><td>No (smoothed)</td><td>None</td><td>Traffic shaping</td></tr>
+  </table>
+  <div class="highlight-box">
+    <strong>Trade-off script:</strong> "Sliding Window Log gives perfect accuracy but O(requests) memory —
+    at 50M users &times; 100 req/min that's 5B timestamps in Redis. Token Bucket gives good accuracy,
+    supports bursts naturally, low memory (2 integers), and is production-proven at AWS, Stripe, GitHub.
+    I'll go Token Bucket unless you need fraud-detection-level precision."
+  </div>
+  <p><strong>What NOT to say:</strong> "Store counters in the DB" (10-50ms, can't handle 1M rps) &middot; "GET then INCR" (race condition) &middot; "Use SETNX locks" (unnecessary, deadlock risk)</p>
+</div>
+
+<div class="slide" id="s23" data-title="Senior Q&amp;A: Redis Down">
+  <h2>Senior Q&amp;A 1 &mdash; What Happens When Redis Goes Down?</h2>
+  <pre class="code-block">WEAK ANSWER: "Restart Redis."  ← will fail the interview
+
+STRONG ANSWER:
+
+  Two options — both valid, different trade-offs:
+
+  FAIL OPEN (my recommendation for most APIs):
+  ─ Allow all requests during Redis outage
+  ─ Pro: zero availability impact for users
+  ─ Con: brief window of unlimited access (temporary abuse risk)
+  ─ OK for: most APIs where temporary burst is acceptable
+
+  FAIL CLOSED (only for compliance-critical services):
+  ─ Return 503 Service Unavailable during Redis outage
+  ─ Pro: no abuse window, strict compliance enforced
+  ─ Con: ALL users blocked — full availability collapse
+  ─ OK for: financial APIs, healthcare (over-limit = fraud/compliance)
+
+  IMPLEMENTATION — Circuit Breaker:
+  ─ After 10 consecutive Redis timeouts → open circuit for 30 sec
+  ─ During open circuit: fail OPEN (allow all, log error, page on-call)
+  ─ After 30 sec: half-open → send one probe EVAL request
+  ─ Probe success → close circuit (normal operation resumes)
+  ─ Probe fails  → stay open for another 30 sec cycle
+
+  LOCAL IN-MEMORY FALLBACK:
+  ─ Each gateway maintains local token bucket per user (in-memory)
+  ─ During outage: enforce local limits (not global across gateways)
+  ─ Effective global limit ≈ per_instance_limit × 40 gateway instances
+  ─ Rough, not exact — acceptable for brief outages of &lt;30 sec</pre>
+</div>
+
+<div class="slide" id="s24" data-title="Senior Q&amp;A: Race Condition">
+  <h2>Senior Q&amp;A 2 &mdash; 10 Nodes, Race to 100 RPS</h2>
+  <pre class="code-block">SCENARIO: 10 API Gateway instances. Limit = 100 req/sec per user.
+  GW1 and GW2 both receive a request for user123 at the exact same millisecond.
+
+WEAK ANSWER: "Use distributed locks (SETNX + EXPIRE)."
+  WHY IT'S WRONG: Redis is already single-threaded.
+  Locks add: deadlock risk + timeout complexity + extra RTT latency.
+
+STRONG ANSWER: Redis Lua Script makes this a non-issue.
+
+WITHOUT LUA (race condition):           WITH LUA (atomic — correct):
+  GW1: HGET key tokens → 1               GW1: EVAL lua_script → atomic:
+  GW2: HGET key tokens → 1 (race!)         HMGET key tokens,last_refill
+  GW1: HMSET tokens=0 → ALLOW             compute refilled tokens
+  GW2: HMSET tokens=0 → ALLOW (BUG!)      HMSET tokens=refilled-1
+  Result: 2 requests allowed!              EXPIRE key 3600
+                                           return 1 (ALLOW)
+                                         GW2: EVAL lua_script → atomic:
+                                           HMGET key tokens → 0
+                                           0 &lt; 1 → return 0 (REJECT)
+                                         Result: exactly 1 allowed ✓
+
+Redis executes EVAL as a SINGLE atomic unit.
+The entire read-compute-write block runs without any other command
+from any client interleaving between steps.
+No locks. No deadlocks. No extra round trips.</pre>
+</div>
+
+<div class="slide" id="s25" data-title="Key Numbers + Final Recommendation">
+  <h2>Key Numbers to Memorize + Final Recommendation</h2>
+  <table>
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Redis single-node throughput</td><td>300K&ndash;500K ops/sec</td></tr>
+    <tr><td>Redis p99 latency (co-located)</td><td>&lt;1 ms</td></tr>
+    <tr><td>Target added latency per request</td><td>&lt;5 ms</td></tr>
+    <tr><td>Policy cache TTL</td><td>3600 sec (1 hour)</td></tr>
+    <tr><td>Circuit breaker threshold</td><td>10 consecutive failures</td></tr>
+    <tr><td>Circuit breaker open duration</td><td>30 sec &rarr; half-open probe</td></tr>
+    <tr><td>Free / Premium / Enterprise tiers</td><td>100 / 1,000 / 10,000 req/min</td></tr>
+    <tr><td>Redis shards for 1M rps</td><td>8 masters + 8 replicas</td></tr>
+    <tr><td>API Gateway instances for 1M rps</td><td>~40 (handles ~50K rps each)</td></tr>
+    <tr><td>HTTP status code for rate limit</td><td>429 Too Many Requests</td></tr>
+  </table>
+  <div class="highlight-box">
+    <strong>Final recommendation line:</strong><br>
+    "Token Bucket in Redis Lua &mdash; atomic, burst-friendly, proven at AWS and Stripe,
+    adds under 5ms per request, survives Redis failure via circuit breaker with fail-open.
+    Multi-level limits (per-user, per-IP, per-endpoint), 429 with Retry-After headers,
+    policies in Postgres with Redis write-through cache + Pub/Sub for &lt;1 sec propagation."
+  </div>
+</div>
+
+</div><div id="controls"><button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>&#x2190; Prev</button><div id="slide-dots"></div><div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">&#x25B6; Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next &#x2192;</button></div></div></div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='&#x25B6; Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='&#x23F8; Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

@@ -1,0 +1,569 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Editor System Design</title>
+<link rel="stylesheet" href="../../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Text Editor — Collaborative Editing System</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <div class="slide active" id="s1" data-title="Text Editor — Collaborative Editing System Design">
+      <h1>📝 Collaborative Text Editor System Design</h1>
+      <h2>Google Docs · Notion · Real-Time Co-Editing · Conflict Resolution</h2>
+      <div class="key-insight">
+        <strong>One-liner:</strong> WebSocket session → Operations (insert/delete) → OT/CRDT → Op-log persistence → Periodic snapshots → Eventual convergence
+      </div>
+      <div class="tag-row">
+        <span class="tag">OT</span>
+        <span class="tag">CRDT</span>
+        <span class="tag">WebSocket</span>
+        <span class="tag">Delta Sync</span>
+        <span class="tag">Version History</span>
+        <span class="tag">Offline</span>
+      </div>
+    </div>
+
+    <div class="slide" id="s2" data-title="Opening Script — The Hardest Problem">
+      <div class="section-label">🎬 Opening</div>
+      <h2>Opening Script — The Hardest Problem</h2>
+      <div class="speak-block">
+        <div class="speak-header">Say This to Your Interviewer</div>
+        <p>"Google Docs looks simple — it's just a text box. But the <strong>hardest problem</strong> is: two users type at the exact same cursor position simultaneously. Who wins? How do both clients converge to the same document without losing either person's edit? That's the core challenge. Everything else — presence, versioning, offline — is secondary."</p>
+      </div>
+      <ul class="content-list">
+        <li><strong>Naive merge:</strong> last-write-wins → data loss</li>
+        <li><strong>Locking:</strong> only one editor at a time → not collaborative</li>
+        <li><strong>OT:</strong> transform ops relative to each other — Google Docs approach</li>
+        <li><strong>CRDT:</strong> every character gets a unique ID, ops commute — Figma / Automerge</li>
+      </ul>
+      <div class="key-insight">
+        <strong>Senior signal:</strong> Mention "strong eventual consistency" — all clients that receive the same set of ops converge to identical state, regardless of apply order.
+      </div>
+    </div>
+
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Functional Requirements</h2>
+      <table class="data-table">
+        <tr><th>Feature</th><th>Detail</th></tr>
+        <tr><td>Create / update / delete docs</td><td>Rich text formatting</td></tr>
+        <tr><td>Real-time concurrent editing</td><td>Multiple users, same doc, simultaneously</td></tr>
+        <tr><td>Cursor presence</td><td>See each other's cursors and selections live</td></tr>
+        <tr><td>Document sharing</td><td>View / Edit / Comment permissions</td></tr>
+        <tr><td>Version history</td><td>Rollback to any previous version, named milestones</td></tr>
+        <tr><td>Offline editing</td><td>Queue ops locally, auto-sync on reconnect</td></tr>
+        <tr><td>Auto-save</td><td>Periodic snapshots to prevent data loss</td></tr>
+        <tr><td>Comments</td><td>Inline comments with reply threads</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s4" data-title="Non-Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Non-Functional Requirements</h2>
+      <div class="req-grid">
+        <div class="req-card req-perf">
+          <div class="req-title">Latency</div>
+          <div class="req-body">
+            <div>Op propagation &lt; <strong>300 ms</strong></div>
+            <div>Redis canonical read &lt; <strong>1 ms</strong></div>
+            <div>Doc open (snapshot + replay) &lt; <strong>65 ms</strong></div>
+          </div>
+        </div>
+        <div class="req-card req-scale">
+          <div class="req-title">Scale</div>
+          <div class="req-body">
+            <div><strong>1B+</strong> documents</div>
+            <div><strong>50–100</strong> concurrent editors/doc</div>
+            <div><strong>1.02M</strong> chars max per doc</div>
+          </div>
+        </div>
+        <div class="req-card req-rel">
+          <div class="req-title">Consistency</div>
+          <div class="req-body">
+            <div>Strong eventual consistency</div>
+            <div>CAP: AP with convergence guarantee</div>
+            <div>Server version = single source of truth</div>
+          </div>
+        </div>
+        <div class="req-card req-sec">
+          <div class="req-title">Availability</div>
+          <div class="req-body">
+            <div>99.99% uptime</div>
+            <div>Offline mode required</div>
+            <div>Auto-reconnect on WS failure</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <div class="section-label">🏛 HLD</div>
+      <h2>High-Level Architecture</h2>
+      <pre class="arch-diagram">
+  Browser (optimistic apply)
+      │ REST              │ WebSocket (sticky session)
+      ▼                   ▼
+  LB + API Gateway    WebSocket LB + Gateway (10K conn/pod)
+      │                   │
+  Doc Metadata Svc    Document Editor Service
+      │                   ├── Redis (canonical copy, TTL 30 min)
+  PostgreSQL          ├── Op-Log DB (append-only)
+  (metadata, perms)   ├── S3 / Blob (snapshots, gzip)
+                      └── Kafka (doc.operations topic)
+                               │
+                   ┌───────────┴───────────┐
+                   ▼                       ▼
+          Reconciliation Svc       Op Consumer Svc
+          (snapshot + validate)    (analytics, audit)
+  CDN (static assets — editor UI)</pre>
+    </div>
+
+    <div class="slide" id="s6" data-title="The Concurrent Edit Problem">
+      <div class="section-label">⚠️ Core Problem</div>
+      <h2>The Concurrent Edit Problem</h2>
+      <pre class="code-block">Document = "abc"  (version 10)
+
+User A: insert('X', pos=0) → "Xabc"   (sends at v10)
+User B: insert('D', pos=3) → "abcD"   (sends at v10)
+
+Naive last-write-wins:
+  Server applies A first → "Xabc"
+  Server applies B at pos 3 of "Xabc" → "XabDc"   ← WRONG
+  B intended to insert after 'c', not between 'b' and 'c'
+
+Correct result should be: "XabcD"</pre>
+      <div class="key-insight">
+        <strong>Root cause:</strong> B's operation was authored against version 10 but applied against version 11 (after A's insert). The position reference is stale. We need to <em>transform</em> B's position to account for A's preceding insert.
+      </div>
+    </div>
+
+    <div class="slide" id="s7" data-title="Operational Transformation (OT)">
+      <div class="section-label">🔧 OT</div>
+      <h2>Operational Transformation — How It Works</h2>
+      <pre class="code-block">OT Transform Rules:
+  insert before your position  → shift right  (+len)
+  delete before your position  → shift left   (-1)
+  same position                → server order (timestamp / user_id tiebreak)
+
+Example:
+  A: insert('X', 0)  server_version: 11
+  B: insert('D', 3)  arrives at v10, server is at v11
+
+  Transform B against A:
+    A inserted 1 char at pos 0 (before B's pos 3)
+    → B_transformed.pos = 3 + 1 = 4
+
+  Apply B_transformed to "Xabc" → "XabcD" ✓</pre>
+      <ul class="content-list">
+        <li><strong>Jupiter protocol:</strong> client and server each maintain a state vector; server sequences all ops</li>
+        <li><strong>server_version</strong> is the single source of truth — never let clients order ops</li>
+        <li><strong>Critical:</strong> without central sequencing, clients diverge permanently</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s8" data-title="CRDT Approach">
+      <div class="section-label">🔧 CRDT</div>
+      <h2>CRDT — Conflict-free Replicated Data Types</h2>
+      <pre class="code-block">Each character gets a unique ID: {site_id, sequence_number}
+
+'abc' → 'a'={1,1}, 'b'={1,2}, 'c'={1,3}
+
+User A (offline): insert 'X' after {1,1} → creates {1,10}
+User B (offline): delete {1,1}   (tombstone — mark deleted, keep ID)
+
+Sync — operations COMMUTE (apply in any order):
+  A then B: 'a' tombstoned, X anchored after it → 'Xbc'
+  B then A: delete 'a', insert X after deleted anchor → 'Xbc'
+  Both → identical result ✓
+
+No central server sequencing needed.</pre>
+      <ul class="content-list">
+        <li><strong>Logoot / LSEQ:</strong> fractional position IDs between characters</li>
+        <li><strong>Tombstones:</strong> deleted chars stay in the ID space (never free their position)</li>
+        <li><strong>Memory cost:</strong> every char carries an ID + possible tombstone metadata</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s9" data-title="OT vs CRDT Comparison">
+      <div class="section-label">⚖️ Comparison</div>
+      <h2>OT vs CRDT — When to Use Which</h2>
+      <table class="data-table">
+        <tr><th>Dimension</th><th>OT</th><th>CRDT</th></tr>
+        <tr><td>Central server</td><td>Required (sequences ops)</td><td>Not required (P2P OK)</td></tr>
+        <tr><td>Data structure</td><td>Simple string + version</td><td>Tree / linked list with IDs</td></tr>
+        <tr><td>Memory overhead</td><td>Low</td><td>High (IDs + tombstones)</td></tr>
+        <tr><td>Offline support</td><td>Hard (needs server sync)</td><td>Native (ops commute)</td></tr>
+        <tr><td>Conflict resolution</td><td>Transform functions</td><td>Commutative by design</td></tr>
+        <tr><td>Complexity</td><td>Transform logic tricky</td><td>ID allocation tricky</td></tr>
+        <tr><td>Adopted by</td><td>Google Docs, Notion</td><td>Figma, Automerge, y.js</td></tr>
+      </table>
+      <div class="key-insight">
+        <strong>Hybrid approach:</strong> OT for real-time (simpler, lower memory), CRDT for offline sync (ops commute, no rebase needed). y.js uses CRDT and is production-grade.
+      </div>
+    </div>
+
+    <div class="slide" id="s10" data-title="WebSocket Architecture">
+      <div class="section-label">🔌 WebSocket</div>
+      <h2>WebSocket Architecture</h2>
+      <pre class="code-block">WS  /v1/api/docs/{docId}/edit   (bidirectional stream)
+
+Client → Server:
+  { type: 'operation', op: { type, position, content, client_version } }
+  { type: 'cursor',    cursor_pos, selection: {start, end} }
+  { type: 'sync_request', last_known_version: 42 }
+
+Server → Client:
+  { type: 'operation',    transformed_op, user_id }
+  { type: 'cursor_update',user_id, name, color, cursor_pos }
+  { type: 'user_joined' / 'user_left' }
+  { type: 'sync_response',server_ops, current_version }</pre>
+      <ul class="content-list">
+        <li><strong>Sticky sessions:</strong> IP hash — same user stays on same gateway pod</li>
+        <li><strong>10K connections/pod</strong> — 1M users needs 100 gateway instances</li>
+        <li><strong>Failover:</strong> pod dies → client exponential backoff → sends sync_request to catch up</li>
+        <li><strong>vs HTTP polling:</strong> 1M users × 1 req/s = 1M req/s; WS sends only on change = 100x less traffic</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s11" data-title="Operation Format & Compression">
+      <div class="section-label">📦 Operations</div>
+      <h2>Operation Format &amp; Compression</h2>
+      <pre class="code-block">Operation types:
+  insert(position, content)   — "insert 'hello' at pos 5"
+  delete(position, length)    — "delete 3 chars at pos 10"
+  retain(length)              — "keep next N chars" (delta format)
+  format(position, length, attrs) — bold/italic/color
+
+Delta compression example:
+  Old: "Hello World"
+  New: "Hello Beautiful World"
+  Delta: [retain(6), insert("Beautiful "), retain(5)]
+  Wire: 35 bytes vs 21 bytes full content</pre>
+      <ul class="content-list">
+        <li><strong>Debounce 50ms:</strong> fast typists batch multiple chars into one op</li>
+        <li><strong>permessage-deflate:</strong> WebSocket compression extension, ~70% bandwidth saving</li>
+        <li><strong>Op batching threshold:</strong> 5 chars/sec — reduces op-log row count</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s12" data-title="Presence & Cursors">
+      <div class="section-label">👥 Presence</div>
+      <h2>Presence &amp; Cursors</h2>
+      <pre class="code-block">Cursor broadcast flow:
+  1. User moves cursor → client detects onChange
+  2. Throttle: batch every 100ms (90% traffic reduction)
+  3. Send: { type:'cursor', user_id, cursor_pos:15, selection:{start:10,end:15} }
+  4. Gateway broadcasts to all OTHER clients in the doc room
+  5. Redis: HSET cursors:{doc_id} user:{id} '{pos,selection}' EX 300
+  6. On disconnect: HDEL cursors:{doc_id} user:{id}, broadcast user_left
+
+Cursor OT transform:
+  User A cursor at pos 10, User B inserts 'hello' (5 chars) at pos 5
+  → A's cursor must shift: 10 + 5 = 15</pre>
+      <div class="key-insight">
+        <strong>NEVER persist cursors in DB.</strong> 100 updates/sec/user × 100 editors = 10K writes/sec, all ephemeral. Redis HASH with TTL=5 min, auto-expires on disconnect.
+      </div>
+    </div>
+
+    <div class="slide" id="s13" data-title="Offline Mode">
+      <div class="section-label">📴 Offline</div>
+      <h2>Offline Mode — Queue, Reconnect, Rebase</h2>
+      <pre class="code-block">Offline:
+  1. WebSocket closes (network failure)
+  2. Client banner: "Working offline"
+  3. Store ops: IndexedDB [{ op_id, type, position, content, client_version }]
+  4. Track: last_known_version = 42
+
+Reconnect (exponential backoff: 1s → 2s → 4s → 8s → max 30s):
+  1. Send: { type:'sync_request', last_known_version: 42 }
+  2. Server: fetch ops 43–50 from op-log, send to client
+  3. Client: apply server ops first (replay 43–50 on local doc)
+  4. Client: OT-transform local queued ops against server ops
+  5. Send transformed ops as batch to server
+  6. Conflict: modal → keep local / keep server / manual merge</pre>
+      <div class="key-insight">
+        <strong>Version vector:</strong> client tracks last_known_version; server sends only the delta. Rebase local ops on top of server ops before re-submitting.
+      </div>
+    </div>
+
+    <div class="slide" id="s14" data-title="Version History & Snapshots">
+      <div class="section-label">🕐 Versioning</div>
+      <h2>Version History &amp; Snapshots</h2>
+      <pre class="code-block">Snapshot trigger: every 50 ops OR every 5 minutes
+
+Reconciliation Service (Kafka consumer):
+  1. Count ops since last snapshot for doc_id
+  2. If count >= 50:
+     a. Fetch last snapshot from S3 (docs/{doc_id}/v10.txt.gz)
+     b. Fetch ops since that version from op-log
+     c. Replay ops sequentially → current content
+     d. gzip compress (70% size reduction)
+     e. PUT S3 docs/{doc_id}/v11.txt.gz
+     f. INSERT INTO snapshots (version:11, blob_path)
+     g. UPDATE Redis doc:{doc_id}:state TTL=1800
+
+Restore flow:
+  POST /v1/api/docs/{docId}/restore { target_version: 10 }
+  → fetch v10 from S3 → create 'replace_all' op
+  → upload as NEW version (v12) — NEVER mutate history</pre>
+    </div>
+
+    <div class="slide" id="s15" data-title="Entity Relationship Diagram">
+      <div class="section-label">🗂 ER Diagram</div>
+      <h2>Entity Relationship Diagram</h2>
+      <pre class="arch-diagram">
+  ┌──────────────┐       ┌─────────────────────┐
+  │   users      │       │     documents        │
+  │  user_id PK  │──┐    │  doc_id PK           │
+  │  name        │  └───▶│  owner_id FK→users   │
+  │  email       │       │  title, metadata     │
+  └──────────────┘       │  latest_snapshot_ver │
+                         └──────────┬───────────┘
+          ┌────────────────────────┤
+          │                        │
+          ▼                        ▼
+  ┌──────────────────┐    ┌────────────────────┐
+  │  document_ops    │    │    snapshots        │
+  │  op_id PK        │    │  snapshot_id PK     │
+  │  doc_id FK       │    │  doc_id FK          │
+  │  user_id FK      │    │  version            │
+  │  type, position  │    │  blob_path (S3)     │
+  │  client_version  │    │  ops_since_last     │
+  │  server_version  │    └────────────────────┘
+  └──────────────────┘
+          │
+          ▼
+  ┌──────────────────┐    ┌────────────────────┐
+  │   permissions    │    │     comments        │
+  │  doc_id, user_id │    │  doc_id, user_id    │
+  │  role (view/edit)│    │  position, content  │
+  └──────────────────┘    └────────────────────┘</pre>
+    </div>
+
+    <div class="slide" id="s16" data-title="Database Schema DDL">
+      <div class="section-label">🗄 Schema</div>
+      <h2>Database Schema DDL</h2>
+      <pre class="code-block">-- documents
+doc_id        uuid PRIMARY KEY
+owner_id      uuid FK → users
+title         varchar(255)
+metadata      jsonb
+permissions   jsonb  -- [{user_id, role:'view'/'edit'/'comment'}]
+latest_snapshot_version int
+
+-- document_ops  (append-only op-log)
+op_id          uuid PRIMARY KEY
+doc_id         uuid    INDEX
+user_id        uuid
+type           enum('insert','delete','format','replace_all')
+position       int
+content        text
+client_version int
+server_version int     -- server-assigned, single source of truth
+timestamp      timestamp
+INDEX (doc_id, server_version)  -- critical for range queries
+
+-- snapshots
+snapshot_id    uuid PRIMARY KEY
+doc_id         uuid    INDEX
+version        int
+blob_path      varchar(500)  -- S3: docs/{doc_id}/v{N}.txt.gz
+operations_since_last int
+created_at     timestamp,  created_by uuid</pre>
+    </div>
+
+    <div class="slide" id="s17" data-title="Storage Tiers">
+      <div class="section-label">💾 Storage</div>
+      <h2>Storage Tiers</h2>
+      <table class="data-table">
+        <tr><th>Tier</th><th>Store</th><th>What</th><th>TTL / Lifecycle</th></tr>
+        <tr><td>Hot (active)</td><td>Redis STRING</td><td>Canonical doc content</td><td>TTL 30 min</td></tr>
+        <tr><td>Hot (cursors)</td><td>Redis HASH</td><td>Cursor positions</td><td>TTL 5 min</td></tr>
+        <tr><td>Hot (ops)</td><td>PostgreSQL / Bigtable</td><td>Recent op-log</td><td>Append-only</td></tr>
+        <tr><td>Warm</td><td>S3 Standard</td><td>Snapshots, gzip</td><td>0–30 days full restore</td></tr>
+        <tr><td>Cool</td><td>S3 IA</td><td>Older snapshots</td><td>30–90 days view-only</td></tr>
+        <tr><td>Cold</td><td>S3 Glacier</td><td>Archived ops + snapshots</td><td>90+ days</td></tr>
+        <tr><td>Export</td><td>Async job + S3</td><td>PDF/DOCX export</td><td>Headless Chrome render</td></tr>
+      </table>
+      <div class="key-insight">
+        <strong>Why Redis canonical copy?</strong> 90% of reads served from Redis (sub-1ms). Cache miss: fetch S3 snapshot + replay only recent ops. Without snapshots, replaying 10K ops = 5s; with snapshot + 5 ops = 65ms.
+      </div>
+    </div>
+
+    <div class="slide" id="s18" data-title="Scaling Strategy">
+      <div class="section-label">📈 Scaling</div>
+      <h2>Scaling Strategy</h2>
+      <table class="data-table">
+        <tr><th>Component</th><th>Strategy</th><th>At 1M Users</th></tr>
+        <tr><td>WebSocket Gateway</td><td>10K conn/pod, IP-hash sticky</td><td>100 pods</td></tr>
+        <tr><td>Document Editor Svc</td><td>Partition by doc_id</td><td>200 pods</td></tr>
+        <tr><td>Redis</td><td>Cluster, shard by doc_id</td><td>100 nodes</td></tr>
+        <tr><td>PostgreSQL</td><td>100 shards by doc_id hash</td><td>100 shards</td></tr>
+        <tr><td>Kafka</td><td>1 GB/s/broker, partition by doc_id</td><td>20 brokers, 100 partitions</td></tr>
+        <tr><td>S3</td><td>Managed, lifecycle rules</td><td>3,333 snapshots/sec</td></tr>
+      </table>
+      <ul class="content-list">
+        <li><strong>Dedicated pod per hot doc:</strong> a 50-editor doc gets its own Editor Service pod to avoid noisy neighbor</li>
+        <li><strong>Rebalance on inactivity:</strong> docs inactive for 30 min evict from Redis, pod resources freed</li>
+        <li><strong>Total bandwidth:</strong> ~60 Gbps at 1M concurrent users</li>
+      </ul>
+    </div>
+
+    <div class="slide" id="s19" data-title="Trade-offs Table">
+      <div class="section-label">⚖️ Trade-offs</div>
+      <h2>Key Trade-offs</h2>
+      <table class="data-table">
+        <tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Winner</th></tr>
+        <tr><td>Conflict resolution</td><td>OT (central server)</td><td>CRDT (commutative)</td><td>OT for server; CRDT for offline</td></tr>
+        <tr><td>Real-time transport</td><td>WebSocket (bidirectional)</td><td>SSE (server push only)</td><td>WebSocket — ops go both ways</td></tr>
+        <tr><td>Op-log store</td><td>Bigtable (wide-column)</td><td>Cassandra</td><td>Bigtable — managed, range scans</td></tr>
+        <tr><td>Cursor storage</td><td>Redis HASH TTL=5min</td><td>DB persist</td><td>Redis — 10K writes/s, ephemeral</td></tr>
+        <tr><td>Consistency model</td><td>Strong (lock)</td><td>Eventual (OT)</td><td>Eventual — locks kill collaboration</td></tr>
+        <tr><td>Snapshot trigger</td><td>Time-based (5 min)</td><td>Op-count (50 ops)</td><td>Both — whichever first</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s20" data-title="Undo/Redo in Collaborative Context">
+      <div class="section-label">↩️ Undo/Redo</div>
+      <h2>Undo/Redo in Collaborative Context</h2>
+      <pre class="code-block">Problem: User A types "hello", User B types "world" after.
+         User A presses Ctrl+Z — should undo only A's "hello",
+         NOT undo B's "world".
+
+Local undo stack:
+  Each client maintains: localOps[] = [op1, op2, op3]
+
+Undo steps:
+  1. Pop op3 from localOps (A's last op)
+  2. Compute inverse: insert → delete, delete → insert
+  3. Transform inverse against all server-acknowledged ops
+     that arrived AFTER op3
+  4. Send transformed inverse as a new op to server
+  5. Server applies it, broadcasts to all clients
+
+Key insight: Undo is NOT replaying history — it's a NEW
+operation that cancels the effect of the old one.</pre>
+      <div class="key-insight">
+        <strong>Compound undo:</strong> only undo ops the local user owns, skip ops from other users on the undo stack.
+      </div>
+    </div>
+
+    <div class="slide" id="s21" data-title="Senior Q&A — 50 Users Same Paragraph">
+      <div class="section-label">🎓 Senior Q&amp;A 1</div>
+      <h2>Q: 50 Users Type Simultaneously in the Same Paragraph?</h2>
+      <div class="speak-block">
+        <div class="speak-header">Interviewer Question</div>
+        <p>"What happens when 50 users all edit the same paragraph at the same time?"</p>
+      </div>
+      <ul class="content-list">
+        <li><strong>Each client sends ops optimistically</strong> — applies locally before server ack (fast UX)</li>
+        <li><strong>Editor Service receives ops</strong> — assigns monotonic server_version to each</li>
+        <li><strong>OT transforms each op</strong> against all concurrent ops with higher version</li>
+        <li><strong>Transformed op broadcast</strong> to all 49 other clients in the doc room</li>
+        <li><strong>Each client applies</strong> the server-transformed op, adjusting local cursor positions</li>
+        <li><strong>Throughput:</strong> 50 users × 5 ops/s = 250 ops/s per doc — Kafka handles millions/s</li>
+        <li><strong>Dedicated pod</strong> for hot docs avoids latency spikes from noisy neighbors</li>
+      </ul>
+      <div class="key-insight">
+        <strong>Convergence guaranteed</strong> because server_version is a total order. Every client applies ops in the same server-assigned sequence → identical final state.
+      </div>
+    </div>
+
+    <div class="slide" id="s22" data-title="Senior Q&A — Offline 2 Hours, 200 Ops">
+      <div class="section-label">🎓 Senior Q&amp;A 2</div>
+      <h2>Q: User Offline 2 Hours, Makes 200 Ops — How to Merge?</h2>
+      <ul class="content-list">
+        <li><strong>Offline:</strong> 200 ops stored in IndexedDB, last_known_version = 42</li>
+        <li><strong>Reconnect:</strong> client sends sync_request with last_known_version: 42</li>
+        <li><strong>Server:</strong> fetches ops 43–180 from op-log (138 ops others made)</li>
+        <li><strong>Client step 1:</strong> apply server ops 43–180 to the local document</li>
+        <li><strong>Client step 2:</strong> OT-transform each of the 200 local ops against ops 43–180</li>
+        <li><strong>Client step 3:</strong> send 200 transformed ops as a batch to server</li>
+        <li><strong>Server:</strong> applies each, assigns server_version 181–380, broadcasts to others</li>
+        <li><strong>Conflict escalation:</strong> if a replace_all collision → show merge UI modal</li>
+      </ul>
+      <div class="key-insight">
+        <strong>Why this works:</strong> OT transform functions are mathematically proven to produce convergent results given the same total ordered op sequence (Jupiter protocol property).
+      </div>
+    </div>
+
+    <div class="slide" id="s23" data-title="Senior Q&A — Undo After Others Edited">
+      <div class="section-label">🎓 Senior Q&amp;A 3</div>
+      <h2>Q: Undo Your Op When Others Edited After You</h2>
+      <pre class="code-block">Timeline:
+  v10: User A types insert('hello', 5)   → server_version 11
+  v11: User B types insert(' world', 10) → server_version 12
+  v12: User C deletes char at pos 3      → server_version 13
+  Now: User A presses Ctrl+Z (undo v11)
+
+Steps:
+  1. Inverse op: delete(pos=5, len=5)  [inverse of insert('hello',5)]
+  2. Transform inverse against ops 12, 13:
+     - v12: B inserted 5 chars at pos 10 (after pos 5) → no shift needed
+     - v13: C deleted at pos 3 (before pos 5) → shift: 5-1=4
+  3. Transformed undo: delete(pos=4, len=5)
+  4. Send as new op → server_version 14
+  5. Broadcast to all clients</pre>
+      <div class="key-insight">
+        <strong>Key:</strong> The undo is a brand-new forward op. It never rewrites history. B's and C's edits are fully preserved.
+      </div>
+    </div>
+
+    <div class="slide" id="s24" data-title="Quick Numbers to Remember">
+      <div class="section-label">🔢 Numbers</div>
+      <h2>Quick Numbers to Remember</h2>
+      <table class="data-table">
+        <tr><th>Metric</th><th>Value</th></tr>
+        <tr><td>Op propagation target</td><td>&lt; 300 ms end-to-end</td></tr>
+        <tr><td>Average op wire size</td><td>~50 bytes (after delta + compression)</td></tr>
+        <tr><td>Snapshot trigger</td><td>Every 50 ops OR 5 minutes</td></tr>
+        <tr><td>Snapshot compression gain</td><td>70% (gzip)</td></tr>
+        <tr><td>10K ops replay time (no snapshot)</td><td>~5 seconds</td></tr>
+        <tr><td>Snapshot + 5 ops load time</td><td>~65 ms</td></tr>
+        <tr><td>Redis doc state TTL</td><td>30 minutes</td></tr>
+        <tr><td>Redis cursor TTL</td><td>5 minutes</td></tr>
+        <tr><td>Redis cache hit rate</td><td>90% of reads</td></tr>
+        <tr><td>Cursor throttle</td><td>100 ms batching → 90% traffic reduction</td></tr>
+        <tr><td>WebSocket connections/pod</td><td>10K</td></tr>
+        <tr><td>1M users → WS Gateway pods</td><td>100</td></tr>
+        <tr><td>1M users → total bandwidth</td><td>~60 Gbps</td></tr>
+      </table>
+    </div>
+
+    <div class="slide" id="s25" data-title="Closing Script — Key Takeaways">
+      <div class="section-label">🎬 Closing</div>
+      <h2>Closing Script — What to Say at the End</h2>
+      <div class="speak-block">
+        <div class="speak-header">Say This to Close</div>
+        <p>"To summarise: the hardest part of Google Docs is <strong>conflict resolution</strong>. We solved it with OT — the server assigns a total order via server_version, transforms concurrent ops using position-shift rules, and broadcasts the result so all clients converge. We used Redis as the canonical hot copy (90% cache hit), snapshots every 50 ops to keep replay under 65ms, and IndexedDB for offline with a rebase-on-reconnect strategy. CRDT would work too, but at the cost of per-character memory overhead."</p>
+      </div>
+      <h3>Anti-patterns to Mention Avoiding</h3>
+      <ul class="content-list">
+        <li>Persisting cursors in DB — Redis HASH TTL=5min only</li>
+        <li>HTTP polling instead of WebSocket — 100x traffic overhead</li>
+        <li>Clients ordering operations — server_version is the only truth</li>
+        <li>Loading the full op-log on doc open — always use snapshot + recent ops</li>
+      </ul>
+    </div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

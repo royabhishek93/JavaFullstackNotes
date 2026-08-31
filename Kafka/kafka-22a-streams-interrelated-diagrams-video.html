@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Streams: Interrelated ASCII Architecture Diagrams — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Streams: Interrelated ASCII Architecture Diagrams</span>
+    <span id="counter">1 / 20</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:7.14%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🌊</div>
+  <h1 class="gradient-text">Kafka Streams: Interrelated ASCII Architecture Diagrams</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Worked Example</span><span class="badge">Order Counting</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>This example counts how many orders each product receives.</p>
+<p>The input topic is <code>order-events</code>. Each event contains a product ID and an order amount.</p>
+<p>The processing requirement is:</p>
+<div class="dia">Read order-events
+    |
+    v
+Keep orders greater than $100
+    |
+    v
+Use productId as the key
+    |
+    v
+Count orders for each product
+    |
+    v
+Write results to product-counts</div>
+</div>
+<div class="slide" id="s3" data-title="Kafka Cluster: Input Topic">
+<h2>Kafka Cluster: Input Topic</h2>
+<p>Kafka stores the input topic in partitions.</p>
+<div class="dia">+----------------------------------------------------------------+
+|                         KAFKA CLUSTER                          |
+|                                                                |
+|  Topic: order-events                                           |
+|                                                                |
+|  +----------------+  +----------------+  +----------------+    |
+|  | Partition P0   |  | Partition P1   |  | Partition P2   |    |
+|  | order events   |  | order events   |  | order events   |    |
+|  +----------------+  +----------------+  +----------------+    |
+|                                                                |
++----------------------------------------------------------------+</div>
+<p>Kafka chooses a partition using the record key. Records with the same key are normally sent to the same partition.</p>
+<h3>What is happening?</h3>
+<p>Kafka breaks the <code>order-events</code> topic into three smaller ordered logs. Each partition stores some of the order messages. Kafka Streams can read these partitions separately, which allows several workers to process orders at the same time.</p>
+</div>
+<div class="slide" id="s4" data-title="Complete Topology">
+<h2>Complete Topology</h2>
+<p>The topology is the complete processing plan. It shows all processing steps before Kafka Streams divides the work into tasks.</p>
+<div class="dia">+----------------------------------------------------------------+
+|                         TOPOLOGY                               |
+|                                                                |
+|  Source: order-events                                          |
+|             |                                                  |
+|             v                                                  |
+|       Filter amount &gt; $100                                     |
+|             |                                                  |
+|             v                                                  |
+|       Change key to productId                                  |
+|             |                                                  |
+|             v                                                  |
+|       Group by key                                             |
+|             |                                                  |
+|             v                                                  |
+|       Count orders                                             |
+|             |                                                  |
+|             +---------------------&gt; State Store                |
+|             |                       product-count-store        |
+|             v                                                  |
+|       Output: product-counts                                   |
+|                                                                |
++----------------------------------------------------------------+</div>
+<p>The topology is a plan. It is not one worker and it is not one partition.</p>
+<h3>What is happening?</h3>
+<p>The topology says what Kafka Streams must do with every order. First it reads the event, removes orders that are not greater than <code>$100</code>, changes the key to <code>productId</code>, groups events with the same product ID, counts them, and writes the result. The topology is only the plan at this stage.</p>
+</div>
+<div class="slide" id="s5" data-title="Why Repartitioning Is Needed">
+<h2>Why Repartitioning Is Needed</h2>
+<p>Assume the incoming events are keyed by <code>orderId</code>, but the application wants to count by <code>productId</code>.</p>
+<div class="dia">Before changing the key:
+
+orderId 101 -&gt; product P1
+orderId 102 -&gt; product P1
+orderId 103 -&gt; product P2</div>
+<p>The grouping key is changing from <code>orderId</code> to <code>productId</code>, so Kafka Streams must redistribute records by the new key.</p>
+<div class="dia">order-events
+     |
+     v
+Filter amount &gt; $100
+     |
+     v
+Change key to productId
+     |
+     v
+Repartition by productId
+     |
+     v
+Group by key and count</div>
+<p>If records are already keyed by <code>productId</code>, this repartition step is usually not needed.</p>
+<h3>What is happening?</h3>
+<p>The original key is <code>orderId</code>, but the count is needed by <code>productId</code>. Kafka uses the key to choose a partition, so orders for the same product might be in different partitions when the key is <code>orderId</code>. Kafka Streams changes the key and sends the records to a repartition topic. The new key makes sure the same product is routed consistently.</p>
+</div>
+<div class="slide" id="s6" data-title="Sub-Topologies">
+<h2>Sub-Topologies</h2>
+<p>The repartition topic separates the topology into two independent sections. These sections are called sub-topologies.</p>
+<div class="dia">+-----------------------------------+
+| Sub-topology 0                    |
+|                                   |
+| Source: order-events              |
+|       |                           |
+|       v                           |
+| Filter amount &gt; $100              |
+|       |                           |
+|       v                           |
+| Change key to productId           |
+|       |                           |
+|       v                           |
+| Output: repartition topic         |
++-----------------------------------+
+                 |
+                 v
++-----------------------------------+
+| Sub-topology 1                    |
+|                                   |
+| Source: repartition topic         |
+|       |                           |
+|       v                           |
+| Group by key                      |
+|       |                           |
+|       v                           |
+| Count                             |
+|       |                           |
+|       +--&gt; State store            |
+|       |    product-count-store    |
+|       v                           |
+| Output: product-counts            |
++-----------------------------------+</div>
+<p>A sub-topology is simply one independent section of the complete topology.</p>
+<h3>What is happening?</h3>
+<p>The first sub-topology reads the original topic, filters the events, changes their keys, and writes them to the repartition topic. The second sub-topology starts by reading that repartition topic, then groups and counts the records. The repartition topic connects the two sections.</p>
+</div>
+<div class="slide" id="s7" data-title="Kafka Cluster After Repartitioning">
+<h2>Kafka Cluster After Repartitioning</h2>
+<p>Kafka now contains the original topic and the internal repartition topic.</p>
+<div class="dia">+---------------------------------------------------------------------+
+|                            KAFKA CLUSTER                            |
+|                                                                     |
+|  +---------------------------+   +-------------------------------+  |
+|  | Topic: order-events       |   | Internal topic: repartition   |  |
+|  |                           |   |                               |  |
+|  | +----+ +----+ +----+     |   | +----+ +----+ +----+             |  |
+|  | | P0 | | P1 | | P2 |     |   | | P0 | | P1 | | P2 |             |  |
+|  | +----+ +----+ +----+     |   | +----+ +----+ +----+             |  |
+|  +---------------------------+   +-------------------------------+  |
+|                                                                     |
++---------------------------------------------------------------------+</div>
+<p>The repartition topic receives records using <code>productId</code> as the key. Therefore, all records for the same product are routed consistently.</p>
+<h3>What is happening?</h3>
+<p>The original <code>order-events</code> topic is still present. Kafka Streams creates the internal repartition topic as an additional topic. It writes the filtered events there after assigning <code>productId</code> as the key. The repartition topic also has partitions, so the next sub-topology can process it in parallel.</p>
+</div>
+<div class="slide" id="s8" data-title="Tasks Are Created From Partitions">
+<h2>Tasks Are Created From Partitions</h2>
+<p>A task is a worker for a particular sub-topology and its partitions.</p>
+<div class="dia">Sub-topology 0 reads order-events:
+
++----------------+       +----------------+
+| order-events   |       | Task 0_0       |
+| Partition P0   | ----&gt; | Sub-topology 0 |
++----------------+       | Source: P0     |
+                         +----------------+
+
++----------------+       +----------------+
+| order-events   |       | Task 0_1       |
+| Partition P1   | ----&gt; | Sub-topology 0 |
++----------------+       | Source: P1     |
+                         +----------------+
+
++----------------+       +----------------+
+| order-events   |       | Task 0_2       |
+| Partition P2   | ----&gt; | Sub-topology 0 |
++----------------+       | Source: P2     |
+                         +----------------+</div>
+<p>The task runs the nodes belonging to its sub-topology for its assigned partition.</p>
+<h3>What is happening?</h3>
+<p>Kafka Streams creates one task for each partition in this simple example. Task <code>0_0</code> reads partition <code>P0</code> and runs sub-topology 0 on those records. Task <code>0_1</code> does the same for <code>P1</code>, and task <code>0_2</code> does it for <code>P2</code>. The tasks follow the same steps, but each task handles different records.</p>
+<div class="dia">Task 0_0:
+order-events P0 -&gt; Filter -&gt; Change key -&gt; Write repartition topic
+
+Task 0_1:
+order-events P1 -&gt; Filter -&gt; Change key -&gt; Write repartition topic
+
+Task 0_2:
+order-events P2 -&gt; Filter -&gt; Change key -&gt; Write repartition topic</div>
+</div>
+<div class="slide" id="s9" data-title="Tasks for the Second Sub-Topology">
+<h2>Tasks for the Second Sub-Topology</h2>
+<p>The second sub-topology reads the repartition topic.</p>
+<div class="dia">+----------------------+       +----------------+
+| repartition topic    |       | Task 1_0       |
+| Partition P0         | ----&gt; | Sub-topology 1 |
++----------------------+       | Source: P0     |
+                               +----------------+
+
++----------------------+       +----------------+
+| repartition topic    |       | Task 1_1       |
+| Partition P1         | ----&gt; | Sub-topology 1 |
++----------------------+       | Source: P1     |
+                               +----------------+
+
++----------------------+       +----------------+
+| repartition topic    |       | Task 1_2       |
+| Partition P2         | ----&gt; | Sub-topology 1 |
++----------------------+       | Source: P2     |
+                               +----------------+</div>
+<p>These tasks run the second part of the plan:</p>
+<div class="dia">Task 1_0:
+repartition P0 -&gt; Group by productId -&gt; Count -&gt; State store -&gt; product-counts
+
+Task 1_1:
+repartition P1 -&gt; Group by productId -&gt; Count -&gt; State store -&gt; product-counts
+
+Task 1_2:
+repartition P2 -&gt; Group by productId -&gt; Count -&gt; State store -&gt; product-counts</div>
+<h3>What is happening?</h3>
+<p>These tasks read the already-repartitioned records. Because the records now use <code>productId</code> as their key, all events for one product reach the same task. That task can calculate the correct count for that product and send the updated count to the output topic.</p>
+</div>
+<div class="slide" id="s10" data-title="Stream Threads Execute Tasks">
+<h2>Stream Threads Execute Tasks</h2>
+<p>A stream thread executes one or more tasks. A task is the work; a thread is the execution path running that work.</p>
+<div class="dia">+-----------------------------------+
+| Kafka Streams application         |
+|                                   |
+|  Stream Thread 1                  |
+|       |                           |
+|       +--&gt; Task 0_0               |
+|       +--&gt; Task 0_1               |
+|                                   |
+|  Stream Thread 2                  |
+|       |                           |
+|       +--&gt; Task 0_2               |
+|       +--&gt; Task 1_0               |
+|                                   |
+|  Stream Thread 3                  |
+|       |                           |
+|       +--&gt; Task 1_1               |
+|       +--&gt; Task 1_2               |
+|                                   |
++-----------------------------------+</div>
+<p>The exact assignment can change during a rebalance. Kafka Streams distributes available tasks among the application instances and stream threads.</p>
+<h3>What is happening?</h3>
+<p>A stream thread is the execution path that runs tasks. It is not a separate copy of the data. In this example, Thread 1 runs two tasks and the other threads run the remaining tasks. If an application instance stops, Kafka can assign its tasks to another instance during a rebalance.</p>
+</div>
+<div class="slide" id="s11" data-title="RocksDB State Store">
+<h2>RocksDB State Store</h2>
+<p>The <code>Count</code> step must remember the current count for each product. Kafka Streams stores this local state in a state store, usually backed by RocksDB.</p>
+<div class="dia">Product events
+     |
+     v
++------------------+
+| Group by product |
++------------------+
+     |
+     v
++------------------+
+| Count            |
++------------------+
+     |
+     +------------------------------+
+     |                              |
+     v                              v
++------------------------+   +----------------------+
+| RocksDB                |   | Output topic         |
+| product-count-store    |   | product-counts       |
+|                        |   |                      |
+| P1 -&gt; 2                |   | P1 -&gt; 2              |
+| P2 -&gt; 1                |   | P2 -&gt; 1              |
++------------------------+   +----------------------+</div>
+<p>You normally do not use RocksDB directly. Kafka Streams manages it through the state-store APIs.</p>
+<h3>What is happening?</h3>
+<p>The count operation needs to remember the current count for each product. When an event for <code>P1</code> arrives, Kafka Streams reads the old count, adds one, and stores the new count in the local <code>product-count-store</code>. RocksDB is the local storage engine used behind that store. Kafka Streams manages this storage for you.</p>
+</div>
+<div class="slide" id="s12" data-title="Changelog Topic: State Recovery">
+<h2>Changelog Topic: State Recovery</h2>
+<p>RocksDB is local to the application instance. Kafka Streams copies state changes to a changelog topic so the state can be rebuilt after a crash.</p>
+<div class="dia">+------------------------+       +-------------------------------+
+| Local RocksDB          |       | Kafka changelog topic         |
+| product-count-store   | ----&gt; | product-count-store-changelog |
+|                        |       |                               |
+| P1 -&gt; 2                |       | P1 -&gt; 2                       |
+| P2 -&gt; 1                |       | P2 -&gt; 1                       |
++------------------------+       +-------------------------------+</div>
+<p>After a failure:</p>
+<div class="dia">Application crashes
+        |
+        v
+Another instance receives the task
+        |
+        v
+Reads the changelog topic
+        |
+        v
+Rebuilds local RocksDB state
+        |
+        v
+Continues processing</div>
+<h3>What is happening?</h3>
+<p>RocksDB is local, so it can disappear when an application instance fails. Kafka Streams writes every state change to the changelog topic as well. A replacement task reads that changelog, rebuilds its local state, and then continues from the correct Kafka offset.</p>
+</div>
+<div class="slide" id="s13" data-title="One Connected End-to-End Picture">
+<h2>One Connected End-to-End Picture</h2>
+<p>All the pieces now fit together:</p>
+<div class="dia">+------------------+     +-------------------+     +----------------------+
+| Kafka topic      |     | Sub-topology 0    |     | Internal Kafka topic |
+| order-events     | --&gt; | Read              | --&gt; | repartition           |
+| P0, P1, P2       |     | Filter            |     | P0, P1, P2            |
++------------------+     | Change key        |     +----------------------+
+                         +-------------------+                |
+                                                              v
+                         +-------------------+     +----------------------+
+                         | Sub-topology 1    | --&gt; | State store           |
+                         | Group by key      |     | RocksDB               |
+                         | Count             |     | product-count-store   |
+                         +-------------------+     +----------------------+
+                                  |
+                                  v
+                         +-------------------+
+                         | Output topic     |
+                         | product-counts   |
+                         +-------------------+
+                                  |
+                                  +----&gt; Changelog topic
+                                         for recovery</div>
+<h3>Reading the diagram from left to right</h3>
+<p>1. Kafka stores incoming orders in the <code>order-events</code> topic and its partitions. 2. Sub-topology 0 filters the orders and changes their key to <code>productId</code>. 3. The repartition topic places records with the same product key together. 4. Sub-topology 1 groups and counts those records. 5. The count is stored locally in RocksDB and sent to <code>product-counts</code>. 6. The changelog topic keeps a recoverable copy of the local state.</p>
+</div>
+<div class="slide" id="s14" data-title="Final Mental Model">
+<h2>Final Mental Model</h2>
+<div class="dia">Topic partitions
+       |
+       v
+Tasks are created for the partitions
+       |
+       v
+Threads execute the tasks
+       |
+       v
+Tasks run processor nodes from the topology
+       |
+       +--&gt; Repartition topic when the key changes
+       |
+       +--&gt; RocksDB state store for stateful operations
+       |
+       +--&gt; Changelog topic to recover local state
+       |
+       v
+Output topic contains the result</div>
+<p>In one sentence:</p>
+<p>&gt; A topology is the plan, sub-topologies are independent sections, tasks apply &gt; those sections to partitions, threads execute the tasks, repartition topics &gt; move records to the correct key-based partition, and RocksDB stores local &gt; state that Kafka can recover from a changelog topic.</p>
+</div>
+<div class="slide" id="s15" data-title="Architecture — Applying This Worked Example to Notification Reporting">
+<h2>Architecture — Mapping the Order-Counting Example to Our System</h2>
+<p>"This exact 'count orders per product' pattern is structurally identical to what we'd build for delivery-rate-per-channel — same shape, different domain."</p>
+<div class="dia">  Order-counting example:        Notification-reporting equivalent:
+  order-events (keyed by ID)  →  delivery_status_events (keyed by notif ID)
+  filter(amount > $100)       →  filter(status in DELIVERED/FAILED)
+  rekey by productId          →  rekey by channel
+  count per product           →  count per channel per window
+  product-counts topic        →  delivery-rate-per-min topic</div>
+<p><strong>Scenario-first:</strong> "Recognizing this structural similarity is exactly what separates someone who's memorized Kafka Streams syntax from someone who understands the pattern — filter, rekey, aggregate, sink is a repeatable shape you can apply to almost any 'count/sum grouped by some dimension' problem."</p>
+</div>
+<div class="slide" id="s16" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why does this topology need a repartition step at all, when the input
+   is already partitioned by ID?
+A: Counting per PRODUCT requires all events for a given product to be
+   processed by the SAME task — but the input is partitioned by order ID,
+   not product ID, so Streams must physically re-key and re-write the data
+   to guarantee that co-location.
+
+Q: Why filter BEFORE the rekey step in this example, not after?
+A: Filtering first shrinks what actually needs to flow through the
+   (expensive) repartition topic — filtering after would mean paying the
+   repartition cost for records that get thrown away anyway.
+
+Q: What would change if we needed the count across ALL TIME instead of a
+   rolling window?
+A: Drop the windowedBy() step entirely and aggregate directly into an
+   unwindowed KTable — the trade-off is the state store then grows
+   unbounded instead of having natural window-based cleanup.</div>
+</div>
+<div class="slide" id="s17" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision             Choice            Alternative        Why ours                            When to flip
+─────────────────────  ────────────────  ─────────────────  ──────────────────────────────────  ─────────────────────
+Aggregation scope       Windowed (1min)   Unbounded KTable    Natural cleanup via window retention  Need lifetime totals,
+                                                                 bounds state store size               not a rolling metric
+Filter placement        Before rekey       After rekey          Minimizes repartition topic volume    Never — early filter
+                                                                                                          is essentially always right</div>
+</div>
+<div class="slide" id="s18" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "Someone points out that swapping this example's product-counting
+  topology for a completely unwindowed aggregation 'simplifies the code.'
+  What operational cost does that hide?"
+  Answer: "An unwindowed KTable's state store grows without bound for the
+  lifetime of every distinct key ever seen — for a high-cardinality key
+  like product ID over years of operation, that's a genuinely large,
+  ever-growing RocksDB footprint with no natural cleanup mechanism, unlike
+  a windowed store where old windows expire via retention."
+
+Trap 2 — "You applied this exact topology shape to a NEW use case with a
+  much higher-cardinality rekey field (say, rekeying by a random session ID
+  instead of product ID). What breaks down?"
+  Answer: "High-cardinality rekeys mean the repartition topic and resulting
+  state store fan out across far more distinct keys, each needing its own
+  state — this can blow up state store size and repartition topic volume
+  compared to a naturally low-cardinality dimension like product or channel.
+  The pattern still works, but the cost profile changes significantly."</div>
+</div>
+<div class="slide" id="s19" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why this filter→rekey→aggregate→sink shape generalizes so well: it's the
+  minimal set of operations needed for any "group and count/sum" problem.
+- Why windowed aggregation over unbounded KTable for rate-style metrics:
+  bounds state store growth via natural retention-based cleanup.
+- Why filter before rekey, always: shrinks the expensive repartition step
+  to only what's actually needed downstream.
+- Why recognizing structural pattern reuse matters: lets you apply one
+  well-understood topology shape across many different reporting needs.</div>
+</div>
+<div class="slide" id="s20" data-title="Top 2 Technologies — Aggregation Scope">
+<h2>Top 2 Technologies — Windowed vs Unbounded Aggregation</h2>
+<div class="dia">Windowed Aggregation  vs  Unbounded KTable Aggregation
+
+Why pick Windowed (our choice for rate metrics): natural, retention-based
+  cleanup — old windows expire automatically, bounding state store size.
+Why pick Unbounded: needed when the actual business question is a
+  lifetime total, not a rolling rate (e.g., "total orders ever placed by
+  this customer").
+
+Example 1 (Windowed): Notification System's delivery-rate-per-minute —
+  only recent windows matter for the live dashboard.
+Example 2 (Unbounded): A lifetime "total notifications ever sent to this
+  user" counter used for a customer-support lookup tool.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 20;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Streams: Interrelated ASCII Architecture Diagrams';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

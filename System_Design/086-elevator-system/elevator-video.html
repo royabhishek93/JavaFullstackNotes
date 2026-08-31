@@ -1,0 +1,1027 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Elevator System Design</title><link rel="stylesheet" href="../sd-player.css"></head><body>
+<div id="player"><div id="topbar"><span id="slide-title">Elevator System — LLD &amp; Scheduling Algorithms</span><span id="counter">1 / 25</span></div><div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div><div id="slide-area">
+
+<!-- SLIDE 1 -->
+<div class="slide active" id="s1" data-title="Elevator System Design — Overview">
+  <h1>🏢 Elevator System Design</h1>
+  <h2>LLD + Distributed Fleet Management</h2>
+  <div class="badge-row">
+    <span class="badge">SCAN</span><span class="badge">LOOK</span><span class="badge">OOP</span>
+    <span class="badge">State Machine</span><span class="badge">Observer Pattern</span><span class="badge">Dispatching</span>
+  </div>
+  <div class="two-col">
+    <div>
+      <h3>What We Cover</h3>
+      <ul>
+        <li>LLD: classes, states, design patterns</li>
+        <li>Scheduling: FCFS → SCAN → LOOK → ML</li>
+        <li>Multi-elevator dispatch strategies</li>
+        <li>Safety, sensors, emergency protocols</li>
+        <li>Distributed fleet management API</li>
+        <li>DB schema + ER diagram</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Key Design Challenges</h3>
+      <ul>
+        <li>Minimize average wait time</li>
+        <li>Prevent starvation of requests</li>
+        <li>Handle concurrent multi-floor calls safely</li>
+        <li>Safety-first: overload, door obstruction</li>
+        <li>Scale: 100s of elevators, 1000s of floors</li>
+        <li>Peak-hour traffic surge handling</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 2 -->
+<div class="slide" id="s2" data-title="Opening — Why Elevators Are Deceptively Hard">
+  <h1>Why Elevator Design Is a Senior-Level Interview Question</h1>
+  <div class="two-col">
+    <div>
+      <h3>Surface Answer (Junior)</h3>
+      <ul>
+        <li>Elevator goes up and down</li>
+        <li>Pick nearest elevator</li>
+        <li>Open door at requested floor</li>
+      </ul>
+      <h3>What Interviewers Want to Hear</h3>
+      <ul>
+        <li><strong>Scheduler algorithms:</strong> FCFS → SCAN → LOOK → SSTF → Destination Dispatch</li>
+        <li><strong>State machine:</strong> IDLE, MOVING_UP, MOVING_DOWN, DOOR_OPEN, MAINTENANCE</li>
+        <li><strong>Concurrency:</strong> thread-safe queues (TreeSet + AtomicInteger)</li>
+        <li><strong>Extensibility:</strong> Strategy Pattern to swap schedulers at runtime</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Design Patterns in Play</h3>
+      <ul>
+        <li><strong>State Pattern</strong> — elevator behavior changes per state</li>
+        <li><strong>Strategy Pattern</strong> — swap scheduling algorithm at runtime</li>
+        <li><strong>Observer Pattern</strong> — buttons notify controller, displays update</li>
+        <li><strong>Command Pattern</strong> — button press = encapsulated command object</li>
+      </ul>
+      <h3>Extensibility Signals</h3>
+      <ul>
+        <li>Add VIP / express elevators without touching core</li>
+        <li>Plug in ML-based dispatcher as a Strategy</li>
+        <li>Scale to 500-elevator fleet via distributed service</li>
+        <li>New observer (energy monitor) = zero core changes</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 3 -->
+<div class="slide" id="s3" data-title="Functional Requirements — Single Building">
+  <h1>Functional Requirements — Single Building (LLD)</h1>
+  <div class="two-col">
+    <div>
+      <h3>Core Operations</h3>
+      <ul>
+        <li>Multiple elevators serving multiple floors</li>
+        <li>Hall call buttons (Up / Down) on every floor</li>
+        <li>Cabin destination buttons inside each car</li>
+        <li>Each elevator has a maximum weight capacity</li>
+        <li>Elevator must not move when door is open</li>
+        <li>Door must not close while obstructed</li>
+      </ul>
+      <h3>Request Handling</h3>
+      <ul>
+        <li>Accept request from any floor in any direction</li>
+        <li>Assign optimal elevator to serve request</li>
+        <li>Merge requests going in the same direction</li>
+        <li>Process concurrent requests from multiple floors</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Safety Requirements</h3>
+      <ul>
+        <li>Overload detection — reject if over weight limit</li>
+        <li>Door obstruction sensor — reopen on block</li>
+        <li>Emergency stop button in each cabin</li>
+        <li>Fire alarm → all cars go to ground floor</li>
+        <li>Maintenance lock — prevent passenger use</li>
+      </ul>
+      <h3>Display &amp; Feedback</h3>
+      <ul>
+        <li>Show current floor on external display</li>
+        <li>Indicate direction (↑↓) on floor panels</li>
+        <li>Estimated arrival time for waiting passengers</li>
+        <li>Audio announcements for accessibility</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 4 -->
+<div class="slide" id="s4" data-title="Non-Functional Requirements — Smart Building Scale">
+  <h1>Non-Functional Requirements — Smart Building Scale</h1>
+  <div class="two-col">
+    <div>
+      <h3>Performance</h3>
+      <ul>
+        <li>Elevator assignment within <strong>500 ms</strong></li>
+        <li>Real-time status updates &lt; 1 second latency</li>
+        <li>Handle <strong>1,000+ requests/min</strong> during peak hours</li>
+        <li>Support <strong>500+ elevators</strong> per system instance</li>
+      </ul>
+      <h3>Availability &amp; Reliability</h3>
+      <ul>
+        <li><strong>99.9% uptime</strong> — 8.7 hours downtime/year max</li>
+        <li>Zero single point of failure in dispatch service</li>
+        <li>Hot standby controller; local edge fallback</li>
+        <li>No missed floor requests (at-least-once delivery)</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Safety (Hard Requirements)</h3>
+      <ul>
+        <li>Emergency stop within <strong>1 second</strong></li>
+        <li>Overload detection enforced at hardware level</li>
+        <li>Fire mode: auto-dispatch all cars to ground floor</li>
+        <li>Earthquake mode: stop at nearest floor, open doors</li>
+      </ul>
+      <h3>Scalability &amp; Multi-Tenancy</h3>
+      <ul>
+        <li>Support <strong>100 buildings</strong> under single management</li>
+        <li>Multi-tenant data isolation per building</li>
+        <li>Cloud-based fleet management (AWS IoT Core)</li>
+        <li>Scale from 1 elevator (home) to 500 (campus)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 5 -->
+<div class="slide" id="s5" data-title="UML Class Diagram — Core Entities">
+  <h1>UML Class Diagram — Core LLD Entities</h1>
+  <pre>
+┌─────────────────┐       ┌──────────────────────┐       ┌──────────────────┐
+│    Building     │1    * │    ElevatorCar        │       │   Floor          │
+├─────────────────┤       ├──────────────────────┤       ├──────────────────┤
+│ id: int         │◆──────│ id: int               │       │ floorNumber: int │
+│ name: String    │       │ currentFloor: int     │       │ upButton: Button │
+│ totalFloors: int│       │ state: ElevatorState  │       │ downButton:Button│
+│ elevators: List │       │ upRequests: TreeSet   │       └──────┬───────────┘
+└─────────────────┘       │ downRequests: TreeSet │              │ notifies
+                          │ maxWeight: int        │       ┌──────▼───────────┐
+┌─────────────────┐       ├──────────────────────┤       │ElevatorController│
+│    Button       │       │ addRequest(r)         │       ├──────────────────┤
+├─────────────────┤       │ move()                │       │ elevators: List  │
+│ floor: int      │       │ openDoor()            │◄──────│ dispatch(req)    │
+│ direction: Dir  │       │ setState(state)       │       │ findBest(req)    │
+│ press()         │       │ notifyObservers()     │       └──────────────────┘
+└─────────────────┘       └──────────────────────┘
+                                                          ┌──────────────────┐
+┌─────────────────┐                                       │    Request       │
+│     Door        │                                       ├──────────────────┤
+├─────────────────┤                                       │ sourceFloor: int │
+│ isOpen: boolean │                                       │ destFloor: int   │
+│ open() / close()│                                       │ direction: Dir   │
+│ isObstructed()  │                                       │ source: EXTERNAL │
+└─────────────────┘                                       │                  │
+                                                          └──────────────────┘
+  </pre>
+  <p><em>Direction enum: UP | DOWN | IDLE &nbsp;·&nbsp; RequestSource: EXTERNAL (hall call) | INTERNAL (car call)</em></p>
+</div>
+
+<!-- SLIDE 6 -->
+<div class="slide" id="s6" data-title="Elevator State Machine — 5 States">
+  <h1>Elevator State Machine — State Pattern</h1>
+  <pre>
+              ┌─────────────────────────────────────────────────────┐
+              │  request received                                   │
+         ┌────▼─────┐  start moving up    ┌──────────────┐         │
+         │   IDLE   │────────────────────►│  MOVING_UP   │         │
+         └────┬─────┘                     └──────┬───────┘         │
+              │ start moving down                │ reached floor    │
+         ┌────▼──────────┐             ┌─────────▼────────┐        │
+         │  MOVING_DOWN  │◄────────────│   DOOR_OPEN      │────────┘
+         └───────────────┘ more reqs   └──────────────────┘
+                                              all done → IDLE
+         ┌─────────────────────────────────────────────────────┐
+         │  MAINTENANCE  (overrides all transitions above)     │
+         │  Trigger: technician lock, fault, emergency stop    │
+         └─────────────────────────────────────────────────────┘
+  </pre>
+  <div class="two-col">
+    <div>
+      <h3>State Interface (Java)</h3>
+      <pre>
+interface ElevatorState {
+    void move(Elevator e);
+    void addRequest(Elevator e, Request r);
+    Direction getDirection();
+}
+// 5 concrete states:
+// IdleState, MovingUpState,
+// MovingDownState, DoorOpenState,
+// MaintenanceState
+      </pre>
+    </div>
+    <div>
+      <h3>Why State Pattern?</h3>
+      <ul>
+        <li>Elevator delegates move() to current state object</li>
+        <li>addRequest() behaves differently per state</li>
+        <li>No giant if/else chains — each state is a class</li>
+        <li>Add new state = add new class only (Open/Closed)</li>
+        <li>setState() triggers notifyObservers() for displays</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 7 -->
+<div class="slide" id="s7" data-title="FCFS Scheduling — Simple But Starvation-Prone">
+  <h1>FCFS — First Come First Serve Scheduling</h1>
+  <div class="two-col">
+    <div>
+      <h3>How It Works</h3>
+      <ul>
+        <li>Process requests in exact arrival order</li>
+        <li>Elevator serves floor A, then B, then C — no reordering</li>
+        <li>Simple FIFO queue — easy to implement</li>
+      </ul>
+      <h3>Starvation Example</h3>
+      <pre>
+Queue: [10, 1, 10, 1, 10, 1]
+Elevator @ floor 5:
+  → 10  (5 floors up)
+  → 1   (9 floors down)  ← wasteful!
+  → 10  (9 floors up)
+  → 1   (9 floors down)
+Total: 32 floors for 4 requests
+      </pre>
+    </div>
+    <div>
+      <h3>Problems</h3>
+      <ul>
+        <li>Lots of direction reversals — high energy waste</li>
+        <li>Starvation: floor 5 waits while elevator ping-pongs</li>
+        <li>No benefit from locality of requests</li>
+        <li>Does not group same-direction requests</li>
+      </ul>
+      <h3>When to Use</h3>
+      <ul>
+        <li>Very low traffic (1–2 requests at a time)</li>
+        <li>Fair ordering required by policy (hospital, VIP)</li>
+        <li>Baseline for comparing other algorithms</li>
+      </ul>
+      <p class="callout warn">Fix starvation: aging — increase request priority every 30 sec. Force assignment when wait exceeds threshold (e.g., 3 minutes).</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 8 -->
+<div class="slide" id="s8" data-title="SCAN Algorithm — The Classic Elevator Algorithm">
+  <h1>SCAN — The Classic Elevator Algorithm</h1>
+  <p><em>Sweep from one end to the other, serving all requests along the way. Borrowed from disk scheduling.</em></p>
+  <div class="two-col">
+    <div>
+      <h3>Algorithm</h3>
+      <pre>
+Elevator @ floor 5, going UP
+Pending:  [2, 4, 8, 11, 14]
+
+Pass UP:   serve 8 → 11 → 14
+  → reach top floor (20)  ← always!
+  → reverse direction DOWN
+Pass DOWN: serve 4 → 2
+  → reach bottom floor (1)  ← always!
+  → reverse direction UP
+      </pre>
+      <h3>SCAN vs FCFS</h3>
+      <pre>
+FCFS: 32 floors travel
+SCAN: 5→14 (9 up) + 14→2 (12 down)
+    = 21 floors  (~34% fewer moves)
+      </pre>
+    </div>
+    <div>
+      <h3>Properties</h3>
+      <ul>
+        <li>No mid-sweep direction reversals</li>
+        <li>Predictable: worst case = 2 × building height</li>
+        <li>Prevents starvation — every floor visited each sweep</li>
+        <li>Requests at ends of sweep wait longest (unfair to extremes)</li>
+        <li><strong>Dead run:</strong> goes to end floor even with no requests there</li>
+      </ul>
+      <h3>Java Data Structures</h3>
+      <pre>
+TreeSet&lt;Integer&gt; upRequests;   // ascending
+TreeSet&lt;Integer&gt; downRequests; // descending
+// Moving UP:   serve upRequests.first()
+// Moving DOWN: serve downRequests.first()
+      </pre>
+      <p class="callout warn">SCAN wastes travel going to floor boundary when no requests exist there — LOOK fixes this.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 9 -->
+<div class="slide" id="s9" data-title="LOOK Algorithm — SCAN Without Dead Runs">
+  <h1>LOOK — SCAN Without the Dead Runs</h1>
+  <p><em>LOOK is identical to SCAN except it reverses at the <strong>last actual request</strong>, not the building boundary.</em></p>
+  <div class="two-col">
+    <div>
+      <h3>SCAN vs LOOK Comparison</h3>
+      <pre>
+Building: 20 floors  |  Pending: [2, 8, 11]
+
+SCAN:  5→8→11→20 (dead run!) →8→2
+       travel = 15 + 18 = 33 floors
+
+LOOK:  5→8→11 (reverse here!) →8→2
+       travel = 6  +  9 = 15 floors
+
+LOOK saves ~55% travel in this case
+      </pre>
+      <h3>Core Difference</h3>
+      <ul>
+        <li>SCAN: sweep to physical floor boundary</li>
+        <li>LOOK: sweep to logical boundary (last pending request)</li>
+        <li>LOOK = SCAN with early reversal</li>
+      </ul>
+    </div>
+    <div>
+      <h3>LOOK Implementation</h3>
+      <pre>
+def next_floor(self):
+    if self.direction == 'UP':
+        above = [f for f in pending
+                 if f &gt; self.current_floor]
+        if above:
+            return min(above)
+        else:
+            self.direction = 'DOWN'  # reverse!
+            return self.next_floor()
+    else:
+        below = [f for f in pending
+                 if f &lt; self.current_floor]
+        if below:
+            return max(below)
+        else:
+            self.direction = 'UP'   # reverse!
+            return self.next_floor()
+      </pre>
+      <p class="callout ok">LOOK is the preferred algorithm for most real-world elevator firmware. Use it as your default answer in interviews.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 10 -->
+<div class="slide" id="s10" data-title="Multi-Elevator Dispatch — Nearest Car + Zone-Based">
+  <h1>Multi-Elevator Dispatch Strategies</h1>
+  <div class="two-col">
+    <div>
+      <h3>Nearest Car (Priority Order)</h3>
+      <ol>
+        <li>Idle elevator closest to request floor</li>
+        <li>Moving elevator passing request in same direction</li>
+        <li>Moving elevator that will return on reversal</li>
+        <li>Least-loaded busy elevator (fallback)</li>
+      </ol>
+      <pre>
+cost(e, req) =
+  abs(e.floor - req.floor)
+  + penalty_for_direction_change
+  + queue_length × weight_factor
+      </pre>
+      <h3>Concurrency Safety</h3>
+      <ul>
+        <li>AtomicInteger for thread-safe floor tracking</li>
+        <li>synchronized addRequest() on each elevator</li>
+        <li>Redis distributed lock for fleet-level dispatch</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Zone-Based (Skyscraper)</h3>
+      <pre>
+100 floors, 10 elevators:
+  E1:  Floors  1–10  (lobby zone)
+  E2:  Floors 11–20
+  ...
+  E10: Floors 91–100 (sky lobby)
+Express:
+  EA:  Floors 1, 50, 100 (bypass)
+      </pre>
+      <h3>Dynamic Rebalancing</h3>
+      <ul>
+        <li>Morning rush: bias 7 elevators to lobby→office zones</li>
+        <li>Lunchtime: redistribute to restaurant floors</li>
+        <li>Zone spill: if zone elevator full &gt; 60 sec, reassign</li>
+      </ul>
+      <p class="callout info">Destination Dispatch: passenger enters destination before boarding; system groups by floor and assigns specific car. Used in Otis Compass, Schindler PORT.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 11 -->
+<div class="slide" id="s11" data-title="Request Processing — Hall Call vs Car Call">
+  <h1>Request Processing — Hall Call vs Car Call</h1>
+  <div class="two-col">
+    <div>
+      <h3>Hall Call (Floor Button)</h3>
+      <ul>
+        <li>Pressed on a floor by waiting passenger</li>
+        <li>Specifies direction: UP or DOWN only</li>
+        <li>Sent to ElevatorController for dispatch</li>
+        <li>Multiple elevators may be candidates</li>
+        <li>Assignment can change until elevator arrives</li>
+      </ul>
+      <h3>Car Call (Cabin Button)</h3>
+      <ul>
+        <li>Pressed inside the elevator cabin</li>
+        <li>Specifies exact destination floor</li>
+        <li>Bound to that specific elevator car</li>
+        <li>Cannot be reassigned to another elevator</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Request Merging (Key Optimization)</h3>
+      <pre>
+Elevator going UP, current floor = 3
+Pending upRequests: {5, 8, 12}
+
+Hall call: floor 7, direction UP
+  → insert 7 → serve 3→5→7→8→12
+  → zero extra travel cost!
+
+Car call: floor 6 (passenger inside)
+  → insert 6 → serve 3→5→6→7→8→12
+      </pre>
+      <h3>Request Lifecycle</h3>
+      <pre>
+PENDING → ASSIGNED → IN_SERVICE → COMPLETED
+         (dispatch)  (elevator    (passenger
+                      en route)    boards)
+      </pre>
+      <p class="callout ok">Merging same-direction requests in one pass is the core efficiency of LOOK/SCAN over FCFS.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 12 -->
+<div class="slide" id="s12" data-title="Overload &amp; Safety Systems">
+  <h1>Overload &amp; Safety Systems</h1>
+  <div class="two-col">
+    <div>
+      <h3>Weight Sensor</h3>
+      <pre>
+class WeightSensor {
+    int maxWeightKg;     // 1000 kg
+    int currentWeightKg; // load cell feed
+    boolean isOverloaded() {
+        return currentWeightKg &gt; maxWeightKg;
+    }
+}
+// In DoorCloseState:
+if (weightSensor.isOverloaded()) {
+    speaker.announce("Overloaded. Step out.");
+    return; // door stays open
+}
+door.close();
+e.setState(new MovingState());
+      </pre>
+      <h3>Door Obstruction</h3>
+      <pre>
+// IR beam across door frame
+if (doorSensor.isObstructed()) {
+    door.reopen();
+    startObstructionTimer(3_SECONDS);
+}
+      </pre>
+    </div>
+    <div>
+      <h3>Emergency Stop</h3>
+      <ul>
+        <li>Hardware button in cabin → immediate motor cutoff</li>
+        <li>Software: <code>setState(MaintenanceState)</code></li>
+        <li>Alert sent to building management system (BMS)</li>
+        <li>Intercom activated for passenger communication</li>
+      </ul>
+      <h3>Fire Alarm Protocol</h3>
+      <pre>
+void onFireAlarm() {
+    for (Elevator e : elevators) {
+        e.clearAllRequests();
+        e.addRequest(new Request(GROUND,
+                     Priority.EMERGENCY));
+        e.setState(new EmergencyState());
+    }
+    disableHallCallButtons();
+}
+      </pre>
+      <h3>Hardware Safety</h3>
+      <ul>
+        <li>Speed governor: cut power if &gt; 10 m/s</li>
+        <li>UPS: 30-min emergency operation on battery</li>
+        <li>Earthquake mode: stop at nearest floor, open doors</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 13 -->
+<div class="slide" id="s13" data-title="Smart Dispatch — ML-Based Time-of-Day Optimization">
+  <h1>Smart Dispatch — ML-Based Optimization</h1>
+  <p><em>Strategy Pattern: plug in MLDispatchStrategy without changing Elevator or Controller code.</em></p>
+  <div class="two-col">
+    <div>
+      <h3>Time-of-Day Patterns</h3>
+      <pre>
+08:00–09:30  Morning Rush
+  → Pre-position 70% of elevators at lobby
+  → Lobby → office floors (10–30) priority
+  → Express: skip floors 2–9
+
+12:00–13:00  Lunchtime
+  → Redistribute to restaurant floors
+  → Increase down-direction capacity
+
+17:30–18:30  Evening Exodus
+  → Office floors → lobby burst
+  → Cascade dispatch: fill quickly
+
+22:00–06:00  Night Mode
+  → 60% elevators in sleep mode
+  → Single elevator serves all calls
+      </pre>
+    </div>
+    <div>
+      <h3>ML Feature Inputs</h3>
+      <ul>
+        <li>Time of day, day of week, public holidays</li>
+        <li>Floor-level occupancy (badge scan data)</li>
+        <li>Historical request frequency per floor</li>
+        <li>Current elevator positions and loads</li>
+        <li>Calendar events (large meeting = floor surge)</li>
+      </ul>
+      <h3>Predictive Pre-Positioning</h3>
+      <pre>
+// Zero code change to Elevator class:
+controller.setStrategy(
+    new MLDispatchStrategy());
+
+scheduler.prePosition(
+    elevatorId = 3,
+    targetFloor = 1,   // lobby
+    triggerAt   = "08:45");
+// Mon-Fri pattern: 120 lobby requests at 09:00
+      </pre>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 14 -->
+<div class="slide" id="s14" data-title="Observer Pattern — Floor Buttons → Controller → Display">
+  <h1>Observer Pattern — Decoupled Event Propagation</h1>
+  <p><em>Floor buttons, weight sensors, door sensors publish events. Controller and displays subscribe.</em></p>
+  <div class="two-col">
+    <div>
+      <h3>Observer Interface &amp; Registration</h3>
+      <pre>
+interface ElevatorObserver {
+    void update(Elevator elevator);
+}
+class FloorDisplay implements ElevatorObserver {
+    public void update(Elevator e) {
+        System.out.println("Elevator " + e.getId()
+            + " @ floor " + e.getCurrentFloor()
+            + "  " + e.getDirection());
+    }
+}
+// Register observers:
+elevator.addObserver(new FloorDisplay());
+elevator.addObserver(new ElevatorController());
+elevator.addObserver(new MobileAppGateway());
+elevator.addObserver(new MaintenanceMonitor());
+      </pre>
+    </div>
+    <div>
+      <h3>Full Event Flow</h3>
+      <pre>
+Passenger presses floor 8 button
+  ↓
+Button.press() → Request command created
+  ↓
+ElevatorController.dispatch(request)
+  ↓
+Elevator.addRequest(request)
+  ↓
+Elevator moves → setState(DOOR_OPEN)
+  ↓
+notifyObservers():
+  → FloorDisplay updates floor number
+  → MobileApp sends ETA notification
+  → MaintenanceMonitor records event
+  → ElevatorController schedules next
+      </pre>
+      <p class="callout info">Adding a new observer (e.g., energy monitor) requires zero changes to Elevator or ElevatorController — pure Open/Closed principle.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 15 -->
+<div class="slide" id="s15" data-title="Emergency Mode &amp; Maintenance Lockout">
+  <h1>Emergency Mode &amp; Maintenance Lockout</h1>
+  <div class="two-col">
+    <div>
+      <h3>EmergencyState Behavior</h3>
+      <pre>
+class EmergencyState implements ElevatorState {
+    public void addRequest(Elevator e, Request r) {
+        log.warn("EMERGENCY: request ignored");
+    }
+    public void move(Elevator e) {
+        if (e.getCurrentFloor() != GROUND) {
+            e.setCurrentFloor(
+              e.getCurrentFloor() - 1);
+        } else {
+            e.getDoor().open(); // stay open
+        }
+    }
+    public Direction getDirection() {
+        return Direction.DOWN;
+    }
+}
+      </pre>
+    </div>
+    <div>
+      <h3>Fire Alarm Trigger Chain</h3>
+      <pre>
+FireAlarmSystem → ElevatorController
+  → ALL elevators → EmergencyState
+  → All elevators descend to GROUND
+  → Hall call buttons DISABLED
+  → Doors stay open at ground floor
+  → Reset only by Fire Marshal code
+      </pre>
+      <h3>MaintenanceState</h3>
+      <ul>
+        <li>Triggered by: technician keyswitch, fault detection</li>
+        <li>Ignores all hall calls and car calls entirely</li>
+        <li>Door controlled manually by technician only</li>
+        <li>Display: shows OUT OF SERVICE to all floors</li>
+        <li>Exit: requires admin PIN + full health check pass</li>
+      </ul>
+      <p class="callout warn">MAINTENANCE can only exit via explicit admin command — never triggered by a passenger event.</p>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 16 -->
+<div class="slide" id="s16" data-title="Distributed Variant — Multi-Building Fleet API">
+  <h1>Distributed Variant — Multi-Building Fleet Management</h1>
+  <pre>
+┌────────────────────────────────────────────────────────────────────┐
+│                   Fleet Management Cloud (Central)                 │
+│  ┌─────────────────┐  ┌──────────────────┐  ┌──────────────────┐  │
+│  │ Dispatch Service│  │ Analytics Svc    │  │ Maintenance ML   │  │
+│  │ LOOK/Zone/ML    │  │ Usage patterns   │  │ Fault detection  │  │
+│  └────────┬────────┘  └──────────────────┘  └──────────────────┘  │
+│  ┌────────▼──────────────────────────────────────────────────────┐ │
+│  │  Kafka: elevator.telemetry | elevator.requests | alerts       │ │
+│  └────────┬───────────────────────────────┬───────────────────────┘ │
+└───────────┼───────────────────────────────┼────────────────────────┘
+            │ MQTT over TLS                 │
+  ┌─────────▼──────────┐        ┌───────────▼──────────┐
+  │  Building A        │        │  Building B           │
+  │  10 Elevators      │        │  8 Elevators          │
+  │  Edge: LOOK algo   │        │  Edge: LOOK algo      │
+  └────────────────────┘        └──────────────────────┘
+  </pre>
+  <div class="two-col">
+    <div>
+      <h3>Fleet REST API</h3>
+      <pre>
+POST /api/v1/buildings/{id}/call-elevator
+GET  /api/v1/elevators/{id}/status
+POST /api/v1/elevators/{id}/emergency-stop
+POST /api/v1/elevators/{id}/maintenance-lock
+GET  /api/v1/buildings/{id}/analytics
+      </pre>
+    </div>
+    <div>
+      <h3>Edge + Cloud Split</h3>
+      <ul>
+        <li>Edge: LOOK scheduling, safety enforcement, low latency</li>
+        <li>Cloud: cross-elevator optimization, ML pre-positioning</li>
+        <li>Offline resilience: edge runs autonomously if cloud fails</li>
+        <li>Device shadow: sync desired vs reported state (IoT Core)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 17 -->
+<div class="slide" id="s17" data-title="ER Diagram — Database Entities">
+  <h1>ER Diagram — Entities &amp; Relationships</h1>
+  <pre>
+┌──────────────┐         ┌──────────────────┐         ┌──────────────────┐
+│   buildings  │1      * │    elevators      │1      * │    requests      │
+├──────────────┤         ├──────────────────┤         ├──────────────────┤
+│ id (PK)      │─────────│ id (PK)          │─────────│ id (PK)          │
+│ name         │         │ building_id (FK) │         │ elevator_id (FK) │
+│ address      │         │ current_floor    │         │ source_floor     │
+│ total_floors │         │ status           │         │ dest_floor       │
+└──────────────┘         │ direction        │         │ direction        │
+                         │ max_weight_kg    │         │ status           │
+┌──────────────┐         │ zone_min_floor   │         │ requested_at     │
+│    floors    │         │ zone_max_floor   │         │ completed_at     │
+├──────────────┤         └────────┬─────────┘         └──────────────────┘
+│ id (PK)      │                  │ 1
+│ building_id  │                  │ *
+│ floor_number │         ┌────────▼──────────┐
+│ has_up_btn   │         │ maintenance_logs   │
+│ has_down_btn │         ├───────────────────┤
+└──────────────┘         │ elevator_id (FK)  │
+                         │ fault_type        │
+                         │ description       │
+                         │ logged_at         │
+                         │ resolved_at       │
+                         └───────────────────┘
+  </pre>
+  <p><em>Redis: elevator state (hash), request queue (sorted set by priority), distributed locks (string + TTL)</em></p>
+</div>
+
+<!-- SLIDE 18 -->
+<div class="slide" id="s18" data-title="DB Schema DDL — Core Tables">
+  <h1>DB Schema DDL — PostgreSQL</h1>
+  <pre>
+CREATE TABLE elevators (
+    id                SERIAL PRIMARY KEY,
+    building_id       INT NOT NULL REFERENCES buildings(id),
+    current_floor     INT NOT NULL DEFAULT 1,
+    status            VARCHAR(20) NOT NULL DEFAULT 'IDLE',
+      -- IDLE | MOVING_UP | MOVING_DOWN | DOOR_OPEN | MAINTENANCE | EMERGENCY
+    direction         VARCHAR(10) DEFAULT 'IDLE',
+    max_weight_kg     INT NOT NULL DEFAULT 1000,
+    current_weight_kg INT DEFAULT 0,
+    zone_min_floor    INT,
+    zone_max_floor    INT,
+    last_maintenance  TIMESTAMP,
+    updated_at        TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE requests (
+    id               SERIAL PRIMARY KEY,
+    elevator_id      INT REFERENCES elevators(id),
+    source_floor     INT NOT NULL,
+    dest_floor       INT,           -- NULL for hall calls (direction only)
+    direction        VARCHAR(5)  NOT NULL,   -- UP | DOWN
+    status           VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+      -- PENDING | ASSIGNED | IN_SERVICE | COMPLETED | CANCELLED
+    priority         VARCHAR(10) DEFAULT 'NORMAL',  -- NORMAL | VIP | EMERGENCY
+    requested_at     TIMESTAMP DEFAULT NOW(),
+    completed_at     TIMESTAMP
+);
+
+CREATE INDEX idx_requests_elevator ON requests(elevator_id, status);
+CREATE INDEX idx_elevators_building ON elevators(building_id, status);
+  </pre>
+</div>
+
+<!-- SLIDE 19 -->
+<div class="slide" id="s19" data-title="Design Patterns Used — State, Strategy, Observer, Command">
+  <h1>Design Patterns Used — Full Summary</h1>
+  <div class="two-col">
+    <div>
+      <h3>State Pattern</h3>
+      <ul>
+        <li><code>ElevatorState</code> interface → 5 concrete states</li>
+        <li>Elevator delegates <code>move()</code> and <code>addRequest()</code> to state</li>
+        <li>Add new state = add new class (Open/Closed Principle)</li>
+      </ul>
+      <h3>Strategy Pattern</h3>
+      <ul>
+        <li><code>ElevatorSelectionStrategy</code> → NearestElevator, ZoneBased, ML</li>
+        <li><code>SchedulerStrategy</code> → FCFS, SCAN, LOOK, SSTF, DestDispatch</li>
+        <li>Swap at runtime: <code>controller.setStrategy(new LookStrategy())</code></li>
+        <li>A/B test schedulers in production without restart</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Observer Pattern</h3>
+      <ul>
+        <li><code>ElevatorObserver</code> → FloorDisplay, Controller, MobileGateway</li>
+        <li>Elevator calls <code>notifyObservers()</code> on every state/floor change</li>
+        <li>Decouples elevator logic from UI and external systems</li>
+      </ul>
+      <h3>Command Pattern</h3>
+      <ul>
+        <li>Button press → <code>Request</code> command object (floor, direction, source)</li>
+        <li>Queued in ElevatorController for async dispatch</li>
+        <li>Supports: cancel, retry, priority override, audit log</li>
+      </ul>
+      <h3>Singleton</h3>
+      <ul>
+        <li>ElevatorSystem — building-scoped singleton via <code>getInstance()</code></li>
+        <li>Single dispatch authority; thread-safe via <code>synchronized</code></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 20 -->
+<div class="slide" id="s20" data-title="Trade-offs — SCAN vs LOOK vs SSTF">
+  <h1>Trade-off Analysis</h1>
+  <table>
+    <thead>
+      <tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Winner &amp; Why</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Scheduling</td>
+        <td>FCFS (simple)</td>
+        <td>LOOK (efficient)</td>
+        <td>LOOK — 30–55% less travel, no starvation</td>
+      </tr>
+      <tr>
+        <td>SCAN vs LOOK</td>
+        <td>SCAN (to ends)</td>
+        <td>LOOK (last request)</td>
+        <td>LOOK — dead runs to boundaries waste energy</td>
+      </tr>
+      <tr>
+        <td>LOOK vs SSTF</td>
+        <td>SSTF (greedy nearest)</td>
+        <td>LOOK (sweep)</td>
+        <td>LOOK — SSTF starves far floors without aging</td>
+      </tr>
+      <tr>
+        <td>Dispatcher</td>
+        <td>Centralized cloud</td>
+        <td>Edge per building</td>
+        <td>Hybrid — edge for latency, cloud for ML</td>
+      </tr>
+      <tr>
+        <td>Request Queue</td>
+        <td>Single queue</td>
+        <td>Two TreeSets (up/down)</td>
+        <td>Two TreeSets — O(log n) insert, O(1) next floor</td>
+      </tr>
+      <tr>
+        <td>Concurrency</td>
+        <td>Single thread</td>
+        <td>Thread per elevator</td>
+        <td>Thread per elevator — isolated failures</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="callout info">Key insight: Two <code>TreeSet</code>s (upRequests ascending, downRequests descending) make LOOK trivially efficient — just call <code>.first()</code> to get next floor in either direction. O(log n) insert, O(1) next.</p>
+</div>
+
+<!-- SLIDE 21 -->
+<div class="slide" id="s21" data-title="Senior Q&amp;A 1 — 10 Elevators, 100-Floor Skyscraper">
+  <h1>Senior Q&amp;A 1 — 100-Floor Skyscraper Design</h1>
+  <div class="qa">
+    <div class="q">Q: You have 10 elevators in a 100-floor skyscraper. Peak hour: 200 people arrive at lobby every minute. Design the dispatch strategy.</div>
+    <div class="a">
+      <strong>Answer:</strong>
+      <ul>
+        <li><strong>Zone partition</strong> — assign each elevator a 10-floor zone (E1: 1–10, E2: 11–20, …, E10: 91–100)</li>
+        <li><strong>Peak rebalancing</strong> — bias 7 elevators to lobby→office zones (floors 1–70), 3 for upper floors</li>
+        <li><strong>Destination Dispatch</strong> — lobby kiosk: passenger enters floor, system groups by zone, assigns specific car → fewer stops per trip</li>
+        <li><strong>Pre-positioning</strong> — move 8 elevators to lobby at 08:55 based on historical Monday pattern data</li>
+        <li><strong>Batch filling</strong> — don't dispatch until car is &gt;80% capacity (group control reduces total trips)</li>
+        <li><strong>Express elevators</strong> — dedicate 2 cars as non-stop: floors 1→50, 1→100 (sky lobby bypass)</li>
+        <li><strong>Starvation guard</strong> — if any floor waits &gt;3 min, override zone assignment and force dispatch</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 22 -->
+<div class="slide" id="s22" data-title="Senior Q&amp;A 2 — Peak Hour Rush Hour">
+  <h1>Senior Q&amp;A 2 — Peak Hour Rush</h1>
+  <div class="qa">
+    <div class="q">Q: It is 9:00 AM Monday. 500 employees arrive in 30 minutes. Average office is floors 10–30. How do you optimize elevator throughput?</div>
+    <div class="a">
+      <strong>Answer:</strong>
+      <ul>
+        <li><strong>ML pre-positioning</strong> — model detects Mon 09:00 pattern; moves 80% of elevators to lobby by 08:50</li>
+        <li><strong>Express upward priority</strong> — disable DOWN requests from lobby floors during 08:45–09:30 window</li>
+        <li><strong>Destination Dispatch kiosks</strong> — open at 08:45; first elevator dispatched within 30 sec with full load</li>
+        <li><strong>Dynamic zone shift</strong> — double-assign elevators to floors 10–30 (peak office density zone)</li>
+        <li><strong>Cascade dispatch</strong> — as elevator doors close, immediately dispatch next car to lobby</li>
+        <li><strong>Capacity math</strong> — 10 elevators × 15 persons × 12 trips/hr = 1,800 persons/hr throughput</li>
+        <li><strong>Starvation protection</strong> — aging mechanism ensures floor 35+ gets service within 3 minutes</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 23 -->
+<div class="slide" id="s23" data-title="Senior Q&amp;A 3 — Elevator Stuck Mid-Floor">
+  <h1>Senior Q&amp;A 3 — Elevator Stuck Between Floors</h1>
+  <div class="qa">
+    <div class="q">Q: An elevator is stuck between floors 7 and 8. Passengers are inside. Walk through the full recovery sequence.</div>
+    <div class="a">
+      <strong>Recovery sequence:</strong>
+      <ol>
+        <li><strong>Detect</strong> — position sensor mismatch auto-triggers MaintenanceState; all car calls disabled immediately</li>
+        <li><strong>Communicate</strong> — intercom activates automatically; operator speaks to passengers to calm them</li>
+        <li><strong>Alert</strong> — emergency dispatch: nearest technician notified via SMS + maintenance app push notification</li>
+        <li><strong>Slow-speed rescue</strong> — motor creeps car to floor 7 (nearest floor below) at &lt;0.3 m/s on backup UPS power</li>
+        <li><strong>Manual door release</strong> — technician uses emergency key; door opens at floor 7 landing level</li>
+        <li><strong>Reroute</strong> — adjacent elevator immediately reassigned to serve floor 8 passengers</li>
+        <li><strong>Log</strong> — incident written to maintenance_logs with fault_type, description, timestamp, elevator_id</li>
+        <li><strong>Lockout</strong> — car stays in MAINTENANCE until mechanical inspection passes and admin unlocks</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 24 -->
+<div class="slide" id="s24" data-title="Quick Numbers — Fleet Scale &amp; SLAs">
+  <h1>Quick Numbers — Fleet Scale &amp; SLAs</h1>
+  <div class="two-col">
+    <div>
+      <h3>Capacity Numbers</h3>
+      <table>
+        <tr><td>Buildings managed</td><td>100</td></tr>
+        <tr><td>Elevators per building</td><td>10 avg</td></tr>
+        <tr><td>Daily rides per elevator</td><td>500</td></tr>
+        <tr><td>Total daily rides (fleet)</td><td>500,000</td></tr>
+        <tr><td>Peak RPS</td><td>~28 req/sec</td></tr>
+        <tr><td>Telemetry messages/day</td><td>86.4 million</td></tr>
+        <tr><td>Total storage (5 years)</td><td>~12 TB</td></tr>
+      </table>
+    </div>
+    <div>
+      <h3>SLA Targets</h3>
+      <table>
+        <tr><td>Dispatch latency</td><td>500 ms</td></tr>
+        <tr><td>Emergency stop</td><td>&lt; 1 second</td></tr>
+        <tr><td>System uptime</td><td>99.9%</td></tr>
+        <tr><td>Status update lag</td><td>&lt; 1 second</td></tr>
+        <tr><td>Max starvation wait</td><td>3 minutes</td></tr>
+      </table>
+      <h3>Algorithm Complexity</h3>
+      <ul>
+        <li>Request assignment: O(n) — n elevators linear scan</li>
+        <li>Next floor (LOOK): O(log r) — TreeSet.first() on r requests</li>
+        <li>Space: O(e × r) — elevators × requests per elevator</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- SLIDE 25 -->
+<div class="slide" id="s25" data-title="Closing — Key Takeaways">
+  <h1>Closing — What Signals Seniority</h1>
+  <div class="two-col">
+    <div>
+      <h3>Algorithm Decisions</h3>
+      <ul>
+        <li><strong>LOOK &gt; SCAN &gt; FCFS</strong> — always recommend LOOK as default</li>
+        <li><strong>Two TreeSets</strong> (up ascending, down descending) = natural LOOK data structure</li>
+        <li><strong>Zone-based + Destination Dispatch</strong> for 100-floor skyscrapers</li>
+        <li><strong>ML pre-positioning</strong> for peak-hour efficiency (Strategy Pattern)</li>
+      </ul>
+      <h3>Architecture Signals</h3>
+      <ul>
+        <li><strong>State Pattern</strong> — elevator behavior is 100% state-driven; add state = add class</li>
+        <li><strong>Strategy Pattern</strong> — swap scheduler without touching Elevator class</li>
+        <li><strong>Observer Pattern</strong> — decouple displays, controller, and monitoring</li>
+        <li><strong>Command Pattern</strong> — encapsulate button presses; supports cancel + retry</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Concurrency &amp; Safety</h3>
+      <ul>
+        <li><strong>AtomicInteger + synchronized</strong> — thread-safe floor tracking and requests</li>
+        <li><strong>WeightSensor + DoorSensor</strong> — safety enforced at state transition layer</li>
+        <li><strong>EmergencyState overrides all</strong> — never reachable by passenger input alone</li>
+      </ul>
+      <h3>Scaling Signals</h3>
+      <ul>
+        <li><strong>Hybrid dispatch:</strong> edge for low latency + cloud for ML and analytics</li>
+        <li><strong>Kafka for telemetry:</strong> 86M messages/day at fleet scale</li>
+        <li><strong>Redis for state:</strong> shared locks, request queues, fast status lookups</li>
+      </ul>
+      <p class="callout ok">Demonstrating state machines + scheduling theory + four design patterns + concurrency + fleet scaling signals genuine senior-level design thinking.</p>
+    </div>
+  </div>
+</div>
+
+</div><!-- /slide-area -->
+  <div id="controls"><button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button><div id="slide-dots"></div><div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div></div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

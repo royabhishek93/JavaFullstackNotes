@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-Commerce Platform System Design</title>
+<link rel="stylesheet" href="../../sd-player.css">
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">E-Commerce Platform System Design — like Amazon</span>
+    <span id="counter">1 / 25</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <!-- s1: Title -->
+    <div class="slide active" id="s1" data-title="E-Commerce Platform System Design — like Amazon">
+      <div class="title-wrap">
+        <div style="font-size:3.5rem;margin-bottom:12px">🛒</div>
+        <h1 class="gradient-text">E-Commerce Platform</h1>
+        <p style="font-size:1.1rem;color:#94a3b8;margin:6px 0 4px">System Design — like Amazon</p>
+        <p style="font-size:.85rem;color:#64748b;margin-bottom:20px">Design Real Examples: Amazon · Flipkart · Myntra · Meesho</p>
+        <div class="tags" style="justify-content:center">
+          <span class="badge">🗂 Product Catalog</span>
+          <span class="badge">🛒 Cart Service</span>
+          <span class="badge">📦 Order Management</span>
+          <span class="badge">🏭 Inventory</span>
+          <span class="badge">🔍 Search</span>
+          <span class="badge">💳 Payments</span>
+        </div>
+        <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+          <span class="pill green">99.99% Availability</span>
+          <span class="pill blue">100K Search QPS</span>
+          <span class="pill yellow">Zero Overselling</span>
+          <span class="pill purple">10M MAU</span>
+        </div>
+        <p style="font-size:.75rem;color:#334155;margin-top:18px">System Design Interview Series · Interview With Bunny</p>
+      </div>
+    </div>
+
+    <!-- s2: Interview Opening Script -->
+    <div class="slide" id="s2" data-title="Interview Opening Script">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Opening — When Interviewer Says "Design Amazon"</h2>
+      <div class="quote">
+        "The core challenge here is <strong>inventory consistency</strong> — preventing overselling when thousands of users simultaneously attempt to buy the last item in stock. Unlike most systems where eventual consistency is fine, the checkout flow requires <strong>strong consistency</strong>: we cannot let two users both successfully purchase the same last unit.<br><br>
+        Every design decision in the checkout path is driven by: <em>'what happens if this step fails — does inventory stay permanently locked?'</em><br><br>
+        Let me clarify requirements first."
+      </div>
+      <h3 style="margin-top:12px">Requirements Gathering</h3>
+      <table class="tbl">
+        <tr><th>You Ask</th><th>Interviewer Says</th></tr>
+        <tr><td>Full platform or specific subsystem?</td><td>Core: search, cart, checkout, payment, tracking</td></tr>
+        <tr><td>What's the scale?</td><td>10M MAU, 10 orders/sec, 100K searches/sec peak</td></tr>
+        <tr><td>Handle flash sales with limited stock?</td><td>Yes — concurrent users, overselling is unacceptable</td></tr>
+        <tr><td>Multi-seller or single seller?</td><td>Multiple sellers, we own inventory (like FBA)</td></tr>
+        <tr><td>Consistency trade-offs?</td><td>Search/cache: eventual OK. Checkout/inventory/payments: strong</td></tr>
+        <tr><td>Real-time order tracking?</td><td>Yes — status updates within seconds of state change</td></tr>
+      </table>
+    </div>
+
+    <!-- s3: Functional Requirements -->
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Functional Requirements</h2>
+      <div class="cols2">
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>Core User Flows</h3>
+            <ul>
+              <li>Search products by name, category, filters, ratings</li>
+              <li>View product details + images + variants</li>
+              <li>Add items to cart (cross-device sync)</li>
+              <li>Checkout with address + payment method</li>
+              <li>Real-time order status tracking</li>
+              <li>Cancel order / initiate return + refund</li>
+            </ul>
+          </div>
+          <div class="card purple">
+            <h3>Seller / Admin Flows</h3>
+            <ul>
+              <li>List products with flexible attributes per category</li>
+              <li>Manage inventory and warehouse stock levels</li>
+              <li>Process refunds and returns workflow</li>
+              <li>View sales analytics dashboard</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="card green" style="margin-bottom:8px">
+            <h3>System Flows</h3>
+            <ul>
+              <li>Product catalog sync to Elasticsearch via CDC pipeline</li>
+              <li>Inventory reservation during checkout window (15 min)</li>
+              <li>Payment webhook processing — idempotent, signature-validated</li>
+              <li>Kafka-driven post-payment: notifications, warehouse, analytics</li>
+              <li>Recommendation engine — collaborative filtering + content-based</li>
+            </ul>
+          </div>
+          <div class="card yellow">
+            <h3>Out of Scope</h3>
+            <ul>
+              <li>Ad / sponsored product system</li>
+              <li>Multi-currency settlement</li>
+              <li>Seller onboarding workflow</li>
+              <li>Logistics carrier integration</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s4: Non-Functional Requirements -->
+    <div class="slide" id="s4" data-title="Non-Functional Requirements">
+      <div class="section-label">📋 Requirements</div>
+      <h2>Non-Functional Requirements</h2>
+      <div class="cols3" style="margin-bottom:10px">
+        <div class="stat"><div class="val" style="color:#3b82f6">99.99%</div><div class="lbl">Checkout Availability</div></div>
+        <div class="stat"><div class="val" style="color:#22c55e">&lt;100ms</div><div class="lbl">Search Cache Hit</div></div>
+        <div class="stat"><div class="val" style="color:#f59e0b">10×</div><div class="lbl">Black Friday Spike</div></div>
+        <div class="stat"><div class="val" style="color:#8b5cf6">100K</div><div class="lbl">Search QPS Peak</div></div>
+        <div class="stat"><div class="val" style="color:#06b6d4">&lt;3s</div><div class="lbl">Checkout End-to-End</div></div>
+        <div class="stat"><div class="val" style="color:#ef4444">0</div><div class="lbl">Oversells Allowed</div></div>
+      </div>
+      <table class="tbl">
+        <tr><th>Requirement</th><th>Target</th><th>Why It Matters</th></tr>
+        <tr><td>Checkout availability</td><td><span class="pill green">99.99%</span></td><td>Revenue loss = $10K+/min during outage</td></tr>
+        <tr><td>Search latency (p95)</td><td>&lt;500ms ES · &lt;50ms cached</td><td>User abandons after 1s wait</td></tr>
+        <tr><td>Product page load</td><td>&lt;200ms</td><td>Redis cache hit &lt;50ms</td></tr>
+        <tr><td>Inventory consistency</td><td>Strong (ACID)</td><td>Overselling = business disaster + refunds</td></tr>
+        <tr><td>Search/cache consistency</td><td>Eventual (1–2s lag)</td><td>Stale search result for 2s is acceptable</td></tr>
+        <tr><td>Black Friday scale</td><td>100 orders/sec (10× normal)</td><td>Flash sales, limited-stock events</td></tr>
+        <tr><td>RPO — orders/inventory</td><td>&lt;1 second</td><td>Synchronous replication to standby</td></tr>
+        <tr><td>RTO — full failover</td><td>&lt;5 minutes</td><td>Automated Route53 + DB promotion</td></tr>
+      </table>
+    </div>
+
+    <!-- s5: HLD -->
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <div class="section-label">🏛 HLD</div>
+      <h2>High-Level Architecture</h2>
+      <div class="dia">USER (Mobile / Web)
+     │ HTTPS
+     ▼
+┌────────────────────────────────────┐
+│  API Gateway                       │  Auth · Rate Limiting · Routing
+└──┬──────────┬──────────┬───────────┘
+   │          │          │
+   ▼          ▼          ▼
+┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐
+│ User   │ │ Search │ │ Product  │ │  Cart    │
+│  Svc   │ │  Svc   │ │   Svc   │ │   Svc   │
+│ MySQL  │ │   ES   │ │ MongoDB  │ │Postgres │
+└────────┘ └───┬────┘ └────┬─────┘ └──────────┘
+               │ CDC ◄─────┘ (oplog → Kafka → ES indexer)
+               ▼
+     ┌──────────────────────────────────────┐
+     │            K A F K A                 │
+     │ product.updated  │  order.created    │
+     │ payment.success  │  order.shipped    │
+     └──┬───────────┬───────────┬───────────┘
+        ▼           ▼           ▼           ▼
+  ┌──────────┐ ┌────────┐ ┌──────────┐ ┌──────────────┐
+  │Inventory │ │ Order  │ │ Payment  │ │Notification  │
+  │   Svc    │ │  Svc   │ │   Svc   │ │    Svc       │
+  │ Postgres │ │ MySQL  │ │  MySQL  │ │ Email/SMS    │
+  │qty-source│ │        │ │ Stripe  │ │  /Push       │
+  └────┬─────┘ └────────┘ └──────────┘ └──────────────┘
+       │ CDC → Redis cache invalidation
+       ▼
+  ┌──────────────────────────────────────────────────┐
+  │ Redis  cart:{uid}·7d   │  product:{pid}·30m      │
+  │        search·10m      │  lock:inventory:{pid}·30s│
+  └──────────────────────────────────────────────────┘</div>
+    </div>
+
+    <!-- s6: Product Catalog -->
+    <div class="slide" id="s6" data-title="Product Catalog Design">
+      <div class="section-label">⚙️ Core Services</div>
+      <h2>Product Catalog — MongoDB + Flexible Schema</h2>
+      <div class="cols2">
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>Why MongoDB (not PostgreSQL)?</h3>
+            <p>Different product types have completely different attributes:</p>
+            <ul style="margin-top:5px">
+              <li><strong>Phones:</strong> RAM, storage, processor, display size</li>
+              <li><strong>Books:</strong> author, ISBN, publisher, edition</li>
+              <li><strong>Clothing:</strong> size, color, material, fit</li>
+            </ul>
+            <p style="margin-top:6px">Flexible schema avoids 200-column sparse tables or EAV anti-pattern. New category = just insert a document with new fields.</p>
+          </div>
+          <div class="card yellow">
+            <h3>Product Hierarchy</h3>
+            <ul>
+              <li><strong>Category</strong> → Electronics &gt; Phones</li>
+              <li><strong>Product Group</strong> → iPhone 15 Pro</li>
+              <li><strong>SKU / Variant</strong> → 256GB, Titanium Black</li>
+              <li><strong>Seller Listing</strong> → price, qty per seller</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card green">
+          <h3>MongoDB Document Schema</h3>
+          <div class="dia" style="margin:5px 0;font-size:10px">{
+  <span class="str">"_id"</span>: <span class="str">"PROD_ABC"</span>,
+  <span class="str">"title"</span>: <span class="str">"Apple iPhone 15 Pro"</span>,
+  <span class="str">"category"</span>: <span class="str">"electronics/phones"</span>,
+  <span class="str">"price"</span>: <span class="num">999.99</span>,
+  <span class="str">"images"</span>: [<span class="str">"s3://bucket/img1.jpg"</span>],
+  <span class="str">"rating"</span>: <span class="num">4.7</span>,
+  <span class="str">"reviews_count"</span>: <span class="num">12450</span>,
+  <span class="str">"specifications"</span>: {    <span class="cm">// FLEXIBLE FIELD</span>
+    <span class="str">"RAM"</span>: <span class="str">"8GB"</span>,
+    <span class="str">"storage"</span>: <span class="str">"256GB"</span>,
+    <span class="str">"chip"</span>: <span class="str">"A17 Pro"</span>,
+    <span class="str">"display"</span>: <span class="str">"6.1-inch OLED"</span>
+  },
+  <span class="str">"variants"</span>: [{
+    <span class="str">"sku"</span>: <span class="str">"IP15P-256-BLK"</span>,
+    <span class="str">"color"</span>: <span class="str">"Titanium Black"</span>,
+    <span class="str">"storage"</span>: <span class="str">"256GB"</span>
+  }]
+}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s7: Search with Elasticsearch -->
+    <div class="slide" id="s7" data-title="Search — Elasticsearch + CDC Pipeline">
+      <div class="section-label">⚙️ Core Services</div>
+      <h2>Search — Elasticsearch + CDC Pipeline</h2>
+      <div class="cols2">
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>ES Query Strategy</h3>
+            <div class="dia" style="font-size:10px">GET /products/_search
+{
+  <span class="str">"query"</span>: { <span class="str">"bool"</span>: {
+    <span class="str">"must"</span>: [{ <span class="str">"multi_match"</span>: {
+      <span class="str">"query"</span>: <span class="str">"laptop"</span>,
+      <span class="str">"fields"</span>: [<span class="str">"title^3"</span>, <span class="str">"description"</span>,
+               <span class="str">"brand"</span>]   <span class="cm">// title^3 = 3x boost</span>
+    }}],
+    <span class="str">"filter"</span>: [
+      {<span class="str">"term"</span>: {<span class="str">"category"</span>: <span class="str">"electronics"</span>}},
+      {<span class="str">"range"</span>: {<span class="str">"price"</span>: {<span class="str">"lte"</span>: <span class="num">1000</span>}}},
+      {<span class="str">"range"</span>: {<span class="str">"qty"</span>: {<span class="str">"gt"</span>: <span class="num">0</span>}}}
+    ]
+  }},
+  <span class="str">"aggs"</span>: { <span class="cm">// Faceted filter counts</span>
+    <span class="str">"brands"</span>: {<span class="str">"terms"</span>:{<span class="str">"field"</span>:<span class="str">"brand"</span>}},
+    <span class="str">"price_ranges"</span>: {<span class="str">"range"</span>:{
+      <span class="str">"field"</span>:<span class="str">"price"</span>,
+      <span class="str">"ranges"</span>:[{<span class="str">"to"</span>:<span class="num">500</span>},{<span class="str">"from"</span>:<span class="num">500</span>,<span class="str">"to"</span>:<span class="num">1000</span>}]
+    }}
+  }
+}</div>
+          </div>
+        </div>
+        <div>
+          <div class="card green" style="margin-bottom:8px">
+            <h3>CDC Sync Pipeline</h3>
+            <p>MongoDB product update</p>
+            <p style="margin:3px 0">→ <strong>oplog change stream</strong> (Kafka Connect MongoDB Source)</p>
+            <p style="margin:3px 0">→ Kafka topic: <strong>product.changes</strong></p>
+            <p style="margin:3px 0">→ ES indexer: bulk API, 100 events/2s batch</p>
+            <p style="margin-top:5px"><span class="pill green">Lag: 1–2 seconds</span> — eventual, acceptable</p>
+            <p style="margin-top:5px">If ES down → indexer pauses at Kafka offset, replays on recovery. <strong>No data lost. No code change in Product Svc.</strong></p>
+          </div>
+          <div class="card yellow">
+            <h3>Redis Search Cache</h3>
+            <ul>
+              <li>Key: <code>search:{hash(query+filters+sort)}</code></li>
+              <li>TTL: 10 minutes · Hit rate: <strong>60–70%</strong></li>
+              <li>Top 10K queries pre-warmed 1hr before sales</li>
+              <li>Cluster: 10 nodes, 5 primary shards → 100K QPS</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s8: Inventory Management -->
+    <div class="slide" id="s8" data-title="Inventory — Two-Layer Locking">
+      <div class="section-label">⚙️ Core Services</div>
+      <h2>Inventory Management — Preventing Overselling</h2>
+      <div class="tip"><strong>Key insight:</strong> Never deduct qty during checkout. Use <strong>reserved_qty</strong> column. Actual deduction happens ONLY after payment.success webhook.</div>
+      <div class="cols2" style="margin-top:8px">
+        <div class="card red">
+          <h3>Layer 1 — Redis SETNX (1ms pre-filter)</h3>
+          <div class="dia" style="font-size:10px"><span class="cm"># Fast early rejection — before touching DB</span>
+SETNX <span class="str">lock:inventory:{product_id}</span>
+      <span class="str">{session_id}</span> EX <span class="num">30</span>
+
+→ Returns <span class="num">1</span>: lock acquired, proceed to DB
+→ Returns <span class="num">0</span>: another checkout in progress
+  → HTTP 409 "Product being reserved"
+
+<span class="cm"># WHY: Rejects 9,999 of 10,000 concurrent
+# checkouts in 1ms without touching Postgres
+# EX 30 = auto-expire prevents deadlock
+# if service crashes mid-checkout</span></div>
+        </div>
+        <div class="card blue">
+          <h3>Layer 2 — PostgreSQL FOR UPDATE</h3>
+          <div class="dia" style="font-size:10px"><span class="cm">-- ACID row-level exclusive lock</span>
+<span class="kw">SELECT</span> qty, reserved_qty
+<span class="kw">FROM</span> inventory
+<span class="kw">WHERE</span> product_id = ?
+<span class="kw">FOR UPDATE</span>;
+
+available = qty - reserved_qty
+<span class="kw">IF</span> available &lt; cart_qty:
+  <span class="kw">ROLLBACK</span>
+  DEL redis lock
+  <span class="kw">RETURN</span> <span class="num">400</span> <span class="str">"Out of stock"</span>
+
+<span class="kw">UPDATE</span> inventory
+<span class="kw">SET</span> reserved_qty = reserved_qty + cart_qty
+<span class="kw">COMMIT</span>;</div>
+        </div>
+      </div>
+      <div class="info" style="margin-top:8px">
+        <strong>available = qty − reserved_qty</strong>&nbsp;·&nbsp;
+        Deduct qty ONLY after <strong>payment.success</strong>&nbsp;·&nbsp;
+        Background job releases stale reservations after <strong>15 min</strong>
+      </div>
+    </div>
+
+    <!-- s9: Cart Service -->
+    <div class="slide" id="s9" data-title="Cart Service — Redis + PostgreSQL">
+      <div class="section-label">⚙️ Core Services</div>
+      <h2>Cart Service — Redis Cache + PostgreSQL Source of Truth</h2>
+      <div class="cols2">
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>Add to Cart — Upsert Pattern</h3>
+            <div class="dia" style="font-size:10px"><span class="cm">-- PostgreSQL: handles concurrent add-to-cart</span>
+<span class="kw">INSERT INTO</span> cart_items
+  (cart_id, product_id, qty, price)
+<span class="kw">VALUES</span> (?, <span class="str">'PROD_ABC'</span>, <span class="num">2</span>, <span class="num">899.00</span>)
+<span class="kw">ON CONFLICT</span> (cart_id, product_id)
+<span class="kw">DO UPDATE SET</span>
+  qty = cart_items.qty + <span class="num">2</span>,
+  updated_at = <span class="kw">now</span>();
+
+<span class="cm">-- Redis write-through cache</span>
+HSET <span class="str">cart:{userId}</span>
+  <span class="str">product:ABC</span> <span class="str">'{"qty":2,"price":899}'</span>
+EXPIRE <span class="str">cart:{userId}</span> <span class="num">604800</span>  <span class="cm">-- 7 days</span></div>
+          </div>
+          <div class="card green">
+            <h3>Get Cart — Redis First</h3>
+            <p>1. <strong>HGETALL cart:{userId}</strong> → &lt;1ms on hit</p>
+            <p style="margin-top:4px">2. On miss → SELECT from PostgreSQL, warm Redis</p>
+            <p style="margin-top:4px">Cart keyed by <strong>user_id</strong>, not session → cross-device sync on login</p>
+          </div>
+        </div>
+        <div>
+          <div class="card yellow" style="margin-bottom:8px">
+            <h3>Guest → Login Migration</h3>
+            <ul>
+              <li>Guest cart: Redis only, key=<code>session:{id}</code>, TTL=24h</li>
+              <li>On login: merge guest cart into user's DB cart</li>
+              <li>Conflict resolution: keep higher qty per item</li>
+            </ul>
+          </div>
+          <div class="card purple">
+            <h3>Price Change Handling</h3>
+            <ul>
+              <li>Cart stores price <strong>at time of adding</strong></li>
+              <li>At checkout: re-validate current price from Product Svc</li>
+              <li>Show user: "Price changed $899→$799, continue?"</li>
+              <li>Cart does NOT guarantee stock availability</li>
+              <li>Real inventory check happens at checkout ONLY</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s10: Order State Machine -->
+    <div class="slide" id="s10" data-title="Order State Machine">
+      <div class="section-label">⚙️ Core Services</div>
+      <h2>Order State Machine</h2>
+      <div class="dia">PENDING_PAYMENT ──(payment success)──► PAYMENT_CONFIRMED
+       │                                           │
+       │ (timeout 15 min)                          │ Kafka: order.confirmed
+       ▼                                           ▼
+ PAYMENT_TIMEOUT                            PROCESSING
+                                                   │
+                     ◄─────(cancel allowed)────────┤
+                     │                             │ warehouse picks items
+                     ▼                             ▼
+                CANCELLED                      SHIPPED
+                     ▲                             │ Kafka: order.shipped
+                     │                             ▼
+                     └──(return approved)──── DELIVERED
+                                                   │
+                                                   └──► RETURN_REQUESTED
+                                                              │
+                                                       RETURN_APPROVED
+                                                              │
+                                                        ITEM_RECEIVED
+                                                         (QC check)
+                                                         │        │
+                                                      REFUNDED  PARTIAL_REFUND</div>
+      <table class="tbl" style="margin-top:8px">
+        <tr><th>State</th><th>Cancel Allowed</th><th>Kafka Event</th></tr>
+        <tr><td>PENDING_PAYMENT</td><td><span class="pill green">Yes</span></td><td>—</td></tr>
+        <tr><td>PAYMENT_CONFIRMED</td><td><span class="pill green">Yes</span></td><td>payment.success · order.confirmed</td></tr>
+        <tr><td>PROCESSING</td><td><span class="pill yellow">Yes (pre-pick)</span></td><td>—</td></tr>
+        <tr><td>SHIPPED</td><td><span class="pill red">No</span></td><td>order.shipped</td></tr>
+        <tr><td>DELIVERED</td><td><span class="pill red">No</span></td><td>order.delivered</td></tr>
+      </table>
+    </div>
+
+    <!-- s11: Flash Sale -->
+    <div class="slide" id="s11" data-title="Flash Sale Design">
+      <div class="section-label">⚙️ Core Services</div>
+      <h2>Flash Sale — 1M Users, 1000 Units, Zero Overselling</h2>
+      <div class="cols2">
+        <div>
+          <div class="card red" style="margin-bottom:8px">
+            <h3>Pre-Sale Prep (1hr before)</h3>
+            <ul>
+              <li>Pre-allocate <strong>flash_sale_inventory</strong> table — 1000 rows, status='available'</li>
+              <li>Warm Redis + CDN caches for sale products</li>
+              <li>Auto-scale Checkout Svc: 50 → 250 instances</li>
+              <li>Redis counter: <code>SET flash_sale:{pid}:remaining 1000</code></li>
+            </ul>
+          </div>
+          <div class="card yellow">
+            <h3>Virtual Waiting Room</h3>
+            <ul>
+              <li>Cloudflare Waiting Room gates users at 1K/sec</li>
+              <li>Released users get JWT token (5-min TTL)</li>
+              <li>Backend rejects requests without valid token</li>
+              <li>Blocks bots and thundering herd on DB</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card blue">
+          <h3>SKIP LOCKED Checkout — No Contention</h3>
+          <div class="dia" style="font-size:10px"><span class="cm">-- Step 1: Redis instant sold-out check (1ms)</span>
+<span class="kw">DECR</span> flash_sale:{pid}:remaining
+<span class="kw">IF</span> result &lt; <span class="num">0</span>: <span class="kw">RETURN</span> <span class="str">"Sold out"</span> <span class="cm">// no DB hit</span>
+
+<span class="cm">-- Step 2: PostgreSQL — each user grabs
+-- next UNLOCKED row, no blocking!</span>
+<span class="kw">BEGIN</span>;
+<span class="kw">SELECT</span> queue_position
+<span class="kw">FROM</span> flash_sale_inventory
+<span class="kw">WHERE</span> product_id = ?
+  <span class="kw">AND</span> status = <span class="str">'available'</span>
+<span class="kw">ORDER BY</span> queue_position
+<span class="kw">LIMIT</span> <span class="num">1</span>
+<span class="kw">FOR UPDATE SKIP LOCKED</span>; <span class="cm">// KEY CLAUSE</span>
+
+<span class="kw">UPDATE</span> flash_sale_inventory
+<span class="kw">SET</span> status=<span class="str">'reserved'</span>, user_id=?,
+    reserved_at=<span class="kw">NOW</span>()
+<span class="kw">COMMIT</span>;
+
+<span class="cm">-- Background: release if not paid in 5 min</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s12: Recommendation Engine -->
+    <div class="slide" id="s12" data-title="Recommendation Engine">
+      <div class="section-label">⚙️ Core Services</div>
+      <h2>Recommendation Engine — 30–40% of Revenue</h2>
+      <div class="cols2">
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>Strategy 1 — Collaborative Filtering</h3>
+            <p><strong>Item-based ("Users who bought X also bought Y"):</strong></p>
+            <p style="margin:4px 0;font-size:.82rem">Co-purchase matrix: count how often A and B are purchased together. Jaccard similarity = co-purchases / sqrt(total_A × total_B)</p>
+            <p style="margin-top:4px;font-size:.82rem"><strong>ALS Matrix Factorization:</strong> Sparse 100M users × 10M products interaction matrix → user_factors × product_factors. Top 100 recs/user stored in Redis, Spark job nightly.</p>
+          </div>
+          <div class="card green">
+            <h3>Strategy 2 — Content-Based</h3>
+            <p>BERT embeddings on (title + description + category) → 768-dim vector per product</p>
+            <p style="margin-top:4px">User profile vector = avg of recently viewed product vectors</p>
+            <p style="margin-top:4px">ES kNN search → products nearest to user profile vector</p>
+          </div>
+        </div>
+        <div>
+          <div class="card yellow" style="margin-bottom:8px">
+            <h3>Hybrid Scoring Formula</h3>
+            <div class="dia" style="font-size:10px">final_score =
+  <span class="num">0.4</span> × collaborative_filter
++ <span class="num">0.3</span> × content_based
++ <span class="num">0.2</span> × trending (24h views)
++ <span class="num">0.1</span> × business_rules
+           (margin boost, overstock boost)
+
+Return top <span class="num">20</span> by final_score
+Apply diversity (mix categories)</div>
+          </div>
+          <div class="card purple">
+            <h3>Serving Architecture</h3>
+            <ul>
+              <li>Pre-compute: nightly Spark batch → <code>SET recs:{uid}</code> Redis TTL 24h</li>
+              <li>API: Redis lookup + trending blend = &lt;100ms p95</li>
+              <li>Cold-start users: global trending + editorial picks</li>
+              <li>A/B test: 50/50 split → track CTR + conversion rate</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s13: CDN for Product Images -->
+    <div class="slide" id="s13" data-title="CDN — Product Images (S3 + CloudFront)">
+      <div class="section-label">⚙️ Core Services</div>
+      <h2>CDN — Product Images (S3 + CloudFront)</h2>
+      <div class="cols2">
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>Storage Architecture</h3>
+            <ul>
+              <li>Original images stored in <strong>AWS S3</strong> — 500 TB total</li>
+              <li>100M products × 5 images × 1 MB avg</li>
+              <li>S3 URLs stored in MongoDB product document</li>
+              <li>Resolutions generated on upload: thumbnail (150px), medium (600px), large (1200px)</li>
+              <li>Lambda@Edge for on-demand resize on first cache miss</li>
+            </ul>
+          </div>
+          <div class="card green">
+            <h3>CloudFront CDN Performance</h3>
+            <ul>
+              <li><strong>95%</strong> cache hit rate — images rarely change</li>
+              <li><strong>&lt;50ms</strong> latency from nearest edge PoP</li>
+              <li>CDN TTL: 24 hours per image</li>
+              <li>Cache invalidation on product image update</li>
+              <li>Signed URLs for private / pre-sale product images</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="card yellow" style="margin-bottom:8px">
+            <h3>Image Upload Flow</h3>
+            <div class="dia" style="font-size:10px">Seller uploads via pre-signed S3 URL
+     │
+     ▼
+S3 event → Lambda (resize job)
+     │
+     ▼
+Generate: thumbnail · medium · large
+     │
+     ▼
+Store URLs in MongoDB product doc
+     │
+     ▼
+Publish product.updated → Kafka
+  → CDC → ES re-index new image URLs
+  → Redis: DEL product:{product_id}</div>
+          </div>
+          <div class="card cyan">
+            <h3>Numbers</h3>
+            <ul>
+              <li>Total S3 storage: <strong>500 TB</strong></li>
+              <li>CDN cache hit rate: <strong>95%</strong></li>
+              <li>Edge latency: <strong>&lt;50ms globally</strong></li>
+              <li>Bandwidth savings vs origin: <strong>95×</strong></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s14: ER Diagram -->
+    <div class="slide" id="s14" data-title="ER Diagram">
+      <div class="section-label">🗄 DB Schema</div>
+      <h2>Entity Relationship Diagram</h2>
+      <div class="dia">┌──────────────┐        ┌──────────────────┐       ┌─────────────────┐
+│    USER       │        │    PRODUCT        │       │   INVENTORY      │
+│──────────────│        │──────────────────│       │─────────────────│
+│ user_id (PK) │        │ product_id (PK)  │◄──────┤ product_id (PK) │
+│ name         │        │ title            │       │ qty (total)     │
+│ email        │        │ category         │       │ reserved_qty    │
+│ address[] JSON        │ price            │       │ warehouse_id    │
+└──────┬───────┘        │ images[] JSON    │       └────────┬────────┘
+       │ 1:N            │ specifications{} │                │ deducted
+       ▼                │ variants[]       │                │ on payment.success
+┌──────────────┐        └────────┬─────────┘                │
+│    CART       │                │ product_id               ▼
+│──────────────│                │                  ┌────────────────┐
+│ cart_id (PK) │◄───────────────┤                  │    ORDER       │
+│ user_id (FK) │                │ 1:N              │────────────────│
+└──────────────┘                ▼                  │ order_id (PK)  │
+                       ┌──────────────────┐        │ user_id (FK)   │
+                       │   CART_ITEMS     │        │ items[] JSON   │
+                       │──────────────────│        │ total          │
+                       │ cart_id (FK)     │        │ status ENUM    │
+                       │ product_id (FK)  │        │ shipping_addr{}│
+                       │ qty              │        └────────┬───────┘
+                       │ price (snapshot) │                 │
+                       └──────────────────┘                 │ 1:1
+                                                            ▼
+                                                  ┌─────────────────┐
+                                                  │    PAYMENT      │
+                                                  │─────────────────│
+                                                  │ payment_id (PK) │
+                                                  │ order_id UNIQUE │
+                                                  │ amount          │
+                                                  │ status ENUM     │
+                                                  └─────────────────┘</div>
+    </div>
+
+    <!-- s15: DB Schema -->
+    <div class="slide" id="s15" data-title="Database Schema">
+      <div class="section-label">🗄 DB Schema</div>
+      <h2>Database Schema — Entity to Storage Mapping</h2>
+      <table class="tbl">
+        <tr><th>Entity</th><th>DB</th><th>Key Fields</th><th>Why This DB</th></tr>
+        <tr>
+          <td><strong>User</strong></td>
+          <td><span class="pill blue">MySQL</span></td>
+          <td>user_id uuid PK, name, email, password (bcrypt), address[] JSON</td>
+          <td>Fixed schema, ACID auth, relational user→orders</td>
+        </tr>
+        <tr>
+          <td><strong>Product</strong></td>
+          <td><span class="pill green">MongoDB</span></td>
+          <td>product_id str PK, title, category, price, images[], <strong>specifications{} FLEXIBLE</strong></td>
+          <td>Flexible schema — phones ≠ books ≠ clothing attributes</td>
+        </tr>
+        <tr>
+          <td><strong>Cart</strong></td>
+          <td><span class="pill purple">PostgreSQL</span></td>
+          <td>cart_id, user_id FK; cart_items: (cart_id, product_id) composite PK, qty, price</td>
+          <td>ACID ON CONFLICT upsert, durable source of truth</td>
+        </tr>
+        <tr>
+          <td><strong>Inventory</strong></td>
+          <td><span class="pill purple">PostgreSQL</span></td>
+          <td>product_id PK, qty (total), <strong>reserved_qty</strong> (in checkout), warehouse_id</td>
+          <td>ACID + SELECT FOR UPDATE, stock source of truth</td>
+        </tr>
+        <tr>
+          <td><strong>Order</strong></td>
+          <td><span class="pill blue">MySQL</span></td>
+          <td>order_id, user_id, items JSON, total, status ENUM, payment_id — <strong>PARTITIONED by month</strong></td>
+          <td>ACID transactions, complex reporting, fixed schema</td>
+        </tr>
+        <tr>
+          <td><strong>Payment</strong></td>
+          <td><span class="pill blue">MySQL</span></td>
+          <td>payment_id PK (from gateway), <strong>order_id UNIQUE FK</strong>, amount, status ENUM</td>
+          <td>UNIQUE on order_id = idempotency guarantee</td>
+        </tr>
+        <tr>
+          <td><strong>Search Index</strong></td>
+          <td><span class="pill yellow">ES</span></td>
+          <td>title, description, brand, category, price, rating, qty&gt;0</td>
+          <td>Full-text, facets, 100K QPS horizontal scale</td>
+        </tr>
+        <tr>
+          <td><strong>Cache + Locks</strong></td>
+          <td><span class="pill red">Redis</span></td>
+          <td>cart:{uid} HASH 7d · product:{pid} 30m · search:{hash} 10m · lock:inv:{pid} 30s</td>
+          <td>Sub-ms reads, distributed locks, TTL eviction</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- s16: Scaling -->
+    <div class="slide" id="s16" data-title="Scaling — Microservices + CQRS">
+      <div class="section-label">📈 Scaling &amp; Trade-offs</div>
+      <h2>Scaling Strategy — Microservices + CQRS</h2>
+      <div class="cols2">
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>Microservices Split</h3>
+            <ul>
+              <li><strong>User Svc</strong> — auth, profile, addresses (MySQL)</li>
+              <li><strong>Product Svc</strong> — catalog CRUD (MongoDB)</li>
+              <li><strong>Search Svc</strong> — ES queries + Redis cache</li>
+              <li><strong>Cart Svc</strong> — PostgreSQL + Redis HASH</li>
+              <li><strong>Checkout Svc</strong> — orchestrator, stateless</li>
+              <li><strong>Inventory Svc</strong> — qty source of truth (Postgres)</li>
+              <li><strong>Payment Svc</strong> — Stripe integration</li>
+              <li><strong>Notification Svc</strong> — email/SMS/push via Kafka</li>
+            </ul>
+          </div>
+          <div class="card green">
+            <h3>CQRS for Read Scale</h3>
+            <p><strong>Write path:</strong> MongoDB (product writes) → Kafka CDC → ES indexer</p>
+            <p style="margin-top:6px"><strong>Read path:</strong> ES handles 100K QPS search reads independently of MongoDB write load</p>
+            <p style="margin-top:6px"><strong>Order CQRS:</strong> MySQL primary for writes → read replica for order history queries</p>
+          </div>
+        </div>
+        <div>
+          <div class="card yellow" style="margin-bottom:8px">
+            <h3>Horizontal Scaling Points</h3>
+            <ul>
+              <li><strong>Checkout Svc:</strong> stateless → 5–100× scale for flash sales</li>
+              <li><strong>Search Svc:</strong> stateless → scale behind ALB</li>
+              <li><strong>ES cluster:</strong> 10 nodes, 5 primary shards, auto-rebalance</li>
+              <li><strong>Kafka:</strong> partition-level parallelism per consumer group</li>
+              <li><strong>Notification Svc:</strong> 20 consumer workers for burst events</li>
+            </ul>
+          </div>
+          <div class="card purple">
+            <h3>Connection Pooling (PgBouncer)</h3>
+            <p>10 Checkout instances × 200 logical connections = 2000 logical</p>
+            <p style="margin-top:6px">→ PgBouncer maps to <strong>200 actual DB connections</strong></p>
+            <p style="margin-top:6px">PostgreSQL max_connections = 5000. Prevents exhaustion during 100× scale-up.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s17: Trade-offs -->
+    <div class="slide" id="s17" data-title="Trade-offs Table">
+      <div class="section-label">📈 Scaling &amp; Trade-offs</div>
+      <h2>Key Trade-off Decisions</h2>
+      <table class="tbl">
+        <tr><th>Decision</th><th>Choice Made</th><th>Alternative</th><th>Why This Wins</th></tr>
+        <tr>
+          <td>Product catalog DB</td>
+          <td><span class="pill green">MongoDB</span></td>
+          <td>PostgreSQL</td>
+          <td>Flexible schema for diverse attributes; no ALTER TABLE for new categories</td>
+        </tr>
+        <tr>
+          <td>Inventory DB</td>
+          <td><span class="pill purple">PostgreSQL</span></td>
+          <td>Redis / DynamoDB</td>
+          <td>ACID + SELECT FOR UPDATE mandatory; Redis can lose data on crash</td>
+        </tr>
+        <tr>
+          <td>Cart primary store</td>
+          <td><span class="pill purple">PostgreSQL</span></td>
+          <td>Redis only</td>
+          <td>Redis evicts under memory pressure → silent cart loss; PG is durable source of truth</td>
+        </tr>
+        <tr>
+          <td>Cart fast reads</td>
+          <td><span class="pill red">Redis HASH</span></td>
+          <td>DB always</td>
+          <td>Sub-millisecond reads; write-through on every cart update; 7-day TTL covers active users</td>
+        </tr>
+        <tr>
+          <td>Search engine</td>
+          <td><span class="pill yellow">Elasticsearch</span></td>
+          <td>PostgreSQL tsvector</td>
+          <td>Faceted aggregations, relevance scoring, 100K QPS horizontal scale</td>
+        </tr>
+        <tr>
+          <td>Search sync strategy</td>
+          <td><span class="pill blue">CDC (Kafka)</span></td>
+          <td>Dual-writes</td>
+          <td>Product Svc unaware of ES; if ES down, MongoDB still writes; replay on recovery</td>
+        </tr>
+        <tr>
+          <td>Post-payment work</td>
+          <td><span class="pill blue">Kafka async</span></td>
+          <td>Synchronous calls</td>
+          <td>Checkout doesn't wait for email/warehouse; slow downstream can't block order confirm</td>
+        </tr>
+        <tr>
+          <td>Order DB</td>
+          <td><span class="pill blue">MySQL</span></td>
+          <td>MongoDB</td>
+          <td>Strong ACID for order lifecycle; relational joins for reporting; fixed schema</td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- s18: Elasticsearch vs Solr -->
+    <div class="slide" id="s18" data-title="Elasticsearch vs Solr">
+      <div class="section-label">📈 Scaling &amp; Trade-offs</div>
+      <h2>Elasticsearch vs Apache Solr</h2>
+      <table class="tbl">
+        <tr><th>Feature</th><th>Elasticsearch</th><th>Apache Solr</th><th>Winner</th></tr>
+        <tr><td>Architecture</td><td>Distributed-first, masterless cluster</td><td>ZooKeeper for cluster coordination (SolrCloud)</td><td><span class="pill green">ES</span></td></tr>
+        <tr><td>REST API</td><td>JSON over HTTP natively</td><td>XML/JSON, more verbose query syntax</td><td><span class="pill green">ES</span></td></tr>
+        <tr><td>Real-time indexing</td><td>Near real-time (1s refresh interval)</td><td>Near real-time (commit-based)</td><td><span class="pill yellow">Tie</span></td></tr>
+        <tr><td>Aggregations / Facets</td><td>Rich aggs DSL: terms, range, histogram, nested</td><td>Facet queries — less flexible, harder to nest</td><td><span class="pill green">ES</span></td></tr>
+        <tr><td>Horizontal scaling</td><td>Auto shard rebalance, node auto-discovery</td><td>SolrCloud works but manual shard management</td><td><span class="pill green">ES</span></td></tr>
+        <tr><td>Relevance tuning</td><td>BM25 + field boosting (title^3), scripted score</td><td>edismax query parser, highly configurable</td><td><span class="pill yellow">Tie</span></td></tr>
+        <tr><td>Vector search (kNN)</td><td>Native HNSW vector field (v8+) for ML recommendations</td><td>Dense vector via plugin — less mature</td><td><span class="pill green">ES</span></td></tr>
+        <tr><td>Ecosystem</td><td>ELK stack, Kibana, APM, security</td><td>Apache foundation, Lucidworks Fusion</td><td><span class="pill green">ES</span></td></tr>
+        <tr><td>Best use case</td><td>E-commerce search, logs, analytics, ML/vector</td><td>Document search, enterprise CMS</td><td>—</td></tr>
+      </table>
+      <div class="success" style="margin-top:8px"><strong>Verdict for this system:</strong> Elasticsearch — richer faceted aggregations for product search, native kNN for recommendation vectors, simpler horizontal scaling at 100K QPS.</div>
+    </div>
+
+    <!-- s19: Senior Trap Q1 -->
+    <div class="slide" id="s19" data-title="Senior Trap Q1 — Preventing Overselling">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Trap Q1 — "How do you prevent overselling during a flash sale?"</h2>
+      <div class="warn"><strong>Wrong answer:</strong> "Use optimistic locking / version number." At 10K concurrent users on 1 item, optimistic locking causes thundering herd — all fail, all retry, DB is overwhelmed.</div>
+      <h3 style="margin:10px 0 6px">Correct Answer — 5-Layer Defense</h3>
+      <div class="step-row"><span class="step">1</span><div><strong class="hl">Virtual Waiting Room</strong> — gates users at 1K/sec. 99% of concurrent traffic rejected before hitting any service.</div></div>
+      <div class="step-row"><span class="step">2</span><div><strong class="bl">Redis DECR counter</strong> — <code>DECR flash_sale:{pid}:remaining</code> in &lt;1ms. Instant sold-out detection, no DB involved.</div></div>
+      <div class="step-row"><span class="step">3</span><div><strong style="color:#ef4444">Redis SETNX lock</strong> — one checkout at a time per product. Rejects 9,999/10,000 concurrent checkouts in 1ms before touching PostgreSQL.</div></div>
+      <div class="step-row"><span class="step">4</span><div><strong class="gr">PostgreSQL SELECT FOR UPDATE</strong> — ACID row lock. Even if Redis lock expired, DB guarantees only one transaction modifies reserved_qty at a time.</div></div>
+      <div class="step-row"><span class="step">5</span><div><strong class="pu">reserved_qty column</strong> — stock held in checkout window. Deducted ONLY after payment.success. Payment failure = release reservation, inventory auto-restores.</div></div>
+      <div class="tip" style="margin-top:10px"><strong>Say this:</strong> "The key insight is never deducting qty during checkout — only incrementing reserved_qty. Actual qty deduction happens after payment confirmation. If anything fails, inventory auto-restores via background job at 15-minute timeout."</div>
+    </div>
+
+    <!-- s20: Senior Trap Q2 -->
+    <div class="slide" id="s20" data-title="Senior Trap Q2 — Cart Abandonment at Scale">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Trap Q2 — "How do you handle cart abandonment at scale?"</h2>
+      <div class="info"><strong>Context:</strong> 60–70% cart abandonment rate industry-wide. At 10M MAU, abandoned cart recovery can drive 5–15% revenue lift.</div>
+      <div class="cols2" style="margin-top:10px">
+        <div>
+          <div class="card yellow" style="margin-bottom:8px">
+            <h3>Detection Pipeline</h3>
+            <ul>
+              <li>Kafka event: <code>cart.abandoned</code> published when user active &gt;30 min ago AND cart not checked out</li>
+              <li>Scheduled job queries Redis for carts with TTL &gt;1 day + no recent checkout attempt</li>
+              <li>Filter: only users opted into marketing communications</li>
+            </ul>
+          </div>
+          <div class="card blue">
+            <h3>Recovery Sequence</h3>
+            <ul>
+              <li><strong>T+1hr:</strong> push notification "Items waiting in cart!"</li>
+              <li><strong>T+24hr:</strong> email with cart summary + current prices</li>
+              <li><strong>T+48hr:</strong> 5–10% coupon for high-value carts (&gt;$100)</li>
+              <li>Subject line personalised via ML model (+23% open rate)</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="card green" style="margin-bottom:8px">
+            <h3>Scale Math</h3>
+            <ul>
+              <li>10M users × 70% abandon = 7M abandoned carts/day</li>
+              <li>Kafka consumer group: 20 workers @ &gt;100K events/sec</li>
+              <li>SES bulk email API: 10K emails/batch, rate-limited</li>
+              <li>Push via FCM/APNs — fire-and-forget, no ack needed</li>
+            </ul>
+          </div>
+          <div class="card purple">
+            <h3>Key Design Point</h3>
+            <ul>
+              <li>Abandoned cart does <strong>NOT</strong> reserve inventory</li>
+              <li>Only checkout triggers reservation</li>
+              <li>Recovery email includes: "Only 3 left in stock!" urgency signal</li>
+              <li>Urgency signal drives 40% higher CTR on recovery emails</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s21: Senior Trap Q3 -->
+    <div class="slide" id="s21" data-title="Senior Trap Q3 — What Breaks First on Black Friday">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Senior Trap Q3 — "What breaks first when Black Friday traffic hits?"</h2>
+      <div class="warn"><strong>Wrong answer:</strong> "The database." — Too vague. A senior engineer names the specific bottleneck with a mitigation ready.</div>
+      <table class="tbl" style="margin-top:8px">
+        <tr><th>Order</th><th>What Breaks</th><th>Why</th><th>Mitigation</th></tr>
+        <tr>
+          <td><span class="pill red">1st</span></td>
+          <td>PostgreSQL DB connections</td>
+          <td>100 Checkout instances × 200 conns = 20K logical; Postgres max_connections = 5K</td>
+          <td>PgBouncer connection pooling — 20K logical → 200 actual connections</td>
+        </tr>
+        <tr>
+          <td><span class="pill yellow">2nd</span></td>
+          <td>Elasticsearch latency spikes</td>
+          <td>Cold cache at sale start — Redis cache hit rate drops from 70% to 10%</td>
+          <td>Pre-warm Redis with top 10K queries 1hr before. ES auto-scale read replicas.</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">3rd</span></td>
+          <td>Payment Gateway rate limits</td>
+          <td>Stripe per-account rate limits; 100 orders/sec = 100 payment intents/sec</td>
+          <td>Async payment queue via Kafka; pre-negotiate higher Stripe limits for sale day.</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">4th</span></td>
+          <td>Kafka consumer lag</td>
+          <td>Notification + Warehouse consumers can't keep up with event burst</td>
+          <td>Scale consumer group partitions; DLQ for failed events; notifications are non-blocking.</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">5th</span></td>
+          <td>Redis memory pressure</td>
+          <td>150GB Redis fills up; allkeys-lru eviction starts evicting cart data silently</td>
+          <td>Redis cluster (horizontal sharding); separate clusters for cart vs search cache.</td>
+        </tr>
+      </table>
+      <div class="tip" style="margin-top:8px"><strong>Pro answer:</strong> "The first thing that breaks is DB connection exhaustion — not the DB itself. PgBouncer solves it. Paired with virtual waiting room to control ingress rate, the system stays stable at 100× normal load."</div>
+    </div>
+
+    <!-- s22: Quick Numbers -->
+    <div class="slide" id="s22" data-title="Key Numbers to Memorise">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Key Numbers — Capacity, Latency &amp; Business Metrics</h2>
+      <div class="cols2">
+        <table class="tbl">
+          <tr><th colspan="2">Traffic &amp; Scale</th></tr>
+          <tr><td>Monthly Active Users</td><td class="hl">10M MAU</td></tr>
+          <tr><td>Orders — normal</td><td class="hl">10 orders/sec</td></tr>
+          <tr><td>Orders — flash sale</td><td class="hl">100 orders/sec</td></tr>
+          <tr><td>Search QPS (peak)</td><td class="hl">100K queries/sec</td></tr>
+          <tr><td>Product catalog</td><td class="hl">100M+ products</td></tr>
+          <tr><td>Concurrent users (sale)</td><td>1M → gated to 1K/sec</td></tr>
+          <tr><th colspan="2">Storage</th></tr>
+          <tr><td>Products (MongoDB)</td><td>100M × 5KB = 500 GB</td></tr>
+          <tr><td>Product images (S3)</td><td>500 TB (CDN-served)</td></tr>
+          <tr><td>Orders/year (MySQL)</td><td>730 GB/year</td></tr>
+          <tr><td>ES index (10 nodes)</td><td>300 GB, 5 shards</td></tr>
+          <tr><td>Redis total</td><td>150 GB (cache + recs)</td></tr>
+        </table>
+        <div>
+          <table class="tbl" style="margin-bottom:6px">
+            <tr><th colspan="2">Latency Targets</th></tr>
+            <tr><td>Search (cache hit)</td><td class="gr">&lt;50ms</td></tr>
+            <tr><td>Search (ES direct)</td><td class="gr">&lt;500ms p95</td></tr>
+            <tr><td>Product page</td><td class="gr">&lt;200ms</td></tr>
+            <tr><td>Checkout end-to-end</td><td class="gr">&lt;3 seconds</td></tr>
+            <tr><td>Redis SETNX lock</td><td class="gr">&lt;10ms</td></tr>
+            <tr><td>CDC lag (Mongo → ES)</td><td>1–2 seconds</td></tr>
+          </table>
+          <table class="tbl">
+            <tr><th colspan="2">Redis TTLs</th></tr>
+            <tr><td>Cart</td><td>7 days</td></tr>
+            <tr><td>Product details</td><td>30 minutes</td></tr>
+            <tr><td>Search results</td><td>10 minutes</td></tr>
+            <tr><td>Inventory cache</td><td>5 minutes</td></tr>
+            <tr><td>Distributed lock</td><td class="rd">30 seconds</td></tr>
+            <tr><th colspan="2">Business Metrics</th></tr>
+            <tr><td>Cart abandonment rate</td><td>60–70%</td></tr>
+            <tr><td>Recommendations revenue</td><td>30–40%</td></tr>
+            <tr><td>Search cache hit rate</td><td>60–70%</td></tr>
+            <tr><td>CDN image hit rate</td><td>95%</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- s23: Payment Flow -->
+    <div class="slide" id="s23" data-title="Payment Flow — Idempotency + Webhooks">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Payment Flow — Idempotency &amp; Webhook Safety</h2>
+      <div class="cols2">
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>Payment Initiation</h3>
+            <div class="dia" style="font-size:10px"><span class="cm">// Checkout Svc → Stripe</span>
+stripe.paymentIntents.create({
+  amount: <span class="num">149999</span>,   <span class="cm">// in cents</span>
+  currency: <span class="str">'usd'</span>,
+  metadata: {
+    order_id: <span class="str">'ORD_123'</span>,
+    user_id:  <span class="str">'USR_456'</span>
+  },
+  idempotency_key: <span class="str">'ORD_123'</span>
+  <span class="cm">// order_id AS idempotency key
+  // Stripe deduplicates on their end</span>
+})
+→ returns { client_secret, payment_url }
+→ Store PENDING in payments table
+→ Return payment_url to client</div>
+          </div>
+          <div class="card red">
+            <h3>Failure Scenarios</h3>
+            <ul>
+              <li><strong>Payment declined:</strong> release reserved_qty, notify user to retry</li>
+              <li><strong>Stripe webhook retry:</strong> retries up to 3 days — idempotency check handles duplicates</li>
+              <li><strong>DB crash mid-webhook:</strong> ROLLBACK → Stripe retries → idempotency prevents double-process</li>
+              <li><strong>Double-charge prevention:</strong> UNIQUE constraint on payments(order_id)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card green">
+          <h3>Webhook Handler — The Critical Path</h3>
+          <div class="dia" style="font-size:10px">POST /webhooks/payment (from Stripe)
+
+<span class="cm">1. Validate HMAC signature</span>
+   stripe.webhooks.constructEvent(payload,
+     sig_header, webhook_secret)
+   <span class="kw">REJECT</span> if invalid → prevents forged webhooks
+
+<span class="cm">2. Idempotency check</span>
+   <span class="kw">SELECT</span> * <span class="kw">FROM</span> payments
+   <span class="kw">WHERE</span> payment_id = {event.id}
+   <span class="kw">IF</span> status=<span class="str">'SUCCESS'</span>: <span class="kw">RETURN</span> <span class="num">200</span> OK
+
+<span class="cm">3. SERIALIZABLE transaction</span>
+   <span class="kw">UPDATE</span> payments <span class="kw">SET</span> status=<span class="str">'SUCCESS'</span>
+   <span class="kw">UPDATE</span> orders <span class="kw">SET</span> status=<span class="str">'CONFIRMED'</span>
+   <span class="kw">UPDATE</span> inventory <span class="kw">SET</span>
+     qty = qty - order_qty,
+     reserved_qty = reserved_qty - order_qty
+   <span class="kw">DELETE FROM</span> cart_items
+   <span class="kw">COMMIT</span>;
+
+<span class="cm">4. Publish Kafka</span>
+   payment.success + order.confirmed
+
+<span class="cm">5. RETURN 200</span> → Stripe stops retrying</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s24: Returns and Refunds -->
+    <div class="slide" id="s24" data-title="Returns &amp; Refunds Design">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Returns &amp; Refunds — State Machine + Inventory Restocking</h2>
+      <div class="cols2">
+        <div>
+          <div class="card yellow" style="margin-bottom:8px">
+            <h3>Return State Machine</h3>
+            <div class="dia" style="font-size:10px">User requests return (30-day window)
+       │
+       ▼
+RETURN_REQUESTED
+       │ (seller/ops approves within 24h)
+       ▼
+RETURN_APPROVED + prepaid label generated
+       │ (carrier scans pickup)
+       ▼
+ITEM_IN_TRANSIT
+       │ (warehouse receives item)
+       ▼
+ITEM_RECEIVED → quality check
+       │
+       ├─ QC PASS ──► REFUNDED
+       │              inventory.qty += returned_qty
+       │              stripe.refunds.create(payment_intent_id)
+       │
+       └─ QC FAIL ──► PARTIAL_REFUND or REJECTED
+                      notify user with reason + photos</div>
+          </div>
+          <div class="card blue">
+            <h3>Refund Processing</h3>
+            <ul>
+              <li>Stripe: <code>stripe.refunds.create({payment_intent_id})</code></li>
+              <li>Partial refund: pass <code>amount</code> parameter</li>
+              <li>Timeline: 5–7 business days to original payment method</li>
+              <li>Idempotent: check refund_id before creating new refund</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="card green" style="margin-bottom:8px">
+            <h3>Inventory Restocking</h3>
+            <ul>
+              <li>On QC pass: <code>UPDATE inventory SET qty = qty + returned_qty</code></li>
+              <li>Publish <code>inventory.updated</code> → Kafka → ES re-index qty → Redis invalidate</li>
+              <li>Graded returns: refurbished items → separate warehouse_id with discounted price listing</li>
+              <li>Defective items: qty NOT restored, write-off in inventory audit</li>
+            </ul>
+          </div>
+          <div class="card purple">
+            <h3>Scale Considerations</h3>
+            <ul>
+              <li>Return rate: 5–30% by category (clothing highest)</li>
+              <li>1M orders/day × 15% = 150K returns/day</li>
+              <li>Separate <strong>Returns Service</strong> — decoupled from Order Svc</li>
+              <li>Kafka: <code>order.return_approved</code> → Warehouse generates label</li>
+              <li>SLA: refund initiated within 24hr of QC pass</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- s25: Closing -->
+    <div class="slide" id="s25" data-title="Interview Cheat Sheet — Closing">
+      <div class="section-label">🎯 Interview Prep</div>
+      <h2>Interview Cheat Sheet — Phrases That Win the Round</h2>
+      <div class="cols2">
+        <div>
+          <div class="card green" style="margin-bottom:8px">
+            <h3>Always Say These</h3>
+            <ul>
+              <li><strong>Inventory:</strong> "reserved_qty is a two-phase commit — increment during checkout, decrement ONLY after payment.success"</li>
+              <li><strong>Locks:</strong> "Two-layer: Redis SETNX (1ms pre-filter) + PostgreSQL FOR UPDATE (ACID guarantee)"</li>
+              <li><strong>CDC:</strong> "Product Svc doesn't know about ES — CDC decouples them, enables replay on ES recovery"</li>
+              <li><strong>Idempotency:</strong> "UNIQUE constraint on payments(order_id) + HMAC webhook signature validation"</li>
+              <li><strong>Kafka:</strong> "Decouples checkout from notifications — one slow consumer can't block order confirm"</li>
+            </ul>
+          </div>
+          <div class="warn">
+            <h3 style="color:#fca5a5;margin-bottom:6px">Never Say These</h3>
+            <ul style="color:#fca5a5">
+              <li>"Use eventual consistency for inventory" (overselling)</li>
+              <li>"MongoDB for orders" (needs strong ACID)</li>
+              <li>"Update qty synchronously in checkout" (payment may fail)</li>
+              <li>"Redis as source of truth for stock" (can lose data on crash)</li>
+            </ul>
+          </div>
+        </div>
+        <div>
+          <div class="card blue" style="margin-bottom:8px">
+            <h3>DB Selection Cheat Sheet</h3>
+            <table class="tbl" style="margin:0">
+              <tr><td>User DB</td><td><span class="pill blue">MySQL</span> Fixed schema, ACID auth</td></tr>
+              <tr><td>Product DB</td><td><span class="pill green">MongoDB</span> Flexible attributes</td></tr>
+              <tr><td>Cart DB</td><td><span class="pill purple">PostgreSQL</span> ACID upserts</td></tr>
+              <tr><td>Inventory</td><td><span class="pill purple">PostgreSQL</span> FOR UPDATE</td></tr>
+              <tr><td>Orders</td><td><span class="pill blue">MySQL</span> ACID + reporting</td></tr>
+              <tr><td>Search</td><td><span class="pill yellow">Elasticsearch</span> 100K QPS</td></tr>
+              <tr><td>Cache + Locks</td><td><span class="pill red">Redis</span> &lt;1ms, SETNX</td></tr>
+            </table>
+          </div>
+          <div class="success">
+            <strong>You're ready when you can answer without notes:</strong><br>
+            1. Why reserved_qty and not just deducting qty at checkout?<br>
+            2. Why Redis SETNX AND PostgreSQL FOR UPDATE — not just one?<br>
+            3. Why CDC pipeline and not dual-writes to Elasticsearch?<br>
+            4. What breaks first when Black Friday traffic 10×s?
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /slide-area -->
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'E-Commerce';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script>
+</body>
+</html>

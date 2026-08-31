@@ -1,0 +1,235 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Data Model" id="data-model">
+    <mxGraphModel dx="1650" dy="950" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1650" pageHeight="950" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="UBER/OLA — Data Model &amp; Storage Design" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1610" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="PostgreSQL (durable state) + Redis (ephemeral/geospatial) + Zookeeper (distributed locks) + Kafka (events)" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="1350" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- PostgreSQL Section -->
+        <mxCell id="postgres-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#8e24aa;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="30" y="100" width="780" height="780" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="postgres-title" value="🗄️ POSTGRESQL — Durable Relational Data" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=15;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="760" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Drivers Table -->
+        <mxCell id="table-drivers" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="160" width="350" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="drivers-header" value="drivers" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="160" width="350" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="drivers-fields" value="driver_id          UUID PRIMARY KEY&#xa;name               VARCHAR(255)&#xa;email              VARCHAR(255) UNIQUE&#xa;phone              VARCHAR(20)&#xa;vehicle_type       ENUM(sedan,suv,bike,auto)&#xa;vehicle_model      VARCHAR(100)&#xa;license_plate      VARCHAR(20)&#xa;status             ENUM(IDLE,DRIVING,AVAILABLE,&#xa;                         BUSY,OFFLINE,IN_TRIP)&#xa;current_trip_id    UUID FK → trips (nullable)&#xa;avg_rating         DECIMAL(3,2)&#xa;acceptance_rate    DECIMAL(5,2)&#xa;last_online_at     TIMESTAMPTZ&#xa;created_at         TIMESTAMPTZ" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="60" y="195" width="330" height="175" as="geometry" />
+        </mxCell>
+        
+        <!-- Riders/Users Table -->
+        <mxCell id="table-riders" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="160" width="350" height="150" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="riders-header" value="riders / users" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="440" y="160" width="350" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="riders-fields" value="user_id            UUID PRIMARY KEY&#xa;name               VARCHAR(255)&#xa;email              VARCHAR(255) UNIQUE&#xa;phone              VARCHAR(20)&#xa;payment_methods    JSONB&#xa;avg_rating         DECIMAL(3,2)&#xa;created_at         TIMESTAMPTZ" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="450" y="195" width="330" height="105" as="geometry" />
+        </mxCell>
+        
+        <!-- Trips/Rides Table -->
+        <mxCell id="table-trips" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="400" width="740" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="trips-header" value="trips / rides" style="text;html=1;strokeColor=none;fillColor=#f57f17;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="400" width="740" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="trips-fields" value="trip_id / request_id     UUID PRIMARY KEY&#xa;rider_id / user_id       UUID FK → riders&#xa;driver_id                UUID FK → drivers&#xa;pickup_location          GEOGRAPHY(POINT)  -- PostGIS&#xa;drop_location            GEOGRAPHY(POINT)&#xa;pickup_lat, pickup_lng, drop_lat, drop_lng   DECIMAL(10,7)&#xa;status                   ENUM(PENDING,MATCHED,DRIVER_ARRIVED,&#xa;                              IN_PROGRESS,COMPLETED,&#xa;                              CANCELLED_BY_RIDER,CANCELLED_BY_DRIVER)&#xa;vehicle_type             ENUM(sedan,suv,bike,auto)&#xa;currency                 VARCHAR(3)  -- USD, INR&#xa;estimated_fare           DECIMAL(10,2)&#xa;actual_fare              DECIMAL(10,2)&#xa;surge_multiplier         DECIMAL(3,2)&#xa;distance_km              DECIMAL(8,2)&#xa;duration_min             INT&#xa;requested_at, matched_at, start_time, end_time   TIMESTAMPTZ&#xa;payment_status           ENUM(PENDING,COMPLETED,FAILED,REFUNDED)&#xa;metadata                 JSONB&#xa;&#xa;INDEX (rider_id, created_at)&#xa;INDEX (driver_id, created_at)&#xa;INDEX (status, pickup_location) USING GIST  -- geospatial index" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="60" y="435" width="720" height="235" as="geometry" />
+        </mxCell>
+        
+        <!-- Ratings Table -->
+        <mxCell id="table-ratings" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="700" width="360" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ratings-header" value="ratings (anonymous)" style="text;html=1;strokeColor=none;fillColor=#e65100;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="50" y="700" width="360" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="ratings-fields" value="rating_id       UUID PRIMARY KEY&#xa;ride_id         UUID FK → trips UNIQUE&#xa;sender_id       UUID  -- who gave rating&#xa;receiver_id     UUID  -- who received&#xa;rating          INT CHECK (1 &lt;= rating &lt;= 5)&#xa;feedback        TEXT&#xa;timestamp       TIMESTAMPTZ&#xa;&#xa;-- Aggregator Svc computes:&#xa;-- SELECT AVG(rating) WHERE receiver_id=...&#xa;-- UPDATE drivers/riders SET avg_rating" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="60" y="735" width="340" height="115" as="geometry" />
+        </mxCell>
+        
+        <!-- Payments Table -->
+        <mxCell id="table-payments" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="700" width="350" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payments-header" value="payments" style="text;html=1;strokeColor=none;fillColor=#01579b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="440" y="700" width="350" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payments-fields" value="payment_id        UUID PRIMARY KEY&#xa;trip_id           UUID FK → trips UNIQUE&#xa;amount            DECIMAL(10,2)&#xa;currency          VARCHAR(3)&#xa;payment_method    ENUM(card,wallet,cash,upi)&#xa;stripe_payment_id VARCHAR(255)&#xa;status            ENUM(PENDING,COMPLETED,&#xa;                       FAILED,REFUNDED)&#xa;created_at        TIMESTAMPTZ&#xa;completed_at      TIMESTAMPTZ" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="450" y="735" width="330" height="115" as="geometry" />
+        </mxCell>
+        
+        <!-- Location History Table -->
+        <mxCell id="table-location" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="440" y="330" width="350" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="location-header" value="location_history (from Kafka)" style="text;html=1;strokeColor=none;fillColor=#388e3c;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=13;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="440" y="330" width="350" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="location-fields" value="location_id     UUID PRIMARY KEY&#xa;driver_id       UUID FK → drivers&#xa;latitude        DECIMAL(10,7)&#xa;longitude       DECIMAL(10,7)&#xa;timestamp       TIMESTAMPTZ&#xa;&#xa;INDEX (driver_id, timestamp)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="450" y="365" width="330" height="75" as="geometry" />
+        </mxCell>
+        
+        <!-- FK Relationships -->
+        <mxCell id="fk-trip-rider" value="FK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;fontSize=10;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="table-trips" target="table-riders">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="540" />
+              <mxPoint x="420" y="520" />
+              <mxPoint x="615" y="520" />
+              <mxPoint x="615" y="310" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="fk-trip-driver" value="FK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;fontSize=10;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1" source="table-trips" target="table-drivers">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="225" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Redis Section -->
+        <mxCell id="redis-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#d84315;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="840" y="100" width="400" height="400" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-title" value="⚡ REDIS — Ephemeral &amp; Geospatial Data" style="text;html=1;strokeColor=none;fillColor=#d84315;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=15;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="850" y="110" width="380" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-geo" value="🌍 GEOSPATIAL INDEX" style="text;html=1;strokeColor=none;fillColor=#ffccbc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="860" y="155" width="360" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-geo-content" value="Key: drivers:available&#xa;Type: GEOSPATIAL (sorted set with lat/lon)&#xa;&#xa;Commands:&#xa;GEOADD drivers:available {lon} {lat} {driver_id}&#xa;GEORADIUS drivers:available {lon} {lat} 5km&#xa;          WITHDIST ASC  → 10 nearest drivers&#xa;GEOREM drivers:available {driver_id}&#xa;&#xa;Data: {driver_id1: (lat1,lon1), driver_id2: ...}&#xa;Purpose: Find nearest available drivers in ~10ms" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="870" y="185" width="350" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-cache" value="💾 TTL-BASED CACHE" style="text;html=1;strokeColor=none;fillColor=#ffccbc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="860" y="315" width="360" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-cache-content" value="location:{driver_id}  STRING  EX 60&#xa;  Value: {lat:37.7749,lon:-122.4194}&#xa;  Purpose: Current driver location&#xa;&#xa;driver:{driver_id}:status  STRING  EX 300&#xa;  Value: AVAILABLE | BUSY | OFFLINE&#xa;  Purpose: Heartbeat monitor, auto-offline&#xa;&#xa;surge_multiplier:{geohash}  STRING  EX 120&#xa;  Value: 1.8&#xa;  Purpose: Demand/supply ratio per 5km cell&#xa;&#xa;fare_estimate:{request_id}  JSON  EX 300&#xa;  Value: {estimated_fare:20.85,breakdown,...}&#xa;  Purpose: Cached fare calculation&#xa;&#xa;trip:{trip_id}:status  STRING  EX 7200&#xa;  Value: IN_PROGRESS&#xa;  Purpose: Active trip tracking (2hr max)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="870" y="345" width="350" height="145" as="geometry" />
+        </mxCell>
+        
+        <!-- Zookeeper Section -->
+        <mxCell id="zookeeper-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1270" y="100" width="350" height="250" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="zk-title" value="🔒 ZOOKEEPER — Distributed Locks" style="text;html=1;strokeColor=none;fillColor=#f57f17;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=15;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1280" y="110" width="330" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="zk-structure" value="LOCK STRUCTURE (Ephemeral Nodes)" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1290" y="155" width="310" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="zk-tree" value="/locks/&#xa;  └─ drivers/&#xa;      ├─ driver001/&#xa;      │   └─ request_R1_seq0001  (ephemeral)&#xa;      ├─ driver002/&#xa;      │   └─ request_R2_seq0001  (ephemeral)&#xa;      └─ driver003/&#xa;          (empty = available)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1300" y="185" width="300" height="95" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="zk-behavior" value="BEHAVIOR:&#xa;• CREATE ephemeral node → lock acquired&#xa;• NodeExistsException → driver already locked&#xa;• Session timeout (30s) → auto-delete lock&#xa;• Service crash → ephemeral node disappears&#xa;• Sequential nodes → FIFO lock queue&#xa;&#xa;PURPOSE: Prevent double-assignment of drivers&#xa;to multiple concurrent ride requests" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1300" y="290" width="300" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Kafka Section -->
+        <mxCell id="kafka-section" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="840" y="520" width="780" height="360" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-title" value="📡 KAFKA — Event Streaming" style="text;html=1;strokeColor=none;fillColor=#01579b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=15;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="850" y="530" width="760" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topics" value="TOPICS &amp; PARTITIONING" style="text;html=1;strokeColor=none;fillColor=#b3e5fc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="860" y="575" width="740" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topic1" value="ride.requested     (partition by trip_id, 100 partitions)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="870" y="610" width="720" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-t1-payload" value="Payload: {trip_id, rider_id, pickup, drop, vehicle_type, timestamp}&#xa;Consumers: Driver Matching Service, Analytics, Notification Service" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="880" y="630" width="710" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topic2" value="ride.matched       (partition by trip_id)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="870" y="665" width="720" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-t2-payload" value="Payload: {trip_id, driver_id, driver_name, vehicle, eta_min, timestamp}&#xa;Consumers: Notification Service (push to rider)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="880" y="685" width="710" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topic3" value="driver.location_updated   (partition by driver_id, 100 partitions)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="870" y="720" width="720" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-t3-payload" value="Payload: {driver_id, lat, lon, speed, timestamp}&#xa;Consumers: Trip Update Consumer (writes to location_history table), Analytics" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="880" y="740" width="710" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topic4" value="trip.started / trip.completed   (partition by trip_id)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontFamily=Courier New;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="870" y="775" width="720" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-t4-payload" value="Payload: {trip_id, driver_id, rider_id, actual_fare, distance_km, duration_min, timestamp}&#xa;Consumers: Payment Service, Analytics, Driver Payout Service, Receipt Email Service" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="880" y="795" width="710" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-retention" value="RETENTION &amp; CONSUMER GROUPS" style="text;html=1;strokeColor=none;fillColor=#b3e5fc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="860" y="830" width="740" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-retention-detail" value="• Retention: 7 days (replay-able for recovery)&#xa;• Consumer Groups: location-persistence, analytics, notifications (each processes independently)&#xa;• High-priority topics: ride.matched (SLA &lt;500ms), driver.location_updated (real-time)&#xa;• Replication: 3 replicas per partition for fault tolerance" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="870" y="860" width="720" height="10" as="geometry" />
+        </mxCell>
+        
+        <!-- Data Flow WHY Box -->
+        <mxCell id="why-separation" value="❓ WHY SEPARATE STORAGE LAYERS?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=13;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1270" y="370" width="350" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-detail" value="PostgreSQL = Durable truth (trips, ratings, payments)&#xa;  → ACID transactions, permanent records&#xa;&#xa;Redis = Fast ephemeral (location updates every 3-5s)&#xa;  → In-memory, auto-expire stale data (TTL)&#xa;&#xa;Zookeeper = Coordination (driver assignment locks)&#xa;  → Strong consistency, auto-cleanup on crash&#xa;&#xa;Kafka = Event bus (decoupled async processing)&#xa;  → Replay-able, multiple independent consumers" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1280" y="405" width="330" height="85" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

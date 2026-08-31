@@ -1,0 +1,617 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket Booking System Design</title>
+<link rel="stylesheet" href="../../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Ticket Booking System — BookMyShow</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+<div class="slide active" id="s1" data-title="Ticket Booking System — BookMyShow">
+  <h1>🎟 Ticket Booking System</h1>
+  <h2>BookMyShow / Paytm / District</h2>
+  <div class="badges">
+    <span class="badge">Seat Lock</span>
+    <span class="badge">Idempotency</span>
+    <span class="badge">ACID</span>
+    <span class="badge">Redis</span>
+    <span class="badge">CDN</span>
+    <span class="badge">Overbooking</span>
+  </div>
+  <p>Design a platform for booking movie, concert &amp; sports tickets at massive scale.</p>
+  <ul>
+    <li>100 M DAU — IPL / Taylor Swift flash sales</li>
+    <li>Two users cannot hold the same seat — ever</li>
+    <li>CAP split: AP for search &middot; CP for booking</li>
+    <li>Two-phase booking: Reserve (Redis) → Confirm (ACID)</li>
+    <li>Read : Write ratio = 1000 : 1</li>
+  </ul>
+</div>
+
+<div class="slide" id="s2" data-title="Opening — Scope &amp; Clarifications">
+  <h2>Opening Script</h2>
+  <p class="interviewer">"Design a ticket booking system like BookMyShow."</p>
+  <h3>Clarifying Questions</h3>
+  <ul>
+    <li>Event types — movies only, or concerts &amp; sports too?</li>
+    <li>Scale — 100 M DAU, ~10 M bookings/day assumed?</li>
+    <li>Flash sales — IPL Final: 5 M users, 50 K seats, 1-second window?</li>
+    <li>Multi-region or single datacenter?</li>
+    <li>Consistency guarantee — absolute zero double bookings?</li>
+  </ul>
+  <h3>What I Will Cover</h3>
+  <ul>
+    <li>Functional &amp; Non-functional requirements</li>
+    <li>HLD: 3 services × 3 databases with explicit CAP split</li>
+    <li>Seat contention — Redis SETNX distributed lock</li>
+    <li>Two-phase booking: Reserve → Confirm</li>
+    <li>Payment idempotency, CDC pipeline, flash sale handling</li>
+    <li>Senior trap Q&amp;A: Redis crash, thundering herd</li>
+  </ul>
+</div>
+
+<div class="slide" id="s3" data-title="Functional Requirements">
+  <h2>Functional Requirements</h2>
+  <ul>
+    <li><strong>Search events</strong> — by title, location, date (full-text + geo)</li>
+    <li><strong>Browse seat map</strong> — view available / held / booked seats in near-real-time</li>
+    <li><strong>Hold / Lock seats</strong> — temporary soft-hold during checkout (10 min TTL)</li>
+    <li><strong>Payment</strong> — complete purchase within the hold window</li>
+    <li><strong>E-ticket generation</strong> — QR code issued on confirmed booking</li>
+    <li><strong>Notifications</strong> — confirmation via email &amp; SMS</li>
+    <li><strong>Cancellation</strong> — release seat, trigger refund (v2)</li>
+    <li><strong>Waitlist</strong> — join queue for sold-out events (v2)</li>
+  </ul>
+  <h3>Out of Scope (v1)</h3>
+  <ul>
+    <li>Dynamic / surge pricing</li>
+    <li>Corporate / group bulk bookings</li>
+    <li>Partial cancellations &amp; refund processing</li>
+  </ul>
+</div>
+
+<div class="slide" id="s4" data-title="Non-Functional Requirements">
+  <h2>Non-Functional Requirements</h2>
+  <table>
+    <tr><th>Requirement</th><th>Target</th></tr>
+    <tr><td>Peak concurrency (IPL Day)</td><td>10 M simultaneous users</td></tr>
+    <tr><td>Seat lock TTL</td><td>10 minutes (600 s) — industry standard</td></tr>
+    <tr><td>Double booking</td><td>Zero tolerance — CP path enforced</td></tr>
+    <tr><td>Uptime SLA</td><td>99.99% (&lt; 52 min downtime/year)</td></tr>
+    <tr><td>Search latency (P99)</td><td>&lt; 100 ms (Elasticsearch)</td></tr>
+    <tr><td>Booking reserve (P99)</td><td>&lt; 500 ms</td></tr>
+    <tr><td>Seat map load (P95)</td><td>&lt; 200 ms (Redis cache)</td></tr>
+    <tr><td>Read : Write ratio</td><td>1000 : 1 — optimise read path</td></tr>
+    <tr><td>CDC lag (search freshness)</td><td>1–5 seconds acceptable</td></tr>
+    <tr><td>Durability</td><td>Booking data never lost — MySQL ACID</td></tr>
+  </table>
+</div>
+
+<div class="slide" id="s5" data-title="High-Level Design — Architecture Diagram">
+  <h2>High-Level Design</h2>
+  <pre class="ascii">
+  User (Browser / Mobile)
+        │
+        ▼
+  ┌─────────────┐
+  │     CDN     │  ← Event posters, seat maps (SVG), JS/CSS bundles
+  └──────┬──────┘
+         │
+  ┌──────▼──────┐
+  │  API Gateway│  ← Auth · Rate Limiting · Routing
+  └──────┬──────┘
+         │
+  ┌──────┼───────────────────┐
+  ▼      ▼                   ▼
+Search  Event Svc        Booking Svc
+ Svc    (Cassandra)      (MySQL/PG + Redis + Kafka)
+  │                           │          │
+  ▼                           ▼          ▼
+Elasticsearch            Redis Lock   Kafka
+  ▲                      (SETNX)    (booking.confirmed)
+  └── CDC via Kafka ◄── MySQL binlog   │
+      (Debezium, 1-5s lag)           Payment GW
+  </pre>
+  <p class="note"><strong>Key Insight:</strong> Read &gt;&gt; Write (1000:1). CAP split — AP for search, CP for booking. Never mix them.</p>
+</div>
+
+<div class="slide" id="s6" data-title="Seat Contention — The Core Problem">
+  <h2>Seat Contention Problem</h2>
+  <pre class="ascii">
+SpiderMan premiere — user1 &amp; user2 click L12 at the same millisecond
+
+WITHOUT LOCKING (wrong):
+  user1 reads:  status='available' ✓
+  user2 reads:  status='available' ✓
+  user1 writes: status='booked'   ✓
+  user2 writes: status='booked'   ✓  ← DOUBLE BOOKING
+  </pre>
+  <h3>Locking Strategies</h3>
+  <table>
+    <tr><th>Strategy</th><th>Mechanism</th><th>Trade-off</th></tr>
+    <tr><td>Pessimistic Lock</td><td>SELECT … FOR UPDATE (DB row lock)</td><td>Correct but blocks DB threads — bad at 50K concurrency</td></tr>
+    <tr><td>Optimistic Lock</td><td>UPDATE … WHERE version=N AND status='available'</td><td>Fast; 0 rows updated = conflict → retry</td></tr>
+    <tr><td><strong>Redis SETNX</strong></td><td>Atomic SET if Not eXists · EX 600</td><td>Best: 1ms, atomic, auto-expiry, no DB pressure</td></tr>
+  </table>
+  <p class="note"><strong>Production choice:</strong> Redis SETNX as fast path · DB optimistic lock as fallback when Redis unavailable</p>
+</div>
+
+<div class="slide" id="s7" data-title="Redis Distributed Lock — Design">
+  <h2>Redis Distributed Lock</h2>
+  <pre class="ascii">
+Key pattern: seat:{event_id}:{seat_id}
+
+user1: SET seat:ev123:L12 user1_bk789 NX PX 600000  →  "OK"
+user2: SET seat:ev123:L12 user2_bk999 NX PX 600000  →  nil
+
+user2 sees: "Seat L12 is temporarily held. Please choose another."
+  </pre>
+  <h3>Lock Lifecycle</h3>
+  <ul>
+    <li><strong>Acquire:</strong> <code>SET key value NX PX 600000</code> — atomic, OK or nil</li>
+    <li><strong>Heartbeat renewal:</strong> <code>PEXPIRE</code> every 2 min while user is on payment page</li>
+    <li><strong>Release on success:</strong> <code>DEL seat:ev123:L12</code> after DB commit</li>
+    <li><strong>Release on failure:</strong> <code>DEL</code> immediately on payment failure</li>
+    <li><strong>Auto-expiry:</strong> TTL fires if user abandons — seat becomes available again</li>
+    <li><strong>Multi-seat atomicity:</strong> Use Redis Lua script to SETNX all seats or none</li>
+    <li><strong>Redis down fallback:</strong> DB-level optimistic locking (version column)</li>
+  </ul>
+</div>
+
+<div class="slide" id="s8" data-title="Booking State Machine">
+  <h2>Booking State Machine</h2>
+  <pre class="ascii">
+ ┌───────────┐  User selects  ┌──────────┐
+ │ AVAILABLE │───────────────►│  LOCKED  │  Redis SETNX OK · soft hold
+ └───────────┘                └────┬─────┘  TTL = 600s
+       ▲                           │
+       │  TTL expires /            │ POST /reserve succeeds
+       │  payment fails            ▼
+       │                     ┌──────────┐
+       │  DEL Redis key      │ RESERVED │  DB status='pending'
+       │◄────────────────────└────┬─────┘  expires_at = now + 10 min
+       │                          │
+       │                          │ Payment success
+       │                          ▼
+       │                    ┌──────────┐
+       │                    │CONFIRMED │  DB commit · DEL Redis key
+       │                    └────┬─────┘  Kafka: booking.confirmed
+       │                          │
+       │                          │ Cancel / refund
+       │                    ┌─────▼────┐
+       └────────────────────│CANCELLED │  seat released
+                            └──────────┘
+  EXPIRED: cron marks pending rows past expires_at as EXPIRED every 5 min
+  </pre>
+</div>
+
+<div class="slide" id="s9" data-title="Payment Flow — Two-Phase Booking Sequence">
+  <h2>Two-Phase Booking Sequence</h2>
+  <pre class="ascii">
+User  API GW  Booking Svc  Redis   MySQL  Payment GW  Kafka
+ │      │          │          │       │        │         │
+ │ POST /reserve   │          │       │        │         │
+ │─────►│─────────►│          │       │        │         │
+ │      │          │ SETNX L12 EX 600 │        │         │
+ │      │          │─────────►│       │        │         │
+ │      │          │ OK (lock)│       │        │         │
+ │      │          │ INSERT booking (pending)   │         │
+ │      │          │──────────────────►        │         │
+ │◄200{bk789,exp}  │          │       │        │         │
+ │      │          │          │       │        │         │
+ │ POST /confirm   │          │       │        │         │
+ │─────►│─────────►│          │       │        │         │
+ │      │          │──────────────────────────► charge   │
+ │      │          │◄─────────────────────── success     │
+ │      │          │     BEGIN TXN     │        │         │
+ │      │          │     UPDATE → confirmed      │         │
+ │      │          │     COMMIT        │        │         │
+ │      │          │ DEL L12 ─────────►│        │         │
+ │      │          │ publish confirmed ──────────────────►│
+ │◄200 confirmed   │          │       │        │         │
+  </pre>
+</div>
+
+<div class="slide" id="s10" data-title="Overbooking Prevention — 3 Layers">
+  <h2>Overbooking Prevention — 3 Layers</h2>
+  <h3>Layer 1 — Redis SETNX (fast path, 1 ms)</h3>
+  <pre class="ascii">
+SET seat:ev123:L12 user1 NX PX 600000
+→ Only ONE user acquires the lock. All 499,999 others get nil.
+  </pre>
+  <h3>Layer 2 — DB Unique Constraint + Optimistic Lock (hard stop)</h3>
+  <pre class="ascii">
+-- Unique index prevents two confirmed rows for same seat
+CREATE UNIQUE INDEX uq_booking_seat
+  ON booking_seats (event_id, seat_id)
+  WHERE status = 'confirmed';
+
+-- Optimistic lock on seat row
+UPDATE seats SET status='booked', version=version+1
+WHERE seat_id='L12' AND event_id='ev123'
+  AND version=5 AND status='available';
+-- 0 rows updated → another transaction won → 409 Conflict
+  </pre>
+  <h3>Layer 3 — Payment Idempotency (crash safety)</h3>
+  <ul>
+    <li>Pass <code>booking_id</code> as idempotency key to Stripe / Razorpay</li>
+    <li>Server crash + retry → same charge result, no double billing</li>
+    <li>On restart: query payment intent status → reconcile DB state</li>
+  </ul>
+</div>
+
+<div class="slide" id="s11" data-title="Search &amp; Discovery — Elasticsearch + CDC">
+  <h2>Search &amp; Discovery</h2>
+  <h3>Elasticsearch — What it handles</h3>
+  <ul>
+    <li>Full-text search on event name, description, venue</li>
+    <li>Facets: city · date range · category · price range</li>
+    <li>Geo search: <code>geo_point</code> field — show Mumbai events first for Mumbai users</li>
+    <li>P99 target: &lt; 100 ms</li>
+  </ul>
+  <h3>CDC Pipeline — Eventual Consistency</h3>
+  <pre class="ascii">
+MySQL binlog → Debezium → Kafka → ES Indexer → Elasticsearch
+                                     (1–5 sec lag — acceptable)
+  </pre>
+  <h3>CDN for Event Media</h3>
+  <ul>
+    <li>Event posters &amp; banners → CloudFront / Cloudflare edge · TTL 24h</li>
+    <li>Seat map SVGs → cached at edge · TTL 1h (venue layouts rarely change)</li>
+    <li>Popular event pages → CDN HTML cache TTL 60s</li>
+  </ul>
+  <p class="note">ES is for event list search only. Seat-level status is served from Redis + MySQL — never from Elasticsearch.</p>
+</div>
+
+<div class="slide" id="s12" data-title="E-Ticket &amp; QR Code Generation">
+  <h2>E-Ticket Generation</h2>
+  <h3>QR Code Payload</h3>
+  <pre class="ascii">
+QR = Base64( HMAC-SHA256(
+               booking_id + ":" + event_id + ":" + seat_id,
+               SECRET_KEY
+             ) )
+
+Example:
+  booking_id = bk789  |  event_id = ev123  |  seat_id = L12
+  QR payload = "bk789:ev123:L12:a3f7c9e2..." (HMAC appended)
+  </pre>
+  <h3>Validation at Venue Gate</h3>
+  <ul>
+    <li>Scanner app calls: <code>GET /v1/ticket/validate?qr={payload}</code></li>
+    <li>Server recomputes HMAC — match = valid ticket</li>
+    <li>Marks <code>scanned=true</code> to prevent QR reuse</li>
+    <li>Offline-verifiable: HMAC works without DB lookup if SECRET_KEY distributed to gate device</li>
+  </ul>
+  <h3>Delivery Pipeline</h3>
+  <ul>
+    <li>Kafka consumer: <code>booking.confirmed</code> → Notification Service</li>
+    <li>Sends PDF ticket + QR via email; SMS link as fallback</li>
+  </ul>
+</div>
+
+<div class="slide" id="s13" data-title="Waitlist System">
+  <h2>Waitlist System</h2>
+  <h3>Queue Design</h3>
+  <pre class="ascii">
+Redis Sorted Set (score = join timestamp):
+  ZADD waitlist:{event_id} {unix_ts_ms} {user_id}
+  ZRANK waitlist:{event_id} {user_id}  →  position #47
+
+User sees: "You are #47 in the waitlist for SpiderMan — PVR Juhu 6:30pm"
+  </pre>
+  <h3>Seat Release Flow</h3>
+  <ul>
+    <li>Booking cancelled OR TTL expires → seat returns to AVAILABLE</li>
+    <li>Kafka event: <code>seat.released</code> — Waitlist Service consumes</li>
+    <li><code>ZPOPMIN waitlist:{event_id}</code> → first user in queue</li>
+    <li>Push / SMS: "Seat available! You have 15 minutes to book."</li>
+    <li>If user doesn't reserve in 15 min → skip, notify next user</li>
+  </ul>
+  <h3>Edge Cases</h3>
+  <ul>
+    <li>User unreachable → skip to next after timeout</li>
+    <li>Multiple seats released → batch notify in FIFO order</li>
+    <li>User on waitlist already has confirmed booking → skip them</li>
+  </ul>
+</div>
+
+<div class="slide" id="s14" data-title="Flash Sale — IPL / Taylor Swift Traffic Spike">
+  <h2>Flash Sale — IPL / Taylor Swift Traffic</h2>
+  <p><strong>Problem:</strong> 5 M users click "Book" simultaneously. 50 K seats. All in 1 second.</p>
+  <h3>Virtual Waiting Room</h3>
+  <pre class="ascii">
+User hits page → ZADD sale_queue:{event_id} {timestamp_ms} {user_id}
+User gets back: "You are #247,891 in queue"
+
+Process first N users (N = total seats):
+  Positions 1 … 50,000  → allowed into reserve flow
+  Positions 50,001+      → "Sorry, sold out"
+  </pre>
+  <h3>Additional Controls</h3>
+  <ul>
+    <li><strong>Rate limiting:</strong> 1 reserve attempt per user per event per minute</li>
+    <li><strong>Bot protection:</strong> CAPTCHA on queue entry for mega-events</li>
+    <li><strong>Dedicated Kafka partition</strong> per flash-sale event (<code>flash_sale.ev123</code>)</li>
+    <li><strong>CDN:</strong> Event page fully cached at edge — zero origin load for browsing</li>
+    <li><strong>Pre-warm Redis:</strong> Load seat map into <code>seatmap:{event_id}</code> before sale opens</li>
+    <li><strong>Auto-scale app servers</strong> 30 min before scheduled sale opening</li>
+  </ul>
+</div>
+
+<div class="slide" id="s15" data-title="ER Diagram">
+  <h2>Entity Relationship Diagram</h2>
+  <pre class="ascii">
+┌──────────┐  1    N  ┌────────────┐  1    N  ┌──────────────┐
+│  users   │──────────│  bookings  │──────────│booking_seats │
+├──────────┤          ├────────────┤          ├──────────────┤
+│ user_id  │          │ booking_id │          │ booking_id FK│
+│ name     │          │ user_id FK │          │ seat_id      │
+│ email    │          │ event_id FK│          │ event_id     │
+│ phone    │          │ status     │          │ price        │
+└──────────┘          │ total_price│          └──────────────┘
+                      │ payment_id │
+                      │ expires_at │
+                      └─────┬──────┘
+                        N   │   1
+                            │
+┌──────────────┐  1  N ┌────▼───────┐
+│    venues    │───────│   events   │
+├──────────────┤       ├────────────┤
+│ venue_id     │       │ event_id   │
+│ name         │       │ name       │
+│ city         │       │ venue_id FK│
+│ capacity     │       │ date       │
+└──────────────┘       └─────┬──────┘
+                          1  │
+                             │ N
+                       ┌─────▼──────┐
+                       │   seats    │
+                       ├────────────┤
+                       │ seat_id    │
+                       │ event_id FK│
+                       │ row, number│
+                       │ status ENUM│
+                       │ version INT│
+                       └────────────┘
+  </pre>
+</div>
+
+<div class="slide" id="s16" data-title="Database Schema — Critical DDL">
+  <h2>Database Schema (MySQL / PostgreSQL)</h2>
+  <pre class="ascii">
+CREATE TABLE seats (
+  seat_id   VARCHAR(20),
+  event_id  UUID,
+  row       CHAR(3),
+  number    INT,
+  category  ENUM('gold','silver','platinum'),
+  price     DECIMAL(10,2),
+  status    ENUM('available','held','booked') DEFAULT 'available',
+  version   INT DEFAULT 0,          -- optimistic lock
+  PRIMARY KEY (seat_id, event_id)
+);
+
+CREATE TABLE bookings (
+  booking_id   UUID PRIMARY KEY,
+  user_id      UUID NOT NULL,
+  event_id     UUID NOT NULL,
+  status       ENUM('pending','confirmed','cancelled','expired'),
+  total_price  DECIMAL(10,2),
+  payment_id   VARCHAR(255),
+  expires_at   TIMESTAMP,            -- now + 10 min (pending)
+  confirmed_at TIMESTAMP
+);
+
+-- Hard stop: no two confirmed rows for same seat at same event
+CREATE UNIQUE INDEX uq_booking_seat
+  ON booking_seats (event_id, seat_id) WHERE status = 'confirmed';
+
+CREATE INDEX idx_bookings_event ON bookings(event_id, status);
+CREATE INDEX idx_seats_event_status ON seats(event_id, status);
+  </pre>
+</div>
+
+<div class="slide" id="s17" data-title="Scaling Strategy">
+  <h2>Scaling Strategy</h2>
+  <table>
+    <tr><th>Bottleneck</th><th>Solution</th></tr>
+    <tr><td>Search reads (1 B+/day)</td><td>Elasticsearch cluster · CDC sync · no primary DB hit</td></tr>
+    <tr><td>Seat map reads (1000× booking rate)</td><td>Redis HASH cache <code>seatmap:{event_id}</code> TTL 60s</td></tr>
+    <tr><td>Popular event metadata</td><td>Redis STRING EX 300 · CDN for static assets</td></tr>
+    <tr><td>Booking write throughput</td><td>Partition <code>bookings</code> table by <code>event_date</code></td></tr>
+    <tr><td>DB read overload</td><td>Read replicas for all SELECT · writes to primary only</td></tr>
+    <tr><td>Redis seat lock at scale</td><td>Redis Cluster — hash slot by <code>event_id</code></td></tr>
+    <tr><td>Expired pending cleanup</td><td>Cron job every 5 min — batch-expire old pending rows</td></tr>
+    <tr><td>Payment gateway timeouts</td><td>Async via Kafka: <code>payment.request</code> → <code>payment.result</code></td></tr>
+    <tr><td>Flash sale spike</td><td>Virtual waiting room · Redis sorted set queue · dedicated partition</td></tr>
+    <tr><td>Multi-region</td><td>Booking: single-region primary (CP) · Search: multi-region ES replicas</td></tr>
+  </table>
+</div>
+
+<div class="slide" id="s18" data-title="Design Trade-offs">
+  <h2>Design Trade-offs</h2>
+  <table>
+    <tr><th>Decision</th><th>Chosen</th><th>Alternative</th><th>Why</th></tr>
+    <tr><td>Seat lock</td><td>Redis SETNX</td><td>SELECT FOR UPDATE</td><td>Redis 1ms vs DB 30ms; no DB thread blocking; auto-TTL</td></tr>
+    <tr><td>Booking DB</td><td>MySQL / PostgreSQL</td><td>Cassandra</td><td>ACID multi-row transaction required; Cassandra is AP, no ACID</td></tr>
+    <tr><td>Search</td><td>Elasticsearch</td><td>MySQL LIKE</td><td>ES: full-text, geo, facets, &lt;100ms. MySQL LIKE = full table scan</td></tr>
+    <tr><td>Event metadata</td><td>Cassandra</td><td>MySQL</td><td>High-read, denormalized, no complex joins needed</td></tr>
+    <tr><td>Async messaging</td><td>Kafka</td><td>RabbitMQ</td><td>Kafka: log retention, replay, higher throughput for CDC</td></tr>
+    <tr><td>Booking phases</td><td>2-phase</td><td>1-phase</td><td>Charge only after seat confirmed; rollback if payment fails</td></tr>
+    <tr><td>Lock TTL</td><td>10 minutes</td><td>2 min / 30 min</td><td>Industry standard — long enough to pay, short enough to resell</td></tr>
+    <tr><td>Search freshness</td><td>CDC ~1-5s lag</td><td>Sync write to ES</td><td>Async safer; sync creates distributed write failure modes</td></tr>
+  </table>
+</div>
+
+<div class="slide" id="s19" data-title="BookMyShow vs Ticketmaster — Architecture Comparison">
+  <h2>BookMyShow vs Ticketmaster</h2>
+  <table>
+    <tr><th>Dimension</th><th>BookMyShow (India)</th><th>Ticketmaster (Global)</th></tr>
+    <tr><td>Primary market</td><td>Movies (daily) + concerts</td><td>Concerts, sports mega-events</td></tr>
+    <tr><td>Traffic pattern</td><td>Steady daily; IPL spikes</td><td>Unpredictable mega-spikes (Taylor Swift)</td></tr>
+    <tr><td>Virtual queue</td><td>Redis sorted-set for flash sales</td><td>Dedicated waiting room product (heavily invested)</td></tr>
+    <tr><td>Seat lock TTL</td><td>~10 min (standard)</td><td>~10 min (same standard)</td></tr>
+    <tr><td>Booking DB</td><td>MySQL / Postgres — ACID</td><td>Relational — ACID for bookings</td></tr>
+    <tr><td>Search</td><td>Elasticsearch + CDC</td><td>Elasticsearch / Solr</td></tr>
+    <tr><td>Scale</td><td>100 M DAU India-focused</td><td>Global, multi-region active-active</td></tr>
+    <tr><td>Peak challenge</td><td>Evening show avalanche (6PM–10PM)</td><td>On-sale second: 5 M users, 1 second</td></tr>
+    <tr><td>Bot mitigation</td><td>OTP + rate limit</td><td>CAPTCHA + identity + anti-scalper rules</td></tr>
+  </table>
+</div>
+
+<div class="slide" id="s20" data-title="CDN &amp; Media Strategy">
+  <h2>CDN &amp; Media Strategy</h2>
+  <h3>What Goes on CDN</h3>
+  <ul>
+    <li><strong>Event posters &amp; banners</strong> — JPEG/WebP · CloudFront/Cloudflare · TTL 24h</li>
+    <li><strong>Seat map SVGs</strong> — venue layouts rarely change · TTL 1h</li>
+    <li><strong>JS/CSS bundles</strong> — versioned filenames → immutable cache forever</li>
+    <li><strong>Event listing HTML</strong> — cached at edge with short TTL (60s)</li>
+  </ul>
+  <h3>What Does NOT Go on CDN</h3>
+  <ul>
+    <li>Live seat availability (per-user, always Redis + DB)</li>
+    <li>Booking confirmation pages (personalized)</li>
+    <li>Payment flows (never cached, HTTPS only)</li>
+  </ul>
+  <h3>IPL Final Strategy</h3>
+  <pre class="ascii">
+10 M users hit event page at 10:00 AM open
+  → 95%+ served from CDN edge (0 origin load for browsing)
+  → Seat map SVG cached — no DB call
+  → Only POST /reserve hits origin servers
+  → Rate limit: 100 req/s per user IP on reserve endpoint
+  </pre>
+</div>
+
+<div class="slide" id="s21" data-title="Monitoring &amp; SLAs">
+  <h2>Monitoring &amp; SLAs</h2>
+  <table>
+    <tr><th>Metric</th><th>SLA / Alert Threshold</th></tr>
+    <tr><td>Booking success rate</td><td>&gt; 99.9% · alert if &lt; 99%</td></tr>
+    <tr><td>Seat lock expiry rate</td><td>Alert if &gt; 20% of reserves expire (UX problem)</td></tr>
+    <tr><td>Payment timeout rate</td><td>Alert if &gt; 2% timeout within 30 s</td></tr>
+    <tr><td>Redis lock acquire latency</td><td>P99 &lt; 5 ms · alert if &gt; 50 ms</td></tr>
+    <tr><td>Kafka consumer lag (CDC)</td><td>Alert if ES indexer lag &gt; 30 s</td></tr>
+    <tr><td>DB replication lag</td><td>Alert if read replica &gt; 5 s behind primary</td></tr>
+    <tr><td>Double booking incidents</td><td>Zero tolerance — PagerDuty P0 immediately</td></tr>
+    <tr><td>Search P99 latency</td><td>&lt; 100 ms · alert if &gt; 500 ms</td></tr>
+  </table>
+  <h3>Key Dashboards</h3>
+  <ul>
+    <li>Live seat lock count per event (Redis key count by pattern)</li>
+    <li>Booking funnel: views → reserves → confirmations → tickets issued</li>
+    <li>Payment gateway error rate by provider (Stripe vs Razorpay)</li>
+    <li>Kafka topic lag heatmap by partition</li>
+  </ul>
+</div>
+
+<div class="slide" id="s22" data-title="Senior Q&amp;A — What if Redis Dies Mid-Lock?">
+  <h2>Senior Q&amp;A #1 — What if Redis Dies Mid-Lock?</h2>
+  <p class="interviewer">"What happens if Redis crashes while a user holds a seat lock?"</p>
+  <p><strong>Weak answer:</strong> "Redis can't crash — we'll run a primary." ❌</p>
+  <h3>Strong Answer</h3>
+  <ul>
+    <li><strong>TTL auto-expires.</strong> The key had EX 600 — after crash &amp; restart, the key is gone. Seat becomes available again within TTL window (worst case: 10 min).</li>
+    <li><strong>DB-level optimistic lock takes over as fallback:</strong></li>
+  </ul>
+  <pre class="ascii">
+UPDATE seats SET status='booked', version=version+1
+WHERE seat_id='L12' AND event_id='ev123'
+  AND version=5 AND status='available';
+-- 0 rows updated → conflict → 409 returned to user
+  </pre>
+  <ul>
+    <li><strong>Redis is a speed optimisation, not a correctness requirement.</strong> The DB is the source of truth — always.</li>
+    <li><strong>Redis Sentinel / Redis Cluster</strong> reduces risk of total unavailability.</li>
+    <li>If Redis fully down → fall back to DB pessimistic lock path. Slower but correct.</li>
+  </ul>
+</div>
+
+<div class="slide" id="s23" data-title="Senior Q&amp;A — 500K Users Click Same Seat Simultaneously">
+  <h2>Senior Q&amp;A #2 — 500K Users Click Same Seat</h2>
+  <p class="interviewer">"IPL Final — 500,000 users click L12 in the same second. What happens?"</p>
+  <h3>Without Queue (naive)</h3>
+  <ul>
+    <li>500K SETNX commands hit Redis simultaneously</li>
+    <li>Redis is single-threaded — queues and executes atomically</li>
+    <li>Exactly 1 user gets <code>OK</code>, the other 499,999 get <code>nil</code> → 409 returned</li>
+    <li>Correct, but 500K HTTP connections → thundering herd on app servers</li>
+  </ul>
+  <h3>With Virtual Waiting Room (production)</h3>
+  <pre class="ascii">
+User enters page → ZADD sale_queue:ev123 {timestamp} {user_id}
+Gets back: "You are #247,891 in queue"
+
+Only first 50,000 (= seat count) are processed:
+  → allowed into reserve flow one batch at a time
+  → remaining users see "Sold out"
+
+App servers protected · Redis not hammered by raw SETNX storm
+  </pre>
+  <ul>
+    <li>Rate-limit queue entry: 1 join per user per event</li>
+    <li>Process 500 users/sec from queue → sustainable SETNX rate</li>
+  </ul>
+</div>
+
+<div class="slide" id="s24" data-title="Key Numbers to Memorize">
+  <h2>Key Numbers</h2>
+  <table>
+    <tr><th>Metric</th><th>Value</th></tr>
+    <tr><td>Daily Active Users</td><td>100 M DAU</td></tr>
+    <tr><td>Bookings per day</td><td>~10 M (~115/sec avg, ~1000/sec peak)</td></tr>
+    <tr><td>Searches per day</td><td>1 B+ (Read : Write = 1000 : 1)</td></tr>
+    <tr><td>Seat lock TTL</td><td>600 seconds (10 minutes) — industry standard</td></tr>
+    <tr><td>Redis key pattern</td><td><code>seat:{event_id}:{seat_id}</code> NX PX 600000</td></tr>
+    <tr><td>Search latency P99</td><td>&lt; 100 ms (Elasticsearch)</td></tr>
+    <tr><td>Seat map load P95</td><td>&lt; 200 ms (Redis HASH cache)</td></tr>
+    <tr><td>Booking reserve P99</td><td>&lt; 500 ms</td></tr>
+    <tr><td>CDC lag DB → ES</td><td>1–5 seconds (acceptable)</td></tr>
+    <tr><td>Seat map cache TTL</td><td>60 s (Redis HASH)</td></tr>
+    <tr><td>Event metadata cache TTL</td><td>300 s</td></tr>
+    <tr><td>Uptime SLA</td><td>99.99% (&lt; 52 min/year)</td></tr>
+    <tr><td>Idempotency key</td><td><code>booking_id</code> passed to Stripe / Razorpay</td></tr>
+    <tr><td>Booking DB</td><td>MySQL / PostgreSQL — ACID transactions</td></tr>
+    <tr><td>Event DB</td><td>Cassandra — high-read AP, denormalized</td></tr>
+  </table>
+</div>
+
+<div class="slide" id="s25" data-title="Closing — What You've Demonstrated">
+  <h2>Closing Script</h2>
+  <p class="interviewer">"To summarise what I've designed…"</p>
+  <ul>
+    <li><strong>CAP split stated explicitly:</strong> AP for search (Elasticsearch + CDC) · CP for booking (ACID + Redis SETNX)</li>
+    <li><strong>Distributed locking:</strong> Redis SETNX EX 600 — exactly one user wins any seat; auto-expiry on abandonment</li>
+    <li><strong>Two-phase booking:</strong> Reserve (soft hold, Redis) → Confirm (payment + DB ACID commit)</li>
+    <li><strong>Idempotency:</strong> <code>booking_id</code> as idempotency key to payment gateway — crash-safe, no double charges</li>
+    <li><strong>Overbooking prevention:</strong> Redis fast path + DB unique constraint + optimistic version lock</li>
+    <li><strong>Flash sale handling:</strong> Virtual waiting room (Redis sorted set) + rate limiting per user</li>
+    <li><strong>High concurrency:</strong> Redis seat map cache, CDN for media, read replicas for browse traffic</li>
+    <li><strong>Failure recovery:</strong> Redis down → DB fallback; payment crash → reconcile via idempotency key</li>
+  </ul>
+  <p class="note"><strong>Key sentence to say aloud:</strong> "Redis is the speed layer. The database is the source of truth. Correctness is never sacrificed for performance."</p>
+</div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

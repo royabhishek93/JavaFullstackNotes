@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LC 1456 Maximum Vowels in Substring | Code Dry Run</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box}:root{--bg:#07111d;--s:#0c1a2a;--line:#25435b;--ink:#e8f1f7;--muted:#9cb5c9;--blue:#5eb5ff;--cyan:#5eead4;--amber:#fbbf24;--lime:#a3e635}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif}main{max-width:1180px;margin:auto;padding:22px}
+.eye{font:700 10px 'IBM Plex Mono',monospace;color:var(--cyan);letter-spacing:.08em}h1{margin:7px 0}p{color:var(--muted)}
+.ops{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.op{font:12px 'IBM Plex Mono',monospace;border:1px solid var(--line);border-radius:4px;padding:5px 7px;color:var(--muted)}
+.op.active{background:var(--amber);border-color:var(--amber);color:#07111d}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--s);border:1px solid var(--line);border-radius:8px;padding:15px}.panel h2{font-size:.85rem;color:var(--cyan);margin:0 0 10px}
+.state,.code{font:13px/1.65 'IBM Plex Mono',monospace;white-space:pre-wrap;min-height:125px}.code{max-height:365px;overflow:auto;color:#b7cede}
+.code div{padding:0 7px;border-left:3px solid transparent}.code .active{background:#173955;border-left-color:var(--amber);color:#fff}
+.note{margin-top:12px;background:#092033;border-left:3px solid var(--cyan);padding:12px;line-height:1.55}
+.why{margin-top:10px;background:#102311;border-left:3px solid var(--lime);padding:11px;color:#d9f99d}
+.btn{margin:14px 6px 0 0;background:#10253a;border:1px solid var(--line);color:var(--ink);padding:8px 13px;border-radius:5px;cursor:pointer}
+.meter{float:right;margin-top:22px;color:var(--muted);font:12px 'IBM Plex Mono',monospace}
+@media(max-width:720px){main{padding:15px}.grid{grid-template-columns:1fr}}</style>
+</head><body><main>
+<div class="eye">LC 1456 | VISUAL CODE DRY RUN</div>
+<h1>Maximum Vowels in Substring</h1>
+<p>Pattern: Fixed sliding window | Example: <code>s = "abciiidef", k = 3</code></p>
+<div class="ops" id="ops"></div>
+<div class="grid">
+  <section class="panel"><h2>Algorithm State</h2><div class="state" id="state"></div></section>
+  <section class="panel"><h2>Full Java Code: Active Line Executing</h2><div class="code" id="code"></div></section>
+</div>
+<div class="grid" style="margin-top:14px">
+  <section class="panel"><h2>What Changed?</h2><div class="note" id="note"></div><div class="why" id="why"></div></section>
+  <section class="panel"><h2>Problem Statement</h2><div class="state">Max vowels in substring of length k</div></section>
+</div>
+<button class="btn" id="play">Pause</button>
+<button class="btn" id="previous">Previous</button>
+<button class="btn" id="next">Next</button>
+<button class="btn" id="reset">Reset</button>
+<span class="meter" id="meter"></span>
+</main>
+<script>
+const codeLines=["public int maxVowels(String s, int k) {", "    Set<Character> vowels = new HashSet<>(Arrays.asList('a','e','i','o','u'));", "    int count = 0;", "    for (int i = 0; i < k; i++) {", "        if (vowels.contains(s.charAt(i))) count++;", "    }", "    int maxCount = count;", "    ", "    for (int i = k; i < s.length(); i++) {", "        if (vowels.contains(s.charAt(i - k))) count--;", "        if (vowels.contains(s.charAt(i))) count++;", "        maxCount = Math.max(maxCount, count);", "    }", "    return maxCount;", "}"];
+const steps=[
+  {
+    "op": "1. Initialize window",
+    "line": 0,
+    "state": "Input: s = \"abciiidef\", k = 3\\nleft: 0, right: 0\\nwindow: []\\nbest: null",
+    "text": "Initialize two pointers for sliding window",
+    "why": "Window expands right and contracts left to maintain invariant"
+  },
+  {
+    "op": "2. Update window",
+    "line": 0,
+    "state": "left: X, right: Y\\nwindow: [...]\\ncurrent best: Z",
+    "text": "Execute: public int maxVowels(String s, int k) {",
+    "why": "Maintain window validity while optimizing result"
+  },
+  {
+    "op": "3. Update window",
+    "line": 1,
+    "state": "left: X, right: Y\\nwindow: [...]\\ncurrent best: Z",
+    "text": "Execute: Set<Character> vowels = new HashSet<>(Arrays.asList('a','e',",
+    "why": "Maintain window validity while optimizing result"
+  },
+  {
+    "op": "4. Update window",
+    "line": 2,
+    "state": "left: X, right: Y\\nwindow: [...]\\ncurrent best: Z",
+    "text": "Execute: int count = 0;",
+    "why": "Maintain window validity while optimizing result"
+  },
+  {
+    "op": "5. Update window",
+    "line": 3,
+    "state": "left: X, right: Y\\nwindow: [...]\\ncurrent best: Z",
+    "text": "Execute: for (int i = 0; i < k; i++) {",
+    "why": "Maintain window validity while optimizing result"
+  },
+  {
+    "op": "6. Update window",
+    "line": 4,
+    "state": "left: X, right: Y\\nwindow: [...]\\ncurrent best: Z",
+    "text": "Execute: if (vowels.contains(s.charAt(i))) count++;",
+    "why": "Maintain window validity while optimizing result"
+  },
+  {
+    "op": "7. Update window",
+    "line": 6,
+    "state": "left: X, right: Y\\nwindow: [...]\\ncurrent best: Z",
+    "text": "Execute: int maxCount = count;",
+    "why": "Maintain window validity while optimizing result"
+  },
+  {
+    "op": "8. Update window",
+    "line": 8,
+    "state": "left: X, right: Y\\nwindow: [...]\\ncurrent best: Z",
+    "text": "Execute: for (int i = k; i < s.length(); i++) {",
+    "why": "Maintain window validity while optimizing result"
+  },
+  {
+    "op": "9. Update window",
+    "line": 9,
+    "state": "left: X, right: Y\\nwindow: [...]\\ncurrent best: Z",
+    "text": "Execute: if (vowels.contains(s.charAt(i - k))) count--;",
+    "why": "Maintain window validity while optimizing result"
+  }
+];
+const code=document.querySelector('#code'),ops=document.querySelector('#ops'),state=document.querySelector('#state'),note=document.querySelector('#note'),why=document.querySelector('#why'),meter=document.querySelector('#meter');
+codeLines.forEach((line,i)=>{const row=document.createElement('div');row.textContent=`${i+1}. ${line}`;code.append(row)});
+steps.forEach(step=>{const item=document.createElement('span');item.className='op';item.textContent=step.op;ops.append(item)});
+let index=0,running=false,timer;
+function render(){const step=steps[index];[...ops.children].forEach((item,i)=>item.classList.toggle('active',i===index));
+[...code.children].forEach((row,i)=>row.classList.toggle('active',i===step.line));
+code.children[step.line].scrollIntoView({block:'nearest'});state.textContent=step.state;note.textContent=step.text;
+why.innerHTML='<strong>Why:</strong> '+step.why;meter.textContent=`${index+1} / ${steps.length}`}
+function schedule(){clearInterval(timer);if(running)timer=setInterval(()=>{index=(index+1)%steps.length;render()},4200);
+document.querySelector('#play').textContent=running?'Pause':'Play'}
+document.querySelector('#play').onclick=()=>{running=!running;schedule()};
+document.querySelector('#next').onclick=()=>{running=false;schedule();index=Math.min(index+1,steps.length-1);render()};
+document.querySelector('#previous').onclick=()=>{running=false;schedule();index=Math.max(index-1,0);render()};
+document.querySelector('#reset').onclick=()=>{running=false;schedule();index=0;render()};
+render();
+</script></body></html>

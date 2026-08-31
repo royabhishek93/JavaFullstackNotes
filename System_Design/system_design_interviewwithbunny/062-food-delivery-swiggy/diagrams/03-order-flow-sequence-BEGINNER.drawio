@@ -1,0 +1,442 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Order Flow Sequence" id="sequence">
+    <mxGraphModel dx="1800" dy="1050" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1050" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="ZOMATO/SWIGGY — Complete Order Flow (Customer → Restaurant → Partner Assignment → Tracking → Delivery)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1760" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="From order placement → restaurant acceptance → GEORADIUS partner search → 30s dispatch → tracking → completion" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="45" width="1500" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Timeline -->
+        <mxCell id="timeline-bg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#757575;" vertex="1" parent="1">
+          <mxGeometry x="30" y="90" width="1740" height="910" as="geometry" />
+        </mxCell>
+        
+        <!-- Swim Lane Headers -->
+        <mxCell id="lane-customer" value="📱 CUSTOMER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-api" value="🚪 API GW" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#e65100;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="170" y="100" width="100" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-order-svc" value="📦 ORDER SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="290" y="100" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-mysql" value="💾 MYSQL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="430" y="100" width="100" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-kafka" value="📡 KAFKA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="550" y="100" width="100" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-restaurant" value="🍽️ RESTAURANT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="670" y="100" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-assignment" value="🎯 ASSIGNMENT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="810" y="100" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-redis-geo" value="⚡ REDIS GEO" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="950" y="100" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-partner" value="🏍️ PARTNER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="100" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-location-svc" value="📍 LOCATION SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1210" y="100" width="130" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-cassandra" value="📊 CASSANDRA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5e1a5;strokeColor=#558b2f;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1360" y="100" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-sse" value="📲 SSE PUSH" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1500" y="100" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lane-notify" value="🔔 NOTIFY SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;fontSize=11;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1630" y="100" width="120" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Vertical Lifelines -->
+        <mxCell id="lifeline-customer" value="" style="line;strokeWidth=2;strokeColor=#1976d2;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="95" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-api" value="" style="line;strokeWidth=2;strokeColor=#e65100;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="220" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-order" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="350" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-mysql" value="" style="line;strokeWidth=2;strokeColor=#8e24aa;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="480" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-kafka" value="" style="line;strokeWidth=2;strokeColor=#01579b;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="600" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-restaurant" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="730" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-assignment" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="870" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-redis" value="" style="line;strokeWidth=2;strokeColor=#d84315;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1005" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-partner" value="" style="line;strokeWidth=2;strokeColor=#f57f17;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1135" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-location" value="" style="line;strokeWidth=2;strokeColor=#388e3c;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1275" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-cassandra" value="" style="line;strokeWidth=2;strokeColor=#558b2f;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-sse" value="" style="line;strokeWidth=2;strokeColor=#01579b;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1555" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="lifeline-notify" value="" style="line;strokeWidth=2;strokeColor=#e65100;dashed=1;dashPattern=4 4;" vertex="1" parent="1">
+          <mxGeometry x="1690" y="140" width="0" height="840" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 1: ORDER PLACEMENT (0-100ms) -->
+        <mxCell id="phase1-label" value="PHASE 1: ORDER PLACEMENT (0-100ms)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="160" width="1710" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step1-browse" value="Browse menu,&#xa;add items to cart" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="200" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow1" value="POST /orders&#xa;{items[], address}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=8;fontStyle=1" edge="1" parent="1" source="step1-browse">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="95" y="240" as="sourcePoint" />
+            <mxPoint x="350" y="240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-validate" value="Validate:&#xa;• restaurant open&#xa;• items available&#xa;• address in zone" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="290" y="255" width="120" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow2" value="INSERT orders&#xa;status=PLACED" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;fontSize=8;fontStyle=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="410" y="280" as="sourcePoint" />
+            <mxPoint x="480" y="280" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-db-insert" value="INSERT&#xa;txn commit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="430" y="255" width="100" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow3" value="PUBLISH&#xa;order.placed&#xa;event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#01579b;fontSize=8;fontStyle=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="410" y="310" as="sourcePoint" />
+            <mxPoint x="600" y="310" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="430" y="310" />
+              <mxPoint x="430" y="330" />
+              <mxPoint x="600" y="330" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-kafka-event" value="order.placed&#xa;{orderId,...}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="550" y="310" width="100" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow4" value="201 Created&#xa;{orderId, status,&#xa;eta:35min}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=8;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="290" y="360" as="sourcePoint" />
+            <mxPoint x="95" y="360" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-customer-response" value="See order&#xa;status: PLACED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="355" width="110" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow5" value="WebSocket push" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=8;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="650" y="345" as="sourcePoint" />
+            <mxPoint x="730" y="345" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step1-restaurant-notif" value="🔔 New order!&#xa;Pizza Hut&#xa;Order #abc789" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="670" y="320" width="120" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 2: RESTAURANT ACCEPTANCE (5-20 min) -->
+        <mxCell id="phase2-label" value="PHASE 2: RESTAURANT ACCEPTANCE (5-20 min later)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="410" width="1710" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step2-restaurant-accept" value="Restaurant&#xa;taps ACCEPT&#xa;prep_time:15min" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=8;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="670" y="450" width="120" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow6" value="PUT /orders/{id}&#xa;/accept" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=8;fontStyle=1" edge="1" parent="1" source="step2-restaurant-accept">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="670" y="475" as="sourcePoint" />
+            <mxPoint x="350" y="475" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step2-update-status" value="UPDATE orders&#xa;status=&#xa;RESTAURANT_&#xa;ACCEPTED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="290" y="450" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow7" value="PUBLISH&#xa;restaurant.accepted" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#01579b;fontSize=8;fontStyle=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="410" y="480" as="sourcePoint" />
+            <mxPoint x="600" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step2-kafka-accepted" value="restaurant.&#xa;accepted&#xa;event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="550" y="460" width="100" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 3: PARTNER ASSIGNMENT (30s-60s) -->
+        <mxCell id="phase3-label" value="PHASE 3: PARTNER ASSIGNMENT (30s-60s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="530" width="1710" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step3-consume-event" value="Consume&#xa;restaurant.&#xa;accepted&#xa;event" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="810" y="570" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow8" value="GEORADIUS&#xa;delivery_partners&#xa;rest_lon rest_lat&#xa;5km ASC COUNT 10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#d84315;fontSize=8;fontStyle=1" edge="1" parent="1" source="step3-consume-event">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="600" as="sourcePoint" />
+            <mxPoint x="1005" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step3-georadius-result" value="Return:&#xa;[(P1,0.8km),&#xa;(P2,1.2km),&#xa;(P3,2.1km),&#xa;...]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="950" y="565" width="110" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step3-filter-online" value="Filter to&#xa;ONLINE status&#xa;Pick P1&#xa;(nearest)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="810" y="650" width="120" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow9" value="WebSocket:&#xa;ORDER_OFFER&#xa;{orderId, dist:0.8km,&#xa;fee:Rs50,&#xa;timeout:30s}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#f57f17;fontSize=7;fontStyle=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="675" as="sourcePoint" />
+            <mxPoint x="1135" y="675" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step3-partner-offer" value="🔔 Order offer!&#xa;Restaurant:&#xa;Pizza Hut&#xa;0.8km away&#xa;Rs50 delivery&#xa;30s to accept" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=7;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="640" width="110" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step3-partner-accept" value="Partner&#xa;taps ACCEPT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=9;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="740" width="110" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow10" value="PUT /orders/{id}&#xa;/partner-accept" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#f57f17;fontSize=8;fontStyle=1" edge="1" parent="1" source="step3-partner-accept">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1080" y="757" as="sourcePoint" />
+            <mxPoint x="350" y="757" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step3-update-assigned" value="UPDATE orders&#xa;status=PARTNER_&#xa;ASSIGNED&#xa;partner_id=P1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="290" y="730" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow11" value="PUBLISH&#xa;partner.assigned" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#01579b;fontSize=8;fontStyle=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="410" y="760" as="sourcePoint" />
+            <mxPoint x="600" y="760" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="arrow12" value="SSE push" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#01579b;fontSize=8;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="650" y="760" as="sourcePoint" />
+            <mxPoint x="1555" y="760" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="680" y="760" />
+              <mxPoint x="680" y="810" />
+              <mxPoint x="1555" y="810" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step3-customer-update" value="🔔 Partner assigned!&#xa;Ramesh Kumar&#xa;⭐ 4.7 | ETA 8min&#xa;See on map →" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="1500" y="730" width="110" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow13" value="to customer app" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=8;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1500" y="760" as="sourcePoint" />
+            <mxPoint x="95" y="825" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1450" y="760" />
+              <mxPoint x="1450" y="825" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step3-customer-tracking" value="Track partner&#xa;on map&#xa;(live GPS)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=9;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="805" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- CONCURRENT: REAL-TIME GPS TRACKING -->
+        <mxCell id="tracking-label" value="📍 CONCURRENT: REAL-TIME GPS TRACKING (every 5s)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1210" y="530" width="560" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="gps-update-1" value="Partner app&#xa;GPS update&#xa;{lat,lon,&#xa;timestamp}" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="570" width="110" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-gps-1" value="WebSocket&#xa;stream" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=8" edge="1" parent="1" source="gps-update-1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1190" y="595" as="sourcePoint" />
+            <mxPoint x="1275" y="595" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="gps-process-1" value="GEOADD&#xa;delivery_partners&#xa;lon lat P1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="1210" y="570" width="130" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="gps-process-2" value="INSERT&#xa;partner_location_&#xa;history&#xa;(P1,ts,lat,lon)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c5e1a5;strokeColor=#558b2f;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="1360" y="570" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-gps-2" value="Kafka:&#xa;partner.location_&#xa;updated" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#01579b;fontSize=7;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1340" y="600" as="sourcePoint" />
+            <mxPoint x="1420" y="600" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="gps-to-sse" value="SSE push&#xa;to customer" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="1500" y="570" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-gps-3" value="Kafka consume" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#01579b;fontSize=7;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1480" y="590" as="sourcePoint" />
+            <mxPoint x="1500" y="590" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="gps-customer-see" value="See partner&#xa;move on map&#xa;(animate&#xa;marker)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="1630" y="570" width="120" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow-gps-4" value="SSE" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#1976d2;fontSize=7;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1610" y="590" as="sourcePoint" />
+            <mxPoint x="1630" y="590" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- PHASE 4: DELIVERY -->
+        <mxCell id="phase4-label" value="PHASE 4: PICKUP → DELIVERY (15-30 min later)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=10;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="865" width="1710" height="25" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step4-picked-up" value="Partner&#xa;marks&#xa;PICKED_UP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=9;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="905" width="110" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="step4-delivered" value="Partner&#xa;marks&#xa;DELIVERED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;fontSize=9;fontStyle=1;align=center" vertex="1" parent="1">
+          <mxGeometry x="1080" y="955" width="110" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow14" value="PUT /orders/{id}&#xa;/delivered" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#388e3c;fontSize=8;fontStyle=1" edge="1" parent="1" source="step4-delivered">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1080" y="972" as="sourcePoint" />
+            <mxPoint x="350" y="972" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step4-update-delivered" value="UPDATE orders&#xa;status=DELIVERED&#xa;actual_delivery=now()" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="290" y="945" width="120" height="55" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arrow15" value="FCM push" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#e65100;fontSize=8;dashed=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="650" y="972" as="sourcePoint" />
+            <mxPoint x="1690" y="972" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="680" y="972" />
+              <mxPoint x="680" y="950" />
+              <mxPoint x="1650" y="950" />
+              <mxPoint x="1650" y="972" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="step4-customer-delivered" value="🔔 Delivered!&#xa;Rate your&#xa;experience" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;fontSize=9;align=center" vertex="1" parent="1">
+          <mxGeometry x="40" y="950" width="110" height="45" as="geometry" />
+        </mxCell>
+        
+        <!-- KEY INSIGHTS BOX -->
+        <mxCell id="insights-box" value="🔑 KEY INSIGHTS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1630" y="650" width="120" height="190" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight1" value="✅ GEORADIUS: 10 nearest from 500K in &lt;10ms" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=7;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="680" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight2" value="⏱️ 30s timeout prevents one partner blocking order" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=7;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="705" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight3" value="📡 WebSocket: 500K partners, 100K GPS/sec" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=7;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="730" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight4" value="📊 Cassandra: 30-day location history for disputes" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=7;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="755" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight5" value="🔄 Kafka: decouple order events from notifications" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=7;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="780" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="insight6" value="📲 SSE: push partner location to customer every 5s" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=7;" vertex="1" parent="1">
+          <mxGeometry x="1640" y="805" width="100" height="20" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

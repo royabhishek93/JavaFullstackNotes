@@ -1,0 +1,102 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Tic-Tac-Toe LLD" id="tictactoe">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1080">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- SECTION 1: CLASS DIAGRAM -->
+        <mxCell id="title_class" value="SECTION 1-3: CLASS DIAGRAM (Simple Game Design with Queue)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="900" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Game Class -->
+        <mxCell id="game_class" value="Game&#xa;&#xa;- board: Board&#xa;- players: Queue&lt;Player&gt;&#xa;&#xa;+ initializeGame()&#xa;+ startGame()&#xa;+ isWinner(pieceType): boolean" style="swimlane;fontStyle=1;align=center;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="240" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Board Class -->
+        <mxCell id="board_class" value="Board&#xa;&#xa;- size: int&#xa;- board: PlayingPiece[][]&#xa;&#xa;+ addPiece(row, col, piece): boolean&#xa;+ getFreeCells(): List&lt;Pair&lt;int,int&gt;&gt;&#xa;+ printBoard()" style="swimlane;fontStyle=1;align=center;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="320" y="80" width="280" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Player Class -->
+        <mxCell id="player_class" value="Player&#xa;&#xa;- name: String&#xa;- playingPiece: PlayingPiece&#xa;&#xa;+ getName(): String&#xa;+ getPlayingPiece(): PlayingPiece&#xa;+ setPlayingPiece(PlayingPiece)" style="swimlane;fontStyle=1;align=center;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="640" y="80" width="240" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- PlayingPiece Hierarchy -->
+        <mxCell id="piece_class" value="&lt;&lt;abstract&gt;&gt;&#xa;PlayingPiece&#xa;&#xa;- pieceType: PieceType&#xa;&#xa;+ getPieceType(): PieceType" style="swimlane;fontStyle=1;align=center;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="920" y="80" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="piecex_class" value="PieceX&#xa;&#xa;+ PieceX()&#xa;  // pieceType = X" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="80" width="140" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="pieceo_class" value="PieceO&#xa;&#xa;+ PieceO()&#xa;  // pieceType = O" style="swimlane;fontStyle=1;align=center;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="180" width="140" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- PieceType Enum -->
+        <mxCell id="piecetype_enum" value="&lt;&lt;enum&gt;&gt;&#xa;PieceType&#xa;&#xa;X&#xa;O&#xa;// Extensible for&#xa;// different symbols" style="swimlane;fontStyle=1;align=center;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="80" width="140" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Game Flow -->
+        <mxCell id="flow_title" value="GAME FLOW ALGORITHM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="flow_box" value="1. Initialize board (3×3 or N×N)&#xa;2. Create 2 players with pieces (X and O)&#xa;3. Add players to Queue (Player1, Player2)&#xa;&#xa;GAME LOOP:&#xa;WHILE (true):&#xa;  a. Remove player from front of queue&#xa;  b. Print current board state&#xa;  c. Get free cells from board&#xa;  d. If no free cells:&#xa;     - Game is TIE&#xa;     - Break&#xa;  e. Print 'Player {name}, enter row,col:'&#xa;  f. Read user input (row, col)&#xa;  g. Check if cell is free:&#xa;     - If occupied: Invalid move, try again (continue)&#xa;     - If free: Place piece at (row, col)&#xa;  h. Add player to back of queue (for next turn)&#xa;  i. Check if current player won:&#xa;     - Check all rows for same piece&#xa;     - Check all columns for same piece&#xa;     - Check both diagonals for same piece&#xa;     - If any match: Player wins, break&#xa;  j. Continue to next turn&#xa;&#xa;WINNER CHECK:&#xa;- Row check: board[i][0-2] all same?&#xa;- Column check: board[0-2][j] all same?&#xa;- Diagonal 1: board[0][0], board[1][1], board[2][2]&#xa;- Diagonal 2: board[0][2], board[1][1], board[2][0]" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="300" width="600" height="560" as="geometry" />
+        </mxCell>
+        
+        <!-- Board Example -->
+        <mxCell id="board_example_title" value="BOARD REPRESENTATION" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="680" y="260" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="board_example" value="INITIAL STATE (Empty Board):&#xa;&#xa;  0   1   2&#xa;0 _ | _ | _&#xa;  --|---|--&#xa;1 _ | _ | _&#xa;  --|---|--&#xa;2 _ | _ | _&#xa;&#xa;&#xa;AFTER FEW MOVES:&#xa;&#xa;  0   1   2&#xa;0 X | O | _&#xa;  --|---|--&#xa;1 _ | X | O&#xa;  --|---|--&#xa;2 _ | _ | X&#xa;&#xa;X WINS (Diagonal):&#xa;board[0][0] = X&#xa;board[1][1] = X&#xa;board[2][2] = X&#xa;&#xa;&#xa;EXTENSIBLE TO N×N:&#xa;- Instead of hardcoded 3×3&#xa;- Board size as parameter&#xa;- Winner check loops 0 to size-1&#xa;- Supports 4×4, 5×5, etc." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="680" y="300" width="340" height="440" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1060" y="260" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Game Table -->
+        <mxCell id="er_game" value="Game&#xa;&#xa;PK  gameId: INT&#xa;    boardSize: INT&#xa;FK  player1Id: INT&#xa;FK  player2Id: INT&#xa;FK  winnerId: INT (nullable)&#xa;    status: ENUM (IN_PROGRESS/WON/TIE)&#xa;    startTime: DATETIME&#xa;    endTime: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="320" width="240" height="200" as="geometry" />
+        </mxCell>
+        
+        <!-- Player Table -->
+        <mxCell id="er_player" value="Player&#xa;&#xa;PK  playerId: INT&#xa;    playerName: VARCHAR(100)&#xa;    pieceType: ENUM (X/O)" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1340" y="320" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- Move Table -->
+        <mxCell id="er_move" value="Move&#xa;&#xa;PK  moveId: INT&#xa;FK  gameId: INT&#xa;FK  playerId: INT&#xa;    row: INT&#xa;    col: INT&#xa;    pieceType: ENUM&#xa;    moveNumber: INT&#xa;    timestamp: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="560" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="900" width="1820" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Scenario Box -->
+        <mxCell id="scenario_box" value="Q1: Player tries to place piece in occupied cell. How to handle?&#xa;A1: Board.addPiece() checks: if (board[row][col] != null) return false (invalid move). Game loop catches false return, shows 'Cell already occupied, try again'. Player stays at front of queue (doesn't switch turn). Keeps asking until valid move.&#xa;&#xa;Q2: How to extend from 3×3 to N×N board (e.g., 5×5)?&#xa;A2: Board constructor: Board(int size). Initialize: board = new PlayingPiece[size][size]. Winner check loops: for (i = 0; i &lt; size; i++). Diagonal check: for (i = 0; i &lt; size; i++) check board[i][i] and board[i][size-1-i]. No hardcoded '3', fully extensible.&#xa;&#xa;Q3: Want to support 3 players (X, O, Z) instead of 2. How to modify?&#xa;A3: Design already supports it! Queue&lt;Player&gt; can hold any number of players. Create 3 players with different pieces (PieceX, PieceO, PieceZ). Add all to queue. Game loop unchanged - removes from front, adds to back. Winner check unchanged - looks for 3 consecutive same pieces. Just need larger board (4×4 or 5×5) for 3 players.&#xa;&#xa;Q4: How to implement AI opponent (bot player)?&#xa;A4: Create BotPlayer extends Player. Override makeMove() method: (1) Get free cells (2) Simple strategy: random cell from free cells (3) Advanced: Minimax algorithm to find best move (4) Check if bot can win in next move (5) Check if opponent can win, block them (6) Otherwise pick center, then corners, then edges. Game loop remains same, just calls player.makeMove().&#xa;&#xa;Q5: How to add undo functionality?&#xa;A5: Maintain Stack&lt;Move&gt; for move history. Each Move stores: player, row, col, pieceType. Undo operation: (1) Pop from stack (2) Set board[row][col] = null (3) Switch turn back to previous player (rotate queue backwards). Redo: Maintain another stack for undone moves. Command Pattern ideal for undo/redo." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="960" width="1820" height="380" as="geometry" />
+        </mxCell>
+        
+        <!-- Design Pattern Box -->
+        <mxCell id="pattern_box" value="KEY DESIGN PATTERNS & PRINCIPLES:&#xa;&#xa;1. Template Method Pattern - PlayingPiece abstract, PieceX/PieceO concrete&#xa;2. Queue-based Turn Management - Fair turn rotation&#xa;3. Top-Down Design - Start with Game → Board → Pieces (mentioned in transcript)&#xa;&#xa;DESIGN APPROACH (from transcript):&#xa;'Use TOP-DOWN approach when product/service is central'&#xa;- Game is central component&#xa;- Game has Board&#xa;- Board has Pieces&#xa;- Naturally flows from high-level to low-level&#xa;&#xa;SIMPLICITY:&#xa;- Minimal classes (4 core classes)&#xa;- Simple winner check algorithm&#xa;- Easy to understand and implement&#xa;- Perfect for interview coding in 30-45 min&#xa;&#xa;EXTENSIBILITY:&#xa;- N×N board size (not hardcoded to 3×3)&#xa;- Multiple players (not hardcoded to 2)&#xa;- Different piece types (add PieceZ, PieceA, etc.)&#xa;- AI players (extend Player class)&#xa;- Undo/Redo (Command pattern)&#xa;- Network multiplayer (serialize board state)&#xa;&#xa;WINNER CHECK ALGORITHM:&#xa;Time Complexity: O(N) where N = board size&#xa;- Row check: O(N) × N rows = O(N²)&#xa;- Column check: O(N) × N cols = O(N²)&#xa;- Diagonal check: O(N) × 2 diagonals = O(N)&#xa;- Total: O(N²) but N is small (3-5 typically)&#xa;&#xa;OPTIMIZATION:&#xa;For larger boards, track row/col/diagonal sums:&#xa;- rowSum[i], colSum[i], diagSum[0], diagSum[1]&#xa;- X = +1, O = -1&#xa;- If any sum == N or -N, winner found&#xa;- O(1) winner check after each move" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="780" width="800" height="560" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

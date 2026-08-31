@@ -1,0 +1,503 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Checkout Flow Sequence" id="seq">
+    <mxGraphModel dx="2600" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="2600" pageHeight="1800" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="E-COMMERCE CHECKOUT FLOW — Complete Sequence (Distributed Locking + Inventory Reservation + Payment Webhook)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=22;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="2560" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="Two-Layer Locking (Redis SETNX + PostgreSQL FOR UPDATE) + reserved_qty Pattern + Idempotent Payment Webhook + Event-Driven Post-Checkout" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="50" width="2300" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- Actors/Systems (vertical swimlanes) -->
+        
+        <!-- User -->
+        <mxCell id="actor-user" value="🛒 USER" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#bbdefb;strokeColor=#1976d2;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="user-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#1976d2" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="110" y="150" as="sourcePoint" />
+            <mxPoint x="110" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Client App -->
+        <mxCell id="actor-client" value="📱 CLIENT APP" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="220" y="100" width="160" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="client-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="150" as="sourcePoint" />
+            <mxPoint x="300" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- API Gateway -->
+        <mxCell id="actor-gateway" value="⚡ API GATEWAY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="420" y="100" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="gateway-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#e65100" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="510" y="150" as="sourcePoint" />
+            <mxPoint x="510" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Cart Service -->
+        <mxCell id="actor-cart" value="🛒 CART SERVICE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="640" y="100" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="cart-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="730" y="150" as="sourcePoint" />
+            <mxPoint x="730" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Checkout Service -->
+        <mxCell id="actor-checkout" value="🔥 CHECKOUT SVC&#xa;(ORCHESTRATOR)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffccbc;strokeColor=#d84315;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="860" y="100" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="checkout-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#d84315" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="960" y="150" as="sourcePoint" />
+            <mxPoint x="960" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Redis -->
+        <mxCell id="actor-redis" value="⚡ REDIS&#xa;(Distributed Lock)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1100" y="100" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="redis-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#f57f17" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1190" y="150" as="sourcePoint" />
+            <mxPoint x="1190" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Inventory Service -->
+        <mxCell id="actor-inventory" value="📊 INVENTORY SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1320" y="100" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="inventory-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1420" y="150" as="sourcePoint" />
+            <mxPoint x="1420" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- PostgreSQL Inventory DB -->
+        <mxCell id="actor-postgres" value="🐘 PostgreSQL&#xa;(Inventory DB)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1560" y="100" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="postgres-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#7b1fa2" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1650" y="150" as="sourcePoint" />
+            <mxPoint x="1650" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Order Service -->
+        <mxCell id="actor-order" value="📋 ORDER SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1780" y="100" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="order-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1870" y="150" as="sourcePoint" />
+            <mxPoint x="1870" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Payment Service -->
+        <mxCell id="actor-payment" value="💳 PAYMENT SVC" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="2000" y="100" width="180" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="payment-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="2090" y="150" as="sourcePoint" />
+            <mxPoint x="2090" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Payment Gateway (External) -->
+        <mxCell id="actor-gateway-payment" value="💳 PAYMENT GATEWAY&#xa;(Stripe/Razorpay)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="2220" y="100" width="200" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="payment-gateway-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#01579b" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="2320" y="150" as="sourcePoint" />
+            <mxPoint x="2320" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Kafka -->
+        <mxCell id="actor-kafka" value="📨 KAFKA" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=3;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="2460" y="100" width="120" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="kafka-lifeline" value="" style="endArrow=none;dashed=1;html=1;strokeWidth=2;strokeColor=#7b1fa2" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="2520" y="150" as="sourcePoint" />
+            <mxPoint x="2520" y="1700" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- === SEQUENCE FLOWS === -->
+        
+        <!-- PHASE 1: BROWSE & ADD TO CART -->
+        <mxCell id="phase1-label" value="━━━━━━━━━ PHASE 1: BROWSE &amp; ADD TO CART ━━━━━━━━━" style="text;html=1;strokeColor=none;fillColor=#e3f2fd;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="800" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Browse products -->
+        <mxCell id="seq-1" value="1. Browse products" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#1976d2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="110" y="230" as="sourcePoint" />
+            <mxPoint x="300" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-2" value="GET /v1/product/search?q=laptop" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="300" y="260" as="sourcePoint" />
+            <mxPoint x="510" y="260" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-search" value="Search Service queries&#xa;Elasticsearch (Redis cache hit)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=1;fontSize=9;align=left" vertex="1" parent="1">
+          <mxGeometry x="550" y="240" width="170" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-3" value="200 OK [{products}]" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="510" y="300" as="sourcePoint" />
+            <mxPoint x="110" y="300" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Add to cart -->
+        <mxCell id="seq-4" value="2. Add to cart (laptop, qty=1)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#1976d2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="110" y="340" as="sourcePoint" />
+            <mxPoint x="300" y="340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-5" value="POST /v1/cart/add {product_id, qty}" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="300" y="370" as="sourcePoint" />
+            <mxPoint x="730" y="370" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-cart-upsert" value="INSERT INTO cart_items ... ON CONFLICT&#xa;(cart_id, product_id) DO UPDATE&#xa;SET qty = qty + 1&#xa;&#xa;(handles race: mobile + web)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="750" y="350" width="200" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-6" value="201 Created {cart_id}" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="730" y="430" as="sourcePoint" />
+            <mxPoint x="110" y="430" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- PHASE 2: CHECKOUT (CRITICAL PATH) -->
+        <mxCell id="phase2-label" value="━━━━━━━━━ PHASE 2: CHECKOUT (CRITICAL PATH — Two-Layer Locking) ━━━━━━━━━" style="text;html=1;strokeColor=none;fillColor=#ffebee;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="470" width="1100" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-7" value="3. Click 'Checkout'" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#1976d2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="110" y="520" as="sourcePoint" />
+            <mxPoint x="300" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-8" value="POST /v1/checkout {cart_id, address_id, payment_method}" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=3;strokeColor=#d84315" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="300" y="550" as="sourcePoint" />
+            <mxPoint x="960" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Checkout fetches cart -->
+        <mxCell id="seq-9" value="Fetch cart items" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="960" y="580" as="sourcePoint" />
+            <mxPoint x="730" y="580" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-10" value="[{product_id, qty, price}]" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="730" y="610" as="sourcePoint" />
+            <mxPoint x="960" y="610" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- LAYER 1: Redis Distributed Lock -->
+        <mxCell id="note-lock-1" value="🔒 LAYER 1: DISTRIBUTED LOCK (Fast rejection)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=2;fontSize=10;align=center;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="630" width="320" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-11" value="SETNX lock:inventory:{product_id} {session_id} EX 30" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#f57f17" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="960" y="680" as="sourcePoint" />
+            <mxPoint x="1190" y="680" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-setnx" value="Returns 1 if lock acquired&#xa;Returns 0 if already locked&#xa;(another user mid-checkout)&#xa;&#xa;Auto-expires in 30 sec&#xa;(prevents deadlock if crash)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="1210" y="660" width="160" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-12" value="1 (lock acquired)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#f57f17;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1190" y="760" as="sourcePoint" />
+            <mxPoint x="960" y="760" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- LAYER 2: PostgreSQL Row Lock -->
+        <mxCell id="note-lock-2" value="🔒 LAYER 2: POSTGRESQL ROW LOCK (ACID guarantee)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=2;fontSize=10;align=center;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="780" width="420" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-13" value="Validate &amp; reserve inventory" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="960" y="830" as="sourcePoint" />
+            <mxPoint x="1420" y="830" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-14" value="BEGIN TRANSACTION SERIALIZABLE;" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#7b1fa2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1420" y="860" as="sourcePoint" />
+            <mxPoint x="1650" y="860" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-15" value="SELECT qty, reserved_qty FROM inventory&#xa;WHERE product_id = ?&#xa;FOR UPDATE;" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#7b1fa2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1420" y="900" as="sourcePoint" />
+            <mxPoint x="1650" y="900" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-for-update" value="FOR UPDATE = pessimistic row lock&#xa;Blocks other transactions from&#xa;modifying this row until COMMIT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="1680" y="880" width="180" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-16" value="{qty: 10, reserved_qty: 2}" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#7b1fa2;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1650" y="950" as="sourcePoint" />
+            <mxPoint x="1420" y="950" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-available" value="available = qty - reserved_qty&#xa;         = 10 - 2 = 8 units&#xa;&#xa;cart_qty = 1 (from cart)&#xa;8 &gt;= 1 → sufficient stock ✅" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="1440" y="960" width="170" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-17" value="UPDATE inventory&#xa;SET reserved_qty = reserved_qty + 1&#xa;WHERE product_id = ?;" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#7b1fa2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1420" y="1050" as="sourcePoint" />
+            <mxPoint x="1650" y="1050" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-reserve" value="reserved_qty: 2 → 3&#xa;qty unchanged: 10&#xa;&#xa;Stock removed from pool&#xa;but NOT deducted yet&#xa;(waiting for payment)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="1680" y="1030" width="160" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-18" value="COMMIT;" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#7b1fa2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1420" y="1120" as="sourcePoint" />
+            <mxPoint x="1650" y="1120" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-19" value="OK (reservation successful)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1420" y="1150" as="sourcePoint" />
+            <mxPoint x="960" y="1150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Create order -->
+        <mxCell id="seq-20" value="Create order (status: PENDING_PAYMENT)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="960" y="1180" as="sourcePoint" />
+            <mxPoint x="1870" y="1180" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-21" value="INSERT INTO orders (...) status='PENDING_PAYMENT'" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#7b1fa2;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1870" y="1210" as="sourcePoint" />
+            <mxPoint x="2090" y="1210" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-22" value="{order_id}" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="1870" y="1240" as="sourcePoint" />
+            <mxPoint x="960" y="1240" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Release Redis lock -->
+        <mxCell id="seq-23" value="DEL lock:inventory:{product_id}" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#f57f17" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="960" y="1270" as="sourcePoint" />
+            <mxPoint x="1190" y="1270" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-release-lock" value="Lock released after reservation&#xa;Next user can now checkout&#xa;this product" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="1210" y="1250" width="160" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- Create payment intent -->
+        <mxCell id="seq-24" value="Create payment intent (order_id as idempotency_key)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#388e3c" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="960" y="1310" as="sourcePoint" />
+            <mxPoint x="2090" y="1310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-25" value="POST /v1/payment_intents (idempotency_key: order_id)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#01579b" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="2090" y="1340" as="sourcePoint" />
+            <mxPoint x="2320" y="1340" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-idempotency" value="order_id as idempotency key&#xa;If retry: same order_id → same result&#xa;Prevents double-charge" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="2120" y="1310" width="180" height="50" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-26" value="{payment_url, client_secret}" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#01579b;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="2320" y="1380" as="sourcePoint" />
+            <mxPoint x="2090" y="1380" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-27" value="202 Accepted {order_id, payment_url, expires_at}" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=3;strokeColor=#d84315;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="960" y="1410" as="sourcePoint" />
+            <mxPoint x="110" y="1410" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-202" value="202 Accepted (not 200)&#xa;Order created, payment pending&#xa;User redirected to payment URL" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="400" y="1390" width="170" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- User completes payment -->
+        <mxCell id="seq-28" value="4. User completes payment (card details)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#01579b" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="110" y="1460" as="sourcePoint" />
+            <mxPoint x="2320" y="1460" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-payment-process" value="User enters card details&#xa;Payment gateway processes&#xa;(PCI-DSS compliant)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=1;fontSize=8;align=center" vertex="1" parent="1">
+          <mxGeometry x="2340" y="1440" width="150" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- PHASE 3: PAYMENT WEBHOOK (Async) -->
+        <mxCell id="phase3-label" value="━━━━━━━━━ PHASE 3: PAYMENT WEBHOOK (Idempotent Inventory Deduction) ━━━━━━━━━" style="text;html=1;strokeColor=none;fillColor=#e8f5e9;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="1510" width="1100" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-29" value="POST /webhooks/payment (HMAC signature)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=3;strokeColor=#01579b" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="2320" y="1560" as="sourcePoint" />
+            <mxPoint x="2090" y="1560" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-webhook" value="Gateway retries webhook on timeout&#xa;Must be idempotent!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffebee;strokeColor=#c62828;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="2120" y="1540" width="160" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-30" value="1. Validate HMAC signature" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=1;strokeColor=#388e3c;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="2090" y="1600" as="sourcePoint" />
+            <mxPoint x="2090" y="1620" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="2140" y="1600" />
+              <mxPoint x="2140" y="1620" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-31" value="2. Idempotency check: SELECT * FROM payments WHERE order_id=?" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=1;strokeColor=#388e3c;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="2090" y="1640" as="sourcePoint" />
+            <mxPoint x="2090" y="1660" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="2140" y="1640" />
+              <mxPoint x="2140" y="1660" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-idempotency-check" value="If exists → 200 OK (already processed)&#xa;Else → BEGIN TRANSACTION" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="1880" y="1630" width="190" height="35" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-32" value="3. BEGIN TRANSACTION SERIALIZABLE;&#xa;INSERT payments (status='SUCCESS');&#xa;UPDATE orders SET status='PAYMENT_CONFIRMED';&#xa;UPDATE inventory SET qty=qty-1, reserved_qty=reserved_qty-1;&#xa;DELETE FROM cart_items WHERE cart_id=?;&#xa;COMMIT;" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#7b1fa2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="2090" y="1700" as="sourcePoint" />
+            <mxPoint x="2090" y="1800" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="2200" y="1700" />
+              <mxPoint x="2200" y="1800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-deduction" value="ATOMIC TRANSACTION:&#xa;• Payment recorded (UNIQUE order_id)&#xa;• Order status updated&#xa;• Inventory deducted (qty: 10→9)&#xa;• reserved_qty decremented (3→2)&#xa;• Cart cleared&#xa;&#xa;If any step fails → ROLLBACK&#xa;Inventory stays reserved" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c8e6c9;strokeColor=#388e3c;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="1860" y="1710" width="180" height="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="seq-33" value="4. Publish Kafka events: payment.success, order.confirmed" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=2;strokeColor=#7b1fa2" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="2090" y="1840" as="sourcePoint" />
+            <mxPoint x="2520" y="1840" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="seq-34" value="200 OK (webhook processed)" style="edgeStyle=orthogonalEdgeStyle;html=1;align=left;spacingLeft=2;endArrow=block;rounded=0;strokeWidth=3;strokeColor=#01579b;dashed=1" edge="1" parent="1">
+          <mxGeometry x="-0.2" relative="1" as="geometry">
+            <mxPoint x="2090" y="1870" as="sourcePoint" />
+            <mxPoint x="2320" y="1870" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="note-kafka-consumers" value="Kafka consumers (async, non-blocking):&#xa;• Notification → Email/SMS sent&#xa;• Warehouse → Pick/pack/ship started&#xa;• Analytics → Event logged" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#7b1fa2;strokeWidth=1;fontSize=8;align=left" vertex="1" parent="1">
+          <mxGeometry x="2340" y="1820" width="200" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Legend -->
+        <mxCell id="legend-box" value="🔍 KEY INSIGHTS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=3;fontSize=14;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="40" y="1920" width="2540" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="legend-text" value="1. **Two-Layer Locking**: Redis SETNX (fast rejection &lt;1ms, 9999/10000 users rejected) + PostgreSQL FOR UPDATE (ACID guarantee for the 1 winner). Prevents thundering herd.&#xa;2. **reserved_qty Pattern**: Stock removed from available pool during checkout→payment window, but NOT deducted until payment.success webhook. Prevents overselling.&#xa;3. **Auto-Expiring Lock**: Redis lock EX 30 (30-second expiry). If service crashes mid-checkout, lock auto-releases. No manual cleanup needed. Idempotent retry safe.&#xa;4. **Idempotent Webhook**: UNIQUE constraint on payments(order_id). Webhook can be replayed safely. SELECT before INSERT prevents double-charge.&#xa;5. **202 Accepted (not 200)**: Checkout returns 202 because payment is pending. Order created, inventory reserved, but not confirmed until webhook.&#xa;6. **SERIALIZABLE Transaction**: All inventory deduction happens in one ACID transaction. If payment INSERT fails (duplicate order_id), entire transaction rolls back.&#xa;7. **Event-Driven Post-Checkout**: Kafka decouples all work after payment. Notification slow? Doesn't block order confirmation. Warehouse offline? Retries from Kafka offset.&#xa;8. **Race Condition Handling**: ON CONFLICT for cart (mobile + web simultaneous add). FOR UPDATE for inventory (concurrent checkouts). UNIQUE for payments (webhook replay).&#xa;9. **Failure Recovery**: Cron job finds orders PENDING_PAYMENT &gt;30min, polls payment gateway status API, reconciles (payment succeeded but webhook lost → manual deduction).&#xa;10. **Lock Timeout**: If FOR UPDATE waits &gt;5 sec → lock_timeout error → abort, return 503 Service Unavailable (don't leave user hanging)." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9" vertex="1" parent="1">
+          <mxGeometry x="50" y="1950" width="2520" height="120" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

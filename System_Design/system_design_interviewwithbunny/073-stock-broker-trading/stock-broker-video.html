@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stock Broker / Trading Platform System Design</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+
+/* ── Topbar ── */
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+
+/* ── Slide area ── */
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Controls ── */
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+
+/* ── Typography ── */
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin-bottom:5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+ul{padding-left:16px}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+em{color:#c4d4e8;font-style:italic}
+.hl{color:var(--yellow);font-weight:600}
+.gr{color:#4ade80}
+.rd{color:#f87171}
+.bl{color:var(--blue)}
+.pu{color:#a78bfa}
+.cy{color:#22d3ee}
+.or{color:#fb923c}
+
+/* ── Layout helpers ── */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+
+/* ── Cards ── */
+.card{
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;
+  padding:12px 15px;box-shadow:0 2px 12px rgba(0,0,0,.35);
+  transition:border-color .2s;
+}
+.card.blue{border-left:3px solid var(--blue);background:linear-gradient(135deg,rgba(59,130,246,.04),var(--surface))}
+.card.green{border-left:3px solid var(--green);background:linear-gradient(135deg,rgba(34,197,94,.04),var(--surface))}
+.card.yellow{border-left:3px solid var(--yellow);background:linear-gradient(135deg,rgba(245,158,11,.04),var(--surface))}
+.card.red{border-left:3px solid var(--red);background:linear-gradient(135deg,rgba(239,68,68,.04),var(--surface))}
+.card.purple{border-left:3px solid var(--purple);background:linear-gradient(135deg,rgba(139,92,246,.04),var(--surface))}
+.card.cyan{border-left:3px solid var(--cyan);background:linear-gradient(135deg,rgba(6,182,212,.04),var(--surface))}
+.card.orange{border-left:3px solid var(--orange);background:linear-gradient(135deg,rgba(249,115,22,.04),var(--surface))}
+
+/* ── Code blocks ── */
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.8;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:8px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+  position:relative;
+}
+.dia::before{
+  content:'';display:block;height:24px;
+  background:linear-gradient(90deg,#1a2744 0%,#111827 100%);
+  margin:-12px -14px 10px;border-radius:7px 7px 0 0;
+  border-bottom:1px solid #1a2744;
+}
+.dia .kw{color:#60a5fa;font-weight:500}
+.dia .str{color:#4ade80}
+.dia .num{color:#fbbf24}
+.dia .cm{color:#2d4a6e;font-style:italic}
+
+/* ── Tables ── */
+.tbl{width:100%;border-collapse:collapse;font-size:11px;margin:6px 0}
+.tbl th{
+  background:linear-gradient(90deg,#0d1423,#111827);
+  color:var(--blue);padding:7px 10px;text-align:left;
+  border-bottom:1px solid var(--border2);font-weight:600;font-size:11px;letter-spacing:.03em;text-transform:uppercase
+}
+.tbl td{padding:5px 10px;border-bottom:1px solid #0c1220;color:var(--soft);vertical-align:top;font-size:11.5px}
+.tbl tr:hover td{background:#0d1423}
+.tbl tr:last-child td{border-bottom:none}
+
+/* ── Badges & Pills ── */
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+.pill{display:inline-block;border-radius:5px;padding:2px 8px;font-size:10.5px;font-weight:700;letter-spacing:.02em}
+.pill.red{background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d}
+.pill.yellow{background:#431a00;color:#fde68a;border:1px solid #78350f}
+.pill.green{background:#052e16;color:#86efac;border:1px solid #14532d}
+.pill.blue{background:#0f2349;color:#93c5fd;border:1px solid #1e3a5f}
+.pill.purple{background:#1e0a44;color:#d8b4fe;border:1px solid #3b0764}
+
+/* ── Title slide ── */
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* ── Step badge ── */
+.step{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;background:linear-gradient(135deg,#1d4ed8,#3b82f6);border-radius:50%;font-size:10px;font-weight:800;color:#fff;margin-right:7px;flex-shrink:0;box-shadow:0 2px 6px rgba(59,130,246,.4)}
+.step-row{display:flex;align-items:flex-start;margin:5px 0}
+
+/* ── Callout boxes ── */
+.tip{
+  background:linear-gradient(135deg,#1a1100,#1c1506);
+  border:1px solid #78350f;border-left:3px solid var(--yellow);
+  border-radius:8px;padding:10px 14px;font-size:11.5px;color:#fde68a;margin:8px 0;
+  box-shadow:0 2px 8px rgba(245,158,11,.08);
+}
+.warn{
+  background:linear-gradient(135deg,#150505,#1a0a0a);
+  border:1px solid #7f1d1d;border-left:3px solid var(--red);
+  border-radius:8px;padding:10px 14px;font-size:11.5px;color:#fca5a5;margin:8px 0;
+  box-shadow:0 2px 8px rgba(239,68,68,.08);
+}
+.info{
+  background:linear-gradient(135deg,#060f20,#0a1628);
+  border:1px solid #1e3a5f;border-left:3px solid var(--blue);
+  border-radius:8px;padding:10px 14px;font-size:11.5px;color:#93c5fd;margin:8px 0;
+  box-shadow:0 2px 8px rgba(59,130,246,.08);
+}
+.success{
+  background:linear-gradient(135deg,#041510,#052e16);
+  border:1px solid #14532d;border-left:3px solid var(--green);
+  border-radius:8px;padding:10px 14px;font-size:11.5px;color:#86efac;margin:8px 0;
+}
+
+/* ── Section label ── */
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+
+/* ── Tag row ── */
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+
+/* ── Stat tiles ── */
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.3)}
+.stat .val{font-size:1.4rem;font-weight:800;letter-spacing:-.02em;line-height:1}
+.stat .lbl{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.06em;font-weight:500}
+
+/* ── Interview quote ── */
+.quote{background:linear-gradient(135deg,#080e1c,#0a1220);border:1px solid #1a2744;border-left:3px solid var(--cyan);border-radius:8px;padding:12px 16px;font-size:.875rem;color:#c4d4e8;line-height:1.75;margin:8px 0;font-style:italic}
+.quote strong{color:#e2e8f0;font-style:normal}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Stock Broker / Trading Platform System Design</span>
+    <span id="counter">1 / 35</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:2.86%"></div></div>
+
+  <div id="slide-area">
+
+<!-- ═══════════════════════════════════════════════════ S1 TITLE -->
+<div class="slide active" id="s1" data-title="Stock Broker / Trading Platform System Design">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">📈</div>
+  <h1 class="gradient-text">Stock Broker / Trading Platform</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Complete Architect-Level Guide — HLD · LLD · ER · DB Schema · Scaling · Interview Q&amp;A</p>
+  <div class="tags" style="justify-content:center;margin-top:20px">
+    <span class="badge">⚡ Zerodha / Groww / Upstox</span>
+    <span class="badge">🔒 Fund Locking · ACID</span>
+    <span class="badge">📡 WebSocket · Redis PubSub</span>
+    <span class="badge">🏛 FIX Protocol · NSE/BSE</span>
+    <span class="badge">📊 InfluxDB · Time-Series</span>
+    <span class="badge">🚀 100K orders/min</span>
+    <span class="badge">⏱ &lt;50ms market data</span>
+  </div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S2 OPENING -->
+<div class="slide" id="s2" data-title="The Core Design Challenge">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>The Core Design Challenge — CAP Duality</h2>
+<div class="cols2">
+  <div>
+    <div class="card red">
+      <h3>Two Services, Opposite CAP Needs</h3>
+      <ul>
+        <li><strong>Market data (price feed)</strong> — 100M users reading prices → must be highly <span class="gr">Available (AP)</span></li>
+        <li><strong>Order placement / fund mgmt</strong> — wrong balance or duplicate trade = financial loss → must be <span class="rd">Consistent (CP)</span></li>
+      </ul>
+    </div>
+    <div class="tip" style="margin-top:10px">
+      <strong>The interview insight:</strong> Deliver stock prices to millions in &lt;50ms <em>while</em> guaranteeing no two orders overdraft the same account and no order is lost.
+    </div>
+  </div>
+  <div>
+    <div class="card blue">
+      <h3>Rapid Answer Script (2–3 min)</h3>
+      <ul>
+        <li>Split into microservices with strict CAP boundary</li>
+        <li><span class="cy">Price path (AP):</span> Price Ingester → InfluxDB + Redis PubSub → WebSocket → client ~20ms</li>
+        <li><span class="hl">Order path (CP):</span> Order Svc → lock funds (SELECT FOR UPDATE) → Kafka → Validator → Exchange Gateway → NSE/BSE via FIX</li>
+        <li>State: <span class="pu">PENDING → VERIFIED → PLACED → EXECUTED / REJECTED</span></li>
+        <li>Key insight: lock funds at PENDING, settle actual at EXECUTED</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S3 FUNCTIONAL REQS -->
+<div class="slide" id="s3" data-title="Functional Requirements">
+<div class="section-label">📋 Requirements</div>
+<h2>Functional Requirements</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue" style="margin-bottom:10px">
+      <h3>Core Features</h3>
+      <ul>
+        <li><strong>FR1</strong> — User registration, login, <span class="cy">KYC verification</span> (PAN + Aadhaar)</li>
+        <li><strong>FR2</strong> — View real-time stock prices, historical data, charts</li>
+        <li><strong>FR3</strong> — Watchlist — add stocks, see real-time updates</li>
+        <li><strong>FR4</strong> — Place / modify / cancel <span class="hl">market and limit orders</span> with status updates</li>
+      </ul>
+    </div>
+    <div class="card green">
+      <h3>Dashboard &amp; Funds</h3>
+      <ul>
+        <li><strong>FR5</strong> — Dashboard: current holdings, trade history, <span class="gr">P&amp;L</span>, performance insights</li>
+        <li><strong>FR6</strong> — Fund management: deposit, withdraw, view history</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Order Types Supported</h3>
+      <ul>
+        <li>🟢 <strong>MARKET</strong> — execute immediately at best available price</li>
+        <li>🔵 <strong>LIMIT</strong> — execute only at specified price or better</li>
+        <li>🔴 <strong>STOP-LOSS</strong> — trigger when price hits a threshold</li>
+      </ul>
+    </div>
+    <div class="card purple" style="margin-top:10px">
+      <h3>API Summary</h3>
+<div class="dia" style="margin:4px 0;font-size:10.5px">POST /api/v1/orders          <span class="cm">← place order</span>
+GET  /api/v1/orders/{id}    <span class="cm">← order status</span>
+DELETE /api/v1/orders/{id}  <span class="cm">← cancel order</span>
+GET  /api/v1/portfolio      <span class="cm">← holdings + P&amp;L</span>
+WS   /api/v1/stocks/{sym}   <span class="cm">← live price feed</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S4 NON-FUNCTIONAL -->
+<div class="slide" id="s4" data-title="Non-Functional Requirements">
+<div class="section-label">📋 Requirements</div>
+<h2>Non-Functional Requirements</h2>
+<div class="cols2">
+  <div>
+    <div class="card red">
+      <h3>Scale</h3>
+      <ul>
+        <li><span class="hl">8–10K</span> stock symbols (NSE+BSE combined)</li>
+        <li><span class="hl">100K+</span> orders/minute at peak</li>
+        <li><span class="hl">10K</span> orders/minute normal load</li>
+        <li>Millions of concurrent users on market data</li>
+        <li>99.99% uptime during market hours (9:15 AM – 3:30 PM IST)</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>CAP Theorem</h3>
+      <p><strong class="rd">Consistency &gt;&gt; Availability</strong> — image explicitly states this</p>
+      <ul style="margin-top:6px">
+        <li>Wrong balance / duplicate trade / stale price = huge financial losses</li>
+        <li>BUT: viewing stock price should be <span class="gr">highly available (AP)</span></li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card cyan">
+      <h3>Latency SLAs</h3>
+      <table class="tbl">
+        <tr><th>Operation</th><th>Target</th></tr>
+        <tr><td><span class="pill blue">Order placement</span></td><td class="gr">&lt;100ms</td></tr>
+        <tr><td><span class="pill green">Market data update</span></td><td class="hl">&lt;50ms</td></tr>
+        <tr><td><span class="pill purple">Price update (actual)</span></td><td class="cy">~20ms</td></tr>
+        <tr><td><span class="pill yellow">Redis PubSub fan-out</span></td><td>&lt;10ms</td></tr>
+      </table>
+    </div>
+    <div class="cols3" style="margin-top:10px">
+      <div class="stat"><div class="val gr">8-10K</div><div class="lbl">Stocks</div></div>
+      <div class="stat"><div class="val hl">100K+</div><div class="lbl">Orders/min</div></div>
+      <div class="stat"><div class="val cy">400-500</div><div class="lbl">FIX Conns</div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S5 CAP SPLIT -->
+<div class="slide" id="s5" data-title="CAP Theorem Split">
+<div class="section-label">📋 Requirements</div>
+<h2>CAP Theorem Split — The Design Foundation</h2>
+<table class="tbl" style="margin-bottom:12px">
+  <tr><th>Feature</th><th>CAP</th><th>Why</th></tr>
+  <tr><td><strong>View stock price (market data)</strong></td><td><span class="pill green">AP</span></td><td>Stale by 100ms is fine. User reading price does not lose money. Must be "highly available"</td></tr>
+  <tr><td><strong>Place order / lock funds</strong></td><td><span class="pill red">CP</span></td><td>Two simultaneous orders cannot both pass if funds are insufficient. Overdraft = financial loss</td></tr>
+  <tr><td><strong>Order validation</strong></td><td><span class="pill red">CP</span></td><td>Duplicate order must be caught. Risk limits must be enforced</td></tr>
+  <tr><td><strong>Portfolio P&amp;L</strong></td><td><span class="pill yellow">Eventual</span></td><td>Current value recalculated using Redis price on every view. Never stored (stale data risk)</td></tr>
+  <tr><td><strong>Trade execution</strong></td><td><span class="pill red">CP</span></td><td>At-most-once execution per order. Idempotency key = order_id</td></tr>
+</table>
+<div class="quote">"Correctness is more important than uptime. A wrong balance, duplicate trade, or stale price can lead to huge financial losses."</div>
+<div class="tip">State the CAP split explicitly at the start of any interview answer. It signals architectural maturity.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S6 HLD OVERVIEW -->
+<div class="slide" id="s6" data-title="High Level Design — Overview">
+<div class="section-label">🏛 HLD</div>
+<h2>High Level Design — Microservices Architecture</h2>
+<div class="dia">  users / client
+       │
+       ▼
+  ┌────────────────────────────────────┐
+  │     LB + API Gateway               │
+  │  Auth · Rate Limiting · Routing    │
+  └───────────────────────────────────-┘
+       │                      │
+  REST APIs             WebSocket Gateway
+       │                (sticky sessions)
+  ┌────┼──────────────────────────────────────────────┐
+  │    │                                              │
+  ▼    ▼           ▼            ▼          ▼    ▼     ▼
+┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────┐ ┌──────┐ ┌────────┐
+│ User Svc │ │ Price    │ │Watchlist │ │Order │ │Portf-│ │Payment │
+│  + KYC   │ │ Tracker  │ │   Svc    │ │  Svc │ │olio  │ │  Svc   │
+└────┬─────┘ └─────┬────┘ └────┬─────┘ └───┬──┘ │ Svc  │ └───┬────┘
+     │             │           │           │    └──────┘     │
+     ▼             ▼           ▼           ▼                  ▼
+  UserDB        InfluxDB    Watch DB  Order DB+         Payment DB
+  KYC Verif   Redis PubSub            Kafka pipeline    Payment GW
+                                           │
+                                    Exchange Gateway
+                                    (FIX protocol)
+                                           │
+                                    NSE / BSE Exchange</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S7 PRICE PATH HLD -->
+<div class="slide" id="s7" data-title="HLD — Price Path (AP)">
+<div class="section-label">🏛 HLD</div>
+<h2>Price Path — Highly Available (AP)</h2>
+<div class="cols2">
+  <div>
+    <div class="card cyan">
+      <h3>Flow: Exchange → Client (~20ms)</h3>
+      <ol style="padding-left:16px">
+        <li style="margin-bottom:4px">NSE/BSE tick → <strong>Price Ingester Svc</strong> (WebSocket/FIX data feed)</li>
+        <li style="margin-bottom:4px">Price Ingester → <span class="gr">InfluxDB</span> (persist for charts)</li>
+        <li style="margin-bottom:4px">Price Ingester → <span class="cy">Redis PubSub</span> PUBLISH stock_price</li>
+        <li style="margin-bottom:4px">WebSocket Gateway SUBSCRIBE → fan-out &lt;10ms</li>
+        <li>Client receives <em>only stocks in their watchlist</em></li>
+      </ol>
+    </div>
+    <div class="tip" style="margin-top:10px">
+      <strong>Bandwidth efficiency:</strong> Each client subscribes to ~10 stocks. Server pushes ONLY those 10, not all 8-10K. Bandwidth reduction: <strong>1000×</strong> per client.
+    </div>
+  </div>
+  <div>
+    <div class="card blue">
+      <h3>Latency Breakdown</h3>
+      <table class="tbl">
+        <tr><th>Hop</th><th>Time</th></tr>
+        <tr><td>Exchange → Price Ingester</td><td class="gr">5ms</td></tr>
+        <tr><td>Price Ingester → Redis</td><td class="gr">2ms</td></tr>
+        <tr><td>Redis → WebSocket server</td><td class="gr">3ms</td></tr>
+        <tr><td>WebSocket → Client</td><td class="hl">10ms</td></tr>
+        <tr><td><strong>TOTAL</strong></td><td class="cy">~20ms</td></tr>
+      </table>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>WebSocket Fallback</h3>
+      <ul>
+        <li>Auto-reconnect: 1s → 2s → 4s → max 30s</li>
+        <li>On reconnect: re-subscribe watchlist symbols</li>
+        <li>Fetch missed: GET /api/v1/stocks/{symbol}</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S8 ORDER PATH HLD -->
+<div class="slide" id="s8" data-title="HLD — Order Path (CP)">
+<div class="section-label">🏛 HLD</div>
+<h2>Order Path — Strongly Consistent (CP)</h2>
+<div class="dia">POST /api/v1/orders → <span class="kw">Order Svc</span>
+  1. Validate JWT, symbol, market hours, quantity
+  2. Get current price: Redis GET stock_price:RELIANCE → ₹2458.75
+  3. <span class="str">FUND LOCKING (SELECT FOR UPDATE, SERIALIZABLE)</span>
+     estimated cost: 10 × 2458.75 + ₹20 commission = ₹24,607.50
+     available_balance -= 24607.50
+     locked_balance    += 24607.50
+  4. INSERT orders (status=PENDING)
+  5. Kafka.send('new_orders', {orderId, userId, ...})
+  6. Response: 200 OK { orderId, status: 'PENDING' }   <span class="cm">← async, fast</span>
+
+Kafka 'new_orders' → <span class="kw">Validator Svc</span> (5 instances, 50 partitions)
+  CHECK 1: Duplicate → Redis SETNX order_lock:{id} EX 30
+  CHECK 2: Risk  → total exposure ≤ 10× available_balance
+  CHECK 3: Circuit breaker → price volatility ≤ 10% in 5 min
+  CHECK 4: Compliance → KYC=VERIFIED, not restricted
+
+  PASS → status=VERIFIED, Kafka 'verified_orders'
+  FAIL → status=REJECTED, unlock funds
+
+Kafka 'verified_orders' → <span class="kw">Exchange Gateway</span>
+  FIX Tag35=D (NewOrderSingle) → NSE/BSE TCP
+  status=PLACED, exchange_order_id assigned
+
+NSE/BSE → FIX Tag35=8 (ExecutionReport)
+  → Kafka 'order_status' → <span class="kw">3 parallel consumers</span>
+    Order Tracker Svc  · Portfolio Svc  · Notification Svc</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S9 ORDER GATEWAY DETAIL -->
+<div class="slide" id="s9" data-title="Order Gateway — FIX Protocol">
+<div class="section-label">🏛 HLD</div>
+<h2>Exchange Gateway — FIX Protocol Deep Dive</h2>
+<div class="cols2">
+  <div>
+    <div class="card orange">
+      <h3>Why FIX, Not REST?</h3>
+      <ul>
+        <li>FIX = Financial Information eXchange — binary TCP protocol</li>
+        <li>REST is HTTP (app layer). FIX is TCP (transport layer) → <span class="gr">lower latency</span></li>
+        <li>NSE/BSE simply don't accept REST — industry standard</li>
+        <li>FIX tag-value pairs: <span class="cy">Tag35=D</span> = NewOrderSingle, <span class="cy">Tag35=8</span> = ExecutionReport</li>
+      </ul>
+    </div>
+    <div class="card blue" style="margin-top:10px">
+      <h3>Connection Pool</h3>
+      <ul>
+        <li>Maintain <span class="hl">400–500 persistent FIX connections</span> to NSE/BSE</li>
+        <li>Grouped by symbol (RELIANCE, TCS, INFY on same connection)</li>
+        <li>Reuse connections — TCP handshake takes 3–5ms per order avoided</li>
+        <li>Load balance: distribute by symbol hash</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card purple">
+      <h3>FIX Message Format</h3>
+<div class="dia" style="margin:4px 0">Tag 35 = D       <span class="cm">NewOrderSingle</span>
+Tag 55 = RELIANCE <span class="cm">Symbol</span>
+Tag 54 = 1        <span class="cm">Side: Buy</span>
+Tag 38 = 10       <span class="cm">Quantity</span>
+Tag 40 = 1        <span class="cm">OrdType: Market</span>
+Tag 11 = ORD123   <span class="cm">ClOrdID</span>
+
+<span class="cm">Execution Report (response):</span>
+Tag 35 = 8        <span class="cm">ExecutionReport</span>
+Tag 150 = 2       <span class="cm">ExecType: Filled</span>
+Tag 31 = 2459.00  <span class="cm">LastPx (executed)</span>
+Tag 32 = 10       <span class="cm">LastQty</span></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S10 MATCHING ENGINE -->
+<div class="slide" id="s10" data-title="Matching Engine — Price-Time Priority">
+<div class="section-label">📈 Matching Engine</div>
+<h2>Order Matching Engine — Price-Time Priority</h2>
+<div class="cols2">
+  <div>
+    <div class="card green">
+      <h3>Price-Time Priority Algorithm</h3>
+      <ul>
+        <li><strong>Primary sort:</strong> Price — best bid (highest BUY price) matches best ask (lowest SELL price)</li>
+        <li><strong>Secondary sort:</strong> Time — earlier orders at same price matched first (FIFO)</li>
+        <li>Match when: <span class="cy">best_bid_price ≥ best_ask_price</span></li>
+      </ul>
+    </div>
+    <div class="card blue" style="margin-top:10px">
+      <h3>Order Book Structure</h3>
+<div class="dia" style="margin:4px 0">BUY side (BIDS)     SELL side (ASKS)
+─────────────────   ─────────────────
+₹2460 × 500 qty     ₹2461 × 200 qty  ← best ask
+₹2459 × 1000 qty    ₹2462 × 800 qty
+₹2458 × 300 qty     ₹2463 × 400 qty
+  ↑ best bid
+
+MARKET BUY 10 → matches ₹2461 SELL immediately
+LIMIT  BUY 10 @ 2459 → sits in book if price &gt; 2459</div>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Match Types</h3>
+      <table class="tbl">
+        <tr><th>Order</th><th>Behavior</th></tr>
+        <tr><td><span class="pill green">MARKET</span></td><td>Execute immediately at best available price</td></tr>
+        <tr><td><span class="pill blue">LIMIT</span></td><td>Queue in order book; execute only at specified price</td></tr>
+        <tr><td><span class="pill red">STOP-LOSS</span></td><td>Dormant; activates as MARKET order when trigger price hit</td></tr>
+        <tr><td><span class="pill purple">IOC</span></td><td>Immediate or Cancel — fill whatever possible, cancel rest</td></tr>
+      </table>
+    </div>
+    <div class="tip" style="margin-top:10px">
+      <strong>NSE's matching engine</strong> (NEAT) processes at 100K+ orders/second. Our Exchange Gateway maintains persistent FIX connections — NSE assigns exchange_order_id on acknowledgement.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S11 ORDER TYPES -->
+<div class="slide" id="s11" data-title="Order Types Deep Dive">
+<div class="section-label">📈 Matching Engine</div>
+<h2>Order Types — Market, Limit, Stop-Loss</h2>
+<div class="cols3">
+  <div class="card green">
+    <h3>MARKET Order</h3>
+    <ul>
+      <li>Execute immediately at best available price</li>
+      <li>price = NULL in orders table</li>
+      <li>Fund lock: estimated = qty × current_Redis_price + commission</li>
+      <li>Settlement: unlock estimated, deduct actual difference</li>
+    </ul>
+    <div class="dia" style="margin-top:8px;font-size:10px">BUY 10 RELIANCE at market
+→ executes at ₹2459.00
+  (may differ from cached ₹2458.75)</div>
+  </div>
+  <div class="card blue">
+    <h3>LIMIT Order</h3>
+    <ul>
+      <li>Execute only at specified price or better</li>
+      <li>price = 3500.00 stored in orders table</li>
+      <li>SELL: lock shares (quantity -= 5, locked_quantity += 5)</li>
+      <li>BUY: lock funds at limit price estimate</li>
+    </ul>
+    <div class="dia" style="margin-top:8px;font-size:10px">SELL 5 TCS @ 3500 LIMIT
+→ sits in exchange book
+→ auto-cancel at 3:30 PM
+  (GTC: stays open next day)</div>
+  </div>
+  <div class="card red">
+    <h3>STOP-LOSS Order</h3>
+    <ul>
+      <li>Trigger price stored; dormant until hit</li>
+      <li>Activates as MARKET order when triggered</li>
+      <li>Order Tracker polls exchange every ~10s</li>
+      <li>Can bypass Kafka for time-sensitive execution</li>
+    </ul>
+    <div class="dia" style="margin-top:8px;font-size:10px">RELIANCE @ ₹2400 stop-loss
+→ if price drops to 2400
+→ auto SELL at market price</div>
+  </div>
+</div>
+<div class="warn" style="margin-top:12px">
+  <strong>Limit order end-of-day:</strong> NSE sends cancellation via FIX at 3:30 PM. Order Tracker updates status='CANCELLED'. Locked shares/funds auto-restored. Cron at 3:31 PM reconciles any stuck orders.
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S12 ORDER STATE MACHINE -->
+<div class="slide" id="s12" data-title="Order State Machine">
+<div class="section-label">⚙️ LLD</div>
+<h2>Order State Machine</h2>
+<div class="dia" style="font-size:11.5px">
+  User places order
+       │
+       ▼
+  ┌─────────┐     Fund locking fails
+  │ PENDING │ ──────────────────────────────► REJECTED (insufficient funds)
+  └────┬────┘
+       │ Kafka 'new_orders' → Validator
+       ▼
+  ┌──────────┐   KYC fail / duplicate / risk breach / circuit breaker
+  │ VERIFIED │ ──────────────────────────────────────────────────────► REJECTED
+  └─────┬────┘        + unlock funds
+        │ Kafka 'verified_orders' → Exchange Gateway → FIX → NSE
+        ▼
+  ┌─────────┐    NSE rejects order (invalid symbol, halted stock, etc)
+  │  PLACED │ ──────────────────────────────────────────────────────► REJECTED
+  └─────┬───┘        + unlock funds
+        │ NSE matching engine executes
+        ▼
+  ┌──────────┐
+  │ EXECUTED │  → unlock estimated, deduct actual cost
+  └──────────┘  → update portfolio (weighted avg)
+                → notify user (push + WebSocket + email)
+
+  From PENDING or PLACED only:
+  User calls DELETE /api/v1/orders/{id}
+       │
+       ▼
+  ┌───────────┐
+  │ CANCELLED │ → restore locked funds / locked shares
+  └───────────┘
+
+  Day-end cancellation (LIMIT orders, 3:30 PM IST):
+  NSE FIX cancellation → CANCELLED → restore funds/shares</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S13 MARKET DATA FEED -->
+<div class="slide" id="s13" data-title="Market Data Feed — WebSocket">
+<div class="section-label">📈 Matching Engine</div>
+<h2>Market Data Feed — WebSocket Architecture</h2>
+<div class="cols2">
+  <div>
+    <div class="card cyan">
+      <h3>InfluxDB — Historical Charts</h3>
+      <ul>
+        <li>Measurement: <span class="cy">stock_prices</span> (symbol, exchange, price, volume)</li>
+        <li>100K+ writes/sec — LSM tree append-only (no B-tree bottleneck)</li>
+        <li>Auto-downsampling: 1-min → 5-min → 1-hour → daily candles</li>
+        <li>1-year chart query: <span class="gr">&lt;100ms</span></li>
+      </ul>
+<div class="dia" style="margin-top:8px;font-size:10px">SELECT mean(price) FROM stock_prices
+WHERE symbol='RELIANCE' AND time &gt; now()-1d
+GROUP BY time(5m)
+→ ~288 data points, 5-min candlestick</div>
+    </div>
+  </div>
+  <div>
+    <div class="card blue">
+      <h3>Redis PubSub — Live Prices</h3>
+      <ul>
+        <li>Price Ingester: PUBLISH stock_price '{symbol, price, change}'</li>
+        <li>WebSocket servers: SUBSCRIBE stock_price channel</li>
+        <li>Fan-out &lt;10ms latency, no persistence, in-memory only</li>
+        <li>Client subscribes to only their watchlist symbols (10 stocks)</li>
+      </ul>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>WebSocket Gateway Scaling</h3>
+      <ul>
+        <li>Auto-scale: &gt;10K connections per server → spin up new instance</li>
+        <li>Sticky sessions: user_id hash → always same server</li>
+        <li>Consistent hash load balancer (preserves WebSocket state)</li>
+        <li>Each server: ~10K WebSocket connections</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S14 FUND LOCKING -->
+<div class="slide" id="s14" data-title="Fund Locking — Overdraft Prevention">
+<div class="section-label">⚙️ LLD</div>
+<h2>Fund Locking — Overdraft Prevention (SELECT FOR UPDATE)</h2>
+<div class="dia">SCENARIO: User has ₹50,000. Two simultaneous BUY orders:
+Order A: 20 RELIANCE × ₹2,459 = ₹49,180
+Order B: 5  TCS      × ₹3,500 = ₹17,500
+Total required: ₹66,680 &gt; ₹50,000 → would overdraft without locking
+
+─────────────────────────────────────────────────────────────────────
+WITHOUT LOCKING (WRONG):
+Both check balance (₹50K ≥ both amounts independently),
+both pass, both execute → OVERDRAFT.
+─────────────────────────────────────────────────────────────────────
+WITH SELECT FOR UPDATE (CORRECT):
+<span class="kw">Order A:</span>
+BEGIN TRANSACTION
+  SELECT available_balance FROM funds WHERE user_id=X <span class="str">FOR UPDATE</span>
+  <span class="cm">← ROW LOCKED. Order B's SELECT FOR UPDATE WAITS.</span>
+  balance=₹50K ≥ ₹49,180 ✓
+  UPDATE funds SET available_balance -= 49180, locked_balance += 49180
+COMMIT  <span class="cm">← lock released</span>
+
+<span class="kw">Order B:</span> <span class="cm">← now runs, reads post-commit balance = ₹820</span>
+  ₹820 &lt; ₹17,500 → ROLLBACK → 400 'Insufficient funds'
+─────────────────────────────────────────────────────────────────────
+Isolation level: <span class="str">SERIALIZABLE</span>  <span class="cm">← prevents dirty + phantom reads</span>
+
+Funds table layout:
+  available_balance  ← cash free for trading
+  locked_balance     ← cash locked in pending BUY orders
+  total_balance      ← computed: available + locked</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S15 PORTFOLIO PNL -->
+<div class="slide" id="s15" data-title="Portfolio &amp; P&amp;L Calculation">
+<div class="section-label">⚙️ LLD</div>
+<h2>Portfolio &amp; Real-Time P&amp;L — Never Store Current P&amp;L</h2>
+<div class="cols2">
+  <div>
+    <div class="card green">
+      <h3>Why P&amp;L is Never Stored</h3>
+      <ul>
+        <li>P&amp;L = current_value − total_investment</li>
+        <li>current_price changes <strong>every second</strong></li>
+        <li>If stored: must UPDATE portfolio rows 8-10K times/sec per user → billions of DB writes</li>
+        <li>Instead: store only <span class="hl">quantity, avg_buy_price, total_investment</span></li>
+        <li>Compute P&amp;L on every GET using <span class="cy">Redis stock_price:{symbol}</span></li>
+      </ul>
+    </div>
+    <div class="card blue" style="margin-top:10px">
+      <h3>Portfolio Table</h3>
+<div class="dia" style="margin:4px 0;font-size:10px">PK: (user_id, stock_symbol)
+  quantity         INT    <span class="cm">← available for selling</span>
+  locked_quantity  INT    <span class="cm">← locked in pending SELL</span>
+  avg_buy_price    DECIMAL
+  total_investment DECIMAL
+  <span class="cm">← current_value: NEVER STORED</span>
+  <span class="cm">← profit_loss:   NEVER STORED</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>P&amp;L Calculation on GET</h3>
+<div class="dia" style="margin:4px 0;font-size:10.5px">For each holding:
+  current_price = Redis GET stock_price:RELIANCE
+               → ₹2460.00
+  current_value  = 10 × 2460.00 = ₹24,600
+  profit_loss    = 24,600 − 24,590 = +₹10  (+0.04%)
+  day_change     = (2460 − prev_close 2455) / 2455
+                 = +0.20%
+
+Aggregate:
+  total_investment = ₹2,45,000
+  current_value    = ₹2,48,500
+  total_P&L        = +₹3,500 (+1.43%)</div>
+    </div>
+    <div class="tip" style="margin-top:10px">
+      <strong>Redis fallback:</strong> If Redis down → fall back to InfluxDB / PostgreSQL stocks.current_price. P&amp;L may be ~1s stale but correct. No financial risk (user is viewing, not trading).
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S16 RISK MANAGEMENT -->
+<div class="slide" id="s16" data-title="Risk Management &amp; Validation Pipeline">
+<div class="section-label">⚙️ LLD</div>
+<h2>Risk Management — 4-Stage Validation Pipeline (&lt;50ms)</h2>
+<div class="cols2">
+  <div>
+    <div class="card red">
+      <h3>Stage 1 — Duplicate Prevention</h3>
+<div class="dia" style="margin:4px 0;font-size:10.5px">Redis SETNX order_lock:{orderId} 1 EX 30
+Returns 0 → duplicate, reject immediately
+Returns 1 → proceed (lock acquired for 30s)</div>
+    </div>
+    <div class="card orange" style="margin-top:10px">
+      <h3>Stage 2 — Fund/Exposure Check</h3>
+<div class="dia" style="margin:4px 0;font-size:10.5px">SELECT SUM(quantity × price) FROM orders
+WHERE user_id={id}
+  AND status IN ('PENDING','PLACED')
+IF total_exposure &gt; 10 × available_balance
+  → reject (over-leveraged)</div>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Stage 3 — Circuit Breaker</h3>
+<div class="dia" style="margin:4px 0;font-size:10.5px">IF stock_price moved &gt;10% in last 5 min
+  → reject ALL orders for this stock
+Prevents orders during extreme market events
+(e.g. circuit limit hit on BSE)</div>
+    </div>
+    <div class="card blue" style="margin-top:10px">
+      <h3>Stage 4 — Compliance</h3>
+      <ul>
+        <li>KYC status = VERIFIED (from image)</li>
+        <li>User not blocked/restricted for this stock</li>
+        <li>Insider trading checks (flagged securities)</li>
+        <li>SEBI regulatory limits</li>
+      </ul>
+    </div>
+    <div class="success" style="margin-top:10px">
+      5 Validator instances × 50 Kafka partitions = horizontal scale. All 4 stages run in parallel where possible. Total &lt;50ms.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S17 SETTLEMENT -->
+<div class="slide" id="s17" data-title="Settlement — T+1 / T+2">
+<div class="section-label">⚙️ LLD</div>
+<h2>Settlement Flow — T+1 / T+2 &amp; Fund Reconciliation</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>Execution vs Settlement</h3>
+      <ul>
+        <li><strong>Trade execution</strong> — order matched at exchange (near real-time)</li>
+        <li><strong>T+1 settlement</strong> — funds/shares transferred next business day (equity intraday)</li>
+        <li><strong>T+2 settlement</strong> — delivery trades (SEBI mandate for equity delivery in India)</li>
+        <li>Platform credits shares/funds immediately in portfolio for UX; reconciles with depository (CDSL/NSDL) on T+1/T+2</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Market vs Estimated Price Settlement</h3>
+<div class="dia" style="margin:4px 0;font-size:10px">Estimated (at order placement):
+  10 × ₹2458.75 + ₹20 commission = ₹24,607.50
+  → locked_balance += 24607.50
+
+Actual (at execution, price slipped):
+  10 × ₹2459.00 + ₹20 = ₹24,610.00
+  Difference: ₹2.50 extra
+
+UPDATE funds SET
+  locked_balance    -= 24607.50   <span class="cm">← unlock all</span>
+  available_balance -= 2.50       <span class="cm">← deduct difference</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>3 Parallel Post-Execution Consumers</h3>
+      <ul>
+        <li><strong>Order Tracker Svc</strong> — UPDATE orders SET status=EXECUTED, INSERT into trades</li>
+        <li><strong>Portfolio Svc</strong> — UPDATE quantity, weighted avg_buy_price</li>
+        <li><strong>Notification Svc</strong> — Push (FCM/APNS) + WebSocket + Email</li>
+      </ul>
+    </div>
+    <div class="card purple" style="margin-top:10px">
+      <h3>SELL Order Settlement</h3>
+      <ul>
+        <li>SELL executed → locked_quantity -= 5 (already deducted from available)</li>
+        <li>Funds: available_balance += (5 × 3500 − commission) = +₹17,480</li>
+        <li>If SELL cancelled: locked_quantity -= 5, quantity += 5 (restore shares)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S18 AUDIT TRAIL -->
+<div class="slide" id="s18" data-title="Audit Trail &amp; Compliance">
+<div class="section-label">⚙️ LLD</div>
+<h2>Audit Trail — Immutable Event Log</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>Why Audit Trail Matters</h3>
+      <ul>
+        <li>SEBI mandates full trade audit for every order</li>
+        <li>Every state transition must be logged immutably</li>
+        <li>Dispute resolution: prove exact execution price and time</li>
+        <li>Insider trading detection: flag unusual patterns</li>
+        <li>Tax reporting: ITR-2 capital gains computation</li>
+      </ul>
+    </div>
+    <div class="card yellow" style="margin-top:10px">
+      <h3>Kafka as Audit Log</h3>
+      <ul>
+        <li>All order events published to Kafka (immutable append-only log)</li>
+        <li>Topics: new_orders, verified_orders, order_status, rejected_orders</li>
+        <li>Retention: 7 years (SEBI requirement)</li>
+        <li>Separate audit consumer → write to cold storage (S3/Glacier)</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Trade Record (trades table)</h3>
+<div class="dia" style="margin:4px 0;font-size:10.5px">CREATE TABLE trades (
+  trade_id       UUID PRIMARY KEY,
+  order_id       UUID FK → orders,
+  stock_symbol   VARCHAR(20),
+  trade_type     ENUM(BUY, SELL),
+  quantity       INT,
+  executed_price DECIMAL(10,2),  <span class="cm">← actual exchange price</span>
+  executed_at    TIMESTAMPTZ,
+  exchange       ENUM(NSE, BSE),
+  commission_fee DECIMAL(8,2),
+  exchange_trade_id VARCHAR(50)  <span class="cm">← assigned by NSE/BSE</span>
+);</div>
+    </div>
+    <div class="info" style="margin-top:10px">
+      <strong>Idempotency:</strong> exchange_trade_id is unique. Even if Kafka delivers order_status twice, INSERT INTO trades will fail on duplicate exchange_trade_id — guaranteeing at-most-once trade recording.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S19 ER DIAGRAM -->
+<div class="slide" id="s19" data-title="ER Diagram — 8 Entities">
+<div class="section-label">⚙️ LLD</div>
+<h2>ER Diagram — 8 Core Entities</h2>
+<div class="dia" style="font-size:10.5px">
+┌──────────┐        ┌──────────────┐        ┌───────────────┐
+│  USER    │        │   FUNDS      │        │  PAYMENT      │
+│──────────│1──────1│──────────────│        │───────────────│
+│ user_id  │        │ user_id  PK  │        │ transaction_id│
+│ email    │        │ available_bal│        │ user_id  FK   │
+│ mobile   │        │ locked_bal   │        │ type (DEP/WD) │
+│ pan_card │        │ total_bal    │        │ amount, status│
+│ kyc_stat │        └──────────────┘        │ gateway       │
+│ password │                                └───────────────┘
+└────┬─────┘
+     │1                              ┌───────────────┐
+     │                               │  WATCHLIST    │
+     │M                              │───────────────│
+┌────┴─────┐        ┌──────────────┐ │ watchlist_id  │
+│  ORDER   │M──────1│    STOCK     │ │ user_id  FK   │
+│──────────│        │──────────────│ │ name          │
+│ order_id │        │ stock_symbol │ │ stock_symbols │
+│ user_id  │        │ company_name │ │   (text[])    │
+│ stock_sym│        │ exchange     │ └───────────────┘
+│ order_typ│        │ current_price│
+│ trade_typ│        │ prev_close   │
+│ quantity │        │ market_cap   │
+│ price    │        └──────────────┘
+│ status   │
+│ placed_at│
+└────┬─────┘
+     │1                              ┌───────────────┐
+     │                               │  PORTFOLIO    │
+     │1                              │───────────────│
+┌────┴─────┐                         │ PK(user_id,   │
+│  TRADE   │                         │   stock_sym)  │
+│──────────│                         │ quantity      │
+│ trade_id │                         │ locked_qty    │
+│ order_id │                         │ avg_buy_price │
+│ exec_price│                        │ total_invest  │
+│ exec_at  │                         └───────────────┘
+│ comm_fee │
+└──────────┘</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S20 DB SCHEMA 1 -->
+<div class="slide" id="s20" data-title="DB Schema — Users, Funds, Portfolio">
+<div class="section-label">⚙️ LLD</div>
+<h2>DB Schema — Users, Funds, Portfolio</h2>
+<div class="dia" style="font-size:10px">-- Users (UserDB — PostgreSQL, ACID)
+CREATE TABLE users (
+    user_id          UUID PRIMARY KEY,
+    email            VARCHAR UNIQUE NOT NULL,
+    mobile           VARCHAR UNIQUE,
+    name             VARCHAR(255),
+    password_hash    VARCHAR(255),           <span class="cm">-- bcrypt</span>
+    pan_card         VARCHAR(10) UNIQUE,     <span class="cm">-- encrypted, required for KYC</span>
+    aadhaar_number   VARCHAR(12),            <span class="cm">-- encrypted, optional</span>
+    kyc_status       VARCHAR(20) DEFAULT 'PENDING',  <span class="cm">-- PENDING/VERIFIED/REJECTED</span>
+    linked_bank_account VARCHAR(50),
+    created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Funds (CRITICAL — pessimistic locking, SERIALIZABLE)
+CREATE TABLE funds (
+    user_id           UUID PRIMARY KEY REFERENCES users(user_id),
+    available_balance DECIMAL(15,2) NOT NULL DEFAULT 0,
+    locked_balance    DECIMAL(15,2) NOT NULL DEFAULT 0,
+    total_balance     DECIMAL(15,2) GENERATED ALWAYS AS (available_balance + locked_balance) STORED,
+    bank_account_id   VARCHAR(50),
+    last_deposit_at   TIMESTAMPTZ,
+    last_withdrawal_at TIMESTAMPTZ
+);
+<span class="cm">-- ALWAYS: SELECT available_balance FROM funds WHERE user_id=X FOR UPDATE (SERIALIZABLE)</span>
+
+-- Portfolio (Holdings)
+CREATE TABLE portfolio (
+    user_id          UUID NOT NULL REFERENCES users(user_id),
+    stock_symbol     VARCHAR(20) NOT NULL,
+    quantity         INT NOT NULL DEFAULT 0,
+    locked_quantity  INT NOT NULL DEFAULT 0,  <span class="cm">-- shares locked in pending SELL</span>
+    avg_buy_price    DECIMAL(10,2),
+    total_investment DECIMAL(15,2),           <span class="cm">-- quantity × avg_buy_price</span>
+    last_updated_at  TIMESTAMPTZ,
+    PRIMARY KEY (user_id, stock_symbol)       <span class="cm">-- composite PK</span>
+);
+<span class="cm">-- P&L calculated ON-THE-FLY from Redis; current_value and profit_loss NEVER stored</span></div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S21 DB SCHEMA 2 -->
+<div class="slide" id="s21" data-title="DB Schema — Orders, Trades, Redis">
+<div class="section-label">⚙️ LLD</div>
+<h2>DB Schema — Orders, Trades &amp; Redis Keyspace</h2>
+<div class="dia" style="font-size:10px">-- Orders (Order DB — PostgreSQL, sharded by user_id)
+CREATE TABLE orders (
+    order_id          UUID PRIMARY KEY,
+    user_id           UUID NOT NULL,
+    stock_symbol      VARCHAR(20) NOT NULL,
+    order_type        VARCHAR(20),        <span class="cm">-- MARKET | LIMIT | STOP_LOSS</span>
+    trade_type        VARCHAR(10),        <span class="cm">-- BUY | SELL</span>
+    quantity          INT NOT NULL,
+    price             DECIMAL(10,2),      <span class="cm">-- NULL for MARKET orders</span>
+    status            VARCHAR(20),        <span class="cm">-- PENDING|VERIFIED|PLACED|EXECUTED|REJECTED|CANCELLED</span>
+    placed_at         TIMESTAMPTZ DEFAULT NOW(),
+    executed_at       TIMESTAMPTZ,
+    exchange_order_id VARCHAR(50)         <span class="cm">-- assigned by NSE/BSE</span>
+);
+CREATE INDEX idx_orders_user   ON orders(user_id, placed_at DESC);
+CREATE INDEX idx_orders_status ON orders(status, placed_at);
+CREATE INDEX idx_orders_stock  ON orders(stock_symbol, status);
+
+-- Trades (Trade DB — immutable execution records)
+CREATE TABLE trades (
+    trade_id         UUID PRIMARY KEY,
+    order_id         UUID NOT NULL REFERENCES orders(order_id),
+    stock_symbol     VARCHAR(20) NOT NULL,
+    trade_type       VARCHAR(10),
+    quantity         INT NOT NULL,
+    executed_price   DECIMAL(10,2),     <span class="cm">-- actual exchange price</span>
+    executed_at      TIMESTAMPTZ,
+    exchange         VARCHAR(10),       <span class="cm">-- NSE | BSE</span>
+    commission_fee   DECIMAL(8,2),
+    exchange_trade_id VARCHAR(50) UNIQUE  <span class="cm">-- idempotency key</span>
+);
+
+<span class="cm">-- Redis Keyspace</span>
+stock_price:{symbol}     STRING  current price        TTL 1s  (refreshed by Price Ingester)
+stock_price              PUBSUB  fan-out channel      no TTL  (real-time pub/sub)
+user_session:{token}     HASH    JWT session          TTL 24h
+order_lock:{orderId}     STRING  dedup lock (SETNX)   TTL 30s
+watchlist:{userId}       SET     subscribed symbols   no TTL</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S22 DB SCHEMA 3 -->
+<div class="slide" id="s22" data-title="DB Schema — Stocks, Watchlist, Payments">
+<div class="section-label">⚙️ LLD</div>
+<h2>DB Schema — Stocks, Watchlist, Payments</h2>
+<div class="dia" style="font-size:10px">-- Stocks (master data)
+CREATE TABLE stocks (
+    stock_symbol  VARCHAR(20) PRIMARY KEY,  <span class="cm">-- RELIANCE, TCS, INFY</span>
+    company_name  VARCHAR(255),
+    exchange      VARCHAR(10),              <span class="cm">-- NSE | BSE</span>
+    current_price DECIMAL(10,2),           <span class="cm">-- cached from Redis, NOT source of truth</span>
+    prev_close    DECIMAL(10,2),            <span class="cm">-- updated at end of each trading day</span>
+    day_high      DECIMAL(10,2),
+    day_low       DECIMAL(10,2),
+    volume        BIGINT,
+    market_cap    DECIMAL(15,2),
+    sector        VARCHAR(100),
+    last_updated_at TIMESTAMPTZ
+);
+
+-- Watchlist (Watch DB)
+CREATE TABLE watchlists (
+    watchlist_id  UUID PRIMARY KEY,
+    user_id       UUID NOT NULL REFERENCES users(user_id),
+    name          VARCHAR(100),
+    stock_symbols TEXT[],                  <span class="cm">-- array of symbols</span>
+    created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_watchlist_symbols ON watchlists USING GIN(stock_symbols);
+<span class="cm">-- GIN enables: WHERE 'RELIANCE' = ANY(stock_symbols)</span>
+
+-- Payments (Payment DB)
+CREATE TABLE payments (
+    transaction_id        UUID PRIMARY KEY,
+    user_id               UUID NOT NULL REFERENCES users(user_id),
+    type                  VARCHAR(20),     <span class="cm">-- DEPOSIT | WITHDRAWAL</span>
+    amount                DECIMAL(15,2),
+    status                VARCHAR(20),     <span class="cm">-- PENDING | COMPLETED | FAILED</span>
+    payment_gateway       VARCHAR(50),     <span class="cm">-- Razorpay, Stripe, UPI</span>
+    gateway_transaction_id VARCHAR(100),   <span class="cm">-- external transaction ID</span>
+    currency              VARCHAR(10),
+    created_at            TIMESTAMPTZ DEFAULT NOW(),
+    completed_at          TIMESTAMPTZ
+);</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S23 SCALING -->
+<div class="slide" id="s23" data-title="Scaling — NSE: 100K orders/sec">
+<div class="section-label">🏛 HLD</div>
+<h2>Scaling — NSE: 100K Orders/Sec, 10M+ Users</h2>
+<div class="cols2">
+  <div>
+    <div class="card blue">
+      <h3>Database Sharding</h3>
+      <ul>
+        <li><strong>Orders &amp; Portfolio:</strong> sharded by user_id</li>
+        <li>All user's orders on same shard → fast user-scoped queries</li>
+        <li>10 shards: each handles ~100K users (1M total)</li>
+        <li>Cross-shard queries: only for admin/analytics (acceptable slow)</li>
+      </ul>
+    </div>
+    <div class="card green" style="margin-top:10px">
+      <h3>Read Replicas</h3>
+      <ul>
+        <li>1 master (writes: order execution, fund updates, trade inserts)</li>
+        <li>5 read replicas (reads: portfolio, watchlist, order history)</li>
+        <li>95% of traffic → replicas. Replication lag &lt;1s (acceptable)</li>
+      </ul>
+    </div>
+  </div>
+  <div>
+    <div class="card yellow">
+      <h3>Kafka Partitioning</h3>
+      <table class="tbl">
+        <tr><th>Topic</th><th>Partitions</th><th>Key</th></tr>
+        <tr><td>new_orders</td><td class="hl">50</td><td>user_id hash</td></tr>
+        <tr><td>verified_orders</td><td class="hl">10</td><td>order_id</td></tr>
+        <tr><td>order_status</td><td class="hl">50</td><td>order_id hash</td></tr>
+        <tr><td>stock_price</td><td class="hl">100</td><td>symbol hash</td></tr>
+      </table>
+    </div>
+    <div class="card cyan" style="margin-top:10px">
+      <h3>Price Caching Strategy</h3>
+      <ul>
+        <li>Redis: current price (TTL 1s, refreshed continuously)</li>
+        <li>Cache warming: pre-load top 100 most-watched stocks on start</li>
+        <li>Popular chart queries (RELIANCE 1D) → TTL 5min</li>
+        <li>Cache hit rate: 99%+ for current prices</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S24 SCALING CONTINUED -->
+<div class="slide" id="s24" data-title="Scaling Techniques — 12 Patterns">
+<div class="section-label">🏛 HLD</div>
+<h2>Scaling Techniques — 12 Patterns</h2>
+<div class="cols3">
+  <div class="card blue">
+    <h3>1. Redis PubSub</h3>
+    <p>Live price push &lt;10ms. No polling. Horizontal scale: add WebSocket servers.</p>
+  </div>
+  <div class="card cyan">
+    <h3>2. InfluxDB</h3>
+    <p>100K+ writes/sec. LSM tree. Auto-downsampling. 1-year chart &lt;100ms.</p>
+  </div>
+  <div class="card green">
+    <h3>3. Kafka Pipeline</h3>
+    <p>Decouples all services. Async: user gets 200 OK before exchange execution.</p>
+  </div>
+  <div class="card yellow">
+    <h3>4. ACID Fund Lock</h3>
+    <p>SELECT FOR UPDATE + SERIALIZABLE. Lock on placement, settle on execution.</p>
+  </div>
+  <div class="card purple">
+    <h3>5. DB Sharding</h3>
+    <p>Orders + portfolio sharded by user_id. 10 shards × 100K users each.</p>
+  </div>
+  <div class="card red">
+    <h3>6. Read Replicas</h3>
+    <p>1 master + 5 replicas. 95% reads to replicas. &lt;1s replication lag.</p>
+  </div>
+  <div class="card orange">
+    <h3>7. FIX Conn Pool</h3>
+    <p>400–500 persistent FIX connections grouped by symbol. No TCP overhead/order.</p>
+  </div>
+  <div class="card blue">
+    <h3>8. Validator Scale</h3>
+    <p>5 instances × 50 partitions. 4-stage pipeline runs &lt;50ms total.</p>
+  </div>
+  <div class="card cyan">
+    <h3>9. WS Auto-Scale</h3>
+    <p>&gt;10K connections → spin up new instance. Consistent hash sticky sessions.</p>
+  </div>
+  <div class="card green">
+    <h3>10. Price Cache</h3>
+    <p>99% hit rate. Pre-warm top 100 stocks. Popular charts cached 5min TTL.</p>
+  </div>
+  <div class="card yellow">
+    <h3>11. Rate Limiting</h3>
+    <p>10 orders/sec per user. 100 req/sec per API. 100K orders/min global.</p>
+  </div>
+  <div class="card purple">
+    <h3>12. Async Notify</h3>
+    <p>Kafka 'order_status' non-blocking. Retry + DLQ. &lt;1s push notification.</p>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S25 TRADE-OFFS -->
+<div class="slide" id="s25" data-title="Trade-offs — Key Design Decisions">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Trade-offs — Key Design Decisions</h2>
+<table class="tbl">
+  <tr><th>Decision</th><th>Choice Made</th><th>Trade-off</th></tr>
+  <tr><td><strong>Consistency for funds</strong></td><td><span class="pill red">Pessimistic locking</span></td><td class="gr">No overdraft ✓</td></tr>
+  <tr><td><strong>Consistency for portfolio</strong></td><td><span class="pill yellow">Optimistic locking</span></td><td class="gr">Lower contention, retries acceptable ✓</td></tr>
+  <tr><td><strong>Price persistence</strong></td><td><span class="pill blue">InfluxDB (time-series)</span></td><td>100K writes/sec; SQL can't sustain this</td></tr>
+  <tr><td><strong>Live price delivery</strong></td><td><span class="pill green">WebSocket + Redis PubSub</span></td><td>Polling 10M users = 10M req/sec, unacceptable</td></tr>
+  <tr><td><strong>P&amp;L storage</strong></td><td><span class="pill purple">Never stored, computed</span></td><td>Stale if stored (price changes/sec); DB not needed</td></tr>
+  <tr><td><strong>Exchange protocol</strong></td><td><span class="pill orange">FIX (binary TCP)</span></td><td>REST adds 3–5ms HTTP overhead; NSE doesn't accept REST</td></tr>
+  <tr><td><strong>Order delivery</strong></td><td><span class="pill yellow">Kafka (at-least-once)</span></td><td>Idempotency key (order_id + SETNX) prevents duplicates</td></tr>
+  <tr><td><strong>Notification delivery</strong></td><td><span class="pill red">At-least-once + DLQ</span></td><td>Better to deliver twice (idempotent UI) than miss once</td></tr>
+  <tr><td><strong>Market data CAP</strong></td><td><span class="pill green">AP (eventual)</span></td><td>100ms stale price = no financial risk; availability = UX</td></tr>
+  <tr><td><strong>Trading CAP</strong></td><td><span class="pill red">CP (strict)</span></td><td>Availability sacrifice → some orders retry; no overdraft</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S26 LMAX vs KAFKA -->
+<div class="slide" id="s26" data-title="Comparison — LMAX Disruptor vs Kafka">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Top Comparison 1 — LMAX Disruptor vs Apache Kafka</h2>
+<div class="cols2">
+  <div>
+    <div class="card orange">
+      <h3>LMAX Disruptor</h3>
+      <ul>
+        <li>Lock-free ring buffer in memory (single JVM process)</li>
+        <li>Latency: <span class="gr">~25 nanoseconds</span> per message</li>
+        <li>Used by: high-frequency trading (HFT) engines</li>
+        <li>No persistence — data lost on crash</li>
+        <li>Single producer / multiple consumer pattern</li>
+        <li>Throughput: <span class="gr">6M+ events/sec</span> on single machine</li>
+      </ul>
+      <div class="success" style="margin-top:8px">Use when: ultra-low latency is paramount, all processing fits on one machine (HFT, prop trading)</div>
+    </div>
+  </div>
+  <div>
+    <div class="card blue">
+      <h3>Apache Kafka</h3>
+      <ul>
+        <li>Distributed, replicated, durable message log</li>
+        <li>Latency: <span class="hl">2–10ms</span> per message (much higher)</li>
+        <li>Used by: Zerodha, most retail trading platforms</li>
+        <li>Persistence: configurable retention (7 years for audit)</li>
+        <li>Horizontal scale: add partitions + consumers</li>
+        <li>Throughput: <span class="hl">1M+ messages/sec</span> across cluster</li>
+      </ul>
+      <div class="success" style="margin-top:8px">Use when: durability + audit trail matter, distributed teams, multiple consumers, scale > single machine</div>
+    </div>
+  </div>
+</div>
+<div class="tip" style="margin-top:10px">
+  <strong>Interview answer:</strong> "We use Kafka because our 100K orders/min scale requires horizontal distribution, we need 7-year audit trail for SEBI compliance, and Kafka's 2–10ms latency is well within our &lt;100ms order placement SLA. LMAX Disruptor is the choice for HFT engines running at nanosecond latency where persistence is handled separately."
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S27 PG vs TIMESCALE -->
+<div class="slide" id="s27" data-title="Comparison — PostgreSQL vs TimescaleDB">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Top Comparison 2 — PostgreSQL vs TimescaleDB / InfluxDB</h2>
+<table class="tbl" style="margin-bottom:12px">
+  <tr><th>Dimension</th><th>PostgreSQL</th><th>TimescaleDB</th><th>InfluxDB</th></tr>
+  <tr><td><strong>Data model</strong></td><td>Relational, B-tree index</td><td>PostgreSQL + time-series hypertables</td><td>Pure time-series, LSM tree</td></tr>
+  <tr><td><strong>Write speed</strong></td><td class="rd">~10K writes/sec (index overhead)</td><td class="hl">~100K writes/sec</td><td class="gr">100K+ writes/sec</td></tr>
+  <tr><td><strong>Query (1-year)</strong></td><td class="rd">30+ seconds (full scan)</td><td class="hl">&lt;500ms (chunk pruning)</td><td class="gr">&lt;100ms (retention + rollup)</td></tr>
+  <tr><td><strong>Downsampling</strong></td><td>Manual (cron jobs)</td><td>Continuous aggregates (built-in)</td><td>Native rollup policies</td></tr>
+  <tr><td><strong>SQL support</strong></td><td class="gr">Full SQL</td><td class="gr">Full SQL</td><td class="rd">Flux query language</td></tr>
+  <tr><td><strong>ACID joins</strong></td><td class="gr">Yes</td><td class="gr">Yes (same DB)</td><td class="rd">No relational joins</td></tr>
+  <tr><td><strong>Use case</strong></td><td>Orders, funds, users</td><td>Price + relational hybrid</td><td>Pure price/metrics data</td></tr>
+</table>
+<div class="quote">
+  "For stock prices, we chose <strong>InfluxDB</strong> because 100K+ price writes/second overwhelm PostgreSQL's B-tree. InfluxDB's LSM tree with time-based partitioning handles append-only writes efficiently. All relational data (orders, funds, users) stays in <strong>PostgreSQL</strong> for ACID guarantees and complex joins."
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S28 Q1 OVERDRAFT -->
+<div class="slide" id="s28" data-title="Q&A 1 — Overdraft Prevention">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Q1 — "How do you prevent overdraft with simultaneous orders?"</h2>
+<div class="quote">"Fund locking with SELECT FOR UPDATE + SERIALIZABLE isolation. User has ₹50K. Two simultaneous BUY orders of ₹49,180 and ₹17,500. Without locking, both read ₹50K, both pass, overdraft. With SELECT FOR UPDATE, Order A locks the row. Order B waits. A commits, balance = ₹820. B reads ₹820 &lt; ₹17,500 → ROLLBACK → 400 Insufficient funds."</div>
+<div class="cols2" style="margin-top:10px">
+  <div class="card blue">
+    <h3>Pessimistic vs Optimistic</h3>
+    <ul>
+      <li><strong>Pessimistic (SELECT FOR UPDATE):</strong> Use for funds — high contention, correctness critical, row-level lock</li>
+      <li><strong>Optimistic (version column):</strong> Use for portfolio updates — lower contention, retries acceptable</li>
+    </ul>
+  </div>
+  <div class="card green">
+    <h3>Why SERIALIZABLE?</h3>
+    <ul>
+      <li>Prevents dirty reads (no read of uncommitted data)</li>
+      <li>Prevents non-repeatable reads (stable within transaction)</li>
+      <li>Prevents phantom reads (no new rows appear mid-transaction)</li>
+      <li>Highest isolation = fully serial execution guarantee</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S29 Q2 SLIPPAGE -->
+<div class="slide" id="s29" data-title="Q&A 2 — Market Order Price Slippage">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Q2 — "Market order estimated ₹2458.75 but executes at ₹2459.00. How?"</h2>
+<div class="quote">"Two-step fund settlement. Lock estimated cost at placement. Settle actual cost at execution. Deduct only the difference."</div>
+<div class="dia" style="margin-top:10px">STEP 1 — At order placement:
+  Estimated: 10 × ₹2458.75 + ₹20 commission = ₹24,607.50
+  UPDATE funds SET
+    available_balance -= 24607.50
+    locked_balance    += 24607.50
+
+STEP 2 — At execution (exchange confirms ₹2459.00):
+  Actual: 10 × ₹2459.00 + ₹20 = ₹24,610.00
+  Difference: ₹2.50 more
+
+  UPDATE funds SET
+    locked_balance    -= 24607.50    <span class="cm">← unlock full estimated amount</span>
+    available_balance -= 2.50        <span class="cm">← deduct only the difference</span>
+
+If price IMPROVED (executed at ₹2458.50):
+  Actual: 10 × ₹2458.50 + ₹20 = ₹24,605.00
+  UPDATE funds SET
+    locked_balance    -= 24607.50    <span class="cm">← unlock estimated</span>
+    available_balance += 2.50        <span class="cm">← REFUND the improvement</span>
+
+This handles: price slippage, price improvement, and exact match uniformly.</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S30 Q3 FIX -->
+<div class="slide" id="s30" data-title="Q&A 3 — FIX Protocol vs REST">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Q3 — "What is FIX protocol? Why not REST to send orders to NSE?"</h2>
+<div class="quote">"FIX (Financial Information eXchange) is a binary TCP protocol for order routing. Every major exchange globally uses it. REST is HTTP (application layer). FIX is TCP (transport layer) — lower latency, no HTTP overhead, persistent connections."</div>
+<div class="cols2" style="margin-top:10px">
+  <div class="card orange">
+    <h3>REST Problems for Exchange</h3>
+    <ul>
+      <li>New TCP connection per request (or HTTP keep-alive, still heavier)</li>
+      <li>HTTP headers add ~500 bytes overhead per message</li>
+      <li>JSON serialization latency vs binary FIX tags</li>
+      <li>NSE/BSE simply <strong>do not accept REST</strong> — industry standard</li>
+    </ul>
+  </div>
+  <div class="card blue">
+    <h3>FIX Advantages</h3>
+    <ul>
+      <li>Persistent TCP connection — no handshake overhead per order</li>
+      <li>Binary tag-value pairs: Tag35=D (place), Tag35=8 (execution report)</li>
+      <li>400–500 connections pooled by symbol — all RELIANCE orders on same conn</li>
+      <li>TCP handshake saved: 3–5ms per order, 100K orders/min = significant</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S31 Q4 PNL REDIS -->
+<div class="slide" id="s31" data-title="Q&A 4 — P&amp;L Storage and Redis Failure">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Q4 — "Why not store P&amp;L? What if Redis goes down?"</h2>
+<div class="quote">"P&L = current_value − total_investment = quantity × current_price − quantity × avg_buy_price. current_price changes every second. Storing P&L means updating portfolio for every user × every stock × every second = billions of DB writes/second. Not feasible. Also instantly stale between writes."</div>
+<div class="cols2" style="margin-top:10px">
+  <div class="card green">
+    <h3>What IS Stored</h3>
+    <ul>
+      <li><span class="gr">quantity</span> — how many shares owned</li>
+      <li><span class="gr">avg_buy_price</span> — weighted average cost</li>
+      <li><span class="gr">total_investment</span> — quantity × avg_buy_price</li>
+      <li><span class="gr">prev_close</span> — for day change % (stocks table)</li>
+    </ul>
+  </div>
+  <div class="card yellow">
+    <h3>Redis Failure Fallback</h3>
+    <ul>
+      <li>Primary: <span class="cy">Redis GET stock_price:{symbol}</span> (TTL 1s)</li>
+      <li>Fallback 1: <span class="hl">InfluxDB</span> — latest price from time-series</li>
+      <li>Fallback 2: <span class="or">PostgreSQL stocks.current_price</span> — slightly stale</li>
+      <li>P&amp;L may be ~1s stale — acceptable (user viewing, not trading)</li>
+      <li>Redis is clustered (Redis Sentinel / Redis Cluster) — rare failures</li>
+    </ul>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S32 Q5 LIMIT EXPIRE -->
+<div class="slide" id="s32" data-title="Q&A 5 — Limit Order End-of-Day">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Q5 — "How do you handle a LIMIT order that never executes?"</h2>
+<div class="quote">"Three outcomes: executes (normal flow), day-order expires (NSE cancellation FIX at 3:30 PM → restore funds/shares), or GTC (Good Till Cancelled — stays in exchange book across days)."</div>
+<div class="cols2" style="margin-top:10px">
+  <div class="card blue">
+    <h3>Day-Order Expiry (3:30 PM IST)</h3>
+    <ol style="padding-left:16px">
+      <li style="margin-bottom:4px">NSE sends FIX cancellation notification</li>
+      <li style="margin-bottom:4px">Exchange Gateway → Kafka 'order_status' status='CANCELLED'</li>
+      <li style="margin-bottom:4px">Order Tracker: UPDATE orders SET status='CANCELLED'</li>
+      <li style="margin-bottom:4px">Portfolio Svc: locked_quantity -= 5, quantity += 5 (SELL)</li>
+      <li>Funds Svc: locked_balance -= estimated, available += estimated (BUY)</li>
+    </ol>
+  </div>
+  <div class="card green">
+    <h3>Reconciliation Cron (3:31 PM)</h3>
+<div class="dia" style="margin:4px 0;font-size:10.5px">SELECT * FROM orders
+WHERE status IN ('PENDING','PLACED')
+  AND placed_at &lt; today_market_close
+
+For each: verify with exchange
+  → still open? keep as PLACED
+  → cancelled/filled? reconcile</div>
+    <div class="tip" style="margin-top:8px">
+      This catches any Kafka event that was dropped or delayed. Belt-and-suspenders approach for financial reconciliation.
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S33 NUMBERS -->
+<div class="slide" id="s33" data-title="Key Numbers to Memorize">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Key Numbers to Memorize</h2>
+<div class="cols2">
+  <div>
+    <div class="cols3" style="margin-bottom:10px">
+      <div class="stat"><div class="val cy">8-10K</div><div class="lbl">Stock symbols</div></div>
+      <div class="stat"><div class="val hl">100K+</div><div class="lbl">Orders/min peak</div></div>
+      <div class="stat"><div class="val gr">400-500</div><div class="lbl">FIX connections</div></div>
+    </div>
+    <div class="cols3" style="margin-bottom:10px">
+      <div class="stat"><div class="val bl">&lt;100ms</div><div class="lbl">Order placement</div></div>
+      <div class="stat"><div class="val gr">&lt;50ms</div><div class="lbl">Market data</div></div>
+      <div class="stat"><div class="val cy">~20ms</div><div class="lbl">Actual latency</div></div>
+    </div>
+    <div class="cols3">
+      <div class="stat"><div class="val pu">50</div><div class="lbl">new_orders parts</div></div>
+      <div class="stat"><div class="val or">100</div><div class="lbl">stock_price parts</div></div>
+      <div class="stat"><div class="val hl">10×</div><div class="lbl">Max exposure</div></div>
+    </div>
+  </div>
+  <div>
+    <div class="card blue">
+      <h3>Critical Thresholds</h3>
+      <table class="tbl">
+        <tr><th>Parameter</th><th>Value</th></tr>
+        <tr><td>Redis SETNX TTL (dedup)</td><td class="cy">EX 30 seconds</td></tr>
+        <tr><td>Circuit breaker threshold</td><td class="hl">10% price in 5 min</td></tr>
+        <tr><td>Rate limit per user</td><td class="gr">10 orders/sec</td></tr>
+        <tr><td>API rate limit per user</td><td class="gr">100 req/sec</td></tr>
+        <tr><td>InfluxDB write speed</td><td class="cy">100K+ writes/sec</td></tr>
+        <tr><td>1-year chart query</td><td class="gr">&lt;100ms</td></tr>
+        <tr><td>WS connections per server</td><td class="hl">~10K</td></tr>
+        <tr><td>Kafka Validator instances</td><td class="cy">5 instances</td></tr>
+        <tr><td>Settlement</td><td class="or">T+1 / T+2</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S34 WHAT NOT TO SAY -->
+<div class="slide" id="s34" data-title="What NOT to Say — Interview Traps">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>What NOT to Say — Interview Traps</h2>
+<table class="tbl">
+  <tr><th>Trap Phrase</th><th>Why It's Wrong</th><th>Correct Answer</th></tr>
+  <tr><td class="rd">"Availability &gt; Consistency for trading"</td><td>Image explicitly states Consistency &gt;&gt; Availability. Wrong balance = financial loss</td><td class="gr">Trading = CP (SELECT FOR UPDATE). Price view only = AP</td></tr>
+  <tr><td class="rd">"Check balance, then update in two queries"</td><td>Race condition: two concurrent orders both read ₹50K, both pass, both execute → overdraft</td><td class="gr">SELECT FOR UPDATE in single SERIALIZABLE transaction</td></tr>
+  <tr><td class="rd">"Store current P&amp;L in portfolio DB"</td><td>Price changes every second. Stored P&amp;L instantly stale. Billions of writes/sec if updated</td><td class="gr">Calculate on-the-fly from Redis on every GET</td></tr>
+  <tr><td class="rd">"Use REST API to send orders to NSE"</td><td>NSE/BSE only speak FIX protocol (binary TCP). REST is HTTP. Not accepted by exchange</td><td class="gr">FIX Tag35=D. 400-500 persistent TCP connections</td></tr>
+  <tr><td class="rd">"Use SQL DB for stock price history"</td><td>B-tree can't handle 100K+ writes/sec. 1-year chart takes 30+ seconds in PostgreSQL</td><td class="gr">InfluxDB (LSM tree, time partitioning, downsampling)</td></tr>
+  <tr><td class="rd">"Poll REST endpoint every second for prices"</td><td>10M users × 1/sec = 10M req/sec server overload</td><td class="gr">WebSocket + Redis PubSub: selective push, only subscribed stocks</td></tr>
+  <tr><td class="rd">"Market order executes at displayed price"</td><td>Market order executes at BEST AVAILABLE price at execution time. Price may slip</td><td class="gr">Two-step settlement: lock estimated, settle actual difference</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════ S35 CLOSING -->
+<div class="slide" id="s35" data-title="Closing — One-Line Interview Script">
+<div class="section-label">🎯 Interview Prep</div>
+<h2>Closing — The Perfect One-Line Interview Script</h2>
+<div class="quote" style="font-size:1rem;line-height:2">
+  <strong>"CAP split: price view = AP (WebSocket + Redis PubSub, ~20ms, 1000× bandwidth reduction), trading = CP (SELECT FOR UPDATE, SERIALIZABLE). Fund locking with available/locked balance split prevents overdraft. 4-stage validation pipeline in &lt;50ms. FIX protocol to NSE/BSE. InfluxDB for time-series prices, PostgreSQL for orders + funds. Kafka backbone for at-least-once delivery with 7-year audit trail."</strong>
+</div>
+<div class="cols2" style="margin-top:16px">
+  <div>
+    <div class="card blue">
+      <h3>Whiteboard Draw Order</h3>
+      <ol style="padding-left:16px">
+        <li style="margin-bottom:3px"><strong>CAP split</strong> — state explicitly (20s)</li>
+        <li style="margin-bottom:3px"><strong>HLD</strong> — LB → 6 services → Exchange (45s)</li>
+        <li style="margin-bottom:3px"><strong>Price path</strong> — NSE → InfluxDB + Redis PubSub → WS → client (45s)</li>
+        <li style="margin-bottom:3px"><strong>Order path</strong> — lock funds → Kafka → Validator → FIX → NSE → 3 consumers (60s)</li>
+        <li style="margin-bottom:3px"><strong>State machine</strong> — PENDING → VERIFIED → PLACED → EXECUTED (15s)</li>
+        <li><strong>Hard problems</strong> — SELECT FOR UPDATE, SETNX, P&amp;L on-the-fly, InfluxDB (20s)</li>
+      </ol>
+    </div>
+  </div>
+  <div>
+    <div class="card green">
+      <h3>Tech Stack Summary</h3>
+      <table class="tbl">
+        <tr><th>Data</th><th>Store</th></tr>
+        <tr><td>Users, Orders, Funds, Trades</td><td class="gr">PostgreSQL (ACID)</td></tr>
+        <tr><td>Stock prices (time-series)</td><td class="cy">InfluxDB</td></tr>
+        <tr><td>Live prices, sessions, locks</td><td class="hl">Redis</td></tr>
+        <tr><td>Watchlist</td><td class="bl">PostgreSQL + GIN index</td></tr>
+        <tr><td>Event bus / audit log</td><td class="or">Kafka (50+ partitions)</td></tr>
+        <tr><td>Exchange protocol</td><td class="pu">FIX (binary TCP)</td></tr>
+        <tr><td>Live price delivery</td><td class="cy">WebSocket + PubSub</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+  </div><!-- /slide-area -->
+
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>&#8592; Prev</button>
+    <div id="slide-dots"></div>
+    <button class="btn" id="play-btn" onclick="togglePlay()">&#9654; Play</button>
+    <button class="btn" id="next-btn" onclick="navigate(1)">Next &#8594;</button>
+  </div>
+</div>
+
+<script>
+const ORDER = [
+  's1','s2','s3','s4','s5',
+  's6','s7','s8','s9','s10',
+  's11','s12','s13','s14','s15',
+  's16','s17','s18','s19','s20',
+  's21','s22','s23','s24','s25',
+  's26','s27','s28','s29','s30',
+  's31','s32','s33','s34','s35'
+];
+const TOTAL = ORDER.length;
+let cur = 0, playing = false, timer = null;
+
+const $ = id => document.getElementById(id);
+
+function buildDots() {
+  const dc = $('slide-dots');
+  dc.innerHTML = '';
+  ORDER.forEach((id, i) => {
+    const d = document.createElement('div');
+    d.className = 'dot' + (i === 0 ? ' active' : '');
+    d.onclick = () => goTo(i);
+    dc.appendChild(d);
+  });
+}
+
+function goTo(idx) {
+  const prev = ORDER[cur];
+  const next = ORDER[idx];
+  document.querySelector(`#${prev}`).classList.remove('active');
+  document.querySelector(`#${next}`).classList.add('active');
+  document.querySelectorAll('.dot')[cur].classList.remove('active');
+  document.querySelectorAll('.dot')[idx].classList.add('active');
+  cur = idx;
+  const slide = document.querySelector(`#${ORDER[cur]}`);
+  $('slide-title').textContent = slide.dataset.title || '';
+  $('counter').textContent = `${cur + 1} / ${TOTAL}`;
+  $('progress-fill').style.width = `${((cur + 1) / TOTAL) * 100}%`;
+  $('prev-btn').disabled = cur === 0;
+  $('next-btn').disabled = cur === TOTAL - 1;
+  slide.scrollTop = 0;
+}
+
+function navigate(dir) {
+  const next = cur + dir;
+  if (next >= 0 && next < TOTAL) goTo(next);
+}
+
+function togglePlay() {
+  playing = !playing;
+  $('play-btn').textContent = playing ? '⏸ Pause' : '▶ Play';
+  if (playing) {
+    timer = setInterval(() => {
+      if (cur < TOTAL - 1) navigate(1);
+      else { playing = false; $('play-btn').textContent = '▶ Play'; clearInterval(timer); }
+    }, 8000);
+  } else {
+    clearInterval(timer);
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') navigate(-1);
+  else if (e.key === 'p' || e.key === 'P') togglePlay();
+});
+
+buildDots();
+goTo(0);
+</script>
+</body>
+</html>

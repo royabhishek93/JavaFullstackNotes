@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outbox Pattern and CDC — Change Data Capture — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Outbox Pattern and CDC — Change Data Capture — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 11</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:9.09%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🔁</div>
+  <h1 class="gradient-text">Outbox Pattern and CDC — Change Data Capture — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">CDC</span><span class="badge">Debezium</span><span class="badge">WAL / Binlog</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: CDC, Change Data Capture, WAL, Binlog, Logical Replication, Replication Slot, Debezium, Kafka Connect, Publication, Polling vs CDC</p>
+</div>
+<div class="slide" id="s3" data-title="Push vs Pull — The Core Idea">
+<h2>Push vs Pull — The Core Idea</h2>
+<p>In polling, your code repeatedly asks the database for changes. In CDC, the database streams changes to you the moment they happen — no scheduler, no repeated queries.</p>
+<div class="dia">POLLING (pull model):
+  ┌──────────────────────┐   every 2 sec: "any new rows?"   ┌──────────┐
+  │  Your Scheduler      │ ─────────────────────────────►   │    DB    │
+  │  (custom code)       │ ◄─────────────────────────────   │          │
+  └──────────────────────┘   DB returns unpublished rows    └──────────┘
+  Problems: constant DB load, polling gap, multi-instance conflicts
+
+CDC (push model):
+  ┌──────────────────────┐                                   ┌──────────┐
+  │  Debezium            │ ◄──── DB streams every INSERT ──  │    DB    │
+  │  (infrastructure)    │       UPDATE, DELETE immediately   │          │
+  └──────────────────────┘                                   └──────────┘
+  No scheduler. No delay. No constant DB load. No custom code.</div>
+</div>
+<div class="slide" id="s4" data-title="How Databases Record Every Change — WAL and Binlog">
+<h2>How Databases Record Every Change — WAL and Binlog</h2>
+<p>Before a database modifies a table it first records the change in a <strong>transaction log file</strong>. This is the source of truth for crash recovery and replication. CDC reads this same file.</p>
+<div class="dia">POSTGRES — Write-Ahead Log (WAL):
+  ┌───────────────────────────────────────────────────────────────────┐
+  │  INSERT INTO outbox_events (aggregate_type, payload, ...)         │
+  │         │                                                         │
+  │         ▼  step 1 — written FIRST                                 │
+  │  ┌──────────────────────────────────┐                             │
+  │  │  WAL file  (on disk)             │                             │
+  │  │  op:    INSERT                   │                             │
+  │  │  table: outbox_events            │                             │
+  │  │  row:   { id, payload, ... }     │                             │
+  │  └──────────────────────────────────┘                             │
+  │         │                                                         │
+  │         ▼  step 2 — updated AFTER                                 │
+  │  ┌──────────────────────────────────┐                             │
+  │  │  Table pages  (actual data)      │                             │
+  │  └──────────────────────────────────┘                             │
+  └───────────────────────────────────────────────────────────────────┘
+
+MYSQL uses a Binlog file — same concept, different name.
+
+WHY THE LOG FILE EXISTS:
+  Crash recovery:   replay WAL from last checkpoint → table restored  ✓
+  DB replication:   master sends WAL to slave databases               ✓
+  CDC:              Debezium subscribes like a slave, reads WAL       ✓</div>
+</div>
+<div class="slide" id="s5" data-title="WAL Level — Why "logical" Is Required">
+<h2>WAL Level — Why "logical" Is Required</h2>
+<p>By default the WAL stores low-level binary page offsets that only another Postgres instance can decode. CDC needs human-readable column names and values — that requires changing the WAL level to <strong>logical</strong>.</p>
+<div class="dia">WAL level: replica  (default — binary format)
+  ┌──────────────────────────────────────────────────────────┐
+  │  page 5, offset 120: changed from 0xAB to 0xCD           │
+  │  page 8, offset 44:  changed from 0x00 to 0x01           │
+  └──────────────────────────────────────────────────────────┘
+  Another Postgres slave: can decode this  ✓
+  Debezium (CDC):         cannot decode this  ✗
+
+WAL level: logical  (required for CDC)
+  ┌──────────────────────────────────────────────────────────┐
+  │  op:             INSERT                                   │
+  │  table:          outbox_events                           │
+  │  id:             "uuid-abc-123"                          │
+  │  aggregate_type: "ORDER"                                 │
+  │  aggregate_id:   "customer-K1"                           │
+  │  payload:        { "orderId": 42, "amount": 500 }        │
+  └──────────────────────────────────────────────────────────┘
+  Debezium can read this and publish to Kafka  ✓
+
+How to change:
+  SHOW wal_level;                             ← check current level
+  ALTER SYSTEM SET wal_level = logical;       ← update it
+  (restart Postgres for the change to take effect)</div>
+</div>
+<div class="slide" id="s6" data-title="Debezium Attaches as a Replication Follower">
+<h2>Debezium Attaches as a Replication Follower</h2>
+<p>Postgres already has a mechanism to stream the WAL to slave databases — a <strong>replication slot</strong>. Debezium registers itself in that same slot, exactly like a DB slave, and receives every WAL entry in real time.</p>
+<div class="dia">NORMAL DB REPLICATION (no CDC):
+  ┌────────────────┐  WAL stream   ┌──────────┐
+  │  Master        │ ────────────► │  Slave-1 │
+  │  Postgres      │ ────────────► │  Slave-2 │
+  └────────────────┘               └──────────┘
+
+WITH CDC — Debezium registers as another replication subscriber:
+  ┌────────────────┐  WAL stream   ┌──────────┐
+  │  Master        │ ────────────► │  Slave-1 │
+  │  Postgres      │ ────────────► │  Slave-2 │
+  │                │ ────────────► │ Debezium │◄─ replication slot
+  └────────────────┘               └──────────┘
+                                       │
+                                       ▼  decodes WAL binary → logical
+                                       │  (using pgoutput plugin)
+                                       ▼
+                                    Kafka  (Debezium acts as producer)
+
+Replication slot created by Debezium at startup:
+  name:        debezium_slot
+  plugin:      pgoutput        ← decodes binary WAL to readable format
+  publication: cdc_publication ← table-level filter (see next section)</div>
+</div>
+<div class="slide" id="s7" data-title="Postgres Publication — Table-Level Filter">
+<h2>Postgres Publication — Table-Level Filter</h2>
+<p>A <strong>publication</strong> tells Postgres which tables to include in the WAL stream sent to a CDC subscriber. Without it, every INSERT, UPDATE, DELETE on every table would be streamed to Debezium unnecessarily.</p>
+<div class="dia">  Your database: 100 tables
+  ┌──────────────────────────────────────────────────────────────┐
+  │  orders  users  products  payments  inventory  ...  (×100)   │
+  │                        outbox_events  ◄────────────────────  │
+  └──────────────────────────────────────────────────────────────┘
+                                  ▲ only this table
+
+  CREATE PUBLICATION cdc_publication
+      FOR TABLE public.outbox_events;
+
+  Effect on the WAL stream sent to Debezium:
+  ─────────────────────────────────────────────────────────────────
+  INSERT into orders           → filtered out  ✗  (not in publication)
+  INSERT into users            → filtered out  ✗
+  INSERT into products         → filtered out  ✗
+  INSERT into outbox_events    → INCLUDED      ✓  → Debezium receives it
+
+  Two levels of filtering working together:
+  ┌──────────────────────────────────────────────────────────┐
+  │  Level 1 — Postgres side:  publication (cdc_publication) │
+  │  Level 2 — Debezium side:  table.include.list            │
+  │  Both point to public.outbox_events                      │
+  └──────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s8" data-title="Debezium Connector Configuration">
+<h2>Debezium Connector Configuration</h2>
+<p>A single properties file wires together the database connection, the replication slot, the publication, and the mapping of outbox table columns to Kafka message fields.</p>
+<div class="dia">  debezium-postgres-connector.properties
+  ─────────────────────────────────────────────────────────────────
+  name=outbox-connector               ← any name for this connector
+
+  # Which Debezium plugin to use (swap to MySQL plugin for MySQL)
+  connector.class=io.debezium.connector.postgresql.PostgresConnector
+
+  # DB connection
+  database.hostname=localhost
+  database.port=5432
+  database.user=postgres
+  database.password=secret
+  database.dbname=outbox_cdc_db
+
+  # Level-2 filter — only watch this table
+  table.include.list=public.outbox_events
+
+  # Replication slot settings
+  slot.name=debezium_slot
+  plugin.name=pgoutput           ← decodes WAL binary → logical format
+
+  # Use the publication we created manually in Postgres
+  publication.auto.create.mode=disabled
+  publication.name=cdc_publication
+
+  # Read existing rows first, then stream new ones
+  snapshot.mode=initial
+
+  # Map outbox table columns to Kafka message fields
+  transforms=outbox
+  transforms.outbox.type=...EventRouter
+  transforms.outbox.table.field.event.id=id             ← deduplication key
+  transforms.outbox.table.field.event.key=aggregate_id  ← Kafka message key
+  transforms.outbox.table.field.event.payload=payload   ← Kafka message value
+  transforms.outbox.route.by.field=aggregate_type       ← determines topic
+  transforms.outbox.route.topic.replacement=\${routedByValue}-events
+  #  aggregate_type = "ORDER"  →  topic: ORDER-events
+
+  snapshot.mode=initial explained:
+    outbox_events already has 100 rows when CDC starts
+    ┌────────────────────────────────────────────────────────┐
+    │  Phase 1 — snapshot: read all 100 existing rows, send  │
+    │  Phase 2 — streaming: receive new inserts via WAL      │
+    └────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s9" data-title="End-to-End CDC Data Flow">
+<h2>End-to-End CDC Data Flow</h2>
+<p>This is the complete path from an incoming HTTP request to downstream services consuming the event from Kafka — with zero polling code.</p>
+<div class="dia">  HTTP POST /order
+       │
+       ▼
+  ┌────────────────────────────────────────────────────────┐
+  │  OrderService  @Transactional                          │
+  │                                                        │
+  │  orderRepo.save(order)          ─┐                     │
+  │  outboxRepo.save(outboxEvent)   ─┘  ONE DB transaction │
+  └────────────────────────────────────────────────────────┘
+       │  both rows committed atomically
+       ▼
+  ┌────────────────────────────────────────────────────────┐
+  │  POSTGRES                                              │
+  │  ┌──────────────────────────────────────────────────┐  │
+  │  │  orders table:        { id:42, amount:500, ... } │  │
+  │  └──────────────────────────────────────────────────┘  │
+  │  ┌──────────────────────────────────────────────────┐  │
+  │  │  outbox_events table:                            │  │
+  │  │  { aggregate_type:"ORDER", aggregate_id:"K1",    │  │
+  │  │    payload:{ orderId:42 } }                      │  │
+  │  └──────────────────────────────────────────────────┘  │
+  │  ┌──────────────────────────────────────────────────┐  │
+  │  │  WAL file (logical level):                       │  │
+  │  │  op: INSERT  table: outbox_events  row: {...}    │  │
+  │  └──────────────────────────────────────────────────┘  │
+  └──────────────────────────┬─────────────────────────────┘
+                             │  replication slot stream
+                             ▼
+  ┌────────────────────────────────────────────────────────┐
+  │  Kafka Connect  +  Debezium Postgres Plugin            │
+  │                                                        │
+  │  1. Reads WAL via replication slot (debezium_slot)     │
+  │  2. pgoutput decodes binary WAL → logical format       │
+  │  3. EventRouter transform maps columns:                │
+  │       key   ← aggregate_id   ("K1")                   │
+  │       value ← payload        ({ orderId: 42 })         │
+  │       topic ← aggregate_type + "-events" ("ORDER-events")│
+  │  4. Publishes to Kafka (acts as a Kafka producer)      │
+  └────────────────────────────┬───────────────────────────┘
+                               │
+                               ▼
+  ┌────────────────────────────────────────────────────────┐
+  │  Kafka Topic: ORDER-events                             │
+  │  key "K1" → same partition every time → order kept    │
+  │  ┌────────┬────────┬────────┐                         │
+  │  │ msg-1  │ msg-2  │ msg-3  │  ...                    │
+  │  └────────┴────────┴────────┘                         │
+  └──────────────────┬─────────────────────────────────────┘
+                     │
+         ┌───────────┴────────────┐
+         ▼                        ▼
+  ┌──────────────────┐    ┌──────────────────────┐
+  │ payment-service  │    │  inventory-service    │
+  └──────────────────┘    └──────────────────────┘</div>
+<p>No scheduler. No polling query. No <code>published</code> column. The infrastructure does all the work once configured.</p>
+</div>
+<div class="slide" id="s10" data-title="Polling vs CDC — Side-by-Side Comparison">
+<h2>Polling vs CDC — Side-by-Side Comparison</h2>
+<p>Both approaches solve the dual-write problem using the same outbox table. They differ in how the relay from the outbox table to Kafka is implemented.</p>
+<div class="dia">                                POLLING              CDC (Debezium)
+  ────────────────────────────  ───────────────────  ────────────────────────────
+  Custom code required          Yes (scheduler)  ✗   No  ✓
+  Constant DB load              Yes (every N sec) ✗   No (event-driven)  ✓
+  Event delivery latency        Up to N seconds  ✗   Milliseconds  ✓
+  Multi-instance locking        Needed (ShedLock) ✗   Handled by Debezium  ✓
+  published column needed       Yes              ✗   No  ✓
+  Table cleanup job needed      Yes              ✗   Not required  ✓
+  At-least-once delivery        Yes              ✓   Yes  ✓
+  Idempotent consumer needed    Yes              ✓   Yes  ✓
+  Simple to understand          Yes              ✓   More setup required  ✗
+  Infrastructure dependency     None             ✓   Kafka Connect + Debezium  ✗
+  Works with any DB             Yes              ✓   DB must support logical WAL  ✗
+  Scales automatically          No (needs work)  ✗   Yes (Kafka Connect scales)  ✓
+
+  What stays the same in both:
+  ┌───────────────────────────────────────────────────────────────┐
+  │  ► Same outbox table schema (minus published/published_at)    │
+  │  ► Same @Transactional boundary in the application           │
+  │  ► Same at-least-once delivery guarantee                     │
+  │  ► Same requirement for idempotent consumers                 │
+  │  ► Both solve the dual-write problem correctly               │
+  └───────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s11" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                    What it is                               Key point
+─────────────────────────  ───────────────────────────────────────  ────────────────────────────────────
+CDC                        Change Data Capture — push model         DB notifies you on every change
+Debezium                   CDC tool implemented as Kafka plugin      Reads WAL/Binlog, publishes to Kafka
+WAL (Postgres)             Write-Ahead Log file                     Every change written here before table
+Binlog (MySQL)             Binary Log file                          Same concept as WAL, different name
+WAL level: replica         Default — binary page offsets only       Debezium cannot read this  ✗
+WAL level: logical         Adds table, column, value metadata       Debezium can read this  ✓
+Replication slot           Subscription point in Postgres           Debezium registers here at startup
+pgoutput                   WAL binary decoder plugin                Converts raw WAL → logical format
+Publication                Postgres-side table filter               Controls which tables enter WAL stream
+table.include.list         Debezium-side table filter               Second-level filter in connector config
+snapshot.mode=initial      Read existing rows, then stream          Ensures no pre-existing data is missed
+EventRouter transform      Maps outbox columns to Kafka fields      aggregate_id→key, payload→value, etc.
+aggregate_type             Outbox column for routing                Determines the Kafka topic name
+aggregate_id               Outbox column for partitioning           Used as Kafka message key
+published column           Tracks send status                       Polling only — not needed with CDC
+Kafka Connect              Kafka's connector hosting framework      Runs the Debezium plugin process
+At-least-once              Delivery guarantee (both approaches)     Consumer must always be idempotent</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 11;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Outbox Pattern and CDC — Change Data Capture — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

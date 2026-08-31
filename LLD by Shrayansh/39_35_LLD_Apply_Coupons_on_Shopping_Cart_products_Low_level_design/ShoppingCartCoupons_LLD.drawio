@@ -1,0 +1,89 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Shopping Cart Coupons LLD" id="cart">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1920" pageHeight="1200">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="SHOPPING CART WITH COUPONS - Decorator Pattern (Dynamic Capability Addition)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="20" width="1840" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 1-3: CLASS DIAGRAM -->
+        <mxCell id="subtitle1" value="SECTION 1-3: CLASS DIAGRAM (Decorator Pattern - Chaining Coupons)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="900" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="product_abstract" value="&lt;&lt;abstract&gt;&gt;&#xa;Product&#xa;&#xa;- name: String&#xa;- originalPrice: Double&#xa;- productType: ProductType&#xa;&#xa;+ Product(name, price, type)&#xa;+ abstract getPrice(): Double" style="swimlane;fontStyle=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="120" width="260" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="item_class" value="Item1, Item2, ... (extends Product)&#xa;&#xa;+ Item1(name, price, type)&#xa;  // Call super(name, price, type)&#xa;&#xa;+ getPrice(): Double&#xa;  // return originalPrice&#xa;&#xa;Example:&#xa;Item1 fan = new Item1('Fan', 1000,&#xa;                      ELECTRONIC);&#xa;fan.getPrice() → 1000" style="swimlane;fontStyle=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="340" y="120" width="320" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="coupon_decorator" value="CouponDecorator (extends Product)&#xa;&#xa;- product: Product  // HAS-A Product!&#xa;&#xa;// IS-A Product (extends)&#xa;// HAS-A Product (composition)&#xa;&#xa;NOTE: This is ABSTRACT decorator base" style="swimlane;fontStyle=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="700" y="120" width="320" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="percentage_coupon" value="PercentageCouponDecorator&#xa;(extends CouponDecorator)&#xa;&#xa;- product: Product&#xa;- discountPercentage: Double&#xa;&#xa;+ PercentageCouponDecorator(&#xa;    Product p, Double percentage)&#xa;&#xa;+ getPrice(): Double&#xa;  price = product.getPrice()&#xa;  discount = price × (percentage/100)&#xa;  return price - discount" style="swimlane;fontStyle=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="120" width="320" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="type_coupon" value="TypeCouponDecorator&#xa;(extends CouponDecorator)&#xa;&#xa;- product: Product&#xa;- discountPercentage: Double&#xa;- eligibleTypes: List&lt;ProductType&gt;&#xa;  // Static: [FURNITURE, DECORATIVE]&#xa;&#xa;+ TypeCouponDecorator(Product p,&#xa;    Double percentage, ProductType type)&#xa;&#xa;+ getPrice(): Double&#xa;  price = product.getPrice()&#xa;  if (eligibleTypes.contains(type)):&#xa;    discount = price × (percentage/100)&#xa;    return price - discount&#xa;  else:&#xa;    return price  // No discount" style="swimlane;fontStyle=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="120" width="340" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="producttype_enum" value="&lt;&lt;enum&gt;&gt;&#xa;ProductType&#xa;&#xa;ELECTRONIC&#xa;FURNITURE&#xa;DECORATIVE&#xa;GROCERY&#xa;CLOTHING" style="swimlane;fontStyle=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="1800" y="120" width="120" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Decorator Pattern Explanation -->
+        <mxCell id="pattern_explanation" value="DECORATOR PATTERN STRUCTURE:&#xa;&#xa;PROBLEM: Apply multiple coupons to product without modifying Product class&#xa;- Product has original price&#xa;- Want to apply: 10% off, then 5% type-based discount, then ₹100 flat off&#xa;- Chaining: Price after Coupon1 → input to Coupon2 → input to Coupon3&#xa;- CANNOT modify Product class (Open-Closed Principle)&#xa;&#xa;SOLUTION: Decorator Pattern&#xa;1. CouponDecorator IS-A Product (extends Product)&#xa;2. CouponDecorator HAS-A Product (wraps another Product)&#xa;3. Concrete decorators (PercentageCoupon, TypeCoupon) extend CouponDecorator&#xa;4. Chaining: Decorator wraps Product, another Decorator wraps previous Decorator&#xa;&#xa;KEY INSIGHT:&#xa;- TypeCouponDecorator IS-A Product&#xa;- PercentageCouponDecorator IS-A Product&#xa;- Item1 IS-A Product&#xa;- So TypeCoupon can wrap PercentageCoupon (both are Products!)&#xa;&#xa;CHAINING FLOW:&#xa;Product original = new Item1('Fan', 1000, ELECTRONIC);&#xa;Product withPercentage = new PercentageCoupon(original, 10);&#xa;Product withType = new TypeCoupon(withPercentage, 5, ELECTRONIC);&#xa;&#xa;withType.getPrice() calls:&#xa;1. TypeCoupon.getPrice()&#xa;   → product.getPrice()  // product = PercentageCoupon&#xa;2. PercentageCoupon.getPrice()&#xa;   → product.getPrice()  // product = Item1&#xa;3. Item1.getPrice()&#xa;   → return 1000  // original price&#xa;4. Back to PercentageCoupon: 1000 - (1000×0.1) = 900&#xa;5. Back to TypeCoupon: 900 - (900×0.05) = 855&#xa;&#xa;RESULT: ₹855 (10% off, then 5% off on reduced price)&#xa;&#xa;&#xa;DECORATOR vs INHERITANCE:&#xa;&#xa;INHERITANCE (BAD):&#xa;Product&#xa;├── Product10PercentOff&#xa;├── Product5PercentTypeOff&#xa;├── Product10PercentAnd5PercentOff  // Combinatorial explosion!&#xa;└── Product10And5And100FlatOff      // N coupons = 2^N classes&#xa;&#xa;DECORATOR (GOOD):&#xa;Product (base)&#xa;CouponDecorator extends Product, HAS Product&#xa;- Compose at runtime: any combination&#xa;- 3 decorators → infinite combinations via chaining&#xa;- No class explosion" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="920" height="680" as="geometry" />
+        </mxCell>
+        
+        <!-- Example Shopping Cart -->
+        <mxCell id="cart_example_title" value="EXAMPLE: SHOPPING CART FLOW" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="440" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cart_example" value="SETUP:&#xa;Item1 fan = new Item1('Fan', 1000, ELECTRONIC);&#xa;Item2 sofa = new Item2('Sofa', 2000, FURNITURE);&#xa;&#xa;ShoppingCart cart = new ShoppingCart();&#xa;cart.addToCart(fan);   // Decorated with coupons&#xa;cart.addToCart(sofa);  // Decorated with coupons&#xa;&#xa;&#xa;ADD TO CART (with decoration):&#xa;&#xa;void addToCart(Product product) {&#xa;  // Decorate with PercentageCoupon (10% off)&#xa;  Product withPercentage =&#xa;    new PercentageCouponDecorator(product, 10);&#xa;  &#xa;  // Decorate with TypeCoupon (5% off for FURNITURE/DECORATIVE)&#xa;  Product withType =&#xa;    new TypeCouponDecorator(withPercentage, 5, product.type);&#xa;  &#xa;  productList.add(withType);  // Store decorated product&#xa;}&#xa;&#xa;&#xa;DECORATION FOR FAN (ELECTRONIC):&#xa;fan (Item1, ₹1000, ELECTRONIC)&#xa;  → PercentageCoupon(fan, 10%)&#xa;    → TypeCoupon(PercentageCoupon, 5%, ELECTRONIC)&#xa;&#xa;productList[0] = TypeCoupon wrapping PercentageCoupon wrapping fan&#xa;&#xa;&#xa;DECORATION FOR SOFA (FURNITURE):&#xa;sofa (Item2, ₹2000, FURNITURE)&#xa;  → PercentageCoupon(sofa, 10%)&#xa;    → TypeCoupon(PercentageCoupon, 5%, FURNITURE)&#xa;&#xa;productList[1] = TypeCoupon wrapping PercentageCoupon wrapping sofa&#xa;&#xa;&#xa;GET TOTAL PRICE:&#xa;&#xa;double getTotalPrice() {&#xa;  double total = 0;&#xa;  for (Product p : productList) {&#xa;    total += p.getPrice();  // Polymorphism!&#xa;  }&#xa;  return total;&#xa;}&#xa;&#xa;&#xa;PRICE CALCULATION FOR FAN:&#xa;productList[0].getPrice()  // TypeCoupon.getPrice()&#xa;  → product.getPrice()  // PercentageCoupon.getPrice()&#xa;    → product.getPrice()  // Item1.getPrice()&#xa;      → return 1000&#xa;    ← discount = 1000 × 0.10 = 100&#xa;    ← return 1000 - 100 = 900&#xa;  ← eligibleTypes = [FURNITURE, DECORATIVE]&#xa;  ← ELECTRONIC NOT in list&#xa;  ← return 900 (no additional discount)&#xa;&#xa;Fan final price: ₹900&#xa;&#xa;&#xa;PRICE CALCULATION FOR SOFA:&#xa;productList[1].getPrice()  // TypeCoupon.getPrice()&#xa;  → product.getPrice()  // PercentageCoupon.getPrice()&#xa;    → product.getPrice()  // Item2.getPrice()&#xa;      → return 2000&#xa;    ← discount = 2000 × 0.10 = 200&#xa;    ← return 2000 - 200 = 1800&#xa;  ← FURNITURE in eligibleTypes&#xa;  ← discount = 1800 × 0.05 = 90&#xa;  ← return 1800 - 90 = 1710&#xa;&#xa;Sofa final price: ₹1710&#xa;&#xa;&#xa;TOTAL: ₹900 + ₹1710 = ₹2610&#xa;&#xa;&#xa;EXTENSIBILITY:&#xa;Adding new coupon type (e.g., FlatOffCoupon):&#xa;&#xa;class FlatOffCouponDecorator extends CouponDecorator {&#xa;  private double flatDiscount;&#xa;  &#xa;  public double getPrice() {&#xa;    double price = product.getPrice();&#xa;    return Math.max(0, price - flatDiscount);&#xa;  }&#xa;}&#xa;&#xa;Usage:&#xa;Product withFlat =&#xa;  new FlatOffCoupon(withType, 100);  // ₹100 off&#xa;&#xa;No changes to existing code!" style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=9;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="480" width="880" height="1020" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 4: ER DIAGRAM -->
+        <mxCell id="title_er" value="SECTION 4: ER DIAGRAM" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="1160" width="920" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_product" value="Product&#xa;&#xa;PK  productId: INT&#xa;    productName: VARCHAR(200)&#xa;    originalPrice: DECIMAL&#xa;    productType: ENUM" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1220" width="220" height="120" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_coupon" value="Coupon&#xa;&#xa;PK  couponId: INT&#xa;    couponCode: VARCHAR(50)&#xa;    couponType: ENUM&#xa;    discountPercentage: DECIMAL&#xa;    eligibleTypes: JSON&#xa;    validFrom: DATETIME&#xa;    validTo: DATETIME" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="1220" width="240" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_cart" value="Cart&#xa;&#xa;PK  cartId: INT&#xa;FK  userId: INT" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="580" y="1220" width="160" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="er_cartitem" value="CartItem&#xa;&#xa;PK  cartItemId: INT&#xa;FK  cartId: INT&#xa;FK  productId: INT&#xa;    quantity: INT&#xa;    appliedCoupons: JSON" style="swimlane;fontStyle=1;align=left;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="780" y="1220" width="180" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- SECTION 7: SCENARIO QUESTIONS -->
+        <mxCell id="title_scenario" value="SECTION 7: SCENARIO QUESTIONS" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="1440" width="920" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="scenario" value="Q1: Why use Decorator Pattern instead of just storing list of coupons and iterating?&#xa;A1: Composition > Iteration. Decorator chains naturally via getPrice() recursion. Each decorator independently decides discount logic (type-based, conditional, etc.). Easy to add new decorators without modifying existing. Polymorphism: Product interface handles both Item and decorated Products uniformly.&#xa;&#xa;Q2: Order of coupon application matters (10% then 5% ≠ 5% then 10%). How to enforce?&#xa;A2: Decorator chaining order = application order. Inner wrapper applied first. Example: TypeCoupon(PercentageCoupon(item)) → Percentage applied first (innermost getPrice() called first in recursion). To reverse: PercentageCoupon(TypeCoupon(item)). Builder pattern can enforce canonical order.&#xa;&#xa;Q3: Some coupons mutually exclusive ('SAVE10' OR 'FIRSTBUY', not both). How to validate?&#xa;A3: Add validation layer: CouponValidator checks compatibility before decoration. Strategy: (1) Maintain Set&lt;CouponGroup&gt; in cart (2) Before adding decorator, check if new coupon's group conflicts (3) Reject or replace conflicting coupon. Alternatively, Mediator pattern coordinates coupon application rules.&#xa;&#xa;Q4: How to implement 'Buy 2 Get 1 Free' with Decorator Pattern?&#xa;A4: BuyNGetMFreeDecorator(product, quantity, buyN, getM). Override getPrice(): if quantity ≥ buyN, discount = (getM × product.getPrice()). Example: Buy 2 Get 1 Free, quantity=3 → discount = 1 × unitPrice, return 2 × unitPrice. Chains with other decorators: PercentageCoupon(BuyNGetMFree(item)).&#xa;&#xa;Q5: Why CouponDecorator extends Product? Why not separate interface?&#xa;A5: Decorator must be substitutable for Product (Liskov Substitution). ShoppingCart stores List&lt;Product&gt; — decorated or plain products, doesn't matter. Enables chaining: TypeCoupon wraps PercentageCoupon because both ARE Products. Separate interface breaks polymorphism, requires separate storage &amp; handling logic." style="whiteSpace=wrap;html=1;align=left;verticalAlign=top;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1500" width="920" height="520" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

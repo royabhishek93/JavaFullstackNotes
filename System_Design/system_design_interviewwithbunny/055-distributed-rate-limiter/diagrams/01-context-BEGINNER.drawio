@@ -1,0 +1,174 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Rate Limiter Context - BEGINNER" id="rate-limiter-context">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="RATE LIMITER CONTEXT — The Big Picture" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="300" y="20" width="800" height="40" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="🎯 Goal: Prevent one user from overwhelming the system while allowing fair access to everyone" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="300" y="70" width="800" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Restaurant Analogy Box -->
+        <mxCell id="analogy-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="120" width="400" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analogy-title" value="🍽️ RESTAURANT ANALOGY" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="130" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="analogy-text" value="Without Rate Limiter:&#xa;500 customers rush in at once → kitchen collapses → nobody eats&#xa;&#xa;With Rate Limiter (Host at entrance):&#xa;&quot;I can seat 10 tables per hour — others wait or come back&quot;&#xa;&#xa;Result: Fair access, sustainable throughput, no crash" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="70" y="165" width="360" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Problem Box -->
+        <mxCell id="problem-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="500" y="120" width="400" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="problem-title" value="❌ WITHOUT RATE LIMITER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#cc0000;" vertex="1" parent="1">
+          <mxGeometry x="500" y="130" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="problem-text" value="1 buggy client sends 1,000,000 req/sec:&#xa;   • Your API crashes&#xa;   • Database connection pool exhausted&#xa;   • ALL users experience downtime&#xa;&#xa;1 DDoS attack:&#xa;   • Millions of requests from botnets&#xa;   • System can't handle load → $$$$ lost" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="520" y="165" width="360" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- WITH Rate Limiter Box -->
+        <mxCell id="with-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="950" y="120" width="400" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="with-title" value="✅ WITH RATE LIMITER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#006600;" vertex="1" parent="1">
+          <mxGeometry x="950" y="130" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="with-text" value="Free users: 100 req/min → enforced&#xa;Premium users: 1,000 req/min → enforced&#xa;Enterprise: 10,000 req/min → enforced&#xa;&#xa;Request #101 from free user?&#xa;   → HTTP 429 &quot;Too Many Requests&quot;&#xa;   → Retry-After: 60 seconds&#xa;Backend stays healthy! ✓" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="970" y="165" width="360" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- Architecture Flow -->
+        <mxCell id="flow-title" value="HOW IT WORKS — Request Flow" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="450" y="330" width="500" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Client -->
+        <mxCell id="client" value="👤 Client&#xa;(User/App)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="390" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- API Gateway with Rate Limiter -->
+        <mxCell id="gateway-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="280" y="360" width="280" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="gateway-title" value="🚪 API GATEWAY + RATE LIMITER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="280" y="370" width="280" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step1" value="STEP 1: Extract Identity&#xa;(user_id / API key / IP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="300" y="420" width="240" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2" value="STEP 2: Check Redis&#xa;&quot;Does user123 have tokens left?&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="300" y="490" width="240" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3-allow" value="✅ Tokens available?&#xa;→ ALLOW (consume 1 token)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="300" y="560" width="240" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3-reject" value="❌ No tokens left?&#xa;→ REJECT HTTP 429" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="300" y="610" width="240" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Redis -->
+        <mxCell id="redis-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="650" y="400" width="260" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-title" value="⚡ REDIS (Shared Counter)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="650" y="410" width="260" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-bucket" value="🪣 Token Bucket for user123:&#xa;&#xa;Capacity: 100 tokens&#xa;Refill Rate: 10 tokens/sec&#xa;Current: 95 tokens&#xa;Last Refill: 10:30:45" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=left;verticalAlign=top;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="670" y="450" width="220" height="120" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-note" value="WHY Redis? In-memory = 0.5ms lookup&#xa;MySQL would be 10-50ms!" style="text;html=1;strokeColor=#d79b00;fillColor=#ffe6cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="670" y="580" width="220" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Backend Services -->
+        <mxCell id="backend" value="🖥️ Backend Services&#xa;(UserSvc, OrderSvc, etc.)&#xa;&#xa;Protected from overload!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="390" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="rejected-client" value="❌ Client (rejected)&#xa;Gets HTTP 429&#xa;Retry-After: 60s" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="540" width="200" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Arrows -->
+        <mxCell id="arrow1" value="GET /api/users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=13;fontStyle=1" edge="1" parent="1" source="client" target="gateway-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow2" value="Check budget" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;dashed=1" edge="1" parent="1" source="step2" target="redis-box">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow3" value="200 OK + data" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=13;fontStyle=1;strokeColor=#00CC00" edge="1" parent="1" source="gateway-box" target="backend">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="500" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow4" value="429 Too Many" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=13;fontStyle=1;strokeColor=#CC0000" edge="1" parent="1" source="gateway-box" target="rejected-client">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="625" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Key Numbers Box -->
+        <mxCell id="numbers-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="50" y="700" width="1300" height="160" as="geometry" />
+        </mxCell>
+
+        <mxCell id="numbers-title" value="📊 KEY NUMBERS TO REMEMBER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="710" width="1300" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num1" value="⚡ Latency Added:&#xa;&lt;5ms per request&#xa;(Redis check)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;align=center" vertex="1" parent="1">
+          <mxGeometry x="80" y="760" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num2" value="🪣 Token Bucket:&#xa;Capacity = max burst&#xa;Refill rate = sustained" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;align=center" vertex="1" parent="1">
+          <mxGeometry x="280" y="760" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num3" value="👥 Scale:&#xa;1M requests/sec&#xa;50M active users" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;align=center" vertex="1" parent="1">
+          <mxGeometry x="500" y="760" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num4" value="🔄 Redis Memory:&#xa;~170 bytes per user&#xa;per endpoint" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;align=center" vertex="1" parent="1">
+          <mxGeometry x="700" y="760" width="180" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num5" value="💰 Tier Examples:&#xa;Free: 100/min&#xa;Premium: 1000/min&#xa;Enterprise: 10K/min" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;align=center" vertex="1" parent="1">
+          <mxGeometry x="900" y="760" width="200" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="num6" value="🎯 Response:&#xa;HTTP 429&#xa;+ Retry-After header&#xa;+ X-RateLimit-*" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;align=center" vertex="1" parent="1">
+          <mxGeometry x="1120" y="760" width="200" height="80" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

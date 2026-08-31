@@ -1,0 +1,308 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Message Flow Sequence - BEGINNER" id="message-flow">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="MESSAGE FLOW SEQUENCE — Alice sends &quot;Hi!&quot; to Bob" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1200" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="subtitle" value="⏱️ Total time: &lt;100ms (P99 latency) | Green path = Bob online | Red path = Bob offline" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="200" y="70" width="1200" height="30" as="geometry" />
+        </mxCell>
+
+        <!-- Actors (Swimlanes) -->
+        <mxCell id="alice-lane" value="👤 Alice (iPhone)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="50" y="140" width="200" height="1180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ws-lane" value="🔌 WebSocket Server #42" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=16;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="280" y="140" width="200" height="1180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="chat-lane" value="💬 Chat Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=16;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="510" y="140" width="200" height="1180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="cassandra-lane" value="🗄️ Cassandra" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5e6ff;strokeColor=#9673a6;fontSize=16;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="740" y="140" width="180" height="1180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="redis-lane" value="⚡ Redis Streams" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff4e6;strokeColor=#d6b656;fontSize=16;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="950" y="140" width="200" height="1180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="ws2-lane" value="🔌 WebSocket Server #87" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=16;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="140" width="200" height="1180" as="geometry" />
+        </mxCell>
+
+        <mxCell id="bob-lane" value="👤 Bob (Android)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=16;fontStyle=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="1410" y="140" width="180" height="1180" as="geometry" />
+        </mxCell>
+
+        <!-- Step 0: Initial State -->
+        <mxCell id="step0-time" value="⏱️ t=0ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="180" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step0-alice" value="Alice types:&#xa;&quot;Hi Bob!&quot;&#xa;&#xa;Taps Send ➤" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="70" y="220" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Step 1: Send WebSocket Message -->
+        <mxCell id="step1-time" value="⏱️ t=0-2ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="320" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow1" value="WebSocket SEND&#xa;{&quot;to&quot;: &quot;bob@123&quot;,&#xa; &quot;msg&quot;: &quot;Hi Bob!&quot;}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=12;strokeColor=#0066cc;fontStyle=1" edge="1" parent="1" source="step0-alice" target="step1-ws">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="250" y="255" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step1-ws" value="Receive message&#xa;on persistent&#xa;connection" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0bfff;strokeColor=#8e44ad;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="300" y="360" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Step 2: Forward to Chat Service -->
+        <mxCell id="step2-time" value="⏱️ t=2-5ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="450" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow2" value="gRPC call:&#xa;SendMessage()" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;dashed=1" edge="1" parent="1" source="step1-ws" target="step2-chat">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step2-chat" value="1. Validate&#xa;2. Stamp seq ID&#xa;   (conv #5742)&#xa;3. Generate UUID" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a8e6cf;strokeColor=#27ae60;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="530" y="490" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- Step 3: Write to Cassandra -->
+        <mxCell id="step3-time" value="⏱️ t=5-8ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="600" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow3" value="INSERT INTO messages" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;" edge="1" parent="1" source="step2-chat" target="step3-cassandra">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step3-cassandra" value="Write to&#xa;partition:&#xa;&#xa;conv_id=&#xa;'alice-bob'&#xa;&#xa;seq=5742&#xa;&#xa;Append-only!&#xa;No locks!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0e6ff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="750" y="640" width="160" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow3b" value="ACK write" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=11;dashed=1;strokeColor=#27ae60" edge="1" parent="1" source="step3-cassandra" target="step4-chat">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="610" y="800" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Step 4: Publish to Redis Stream -->
+        <mxCell id="step4-time" value="⏱️ t=8-10ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="810" width="100" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4-chat" value="XADD to stream&#xa;'server.ws87.inbox'" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#a8e6cf;strokeColor=#27ae60;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="530" y="820" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow4" value="XADD&#xa;stream key: server.ws87.inbox&#xa;payload: {msg_id, to, content}" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=11;" edge="1" parent="1" source="step4-chat" target="step4-redis">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step4-redis" value="Append to stream&#xa;&#xa;Stream length: 347&#xa;&#xa;Consumer group:&#xa;ws-workers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0cc;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="970" y="850" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Step 5: ACK back to Alice -->
+        <mxCell id="step5-time" value="⏱️ t=10-15ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="970" width="110" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow5" value="gRPC response: OK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;dashed=1;strokeColor=#27ae60" edge="1" parent="1" source="step4-chat" target="step5-ws">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="610" y="1010" as="sourcePoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step5-ws" value="Send ACK&#xa;to Alice" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0bfff;strokeColor=#8e44ad;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="300" y="980" width="160" height="50" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow5b" value="WebSocket ACK" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=12;strokeColor=#27ae60;fontStyle=1" edge="1" parent="1" source="step5-ws" target="step5-alice">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step5-alice" value="✓ Single checkmark&#xa;appears&#xa;&#xa;&quot;Server received it!&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c3f0c3;strokeColor=#27ae60;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="70" y="980" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- GREEN PATH: Bob is online -->
+        <mxCell id="green-path-label" value="🟢 GREEN PATH: BOB IS ONLINE" style="text;html=1;strokeColor=#27ae60;fillColor=#d5f5d5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="950" y="980" width="640" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Step 6: WS Server #87 consumes from stream -->
+        <mxCell id="step6-time" value="⏱️ t=10-30ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="950" y="1040" width="110" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow6" value="XREADGROUP&#xa;(consumer group poll)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=11;strokeColor=#27ae60" edge="1" parent="1" source="step6-ws2" target="step4-redis">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="1090" as="sourcePoint" />
+            <Array as="points">
+              <mxPoint x="1050" y="1090" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step6-ws2" value="Poll stream&#xa;every 5ms&#xa;&#xa;Got message!" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0bfff;strokeColor=#8e44ad;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="1080" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- Step 7: Deliver to Bob -->
+        <mxCell id="step7-time" value="⏱️ t=30-50ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1180" y="1170" width="110" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow7" value="WebSocket PUSH&#xa;to Bob's connection" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;fontSize=12;strokeColor=#27ae60;fontStyle=1" edge="1" parent="1" source="step6-ws2" target="step7-bob">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <mxCell id="step7-bob" value="📱 Message arrives!&#xa;&#xa;&quot;Hi Bob!&quot;&#xa;&#xa;Vibration&#xa;Notification sound" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c3f0c3;strokeColor=#27ae60;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1420" y="1180" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <!-- Step 8: Bob sends delivery ACK -->
+        <mxCell id="step8-time" value="⏱️ t=50-70ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1410" y="1100" width="110" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow8" value="ACK: delivered" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;dashed=1;strokeColor=#27ae60" edge="1" parent="1" source="step7-bob" target="step8-ws2">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1280" y="1150" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step8-ws2" value="Update status:&#xa;DELIVERED" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d0bfff;strokeColor=#8e44ad;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="1030" width="160" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow8b" value="Update Cassandra&#xa;SET status='DELIVERED'" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=11;dashed=1" edge="1" parent="1" source="step8-ws2" target="cassandra-update">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="830" y="970" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1280" y="970" />
+              <mxPoint x="830" y="970" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="cassandra-update" value="Status updated" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0e6ff;strokeColor=#9673a6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="750" y="930" width="160" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- Step 9: Alice sees double checkmark -->
+        <mxCell id="step9-time" value="⏱️ t=70-100ms" style="text;html=1;strokeColor=none;fillColor=#ffffcc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="1080" width="120" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow9" value="Notify Alice:&#xa;status update" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=11;dashed=1;strokeColor=#27ae60" edge="1" parent="1" source="cassandra-update" target="step9-alice">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="830" y="900" />
+              <mxPoint x="150" y="900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="step9-alice" value="✓✓ Double checkmark&#xa;appears&#xa;&#xa;&quot;Bob received it!&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#c3f0c3;strokeColor=#27ae60;fontSize=13;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="70" y="1080" width="160" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- RED PATH: Bob is offline -->
+        <mxCell id="red-path-label" value="🔴 RED PATH: BOB IS OFFLINE (phone turned off)" style="text;html=1;strokeColor=#cc0000;fillColor=#ffe6e6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="950" y="1040" width="640" height="40" as="geometry" />
+        </mxCell>
+
+        <mxCell id="red-step1" value="WS Server #87&#xa;has no active&#xa;connection for Bob&#xa;&#xa;(Bob offline)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffcccc;strokeColor=#cc0000;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1200" y="1170" width="160" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-red1" value="Trigger push&#xa;notification" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;dashed=1;strokeColor=#cc0000" edge="1" parent="1" source="step4-redis" target="red-step1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1050" y="1000" />
+              <mxPoint x="1280" y="1000" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="red-step2" value="🔔 FCM / APNs&#xa;&#xa;Send push:&#xa;&quot;Alice: Hi Bob!&quot;&#xa;&#xa;Badge count: 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="1050" width="160" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-red2" value="APNs/FCM" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;strokeColor=#d79b00" edge="1" parent="1" source="red-step1" target="red-step2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1400" y="1210" />
+              <mxPoint x="1400" y="1100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="red-step3" value="📱 Bob's phone&#xa;(locked screen)&#xa;&#xa;Shows notification&#xa;&#xa;When Bob unlocks →&#xa;WebSocket reconnects →&#xa;Fetch undelivered&#xa;messages from&#xa;Cassandra" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff0cc;strokeColor=#d79b00;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="900" width="160" height="140" as="geometry" />
+        </mxCell>
+
+        <mxCell id="arrow-red3" value="Notification" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;fontSize=12;strokeColor=#d79b00" edge="1" parent="1" source="red-step2" target="red-step3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Summary Box -->
+        <mxCell id="summary-box" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#27ae60;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="50" y="1200" width="1540" height="100" as="geometry" />
+        </mxCell>
+
+        <mxCell id="summary-title" value="📊 TIMING BREAKDOWN (GREEN PATH — BOB ONLINE)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;fontStyle=1;fontColor=#006600" vertex="1" parent="1">
+          <mxGeometry x="50" y="1210" width="1540" height="25" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t1" value="0-2ms: WebSocket send" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="80" y="1250" width="170" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t2" value="2-5ms: gRPC to Chat" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="270" y="1250" width="170" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t3" value="5-8ms: Cassandra write" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="460" y="1250" width="180" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t4" value="8-10ms: Redis XADD" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="660" y="1250" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t5" value="10-15ms: ACK to Alice" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="840" y="1250" width="170" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t6" value="10-30ms: Poll stream" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="1250" width="160" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t7" value="30-50ms: Push to Bob" style="text;html=1;strokeColor=none;fillColor=#fff2cc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="1250" width="170" height="30" as="geometry" />
+        </mxCell>
+
+        <mxCell id="t8" value="✅ TOTAL: &lt;100ms" style="text;html=1;strokeColor=#27ae60;fillColor=#c3f0c3;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1400" y="1250" width="160" height="30" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,206 @@
+<mxfile host="app.diagrams.net" modified="2026-08-30T12:00:00.000Z" agent="5.0" version="24.0.0">
+  <diagram name="TinyURL-Step-by-Step-Flow" id="sequence">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="⏱️ TinyURL Flow — Step-by-Step (What Happens in 5 Milliseconds)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="200" y="20" width="1200" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Subtitle -->
+        <mxCell id="subtitle" value="Two flows: CREATE (slow, rare) and REDIRECT (fast, common). Interview focuses on REDIRECT optimization." style="text;html=1;strokeColor=none;fillColor=#FFF3CD;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="250" y="80" width="1100" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- FLOW 1: CREATE SHORT URL -->
+        <mxCell id="create-title" value="📝 FLOW 1: CREATE SHORT URL (Happens 1,157 times/second)" style="rounded=1;whiteSpace=wrap;html=1;fontSize=18;fillColor=#D4E6F1;strokeColor=#2874A6;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="150" width="1400" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Actors -->
+        <mxCell id="user1" value="👤 User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;fillColor=#F8F9F9;strokeColor=#566573;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="150" y="230" width="60" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="api1" value="API&#xa;Gateway" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#AED6F1;strokeColor=#21618C;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="350" y="240" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="service1" value="Shortener&#xa;Service" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#85C1E9;strokeColor=#1B4F72;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="600" y="240" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="zk1" value="Zookeeper" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#FCF3CF;strokeColor=#B7950B;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="850" y="240" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db1" value="MySQL" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fontSize=12;fillColor=#85C1E9;strokeColor=#1B4F72;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="240" width="80" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka1" value="Kafka" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#EBDEF0;strokeColor=#8E44AD;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1350" y="240" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 1 -->
+        <mxCell id="step1-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#2E86C1;" edge="1" parent="1" source="user1" target="api1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="step1-label" value="STEP 1: POST /shorten&#xa;{ &quot;longUrl&quot;: &quot;https://example.com/very/long/path&quot; }&#xa;⏱️ 0ms" style="text;html=1;strokeColor=none;fillColor=#FDEBD0;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="150" y="340" width="400" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 2 -->
+        <mxCell id="step2-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#2E86C1;" edge="1" parent="1" source="api1" target="service1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="400" />
+              <mxPoint x="650" y="400" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="step2-label" value="STEP 2: Validate request&#xa;(Auth, rate limit check)&#xa;⏱️ 1ms" style="text;html=1;strokeColor=none;fillColor=#FDEBD0;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="400" y="410" width="250" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 3 -->
+        <mxCell id="step3-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#D4AC0D;" edge="1" parent="1" source="service1" target="zk1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="480" />
+              <mxPoint x="900" y="480" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="step3-label" value="STEP 3: Get next ID from range&#xa;(Only happens once per 1M IDs!)&#xa;Current range: 12345678-13345678&#xa;⏱️ 0ms (already cached in memory)" style="text;html=1;strokeColor=none;fillColor=#FCF3CF;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="650" y="490" width="350" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 4 -->
+        <mxCell id="step4-label" value="STEP 4: Convert ID to Base62&#xa;12345678 → aB3xY7z (math, no network!)&#xa;⏱️ 0ms (microseconds)" style="text;html=1;strokeColor=none;fillColor=#D5F5E3;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="450" y="570" width="350" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 5 -->
+        <mxCell id="step5-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#2E86C1;" edge="1" parent="1" source="service1" target="db1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="650" />
+              <mxPoint x="1140" y="650" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="step5-label" value="STEP 5: INSERT INTO url_mappings&#xa;(short_code, long_url, user_id, created_at, ttl)&#xa;VALUES ('aB3xY7z', 'https://...', 123, NOW(), 5y)&#xa;⏱️ 3ms (DB write)" style="text;html=1;strokeColor=none;fillColor=#D6EAF8;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="750" y="660" width="450" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Step 6 -->
+        <mxCell id="step6-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#27AE60;dashed=1;" edge="1" parent="1" source="db1" target="user1">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1140" y="750" />
+              <mxPoint x="180" y="750" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="step6-label" value="STEP 6: Response&#xa;{ &quot;shortUrl&quot;: &quot;tinyurl.com/aB3xY7z&quot; }&#xa;⏱️ TOTAL: ~5ms" style="text;html=1;strokeColor=none;fillColor=#D5F5E3;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="400" y="760" width="350" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- FLOW 2: REDIRECT (THE CRITICAL PATH) -->
+        <mxCell id="redirect-title" value="🔗 FLOW 2: REDIRECT (THE CRITICAL PATH) — Happens 115,740 times/second!" style="rounded=1;whiteSpace=wrap;html=1;fontSize=18;fillColor=#D5F4E6;strokeColor=#1E8449;strokeWidth=3;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="850" width="1400" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Actors Row 2 -->
+        <mxCell id="user2" value="👤 User" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontSize=14;fillColor=#F8F9F9;strokeColor=#566573;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="150" y="930" width="60" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cdn2" value="CDN&#xa;Edge" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#ABEBC6;strokeColor=#1D8348;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="350" y="940" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis2" value="Redis&#xa;Cache" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#82E0AA;strokeColor=#145A32;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="600" y="940" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="db2" value="MySQL" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fontSize=12;fillColor=#82E0AA;strokeColor=#145A32;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="850" y="940" width="80" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redirect-svc" value="Redirect&#xa;Service" style="rounded=1;whiteSpace=wrap;html=1;fontSize=12;fillColor=#82E0AA;strokeColor=#145A32;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="940" width="100" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- R-Step 1 -->
+        <mxCell id="r-step1-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#27AE60;" edge="1" parent="1" source="user2" target="cdn2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r-step1-label" value="R-STEP 1: GET /aB3xY7z&#xa;⏱️ 0ms" style="text;html=1;strokeColor=none;fillColor=#D5F5E3;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="150" y="1040" width="250" height="40" as="geometry" />
+        </mxCell>
+        
+        <!-- R-Step 2 -->
+        <mxCell id="r-step2-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=3;strokeColor=#27AE60;" edge="1" parent="1" source="cdn2" target="redis2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="400" y="1100" />
+              <mxPoint x="650" y="1100" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-step2-label" value="R-STEP 2: Check Redis&#xa;GET url:aB3xY7z&#xa;⏱️ 0.1ms" style="text;html=1;strokeColor=none;fillColor=#D5F5E3;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1110" width="200" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Cache Hit Path (90% of requests) -->
+        <mxCell id="cache-hit-path" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=4;strokeColor=#229954;dashed=1;" edge="1" parent="1" source="redis2" target="user2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="1200" />
+              <mxPoint x="180" y="1200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="cache-hit-label" value="✅ CACHE HIT (90% of requests)&#xa;302 Redirect: https://example.com/very/long/path&#xa;⏱️ TOTAL: 0.5ms — BLAZING FAST!" style="text;html=1;strokeColor=none;fillColor=#ABEBC6;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="250" y="1210" width="450" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Cache Miss Path (10% of requests) -->
+        <mxCell id="r-step3-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#E67E22;" edge="1" parent="1" source="redis2" target="db2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="650" y="1300" />
+              <mxPoint x="890" y="1300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-step3-label" value="❌ CACHE MISS (10% of requests)&#xa;R-STEP 3: SELECT long_url FROM url_mappings&#xa;WHERE short_code = 'aB3xY7z'&#xa;⏱️ 5ms (slower but acceptable)" style="text;html=1;strokeColor=none;fillColor=#FFE6CC;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="650" y="1310" width="400" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- R-Step 4 -->
+        <mxCell id="r-step4-arrow" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#E67E22;dashed=1;" edge="1" parent="1" source="db2" target="redis2">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="750" y="1380" />
+              <mxPoint x="750" y="1300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="r-step4-label" value="R-STEP 4: Populate cache&#xa;SET url:aB3xY7z = longUrl (TTL 24h)&#xa;Next request will HIT cache!" style="text;html=1;strokeColor=none;fillColor=#FFE6CC;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1;fontFamily=Courier New;" vertex="1" parent="1">
+          <mxGeometry x="400" y="1390" width="300" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Final Insight -->
+        <mxCell id="final-insight" value="💡 KEY INSIGHT:&#xa;• CREATE path: 5ms is fine (rare operation)&#xa;• REDIRECT path: 0.5ms for cache hit (90%), 5ms for cache miss (10%)&#xa;• Average latency: (0.9 × 0.5ms) + (0.1 × 5ms) = 0.95ms ✅ Under 10ms target!&#xa;&#xa;🎯 Interview Tip: Always show the MATH. Don't just say &quot;it's fast&quot; — prove it with numbers." style="rounded=1;whiteSpace=wrap;html=1;fontSize=13;fillColor=#FCF3CF;strokeColor=#9A7D0A;strokeWidth=3;align=left;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1480" width="1400" height="120" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

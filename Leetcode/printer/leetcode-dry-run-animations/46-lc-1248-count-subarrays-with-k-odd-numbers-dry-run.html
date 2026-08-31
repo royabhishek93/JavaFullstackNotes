@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LC 1248 Count Subarrays with K Odd Numbers | Code Dry Run</title>
+<style>@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box}:root{--bg:#07111d;--s:#0c1a2a;--line:#25435b;--ink:#e8f1f7;--muted:#9cb5c9;--blue:#5eb5ff;--cyan:#5eead4;--amber:#fbbf24;--lime:#a3e635}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:'DM Sans',sans-serif}main{max-width:1180px;margin:auto;padding:22px}
+.eye{font:700 10px 'IBM Plex Mono',monospace;color:var(--cyan);letter-spacing:.08em}h1{margin:7px 0}p{color:var(--muted)}
+.ops{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}.op{font:12px 'IBM Plex Mono',monospace;border:1px solid var(--line);border-radius:4px;padding:5px 7px;color:var(--muted)}
+.op.active{background:var(--amber);border-color:var(--amber);color:#07111d}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:var(--s);border:1px solid var(--line);border-radius:8px;padding:15px}.panel h2{font-size:.85rem;color:var(--cyan);margin:0 0 10px}
+.state,.code{font:13px/1.65 'IBM Plex Mono',monospace;white-space:pre-wrap;min-height:125px}.code{max-height:365px;overflow:auto;color:#b7cede}
+.code div{padding:0 7px;border-left:3px solid transparent}.code .active{background:#173955;border-left-color:var(--amber);color:#fff}
+.note{margin-top:12px;background:#092033;border-left:3px solid var(--cyan);padding:12px;line-height:1.55}
+.why{margin-top:10px;background:#102311;border-left:3px solid var(--lime);padding:11px;color:#d9f99d}
+.btn{margin:14px 6px 0 0;background:#10253a;border:1px solid var(--line);color:var(--ink);padding:8px 13px;border-radius:5px;cursor:pointer}
+.meter{float:right;margin-top:22px;color:var(--muted);font:12px 'IBM Plex Mono',monospace}
+@media(max-width:720px){main{padding:15px}.grid{grid-template-columns:1fr}}</style>
+</head><body><main>
+<div class="eye">LC 1248 | VISUAL CODE DRY RUN</div>
+<h1>Count Subarrays with K Odd Numbers</h1>
+<p>Pattern: atMost(k) - atMost(k-1) technique | Example: <code>nums = [1,1,2,1,1], k = 3</code></p>
+<div class="ops" id="ops"></div>
+<div class="grid">
+  <section class="panel"><h2>Algorithm State</h2><div class="state" id="state"></div></section>
+  <section class="panel"><h2>Full Java Code: Active Line Executing</h2><div class="code" id="code"></div></section>
+</div>
+<div class="grid" style="margin-top:14px">
+  <section class="panel"><h2>What Changed?</h2><div class="note" id="note"></div><div class="why" id="why"></div></section>
+  <section class="panel"><h2>Problem Statement</h2><div class="state">Count subarrays with exactly k odd numbers</div></section>
+</div>
+<button class="btn" id="play">Pause</button>
+<button class="btn" id="previous">Previous</button>
+<button class="btn" id="next">Next</button>
+<button class="btn" id="reset">Reset</button>
+<span class="meter" id="meter"></span>
+</main>
+<script>
+const codeLines=["public int numberOfSubarrays(int[] nums, int k) {", "    return atMost(nums, k) - atMost(nums, k - 1);", "}", "", "private int atMost(int[] nums, int k) {", "    int count = 0, left = 0, oddCount = 0;", "    for (int right = 0; right < nums.length; right++) {", "        if (nums[right] % 2 == 1) oddCount++;", "        ", "        while (oddCount > k) {", "            if (nums[left] % 2 == 1) oddCount--;", "            left++;", "        }", "        ", "        count += right - left + 1; // All subarrays ending at right", "    }", "    return count;", "}"];
+const steps=[
+  {
+    "op": "1. Line 1",
+    "line": 0,
+    "state": "Executing line 1",
+    "text": "public int numberOfSubarrays(int[] nums, int k) {",
+    "why": "Step 1 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "2. Line 2",
+    "line": 1,
+    "state": "Executing line 2",
+    "text": "return atMost(nums, k) - atMost(nums, k - 1);",
+    "why": "Step 2 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "3. Line 5",
+    "line": 4,
+    "state": "Executing line 5",
+    "text": "private int atMost(int[] nums, int k) {",
+    "why": "Step 3 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "4. Line 6",
+    "line": 5,
+    "state": "Executing line 6",
+    "text": "int count = 0, left = 0, oddCount = 0;",
+    "why": "Step 4 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "5. Line 7",
+    "line": 6,
+    "state": "Executing line 7",
+    "text": "for (int right = 0; right < nums.length; right++) {",
+    "why": "Step 5 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "6. Line 8",
+    "line": 7,
+    "state": "Executing line 8",
+    "text": "if (nums[right] % 2 == 1) oddCount++;",
+    "why": "Step 6 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "7. Line 10",
+    "line": 9,
+    "state": "Executing line 10",
+    "text": "while (oddCount > k) {",
+    "why": "Step 7 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "8. Line 11",
+    "line": 10,
+    "state": "Executing line 11",
+    "text": "if (nums[left] % 2 == 1) oddCount--;",
+    "why": "Step 8 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "9. Line 12",
+    "line": 11,
+    "state": "Executing line 12",
+    "text": "left++;",
+    "why": "Step 9 of atMost(k) - atMost(k-1) technique"
+  },
+  {
+    "op": "10. Line 15",
+    "line": 14,
+    "state": "Executing line 15",
+    "text": "count += right - left + 1; // All subarrays ending at right",
+    "why": "Step 10 of atMost(k) - atMost(k-1) technique"
+  }
+];
+const code=document.querySelector('#code'),ops=document.querySelector('#ops'),state=document.querySelector('#state'),note=document.querySelector('#note'),why=document.querySelector('#why'),meter=document.querySelector('#meter');
+codeLines.forEach((line,i)=>{const row=document.createElement('div');row.textContent=`${i+1}. ${line}`;code.append(row)});
+steps.forEach(step=>{const item=document.createElement('span');item.className='op';item.textContent=step.op;ops.append(item)});
+let index=0,running=false,timer;
+function render(){const step=steps[index];[...ops.children].forEach((item,i)=>item.classList.toggle('active',i===index));
+[...code.children].forEach((row,i)=>row.classList.toggle('active',i===step.line));
+code.children[step.line].scrollIntoView({block:'nearest'});state.textContent=step.state;note.textContent=step.text;
+why.innerHTML='<strong>Why:</strong> '+step.why;meter.textContent=`${index+1} / ${steps.length}`}
+function schedule(){clearInterval(timer);if(running)timer=setInterval(()=>{index=(index+1)%steps.length;render()},4200);
+document.querySelector('#play').textContent=running?'Pause':'Play'}
+document.querySelector('#play').onclick=()=>{running=!running;schedule()};
+document.querySelector('#next').onclick=()=>{running=false;schedule();index=Math.min(index+1,steps.length-1);render()};
+document.querySelector('#previous').onclick=()=>{running=false;schedule();index=Math.max(index-1,0);render()};
+document.querySelector('#reset').onclick=()=>{running=false;schedule();index=0;render()};
+render();
+</script></body></html>

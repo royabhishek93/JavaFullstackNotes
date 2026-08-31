@@ -1,0 +1,164 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design — Study Hub</title>
+<link rel="stylesheet" href="sd-player.css">
+<style>
+body{overflow:auto;height:auto;user-select:auto}
+#wrap{max-width:1200px;margin:0 auto;padding:24px 20px 48px}
+.hero{text-align:center;padding:40px 0 28px}
+.hero h1{font-size:2rem;font-weight:800;letter-spacing:-.03em}
+.hero p{color:var(--muted);font-size:.875rem;margin-top:6px}
+.stat-row{display:flex;justify-content:center;gap:12px;margin:18px 0 0;flex-wrap:wrap}
+.section-hdr{margin:32px 0 14px;display:flex;align-items:center;gap:10px}
+.section-hdr h2{font-size:1rem;font-weight:700;color:var(--blue);margin:0;letter-spacing:.01em}
+.section-hdr h2::before{display:none}
+.cnt{background:#0f2349;color:#93c5fd;border:1px solid #1e3a5f;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.card-link{text-decoration:none;display:block}
+.card-link:hover .card{border-color:var(--blue);transform:translateY(-2px)}
+.card{transition:all .18s;cursor:pointer}
+.card .ico{font-size:1.5rem;margin-bottom:6px;display:block}
+.card .ttl{font-size:.8rem;font-weight:700;color:var(--text);line-height:1.35;margin-bottom:4px}
+.card .sub{font-size:.7rem;color:var(--muted);line-height:1.4}
+.divider{border:none;border-top:1px solid var(--border);margin:36px 0 0}
+</style>
+</head><body>
+<div id="wrap">
+  <div class="hero">
+    <h1 class="gradient-text">System Design Study Hub</h1>
+    <p>Interactive slideshow presentations — 25 slides each, keyboard-navigable</p>
+    <div class="stat-row">
+      <div class="stat" style="padding:8px 18px"><span class="val" style="font-size:1.6rem;color:#3b82f6">37</span><div class="lbl">Presentations</div></div>
+      <div class="stat" style="padding:8px 18px"><span class="val" style="font-size:1.6rem;color:#22c55e">925</span><div class="lbl">Slides Total</div></div>
+      <div class="stat" style="padding:8px 18px"><span class="val" style="font-size:1.6rem;color:#f59e0b">← →</span><div class="lbl">Navigate</div></div>
+      <div class="stat" style="padding:8px 18px"><span class="val" style="font-size:1.6rem;color:#8b5cf6">P</span><div class="lbl">Auto-Play</div></div>
+    </div>
+  </div>
+
+  <!-- SERIES 1 -->
+  <hr class="divider">
+  <div class="section-hdr">
+    <h2>Interview With Bunny Series</h2><span class="cnt">22</span>
+  </div>
+  <div class="grid">
+    <a class="card-link" href="system_design_interviewwithbunny/01_Tiny_URL_Design/tiny-url-video.html">
+      <div class="card blue"><span class="ico">🔗</span><div class="ttl">URL Shortener (TinyURL)</div><div class="sub">Hashing · Base62 · Consistent Hashing · Redis Cache</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/02_Distributed_Rate_Limiter_Token_Bucket_Leaky_Bucket_Sliding_Window_HLD_LLD/rate-limiter-video.html">
+      <div class="card red"><span class="ico">🚦</span><div class="ttl">Distributed Rate Limiter</div><div class="sub">Token Bucket · Leaky Bucket · Sliding Window · Redis Lua</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/03_Notification_System_Design/notification-system-video.html">
+      <div class="card yellow"><span class="ico">🔔</span><div class="ttl">Notification System</div><div class="sub">Push · Email · SMS · Kafka Fan-out · FCM/APNs</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/04_Chat_Application_System_Design_like_Whatsapp/chat-application-video.html">
+      <div class="card green"><span class="ico">💬</span><div class="ttl">Chat Application (WhatsApp)</div><div class="sub">WebSocket · Cassandra · E2E Encryption · Presence</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/05_Social_Media_like_Facebook_Instagram_Feeds_Generation_HLD_LLD/social-media-feeds-video.html">
+      <div class="card purple"><span class="ico">📱</span><div class="ttl">Social Media Feeds</div><div class="sub">Feed Generation · Fan-out · Redis Cache · Kafka</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/06_UBER_OLA_Rapido_Lyft_HLD_LLD/uber-ride-sharing-video.html">
+      <div class="card cyan"><span class="ico">🚗</span><div class="ttl">Ride Sharing (UBER)</div><div class="sub">Geolocation · Matching · Surge Pricing · Real-time</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/07_Payment_System/payment-system-video.html">
+      <div class="card blue"><span class="ico">💳</span><div class="ttl">Payment System</div><div class="sub">Idempotency · Ledger · Saga Pattern · Reconciliation</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/08_Food_Delivery_Zomato_Swiggy_Uber_Eats_HLD_LLD/food-delivery-video.html">
+      <div class="card orange"><span class="ico">🍔</span><div class="ttl">Food Delivery (Zomato)</div><div class="sub">Order Routing · Driver Matching · Real-time Tracking</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/09_E-Commerce_Platform_like_Amazon/ecommerce-video.html">
+      <div class="card yellow"><span class="ico">🛒</span><div class="ttl">E-Commerce Platform</div><div class="sub">Product Catalog · Cart · Order · Inventory · Search</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/10_Cloud_Storage_Google_Drive_Dropbox_HLD_LLD/cloud-storage-video.html">
+      <div class="card blue"><span class="ico">☁️</span><div class="ttl">Cloud Storage (Dropbox)</div><div class="sub">Chunking · Dedup · S3 · Sync · Conflict Resolution</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/11_Ticket_Booking_System_like_BookMyShow/ticket-booking-video.html">
+      <div class="card red"><span class="ico">🎫</span><div class="ttl">Ticket Booking (BookMyShow)</div><div class="sub">Seat Lock · Distributed Lock · Overbooking · Queue</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/12_Hotel_Booking/hotel-booking-video.html">
+      <div class="card green"><span class="ico">🏨</span><div class="ttl">Hotel Booking</div><div class="sub">Availability · Pricing · Reservation · OTA Integration</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/13_Top_K_Leaderboard_Ranking_System_Trending_HLD_LLD/top-k-leaderboard-video.html">
+      <div class="card purple"><span class="ico">🏆</span><div class="ttl">Top-K Leaderboard</div><div class="sub">Redis ZSET · Count-Min Sketch · Heavy Hitters · Trending</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/14_Proximity_Search_QuadTree_Geohash_PostGIS_Elasticsearch_HLD/proximity-search-video.html">
+      <div class="card cyan"><span class="ico">📍</span><div class="ttl">Proximity Search</div><div class="sub">Geohash · QuadTree · R-Tree · PostGIS · Redis GEO</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/15_Distributed_Logging_System_Splunk_Logstash_HLD_LLD/distributed-logging-video.html">
+      <div class="card orange"><span class="ico">📋</span><div class="ttl">Distributed Logging</div><div class="sub">Kafka · ELK Stack · Splunk · Log Aggregation · Alerting</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/16_Job_Scheduler_System_Design/job-scheduler-video.html">
+      <div class="card blue"><span class="ico">⏰</span><div class="ttl">Job Scheduler</div><div class="sub">Cron · Distributed Lock · Priority Queue · Retry</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/17_OTT_Platform_System_Design/ott-platform-video.html">
+      <div class="card red"><span class="ico">🎬</span><div class="ttl">OTT Platform (Netflix)</div><div class="sub">CDN · ABR · HLS · Transcoding · DRM · Recommendation</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/18_Text_Editor_Google_Docs_Notion_HLD_LLD/text-editor-video.html">
+      <div class="card yellow"><span class="ico">📝</span><div class="ttl">Collaborative Text Editor</div><div class="sub">OT · CRDT · WebSocket · Cursor Sync · Version History</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/19_Stock_Broker_Trading/stock-broker-video.html">
+      <div class="card green"><span class="ico">📈</span><div class="ttl">Stock Broker / Trading</div><div class="sub">Order Book · Matching Engine · Low Latency · FIX Protocol</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/20_Email_Delivery_System_Gmail_Outlook_HLD_LLD/email-delivery-video.html">
+      <div class="card purple"><span class="ico">📧</span><div class="ttl">Email Delivery System</div><div class="sub">SMTP · DKIM · SPF · Bounce · SES · Reputation</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/21_Online_Learning_Platform_Udemy_Coursera_HLD_LLD/online-learning-video.html">
+      <div class="card cyan"><span class="ico">🎓</span><div class="ttl">Online Learning Platform</div><div class="sub">Video Streaming · Progress Tracking · Quiz · Certificate</div></div>
+    </a>
+    <a class="card-link" href="system_design_interviewwithbunny/Database Optimization | Indexing Partitioning Replication Sharding/database-optimization-video.html">
+      <div class="card orange"><span class="ico">🗄️</span><div class="ttl">Database Optimization</div><div class="sub">Indexing · Partitioning · Replication · Sharding · Query Plan</div></div>
+    </a>
+  </div>
+
+  <!-- SERIES 2 -->
+  <hr class="divider">
+  <div class="section-hdr">
+    <h2>System Design Deep Dives</h2><span class="cnt">15</span>
+  </div>
+  <div class="grid">
+    <a class="card-link" href="09_YouTube_System_Design/youtube-video.html">
+      <div class="card red"><span class="ico">▶️</span><div class="ttl">YouTube</div><div class="sub">Transcoding · ABR · CDN · HLS · Recommendation · Kafka</div></div>
+    </a>
+    <a class="card-link" href="11_News_Feed_Instagram_SystemDesign/news-feed-video.html">
+      <div class="card purple"><span class="ico">📰</span><div class="ttl">News Feed (Instagram)</div><div class="sub">Fan-out · Redis Cache · Timeline · Follow Graph</div></div>
+    </a>
+    <a class="card-link" href="13_bookmyshow/bookmyshow-video.html">
+      <div class="card blue"><span class="ico">🎭</span><div class="ttl">BookMyShow</div><div class="sub">Seat Selection · Distributed Lock · Payments · Flash Sale</div></div>
+    </a>
+    <a class="card-link" href="14_Google_Drive_System_Design/google-drive-video.html">
+      <div class="card cyan"><span class="ico">💾</span><div class="ttl">Google Drive</div><div class="sub">File Storage · Chunking · Delta Sync · Sharing · CDN</div></div>
+    </a>
+    <a class="card-link" href="17_LinkedIn/linkedin-video.html">
+      <div class="card blue"><span class="ico">💼</span><div class="ttl">LinkedIn</div><div class="sub">Graph DB · Feed · Job Matching · Connection · Search</div></div>
+    </a>
+    <a class="card-link" href="18_GoogleDocs_System_Design/googledocs-video.html">
+      <div class="card green"><span class="ico">📄</span><div class="ttl">Google Docs</div><div class="sub">OT · CRDT · Real-time Collaboration · Version History</div></div>
+    </a>
+    <a class="card-link" href="19_UPI_Payment_System/upi-payment-video.html">
+      <div class="card yellow"><span class="ico">💸</span><div class="ttl">UPI Payment System</div><div class="sub">NPCI · VPA · IMPS · 2FA · Idempotency · Settlement</div></div>
+    </a>
+    <a class="card-link" href="21_Likes_Comment_System_Design/likes-comment-video.html">
+      <div class="card orange"><span class="ico">❤️</span><div class="ttl">Likes & Comment System</div><div class="sub">Counter · Redis · Cassandra · Fan-out · Moderation</div></div>
+    </a>
+    <a class="card-link" href="23_design_search_engine/search-engine-video.html">
+      <div class="card purple"><span class="ico">🔍</span><div class="ttl">Search Engine (Google)</div><div class="sub">Crawler · Inverted Index · PageRank · TF-IDF · Ranking</div></div>
+    </a>
+    <a class="card-link" href="25_Parking_Lot_System/parking-lot-video.html">
+      <div class="card cyan"><span class="ico">🅿️</span><div class="ttl">Parking Lot System</div><div class="sub">OOP · Strategy Pattern · Concurrency · Distributed Lock</div></div>
+    </a>
+    <a class="card-link" href="26_Elevator_System/elevator-video.html">
+      <div class="card blue"><span class="ico">🏢</span><div class="ttl">Elevator System</div><div class="sub">SCAN · LOOK · State Machine · Observer · Dispatching</div></div>
+    </a>
+    <a class="card-link" href="27_Airline_Management_System/airline-management-video.html">
+      <div class="card red"><span class="ico">✈️</span><div class="ttl">Airline Management</div><div class="sub">GDS · Seat Lock · PNR · Overbooking · Revenue Mgmt</div></div>
+    </a>
+    <a class="card-link" href="Multitenancy_SAAS_System_Design/multitenancy-saas-video.html">
+      <div class="card green"><span class="ico">🏗️</span><div class="ttl">Multitenancy SaaS</div><div class="sub">Tenant Isolation · RLS · Silo vs Pool · RBAC · Noisy Neighbor</div></div>
+    </a>
+    <a class="card-link" href="Scalable Notifications System | SMS | OTP | Email & Push | HLD | LLD/scalable-notifications-video.html">
+      <div class="card yellow"><span class="ico">📲</span><div class="ttl">Scalable Notifications</div><div class="sub">SMS · OTP · Email · Push · Kafka · FCM · Dedup · Priority</div></div>
+    </a>
+  </div>
+
+  <p style="text-align:center;color:var(--muted);font-size:.75rem;margin-top:40px">Use ← → arrow keys or Space to navigate slides &nbsp;·&nbsp; Press P to toggle auto-play</p>
+</div>
+</body></html>

@@ -1,0 +1,39 @@
+Let us start with a real production problem. During a flash sale, many clients can ask for the same product at the same time. Each request may call inventory, pricing, payment, and a database. If all requests enter together, the backend becomes slow or unavailable. A rate limiter stands before the application and decides whether a request may enter. It protects the backend before expensive work begins.
+
+The next question is: who receives a limit? We do not limit a server. We limit an identity. That identity can be a logged-in user, an API key, an IP address, a tenant, or an endpoint. In production we often check more than one identity. For example, a user limit provides fairness, an IP limit slows bot traffic, and an endpoint limit protects an expensive operation.
+
+The easiest way to understand the recommended algorithm is to imagine tickets. Each client has a bucket of entry tickets. One request spends one ticket. If tickets are available, the request enters. If the bucket is empty, the request receives HTTP 429, which means too many requests. This is the Token Bucket algorithm.
+
+Two settings control Token Bucket. Capacity is the maximum number of tickets saved in the bucket. It controls the largest burst we allow. Refill rate controls how fast new tickets return. For example, a client can use six saved tickets immediately, but after that only one ticket may return each second. This supports normal bursts without allowing unlimited sustained traffic.
+
+Now we move to HLD, or High-Level Design. HLD answers a simple question: what are the big components, and how do they connect? Our components are the client, load balancer, API Gateway fleet, Redis Cluster, Postgres policy database, and backend services. This view helps us decide system boundaries before we discuss classes or code.
+
+The client sends a request to the load balancer. The load balancer chooses one healthy API Gateway. The gateway authenticates the caller and performs rate-limit enforcement. Redis is the shared fast store for ticket counts and cached rules. Postgres is the permanent rule store. Only a request with permission reaches backend services such as Order, Payment, or Search.
+
+The API Gateways must be stateless. That simply means they do not keep a user's ticket count in their own memory. If gateway one had its own count and gateway two had another count, the client could use both limits. Instead, every gateway asks the same shared Redis bucket. The answer stays correct no matter which gateway receives the next request.
+
+As traffic grows, Redis is split into shards. Think of a shard as one partition of the shared notebook. We use a hash of the rate-limit key, such as user one-two-three plus orders endpoint, to choose the shard. The same key always reaches the same shard. That means one bucket is updated in one place, which keeps the operation fast and simple.
+
+There is an important concurrency problem. Suppose only one ticket remains. Gateway one and gateway two both read that value at nearly the same moment. If each gateway performs a separate read and then a separate decrement, both can believe they own the final ticket. Both requests enter, and the limit is broken. This is called a race condition.
+
+We fix the race with a Redis Lua script. The script reads the current ticket count and refill time, adds any tickets that should have returned, removes one ticket when possible, writes the new state, and returns allow or deny. Redis runs this script as one atomic operation. Gateway one finishes first; gateway two then sees the new result. No distributed lock is needed.
+
+Not all data changes at the same speed. The policy says what limit a client should have: capacity, refill rate, endpoint, tier, and selected algorithm. This is stable configuration, so Postgres stores it permanently. Token state says how many tickets are left now. It changes on every request, so Redis stores it. Redis can also remove inactive ticket buckets automatically with a TTL.
+
+Let us follow one normal request. The gateway reads the user identifier from the login token. It builds the policy key and token key. First it looks for the policy in Redis. Then it runs the Lua script against the user's Token Bucket. Redis returns allow or deny. On allow, the gateway forwards to the backend. On deny, it sends HTTP 429 and Retry-After, without bothering the backend.
+
+Sometimes the policy is not present in Redis. This is a cache miss. The gateway reads the permanent policy from Postgres, saves a fresh copy in Redis, and then follows the normal Token Bucket step. This is why Postgres is not overloaded by every request. Most traffic uses the cached Redis policy. Postgres handles policy edits and the occasional cache miss.
+
+Now we switch to LLD, or Low-Level Design. LLD describes the code pieces. The API Gateway should not contain a long list of if and else statements for every possible algorithm. Instead, it uses an interface called RateLimiterStrategy. The interface exposes one important method: isAllowed. The gateway calls the same method regardless of which algorithm is selected.
+
+Token Bucket, Fixed Window, and Leaky Bucket are separate strategy classes. A factory reads configuration and selects the correct class. In a production public API, the factory normally selects Token Bucket. This design keeps the gateway small. Adding another algorithm means adding a class that follows the same interface rather than rewriting the routing flow.
+
+At the code level, responsibilities stay clear. API Gateway handles HTTP, authentication, and response headers. RateLimiterStrategy makes the allow or deny decision. TokenBucketStrategy calls the Redis Lua script. PolicyRepository loads policy from Redis first and Postgres second. When each class has one job, testing and maintenance become easier.
+
+Policies must be updated safely. When an administrator changes a limit, the policy service writes the new value to Postgres first. Then it updates the Redis cache immediately. Finally, it publishes a small event so gateway-local caches discard any old copy. This is called write-through caching. It means a customer does not wait an hour for a new plan limit to become active.
+
+Redis itself can have a temporary failure. We do not want every gateway request waiting and timing out. A circuit breaker watches Redis failures. After a threshold, it opens and temporarily skips Redis calls. For many public shopping APIs, we fail open and allow requests briefly, because a rate-limiter outage should not become a full application outage. Financial or compliance flows may choose fail closed instead.
+
+Production systems usually enforce several limits together. The user bucket may allow the request, and the IP bucket may allow it, but the endpoint bucket can still deny it because image generation is costly. If any important check says no, the gateway returns 429. This layered design handles both normal fairness and abusive traffic patterns.
+
+Finally, operate the system with metrics. Watch the HTTP 429 rejection rate. A sudden rise may be an attack or an incorrect policy. Watch Redis p99 latency because a slow Redis check affects every request. Watch policy cache hit rate, hot endpoints, and hot keys. Scale the stateless gateways and Redis shards independently. The final result is a system that is fast for honest clients and protective when traffic becomes unsafe.

@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Consumer — Important Configurations — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Consumer — Important Configurations — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 11</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:9.09%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">📥</div>
+  <h1 class="gradient-text">Kafka Consumer — Important Configurations — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">auto.offset.reset</span><span class="badge">fetch.min.bytes</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: auto.offset.reset, fetch.min.bytes, fetch.max.wait.ms, max.partition.fetch.bytes, fetch.max.bytes, max.poll.records, heartbeat.interval.ms, session.timeout.ms, max.poll.interval.ms, Partition Assignment Strategies, Offset Commit Modes</p>
+</div>
+<div class="slide" id="s3" data-title="auto.offset.reset — Where to Start Reading">
+<h2>auto.offset.reset — Where to Start Reading</h2>
+<p>When a consumer joins a group for the first time and there is <strong>no committed offset</strong> for its partition, this setting decides where it begins reading.</p>
+<div class="dia">  New consumer joins. No offset stored in __consumer_offsets yet.
+  Group coordinator asks: "Where should this consumer start?"
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Partition P0 already has 500 messages (offsets 0 → 499)         │
+  │                                                                  │
+  │  ◄─── earliest ────────────────────────────── latest ───►        │
+  │       offset 0                                offset 499         │
+  │         │                                        │               │
+  │         ▼                                        ▼               │
+  │  ┌─────────────────┐                  ┌───────────────────────┐  │
+  │  │  earliest       │                  │  latest (default)     │  │
+  │  │  Read ALL 500   │                  │  Read only NEW msgs   │  │
+  │  │  existing msgs  │                  │  after joining        │  │
+  │  └─────────────────┘                  └───────────────────────┘  │
+  │                                                                  │
+  │  ┌─────────────────────────────────────────────────────────────┐ │
+  │  │  none                                                       │ │
+  │  │  Throw exception — force the developer to decide manually   │ │
+  │  └─────────────────────────────────────────────────────────────┘ │
+  └──────────────────────────────────────────────────────────────────┘
+
+  Decision tree:
+  ┌───────────────────────────────────────────────────────────┐
+  │  Do I need to process all existing history?               │
+  │         │ YES                        │ NO                 │
+  │         ▼                            ▼                    │
+  │     earliest                      latest                  │
+  │                                                           │
+  │  Do I want an error if offset is missing?                 │
+  │         │ YES                                             │
+  │         ▼                                                 │
+  │       none                                                │
+  └───────────────────────────────────────────────────────────┘
+
+  spring.kafka.consumer.auto-offset-reset=earliest   # or latest / none</div>
+</div>
+<div class="slide" id="s4" data-title="fetch.min.bytes and fetch.max.wait.ms — Controlling Response Timing">
+<h2>fetch.min.bytes and fetch.max.wait.ms — Controlling Response Timing</h2>
+<p>Instead of responding immediately with just one record, the broker can <strong>wait</strong> until it has gathered a minimum amount of data — reducing network round trips when traffic is low.</p>
+<div class="dia">  Consumer sends fetch request to broker.
+  Broker has collected data from the requested partitions.
+  Now it decides: should I send the response now or wait for more data?
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Broker decision logic (both conditions checked together):       │
+  │                                                                  │
+  │  Condition 1: data accumulated &gt;= fetch.min.bytes?               │
+  │    YES → send response immediately  ✓                            │
+  │    NO  → wait...                                                 │
+  │                                     ▼                            │
+  │  Condition 2: waited &gt;= fetch.max.wait.ms?                       │
+  │    YES → send whatever is available (even if &lt; min bytes)  ✓     │
+  │    NO  → keep waiting...                                         │
+  └──────────────────────────────────────────────────────────────────┘
+
+  HIGH TRAFFIC:
+  ────────────────────────────────────────────────────────────────────
+  fetch request ──► broker fills min.bytes quickly ──► responds fast ✓
+
+  LOW TRAFFIC (e.g., off-peak hours):
+  ────────────────────────────────────────────────────────────────────
+  fetch request ──► only a few bytes accumulated
+                          │
+                          ▼  wait...
+                    max.wait.ms timer expires
+                          │
+                          ▼
+                    respond with whatever is available  ✓  (no hang)
+
+  Defaults:
+    fetch.min.bytes     = 1       (respond as soon as 1 byte is ready)
+    fetch.max.wait.ms   = 500ms   (never wait more than 500ms)
+
+  Tuning tip: increase fetch.min.bytes to reduce calls in low-traffic systems.</div>
+</div>
+<div class="slide" id="s5" data-title="max.partition.fetch.bytes and fetch.max.bytes — Capping Data Size">
+<h2>max.partition.fetch.bytes and fetch.max.bytes — Capping Data Size</h2>
+<p>One fetch request can ask for data from <strong>multiple partitions across multiple brokers</strong> — these two settings cap how much data is returned at each level.</p>
+<div class="dia">  Consumer has 3 partitions assigned (2 on broker-1, 1 on broker-2).
+  It sends ONE fetch request to each broker.
+
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  Consumer                                                        │
+  │    │                                                             │
+  │    ├──► Broker-1 fetch request:                                  │
+  │    │      "give me topic-A/P0, topic-A/P1, topic-B/P1"          │
+  │    │                                                             │
+  │    └──► Broker-2 fetch request:                                  │
+  │           "give me topic-C/P0"                                   │
+  └──────────────────────────────────────────────────────────────────┘
+
+  Inside Broker-1:
+  ┌──────────────────────────────────────────────────────────────────┐
+  │  topic-A / P0  ──► max.partition.fetch.bytes = 1 MB  ← per part │
+  │  topic-A / P1  ──► max.partition.fetch.bytes = 1 MB             │
+  │  topic-B / P1  ──► max.partition.fetch.bytes = 1 MB             │
+  │                                          ┌──────────────────┐    │
+  │  Combined response ──────────────────────► fetch.max.bytes  │    │
+  │  (sum of all parts)                      │ max = 52 MB      │    │
+  │                                          │ (safety ceiling) │    │
+  │                                          └──────────────────┘    │
+  └──────────────────────────────────────────────────────────────────┘
+
+  ┌──────────────────────────────────────────────────────────┐
+  │  max.partition.fetch.bytes  │  per partition limit        │
+  │  default: 1 MB              │                             │
+  ├──────────────────────────────┼────────────────────────────┤
+  │  fetch.max.bytes            │  total broker response cap  │
+  │  default: 52 MB             │                             │
+  └──────────────────────────────┴────────────────────────────┘</div>
+</div>
+<div class="slide" id="s6" data-title="max.poll.records — Processing Batch Size From the Buffer">
+<h2>max.poll.records — Processing Batch Size From the Buffer</h2>
+<p>The broker may return far more records than you want to process at once. <code>max.poll.records</code> slices those records out of an <strong>internal buffer</strong> so you work on a manageable batch each poll cycle.</p>
+<div class="dia">  Broker returns 2,000 records (50 MB) in one fetch response.
+  Consumer does NOT process all 2,000 at once.
+
+  ┌────────────────────────────────────────────────────────────────┐
+  │                Consumer Internal Buffer                        │
+  │  ┌──────────────────────────────────────────────────────────┐  │
+  │  │  record-0  record-1  record-2  ...  record-1999           │  │
+  │  └──────────────────────────────────────────────────────────┘  │
+  │         ▲                                                      │
+  │         │  max.poll.records = 500                              │
+  │         │                                                      │
+  │  poll() ──► take 500 records from buffer                       │
+  │  process all 500 in @KafkaListener ──► commit offset           │
+  │                                                                │
+  │  poll() again ──► take next 500 from buffer  (no network call) │
+  │  process all 500 in @KafkaListener ──► commit offset           │
+  │                                                                │
+  │  poll() again ──► take next 500 from buffer  (no network call) │
+  │  ... repeat until buffer empty ...                             │
+  │                                                                │
+  │  poll() again ──► buffer empty → network call to broker        │
+  └────────────────────────────────────────────────────────────────┘
+
+  Key point: max.poll.records controls your batch size, not how much
+  the broker sends. The broker may send more — extras sit in the buffer.
+
+  spring.kafka.consumer.max-poll-records=500   (default: 500)</div>
+</div>
+<div class="slide" id="s7" data-title="heartbeat.interval.ms and session.timeout.ms — Consumer Liveness">
+<h2>heartbeat.interval.ms and session.timeout.ms — Consumer Liveness</h2>
+<p>The consumer sends a <strong>heartbeat pulse</strong> on a background thread to tell the group coordinator it is still alive. These two settings control how often the pulse is sent and how long the coordinator waits before declaring the consumer dead.</p>
+<div class="dia">  ┌──────────────────────────────────────────────────────────────────────┐
+  │  Consumer (background thread)       Group Coordinator (broker)       │
+  │                                                                      │
+  │  every heartbeat.interval.ms                                         │
+  │  ┌────────────────┐                 ┌──────────────────────────────┐ │
+  │  │ "I am alive"   │────────────────►│ heartbeat received ✓         │ │
+  │  └────────────────┘    3 seconds    │ reset session timer          │ │
+  │                                     └──────────────────────────────┘ │
+  │  every heartbeat.interval.ms                                         │
+  │  ┌────────────────┐                                                  │
+  │  │ "I am alive"   │────────────────► ... ✓                           │
+  │  └────────────────┘                                                  │
+  │                                                                      │
+  │  Consumer CRASHES                                                     │
+  │  ┌────────────────┐                                                  │
+  │  │  (no pulse)    │                 ┌──────────────────────────────┐ │
+  │  │  (no pulse)    │                 │ waiting...                   │ │
+  │  │  (no pulse)    │                 │ session.timeout.ms = 45s     │ │
+  │  │  ...           │                 │ timer expires!               │ │
+  │  └────────────────┘                 │ → assume consumer DEAD       │ │
+  │                                     │ → trigger rebalance          │ │
+  │                                     └──────────────────────────────┘ │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  Rule: session.timeout.ms must be GREATER than heartbeat.interval.ms
+        so a single missed pulse does not immediately trigger rebalance.
+
+  Typical values:
+    heartbeat.interval.ms  =  3,000  ms  (3 seconds)
+    session.timeout.ms     = 45,000  ms  (45 seconds)</div>
+</div>
+<div class="slide" id="s8" data-title="max.poll.interval.ms — Detecting a Stuck Consumer">
+<h2>max.poll.interval.ms — Detecting a Stuck Consumer</h2>
+<p>A consumer can be <strong>sending heartbeats</strong> (background thread is alive) but <strong>not calling poll()</strong> (main thread is stuck processing). This setting catches that case.</p>
+<div class="dia">  Consumer sends heartbeat every 3s → group coordinator sees: "alive ✓"
+  Consumer is stuck in @KafkaListener processing 500 records...
+
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │  Time 0:00   poll() called — 500 records fetched                    │
+  │  Time 0:03   heartbeat sent ✓  coordinator: "alive"                 │
+  │  Time 0:06   heartbeat sent ✓  coordinator: "alive"                 │
+  │  Time 0:09   heartbeat sent ✓  coordinator: "alive"                 │
+  │  ...                                                                 │
+  │  Time 5:00   max.poll.interval.ms expires!                           │
+  │              coordinator: "poll not received in 5 minutes"           │
+  │              → assume consumer is STUCK                              │
+  │              → trigger rebalance                                     │
+  │              → partitions reassigned to other consumers              │
+  └──────────────────────────────────────────────────────────────────────┘
+
+  heartbeat alone is NOT enough — poll() must also happen regularly.
+
+  ┌────────────────────────────────────────────────────────────────────┐
+  │  heartbeat.interval.ms   consumer says: "I am alive"               │
+  │  session.timeout.ms      coordinator waits for heartbeat           │
+  │  max.poll.interval.ms    coordinator waits for poll() call         │
+  └────────────────────────────────────────────────────────────────────┘
+
+  Tip: if your processing is legitimately slow (e.g., DB writes per record),
+  increase max.poll.interval.ms or reduce max.poll.records so each batch
+  finishes faster.
+
+  spring.kafka.consumer.properties.max.poll.interval.ms=300000  (5 min default)</div>
+</div>
+<div class="slide" id="s9" data-title="Partition Assignment Strategies">
+<h2>Partition Assignment Strategies</h2>
+<p>When consumers join a group, the group coordinator runs an assignment algorithm to divide topic partitions among them. The algorithm you pick affects both initial assignment and how rebalance behaves.</p>
+<div class="dia">  Setup: 3 consumers (C1, C2, C3), 6 partitions (P0–P5)
+
+  RANGE ASSIGNER  (default)
+  ────────────────────────────────────────────────────────────────────
+  Sort consumers alphabetically, sort partitions numerically.
+  Divide: 6 partitions ÷ 3 consumers = 2 each.
+  C1: P0, P1    C2: P2, P3    C3: P4, P5
+
+
+  ROUND ROBIN ASSIGNER
+  ────────────────────────────────────────────────────────────────────
+  Distribute one partition at a time in a circle.
+  C1: P0, P3    C2: P1, P4    C3: P2, P5
+
+
+  STICKY ASSIGNER
+  ────────────────────────────────────────────────────────────────────
+  Starts like round robin. Main advantage: smarter rebalance.
+
+  C3 crashes → need to rebalance.
+
+  Range/Round Robin (eager):         Sticky:
+  ┌─────────────────────────────┐    ┌─────────────────────────────┐
+  │ C1: DROP P0, P3             │    │ C1: KEEPS P0, P3            │
+  │ C2: DROP P1, P4             │    │ C2: KEEPS P1, P4            │
+  │ C3: crashed                 │    │ C3: crashed                 │
+  │ full recalculation runs     │    │ only P2, P5 need reassigning│
+  │ C1 might get totally new    │    │ C1: P0, P3, P2              │
+  │ partitions — cache cleared  │    │ C2: P1, P4, P5              │
+  └─────────────────────────────┘    │ existing cache untouched ✓  │
+                                     └─────────────────────────────┘
+
+
+  COOPERATIVE STICKY ASSIGNER  (recommended)
+  ────────────────────────────────────────────────────────────────────
+  Like sticky, but consumers do NOT stop reading during rebalance.
+
+  Eager rebalancers (Range, Round Robin, Sticky):
+    rebalance starts → ALL consumers STOP reading → assignment done → resume
+    ┌──────────────────────────────────────────────────────┐
+    │ C1: stop ■  C2: stop ■  rebalance...  C1: start ►   │
+    │ gap in processing while rebalance runs               │
+    └──────────────────────────────────────────────────────┘
+
+  Cooperative Sticky:
+    Step 1: decide which partitions can stay with their current consumer
+    Step 2: only the partitions that need to MOVE are paused
+    ┌────────────────────────────────────────────────────────────────┐
+    │ C1: keeps reading P0, P3  ──────────────────────────────────►  │
+    │ C2: keeps reading P1, P4  ──────────────────────────────────►  │
+    │ P2, P5: brief pause while assigned to C1 and C2               │
+    │ much less processing gap  ✓                                    │
+    └────────────────────────────────────────────────────────────────┘
+
+  spring.kafka.consumer.properties.partition.assignment.strategy=
+    org.apache.kafka.clients.consumer.CooperativeStickyAssignor</div>
+</div>
+<div class="slide" id="s10" data-title="Offset Commit Modes — Auto vs Manual">
+<h2>Offset Commit Modes — Auto vs Manual</h2>
+<p>Kafka can commit offsets automatically on a timer, or you can take full control and commit only after you know your processing succeeded.</p>
+<div class="dia">  AUTO COMMIT  (simplest, least control)
+  ────────────────────────────────────────────────────────────────────
+  enable.auto.commit = true
+  auto.commit.interval.ms = 5000  (commit every 5 seconds)
+
+  Background thread commits offsets every 5s regardless of whether
+  your @KafkaListener finished successfully.
+  Risk: message read but not processed → offset committed → message lost  ✗
+
+
+  MANUAL COMMIT MODES  (enable.auto.commit = false)
+  ────────────────────────────────────────────────────────────────────
+
+  BATCH (default manual mode):
+    poll() returns 500 records
+    process all 500
+    framework commits once after all 500 are done  ✓
+    (1 commit per poll batch)
+
+  RECORD:
+    process record-1 → commit
+    process record-2 → commit
+    ...500 commits for 500 records  ✗  (high overhead)
+
+  COUNT:
+    acknowledge.count = 10
+    commit after every 10 records processed  ✓  (balance)
+
+  TIME:
+    acknowledge.time = 5000ms
+    commit every 5 seconds worth of processing  ✓
+
+  MANUAL:
+    you call acknowledgment.acknowledge() in your listener
+    framework waits for full batch to complete, then commits once
+
+  MANUAL_IMMEDIATE:
+    you call acknowledgment.acknowledge() per record
+    framework commits immediately on each call  ✗  (highest overhead)
+
+  ┌─────────────────────────────────────────────────────────────────┐
+  │  Use BATCH (default) unless you have a specific reason to       │
+  │  commit more or less frequently. It balances safety and         │
+  │  performance for most applications.                             │
+  └─────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s11" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Configuration                  Default      What it controls
+─────────────────────────────  ───────────  ───────────────────────────────────────────────────
+auto.offset.reset              latest       Start position when no offset exists: earliest/latest/none
+fetch.min.bytes                1 byte       Min data broker accumulates before responding
+fetch.max.wait.ms              500 ms       Max time broker waits to reach fetch.min.bytes
+max.partition.fetch.bytes      1 MB         Max bytes fetched per partition in one request
+fetch.max.bytes                52 MB        Max total bytes returned by one broker in one response
+max.poll.records               500          Records pulled from internal buffer per poll() call
+heartbeat.interval.ms          3,000 ms     How often consumer sends "I am alive" pulse
+session.timeout.ms             45,000 ms    How long coordinator waits before declaring consumer dead
+max.poll.interval.ms           300,000 ms   How long coordinator waits between poll() calls
+enable.auto.commit             true         Whether offset commits happen on a timer automatically
+auto.commit.interval.ms        5,000 ms     Frequency of automatic offset commits
+
+Assignment strategy comparison:
+  Range               default   simple, full rebalance stops all consumers  ✗
+  Round Robin         manual    even spread, full rebalance stops all  ✗
+  Sticky              manual    less partition movement on rebalance  ✓
+  CooperativeStickyAssignor  recommended   least disruption, only moved partitions pause  ✓
+
+Key relationships:
+  heartbeat.interval.ms  &lt;  session.timeout.ms   (pulse faster than timeout)
+  max.poll.records (small) + max.poll.interval.ms (higher)   for slow processing
+  fetch.min.bytes (higher) + fetch.max.wait.ms (higher)      to batch in low traffic</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 11;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Consumer — Important Configurations — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

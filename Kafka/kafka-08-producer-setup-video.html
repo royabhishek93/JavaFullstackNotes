@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Producer Setup — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Producer Setup — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 20</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:7.14%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">📤</div>
+  <h1 class="gradient-text">Kafka Producer Setup — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Serializer</span><span class="badge">Partitioner</span><span class="badge">5 Internal Stages</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Producer Workflow, Serializer, Partitioner, Round Robin, Sticky Partitioning, Record Accumulator, batch.size, linger.ms, Compression, Sender Thread, max.in.flight.requests, Message Reordering</p>
+</div>
+<div class="slide" id="s3" data-title="The Big Picture — One Line of Code, Five Internal Stages">
+<h2>The Big Picture — One Line of Code, Five Internal Stages</h2>
+<p>Calling <code>kafkaTemplate.send(topic, key, value)</code> looks simple, but your message passes through five stages <strong>inside the producer</strong> before any network call to the broker happens.</p>
+<div class="dia">Your application code:
+  kafkaTemplate.send("order-events", orderId, orderObject)
+                           │
+                           ▼
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                    KAFKA PRODUCER (internal)                    │
+  │                                                                 │
+  │  ┌───────────┐  ┌───────────┐  ┌────────────────────┐          │
+  │  │  Stage 1  │  │  Stage 2  │  │      Stage 3       │          │
+  │  │Serializer │─►│Partitioner│─►│ Record Accumulator │          │
+  │  └───────────┘  └───────────┘  └────────────────────┘          │
+  │                                          │                      │
+  │                                ┌─────────┴─────────┐           │
+  │                                ▼                   ▼           │
+  │                          ┌──────────┐      ┌─────────────┐     │
+  │                          │ Stage 4  │      │   Stage 5   │     │
+  │                          │Compression      │Sender Thread│     │
+  │                          └──────────┘      └─────────────┘     │
+  └─────────────────────────────────────────────────────────────────┘
+                                                      │
+                                                      ▼
+                                              Kafka Broker</div>
+<p>If serialization fails at Stage 1, the message never moves to Stage 2. Each stage is a gate.</p>
+</div>
+<div class="slide" id="s4" data-title="Stage 1 — Serializer: Java Object → Bytes">
+<h2>Stage 1 — Serializer: Java Object → Bytes</h2>
+<p>Kafka stores only <strong>bytes</strong> on disk. It has no idea whether your value is a String, Integer, or a custom POJO. The serializer converts both key and value into byte arrays before anything else happens.</p>
+<div class="dia">  Your code sends:
+    key   = "ORDER-001"          (Java String)
+    value = Order{ id, amount }  (Java POJO)
+                  │
+                  ▼
+  ┌───────────────────────────────────────────────┐
+  │                  SERIALIZER STAGE             │
+  │                                               │
+  │  key  ─── StringSerializer  ──► [98 79 68 …]  │
+  │  value ── JsonSerializer    ──► [7B 22 69 …]  │
+  │                                               │
+  │  If serialization fails → message is DROPPED  │
+  │  It does NOT move to Stage 2.                 │
+  └───────────────────────────────────────────────┘
+
+Built-in serializers (no code needed):
+  StringSerializer     ← for String keys/values
+  IntegerSerializer    ← for Integer keys/values
+  LongSerializer       ← for Long
+  JsonSerializer       ← for any POJO / JSON object
+
+Custom serializer (write your own):
+  implement Serializer&lt;T&gt;
+  override: serialize(String topic, T data) → byte[]
+
+  Use cases for custom serializer:
+    ✓ Remove sensitive fields before sending
+    ✓ Encrypt data before converting to bytes
+    ✓ Apply a proprietary binary format</div>
+</div>
+<div class="slide" id="s5" data-title="Stage 2 — Partitioner: Which Partition Does This Message Go To?">
+<h2>Stage 2 — Partitioner: Which Partition Does This Message Go To?</h2>
+<p>After serialization, the partitioner decides which partition of the topic this message belongs to. It takes the topic, key bytes, value bytes, and cluster metadata as input — and returns a single partition number.</p>
+<div class="dia">  Input to partitioner:
+    topic       = "order-events"
+    keyBytes    = [98 79 68 …]
+    valueBytes  = [7B 22 69 …]
+    cluster     = metadata (knows how many partitions exist)
+                        │
+                        ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │                   PARTITIONER STAGE                      │
+  │                                                          │
+  │  Case 1: Partition explicitly provided in .send() call   │
+  │    kafkaTemplate.send(topic, partition, key, value)      │
+  │    → use that partition directly, no formula needed      │
+  │                                                          │
+  │  Case 2: Key is provided                                 │
+  │    partition = hash(keyBytes) % numberOfPartitions       │
+  │    → same key ALWAYS → same partition  ✓                 │
+  │                                                          │
+  │  Case 3: No key, no explicit partition                   │
+  │    → round robin (Kafka &lt; 2.4)                           │
+  │    → sticky partitioning (Kafka &gt;= 2.4)  ← explained next│
+  └──────────────────────────────────────────────────────────┘
+                        │
+                        ▼
+                  partition number
+                  (e.g. P-1)</div>
+</div>
+<div class="slide" id="s6" data-title="No-Key Partitioning: Round Robin vs Sticky (Kafka 2.4+)">
+<h2>No-Key Partitioning: Round Robin vs Sticky (Kafka 2.4+)</h2>
+<p>When no key is provided, the pre-2.4 round-robin approach creates many small batches, wasting network calls. Kafka 2.4 replaced it with sticky partitioning for better throughput.</p>
+<div class="dia">SETUP: topic "order-events", 3 partitions (P0, P1, P2), no key on any event
+
+── PRE-KAFKA 2.4: ROUND ROBIN ──────────────────────────────────────────
+  E1 → P0    E2 → P1    E3 → P2    E4 → P0    E5 → P1
+
+  Record Accumulator batches:
+  ┌─────────────────────────────────────────────────────┐
+  │  Batch A: order-events/P0   [ E1, E4 ]  (size=2)   │
+  │  Batch B: order-events/P1   [ E2, E5 ]  (size=2)   │
+  │  Batch C: order-events/P2   [ E3     ]  (size=1)   │
+  └─────────────────────────────────────────────────────┘
+  Problem: 3 small batches → 3 network calls  ✗
+
+
+── KAFKA 2.4+: STICKY PARTITIONING ─────────────────────────────────────
+  Step 1: First event arrives. No key. Randomly pick one partition.
+          Let's say P1 is chosen. Store in memory: "order-events → P1"
+
+  Step 2: E1 arrives → check sticky memory → P1  ✓
+          E2 arrives → check sticky memory → P1  ✓
+          E3 arrives → check sticky memory → P1  ✓
+          E4 arrives → check sticky memory → P1  ✓
+          E5 arrives → check sticky memory → P1  ✓
+
+  Record Accumulator batch:
+  ┌─────────────────────────────────────────────────────┐
+  │  Batch A: order-events/P1   [ E1,E2,E3,E4,E5 ]     │
+  └─────────────────────────────────────────────────────┘
+  Result: 1 full batch → 1 network call  ✓
+
+  When does sticky memory change?
+    → When the current batch is CLOSED (full or linger.ms expired)
+    → The next batch randomly picks a new partition (could be same or different)</div>
+</div>
+<div class="slide" id="s7" data-title="Stage 3 — Record Accumulator: In-Memory Batch Buffer">
+<h2>Stage 3 — Record Accumulator: In-Memory Batch Buffer</h2>
+<p>The Record Accumulator is an in-memory buffer inside the producer. It holds events in <strong>separate batches per topic-partition</strong>. Your application thread puts events here and immediately returns — it does NOT wait for the network call.</p>
+<div class="dia">  Topic: order-events has 3 partitions. Two brokers.
+  Broker-1 is leader for P0 and P2.
+  Broker-2 is leader for P1.
+
+  ┌──────────────────────────────────────────────────────────────┐
+  │                    RECORD ACCUMULATOR                        │
+  │              (in-memory buffer, inside producer)             │
+  │                                                              │
+  │  order-events / P0  ┌──────────────────────────────────────┐ │
+  │                     │  E1  │  E4  │  E7  │  E10 │  ...     │ │
+  │                     └──────────────────────────────────────┘ │
+  │                                                              │
+  │  order-events / P1  ┌──────────────────────────────────────┐ │
+  │                     │  E2  │  E5  │  E8  │               │ │
+  │                     └──────────────────────────────────────┘ │
+  │                                                              │
+  │  order-events / P2  ┌──────────────────────────────────────┐ │
+  │                     │  E3  │  E6  │  E9  │               │ │
+  │                     └──────────────────────────────────────┘ │
+  └──────────────────────────────────────────────────────────────┘
+
+  Why batches are grouped by topic-partition:
+    P0 → Broker-1   P1 → Broker-2   P2 → Broker-1
+    You can't mix P0 and P1 events in one batch — they go to different brokers.
+    Batching by topic-partition lets the Sender Thread make one request per broker.
+
+  Application thread lifecycle:
+    kafkaTemplate.send(...)  →  put into accumulator  →  return Future  →  FREE
+    Application thread is DONE. It does not block waiting for broker ack.</div>
+</div>
+<div class="slide" id="s8" data-title="Controlling the Batch: batch.size and linger.ms">
+<h2>Controlling the Batch: batch.size and linger.ms</h2>
+<p>Two configuration properties control when a batch is considered "ready to send."</p>
+<div class="dia">  ┌────────────────────────────────────────────────────────────────────┐
+  │              TWO TRIGGERS THAT CLOSE A BATCH                       │
+  │                                                                    │
+  │  Trigger 1: batch.size (default = 16 KB)                          │
+  │  ─────────────────────────────────────────────────────────────    │
+  │  Maximum memory allocated per batch.                               │
+  │  Once the batch reaches 16 KB → CLOSED → ready to send.           │
+  │                                                                    │
+  │  Example: each event = 1 KB  →  batch holds ~16 events            │
+  │  [ E1 ][ E2 ][ E3 ]…[ E16 ] → FULL → send it                      │
+  │                                                                    │
+  │                                                                    │
+  │  Trigger 2: linger.ms (default = 0 ms)                            │
+  │  ─────────────────────────────────────────────────────────────    │
+  │  Maximum time to wait for more events to fill the batch.           │
+  │  Even if batch is not full, after linger.ms → CLOSED → send.      │
+  │                                                                    │
+  │  Example: linger.ms = 10                                           │
+  │  Low traffic: only 5 events arrived in 10 ms                      │
+  │  [ E1 ][ E2 ][ E3 ][ E4 ][ E5 ]  ←timer expires→  send anyway    │
+  └────────────────────────────────────────────────────────────────────┘
+
+  Whichever trigger fires first closes the batch:
+
+  Timeline:
+  ─────────────────────────────────────────────────────────────────►
+  t=0ms     batch opens, E1 added
+  t=2ms     E2 added
+  t=5ms     E3 added
+  t=10ms    linger.ms expires → batch closed, sent (only 3 events)
+                   OR
+  t=3ms     batch fills to 16 KB → batch closed, sent immediately</div>
+</div>
+<div class="slide" id="s9" data-title="Stage 4 — Compression: Shrink the Batch Before Sending">
+<h2>Stage 4 — Compression: Shrink the Batch Before Sending</h2>
+<p>Batches that are ready to send are compressed before going over the network. Compression reduces both network bandwidth and disk space on the broker (which stores compressed batches as-is).</p>
+<div class="dia">  Batch BEFORE compression:
+  ┌──────────────────────────────────────┐
+  │  order-events/P0  [ E1..E16 ]  64 KB │
+  └──────────────────────────────────────┘
+                      │
+                      ▼
+         compression algorithm (e.g. Snappy)
+                      │
+                      ▼
+  ┌──────────────────────────────────────┐
+  │  order-events/P0  [ E1..E16 ]  18 KB │  ← ~70% smaller
+  └──────────────────────────────────────┘
+
+  Advantages:
+    ✓ Reduced network bandwidth (producer → broker)
+    ✓ Broker stores compressed batches → less disk space
+    ✓ Higher throughput for the same hardware
+
+  Available algorithms:
+    none    ← default, no compression
+    gzip    ← best compression ratio, higher CPU
+    snappy  ← balanced: good ratio, low CPU  (recommended)
+    lz4     ← fastest, slightly worse ratio
+    zstd    ← modern, excellent ratio
+
+  Config: spring.kafka.producer.properties.compression.type=snappy</div>
+</div>
+<div class="slide" id="s10" data-title="Stage 5 — Sender Thread: Who Actually Sends to the Broker">
+<h2>Stage 5 — Sender Thread: Who Actually Sends to the Broker</h2>
+<p>Your application thread <strong>never</strong> makes the network call to the broker. Once it puts events into the Record Accumulator, it is free. A separate <strong>Sender Thread</strong> (managed by Kafka internally) polls the accumulator for ready batches and sends them.</p>
+<div class="dia">  ┌─────────────────────────────────────────────────────────────────┐
+  │  APPLICATION THREAD                                             │
+  │                                                                 │
+  │  kafkaTemplate.send(...)                                        │
+  │      │                                                          │
+  │      ├── serialize key &amp; value                                  │
+  │      ├── decide partition                                        │
+  │      ├── append to RecordAccumulator batch  ◄── LAST STEP       │
+  │      └── return CompletableFuture  ←── THREAD IS FREE NOW       │
+  └─────────────────────────────────────────────────────────────────┘
+                                    │
+                    (accumulator has ready batches)
+                                    │
+  ┌─────────────────────────────────▼───────────────────────────────┐
+  │  SENDER THREAD (Kafka-managed, runs continuously)               │
+  │                                                                 │
+  │  1. Poll RecordAccumulator for ready (closed) batches           │
+  │  2. Identify leader broker for each batch's partition           │
+  │  3. Group batches that go to the SAME broker                    │
+  │  4. Send ONE request per broker (not one per batch)             │
+  │  5. On success → invoke callback (complete the Future)          │
+  │  6. On transient failure → retry (up to retries config)         │
+  └─────────────────────────────────────────────────────────────────┘
+                      │
+                      ▼
+              Kafka Brokers</div>
+</div>
+<div class="slide" id="s11" data-title="Sender Thread: Grouping Batches by Broker Leader">
+<h2>Sender Thread: Grouping Batches by Broker Leader</h2>
+<p>Instead of sending one network request per batch, the Sender Thread groups all batches destined for the same broker leader into a single request — dramatically reducing network overhead.</p>
+<div class="dia">  SETUP: 3 partitions, 2 brokers
+    Broker-1 is leader for P0 and P2
+    Broker-2 is leader for P1
+
+  Ready batches in RecordAccumulator:
+    Batch-A: order-events / P0  →  leader = Broker-1
+    Batch-B: order-events / P1  →  leader = Broker-2
+    Batch-C: order-events / P2  →  leader = Broker-1
+
+  Sender Thread groups by leader:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  For Broker-1:  Batch-A + Batch-C  →  ONE request           │
+  │  For Broker-2:  Batch-B            →  ONE request           │
+  └─────────────────────────────────────────────────────────────┘
+                          │                   │
+                          ▼                   ▼
+                       Broker-1           Broker-2
+
+  Without grouping: 3 requests  (one per batch)
+  With grouping:    2 requests  (one per broker)
+
+  One request to Broker-1 can carry:
+    → multiple batches
+    → each batch carries multiple events
+  So ONE network call delivers hundreds of events.</div>
+</div>
+<div class="slide" id="s12" data-title="Max In-Flight Requests: Parallel Pipelines Per Connection">
+<h2>Max In-Flight Requests: Parallel Pipelines Per Connection</h2>
+<p>The Sender Thread opens a TCP connection to each broker. On each connection it can send multiple requests <strong>without waiting</strong> for the previous one to be acknowledged — these are "in-flight" requests.</p>
+<div class="dia">  max.in.flight.requests.per.connection = 5  (default)
+
+  Sender Thread ──── TCP connection ────► Broker-1
+                                          │
+    Request-1 sent ──────────────────────►│  (in flight)
+    Request-2 sent ──────────────────────►│  (in flight)
+    Request-3 sent ──────────────────────►│  (in flight)
+    Request-4 sent ──────────────────────►│  (in flight)
+    Request-5 sent ──────────────────────►│  (in flight)
+    Request-6: BLOCKED — wait for ack before sending
+
+  Broker-1 processes them and sends acks back:
+    ◄──────── ack for Request-2 (done)
+    ◄──────── ack for Request-1 (done)
+    ◄──────── ack for Request-4 (done)
+    ...
+
+  With 3 brokers, max simultaneous in-flight requests:
+    5 per connection × 3 brokers = 15 requests cluster-wide
+
+  Why this matters:
+    Each request = multiple batches = many events
+    15 parallel requests = very high throughput</div>
+</div>
+<div class="slide" id="s13" data-title="The Reordering Risk: max.in.flight &gt; 1 + retries &gt; 0">
+<h2>The Reordering Risk: max.in.flight &gt; 1 + retries &gt; 0</h2>
+<p>When in-flight requests can fail and retry, they may arrive at the broker out of order. This is an important reliability concern.</p>
+<div class="dia">  CONFIG: max.in.flight.requests.per.connection = 5, retries = 3
+
+  SCENARIO:
+  ─────────────────────────────────────────────────────────────────
+  Sender Thread sends two requests to Broker-1 (both in flight):
+
+    Request-A  [E1, E2, E3]  ──────────────────────────► Broker-1
+    Request-B  [E4, E5, E6]  ──────────────────────────► Broker-1
+
+  Broker-1 processes Request-B successfully:
+    Kafka log: E4 (offset 0), E5 (offset 1), E6 (offset 2)  ✓
+
+  Request-A hits a transient error (network glitch):
+    Broker-1 returns error to Sender Thread  ✗
+
+  Sender Thread retries Request-A:
+    Kafka log: E4 (offset 0), E5 (offset 1), E6 (offset 2),
+               E1 (offset 3), E2 (offset 4), E3 (offset 5)  ✗ WRONG ORDER
+
+  Expected order: E1 E2 E3 E4 E5 E6
+  Actual order:   E4 E5 E6 E1 E2 E3   ← reordering!
+
+  ─────────────────────────────────────────────────────────────────
+  SOLUTION: enable.idempotence = true
+
+  With idempotency ON:
+    Each request gets a sequence number.
+    Broker detects out-of-order delivery and holds Request-B
+    until Request-A is successfully retried.
+    Order is preserved.  ✓
+  ─────────────────────────────────────────────────────────────────
+  NOTE: Idempotency is covered as a separate topic.</div>
+</div>
+<div class="slide" id="s14" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept                   What it does                          Key default / note
+────────────────────────  ────────────────────────────────────  ──────────────────────────────────
+kafkaTemplate.send()      Entry point — your only line of code  Returns CompletableFuture
+Stage 1: Serializer       Java object → byte[]                  Must configure key + value type
+Stage 2: Partitioner      Assigns partition number              hash(key) % partitions
+Stage 3: RecordAccumulator In-memory batch buffer per topic-P   Application thread ends here
+Stage 4: Compression      Shrinks batch before network send     Recommended: snappy
+Stage 5: Sender Thread    Polls buffer, groups by broker, sends Kafka-managed, cannot be tuned
+batch.size                Max bytes per batch                   Default: 16 KB
+linger.ms                 Max wait before closing batch         Default: 0 ms (send immediately)
+buffer.memory             Total accumulator buffer size         Default: 32 MB
+max.block.ms              How long send() blocks if buffer full Default: 60 000 ms
+compression.type          Compression algorithm                 none / gzip / snappy / lz4 / zstd
+retries                   Sender retry count on transient fail  Default: 2 147 483 647
+max.in.flight.requests    Parallel unacked requests per conn    Default: 5
+enable.idempotence        Prevents duplicate + reorder on retry Set true when retries &gt; 0
+
+Round robin partitioning   Pre-Kafka 2.4, no key               Many small batches, low throughput
+Sticky partitioning        Kafka 2.4+, no key                  One batch per partition until full
+
+Partition selection order: explicit partition → hash(key) → sticky/round-robin</div>
+</div>
+<div class="slide" id="s15" data-title="Architecture — Producer Internals in the CDC Publisher">
+<h2>Architecture — The Five Stages Inside the CDC Publisher</h2>
+<p>"Let's ground the five stages in one real call: the CDC Publisher sending a NotificationEvent to notifications.standard.email."</p>
+<div class="dia">  CDC Publisher: producer.send(topic, notificationId, event)
+        │
+        ▼ Stage 1: Avro serializer → bytes, validated against Schema Registry
+        ▼ Stage 2: Partitioner → hash(notificationId) % 100 → partition 7
+        ▼ Stage 3: RecordAccumulator → batched with other P7 events
+        ▼ Stage 4: Compression (snappy) → smaller batch
+        ▼ Stage 5: Sender Thread → grouped with other broker-2 batches, sent
+        ▼ Broker-2 (leader, P7) appends, acks per acks=all</div>
+<p><strong>Scenario-first:</strong> "Every stage here has a config that matters for a different reason — serialization for schema safety, partitioning for even load, batching for throughput, compression for network cost, and the sender thread for how many broker connections we actually use. Treating '.send()' as one atomic step hides five independent tuning levers."</p>
+</div>
+<div class="slide" id="s16" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why does the application thread never make the actual network call?
+A: Decoupling submission from transmission lets the app thread stay fast
+   and non-blocking — batching, retries, and broker-grouping all happen
+   asynchronously on the Sender Thread instead.
+
+Q: Why sticky partitioning over round-robin for keyless records (Kafka 2.4+)?
+A: Round-robin scatters records across ALL partitions immediately, producing
+   many small, inefficient batches. Sticky fills ONE partition's batch fully
+   before switching, dramatically improving batching efficiency for the
+   common keyless case.
+
+Q: Why is max.block.ms a real production risk, not just a config default?
+A: If the accumulator buffer fills (slow brokers, network issues) and stays
+   full past max.block.ms, send() throws — silently dropping the message
+   at the application layer unless the caller explicitly handles that exception.</div>
+</div>
+<div class="slide" id="s17" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision            Choice          Alternative      Why ours                           When to flip
+────────────────────  ──────────────  ───────────────  ─────────────────────────────────  ─────────────────────
+Compression           snappy           gzip             Low CPU cost, good ratio, balanced   Storage/network cost
+                                                                                                dominates over CPU
+Partitioning (no key) Sticky           Round-robin       Fewer, fuller batches → throughput    Legacy pre-2.4 clusters
+linger.ms (critical)  0                20                Zero added latency for urgent sends   Bulk/promotional topics</div>
+</div>
+<div class="slide" id="s18" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "You switched a keyless producer from round-robin to sticky
+  partitioning and throughput improved, but one downstream consumer now
+  complains about uneven partition load. Explain the connection."
+  Answer: "Sticky fills one partition's batch fully before moving to the
+  next, which is great for throughput but means load isn't perfectly
+  interleaved in real time — a consumer watching per-partition arrival
+  rate over short windows will see bursts on one partition at a time
+  rather than a smooth round-robin spread. It evens out over time, but
+  short-window monitoring can look 'uneven' when it's actually working correctly."
+
+Trap 2 — "Your batch.size is 16KB but linger.ms is 20ms, and you're seeing
+  small, inefficient batches DESPITE high throughput. What's happening?"
+  Answer: "At 20ms with very high per-partition throughput, batches may
+  actually be filling and closing on SIZE (16KB) well before the 20ms
+  timer fires — meaning linger.ms isn't even the binding constraint here.
+  Conversely, at moderate throughput, 20ms might close batches on TIME
+  before they fill — the two settings interact, and diagnosing which one
+  is actually binding requires checking real batch-close reasons, not
+  assuming either config in isolation."</div>
+</div>
+<div class="slide" id="s19" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why the Sender Thread is separate from the application thread: keeps
+  producer.send() fast and non-blocking regardless of broker latency.
+- Why sticky over round-robin for keyless records: fuller batches, better
+  throughput, without sacrificing eventual load distribution.
+- Why snappy compression as the default: the best balance of CPU cost vs
+  network/storage savings for most workloads.
+- Why max.block.ms exists and must be handled explicitly: prevents an
+  indefinitely blocking send() call from silently hanging the caller.</div>
+</div>
+<div class="slide" id="s20" data-title="Top 2 Technologies — Compression Algorithm">
+<h2>Top 2 Technologies — Producer Compression</h2>
+<div class="dia">Snappy  vs  Zstd
+
+Why pick Snappy (our default): very low CPU overhead, solid compression
+  ratio, well-proven at high throughput — the safe default for most topics.
+Why pick Zstd: meaningfully better compression ratio than snappy at a
+  still-reasonable CPU cost, worth it when network/storage cost dominates.
+
+Example 1 (Snappy): Notification System's standard.email topic — CPU
+  budget on producer instances is tight, and snappy's ratio is good enough.
+Example 2 (Zstd): A bulk analytics event pipeline shipping terabytes daily
+  where storage retention cost is a bigger line item than producer CPU.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 20;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Producer Setup — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>

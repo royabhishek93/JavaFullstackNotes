@@ -1,0 +1,728 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distributed Logging System Design</title>
+<link rel="stylesheet" href="../../sd-player.css">
+</head><body>
+<div id="player">
+  <div id="topbar"><span id="slide-title">Distributed Logging — Splunk / ELK Scale</span><span id="counter">1 / 25</span></div>
+  <div id="progress-bar"><div id="progress-fill" style="width:4%"></div></div>
+  <div id="slide-area">
+
+    <div class="slide active" id="s1" data-title="Distributed Logging System Design">
+      <h1>🔍 Distributed Logging System Design</h1>
+      <h2>Splunk / Logstash / ELK Scale</h2>
+      <div class="badge-row">
+        <span class="badge">ELK Stack</span>
+        <span class="badge">Kafka</span>
+        <span class="badge">Fluentd</span>
+        <span class="badge">Splunk</span>
+        <span class="badge">Jaeger</span>
+        <span class="badge">OpenTelemetry</span>
+      </div>
+      <div class="card">
+        <p class="tagline">One-liner: Multi-source ingestion → Kafka buffering → Apache Flink stream processing → Hot/Warm/Cold tiered storage with Elasticsearch for search</p>
+      </div>
+      <div class="topics-grid">
+        <div class="topic-item">HLD &amp; LLD Architecture</div>
+        <div class="topic-item">Kafka Buffer Design</div>
+        <div class="topic-item">ILM Tiering</div>
+        <div class="topic-item">Distributed Tracing</div>
+        <div class="topic-item">GDPR Compliance</div>
+        <div class="topic-item">Senior Q&amp;A</div>
+      </div>
+    </div>
+
+    <div class="slide" id="s2" data-title="Why Logging at Scale Is Hard">
+      <h2>Why Logging at Scale Is Hard</h2>
+      <div class="card">
+        <p class="highlight">Picture a company with 1,000 microservices, each running 10 replicas across 3 regions. That's 30,000 processes writing logs simultaneously — easily 1 million log lines per second at peak traffic.</p>
+      </div>
+      <h3>The Observability Triad</h3>
+      <div class="three-col">
+        <div class="col-item">
+          <div class="col-title">📋 Logs</div>
+          <div>Discrete events — what happened, when, where</div>
+          <div class="note">→ Elasticsearch / Splunk</div>
+        </div>
+        <div class="col-item">
+          <div class="col-title">📈 Metrics</div>
+          <div>Aggregated numbers — CPU %, req/s, error rate</div>
+          <div class="note">→ Prometheus / Datadog</div>
+        </div>
+        <div class="col-item">
+          <div class="col-title">🔗 Traces</div>
+          <div>Request journeys across services end-to-end</div>
+          <div class="note">→ Jaeger / Zipkin</div>
+        </div>
+      </div>
+      <div class="card warn">
+        <strong>Core Challenge:</strong> Write throughput (1M logs/sec) vastly exceeds what any database can index in real-time. The architecture must decouple ingestion from indexing without losing a single event.
+      </div>
+    </div>
+
+    <div class="slide" id="s3" data-title="Functional Requirements">
+      <h2>Functional Requirements</h2>
+      <table>
+        <thead><tr><th>#</th><th>Requirement</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Ingest logs from multiple sources (FluentBit, OTEL, custom agents) — real-time and batch</td></tr>
+          <tr><td>2</td><td>Support both real-time streaming and batch/file-upload ingestion</td></tr>
+          <tr><td>3</td><td>Validate, parse, and normalize logs into a standard JSON structure</td></tr>
+          <tr><td>4</td><td>User sees logs on dashboard in near real-time (&lt; 5 seconds)</td></tr>
+          <tr><td>5</td><td>Advanced search — full-text, regex, filters, time-range queries</td></tr>
+          <tr><td>6</td><td>Real-time log tailing (live tail via WebSocket)</td></tr>
+          <tr><td>7</td><td>Alerting based on log patterns, thresholds, and anomalies</td></tr>
+          <tr><td>8</td><td>Configurable retention policy per client/tenant</td></tr>
+          <tr><td>9</td><td>Dashboard with aggregations, charts, service health views</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="slide" id="s4" data-title="Non-Functional Requirements">
+      <h2>Non-Functional Requirements</h2>
+      <table>
+        <thead><tr><th>Dimension</th><th>Target</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Scale</strong></td><td>1TB logs/day ingestion — 100K–1M logs/sec sustained</td></tr>
+          <tr><td><strong>Search Latency</strong></td><td>&lt; 5s end-to-end; &lt; 200ms for hot data (last 14 days)</td></tr>
+          <tr><td><strong>Availability</strong></td><td>99.9% uptime — always available for ingestion</td></tr>
+          <tr><td><strong>Consistency</strong></td><td>Eventual (AP in CAP) — logs don't need strong consistency</td></tr>
+          <tr><td><strong>Durability</strong></td><td>Zero data loss — Kafka RF=3, Cassandra RF=3, S3 cold backup</td></tr>
+          <tr><td><strong>Retention</strong></td><td>Hot: 14 days → Warm: 45 days → Cold: unlimited (S3)</td></tr>
+          <tr><td><strong>Throughput</strong></td><td>Kafka 1M msg/s; Flink 32 parallel tasks × 100K events/s each</td></tr>
+        </tbody>
+      </table>
+      <div class="card note">
+        <strong>CAP Choice:</strong> AP (Availability &gt; Consistency). Logs are append-only. A 1-second delay between Cassandra write and ES indexing is perfectly acceptable.
+      </div>
+    </div>
+
+    <div class="slide" id="s5" data-title="High-Level Architecture">
+      <h2>High-Level Architecture</h2>
+      <pre class="ascii">
+ Apps / Services / Containers
+        │
+        ▼
+ ┌─────────────────────┐
+ │  Log Agent          │  FluentBit / OTEL / Custom Agent
+ │  (per host/pod)     │  batches 100 logs or 10s window
+ └──────────┬──────────┘
+            │  HTTP POST (compressed, JWT auth)
+            ▼
+ ┌─────────────────────┐
+ │  LB &amp; API Gateway   │  Rate Limit 10K logs/min/client
+ │  Ingestion Service  │  Returns 202 Accepted immediately
+ └──────────┬──────────┘
+            │
+            ▼
+ ┌─────────────────────┐     ┌──────────────────┐
+ │      KAFKA          │────▶│  Apache Flink     │
+ │  raw_logs topic     │     │  Parse → Enrich   │
+ │  RF=3, 100 partns   │     │  Dedup → Route    │
+ └─────────────────────┘     └─────┬──────┬──────┘
+                                   │      │
+                    ┌──────────────┘      └───────────────┐
+                    ▼                                      ▼
+         ┌──────────────────┐                  ┌─────────────────────┐
+         │  Cassandra DB    │                  │   Elasticsearch     │
+         │  (hot/warm)      │                  │   (14-day hot tier) │
+         └──────────────────┘                  └─────────────────────┘
+                    │  cron &gt;45 days                      │  alert_topic
+                    ▼                                      ▼
+         ┌──────────────────┐                  ┌─────────────────────┐
+         │  S3 Cold Storage │                  │   Alert Service     │
+         │  Parquet+Athena  │                  │   → PagerDuty/Slack │
+         └──────────────────┘                  └─────────────────────┘
+      </pre>
+    </div>
+
+    <div class="slide" id="s6" data-title="Log Agent Design">
+      <h2>Log Agent Design — FluentBit vs Filebeat</h2>
+      <div class="two-col">
+        <div>
+          <h3>FluentBit (preferred)</h3>
+          <ul>
+            <li>Written in C — 450KB memory footprint</li>
+            <li>Built-in parsers: JSON, Regex, syslog, multiline</li>
+            <li>Backpressure: 10MB disk buffer, 24h retry</li>
+            <li>Native OTEL output plugin</li>
+            <li>Kubernetes DaemonSet sidecar</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Filebeat (alternative)</h3>
+          <ul>
+            <li>Part of Elastic stack — tighter ES integration</li>
+            <li>Higher memory (~50MB) vs FluentBit</li>
+            <li>Module system for common log formats</li>
+            <li>Harvester: tracks file offsets (like tail -f)</li>
+          </ul>
+        </div>
+      </div>
+      <h3>Agent Pipeline</h3>
+      <pre class="code">Log Collector → tail -f / inotify / stdout
+      ↓
+Parser       → syslog/JSON/custom → standard schema
+      ↓
+Buffer       → 10MB disk, retry with exponential backoff (24h)
+      ↓
+Batch Aggr   → 100 logs OR 10s window → single HTTP POST
+      ↓
+Sampler      → DEBUG=10%, INFO=50%, WARN/ERROR=100%
+      ↓
+HTTP POST    → /agents/{agentId}/logs  (Snappy compressed)</pre>
+    </div>
+
+    <div class="slide" id="s7" data-title="Kafka as the Ingestion Buffer">
+      <h2>Kafka as the Ingestion Buffer</h2>
+      <div class="card highlight">
+        <strong>Golden Rule:</strong> NEVER write logs directly to Elasticsearch during ingestion. Always buffer through Kafka first.
+      </div>
+      <h3>Why Kafka — 4 Key Reasons</h3>
+      <table>
+        <thead><tr><th>Reason</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Back-pressure</strong></td><td>If ES is slow/down, Kafka buffers millions of logs without data loss</td></tr>
+          <tr><td><strong>Replay</strong></td><td>Reprocess logs if processing logic changes or fails (rewind offset)</td></tr>
+          <tr><td><strong>Fan-out</strong></td><td>Same stream feeds Cassandra, Elasticsearch, and Alert service independently</td></tr>
+          <tr><td><strong>Peak smoothing</strong></td><td>1M logs/sec burst → Kafka absorbs; Flink processes at steady 100K/sec</td></tr>
+        </tbody>
+      </table>
+      <h3>Kafka Configuration</h3>
+      <pre class="code">Topics:            raw_logs, alert_topic, es_retry, dlq
+Partitions:        100 (keyed by client_id for ordering per tenant)
+Replication:       RF=3, min.insync.replicas=2, acks=all
+Retention:         48 hours (replay window)
+Compression:       Snappy (3:1 ratio)
+Throughput:        1M msg/sec sustained</pre>
+    </div>
+
+    <div class="slide" id="s8" data-title="Apache Flink Processing Pipeline">
+      <h2>Apache Flink — Log Processing Pipeline</h2>
+      <pre class="ascii">
+ Kafka Consumer (raw_logs)
+         │
+         ▼
+ ┌───────────────┐
+ │  1. Validate  │  Schema check, required fields, size limit (1MB max)
+ │               │  Malformed → DLQ topic
+ └───────┬───────┘
+         ▼
+ ┌───────────────┐
+ │  2. Parse /   │  Normalize to JSON: timestamp, level, service,
+ │  Normalize    │  message, host, env, trace_id, metadata
+ └───────┬───────┘
+         ▼
+ ┌───────────────┐
+ │  3. Enrich    │  Add geo-ip, k8s pod labels, deployment version
+ │               │  Lookup from config/metadata cache (Redis)
+ └───────┬───────┘
+         ▼
+ ┌───────────────┐
+ │  4. Dedup     │  5-min tumbling window
+ │               │  hash(ts_minute + service + msg[0:100])
+ │               │  RocksDB state backend — state cleared on window close
+ └───────┬───────┘
+         ▼
+ ┌───────────────┐
+ │  5. Route     │  → Cassandra (writes via sink)
+ │               │  → Elasticsearch bulk API (5K batch)
+ │               │  → alert_topic (ERROR/FATAL only)
+ └───────────────┘
+Flink parallelism: 32 tasks | checkpoints every 60s to S3 (exactly-once)</pre>
+    </div>
+
+    <div class="slide" id="s9" data-title="Elasticsearch Indexing">
+      <h2>Elasticsearch Indexing Design</h2>
+      <h3>Index Strategy — Time-Based Rotation</h3>
+      <pre class="code">Index name:  logs-prod-2024-01-15
+             logs-prod-2024-01-16  (new index each day)
+
+Primary shards:  10  (sized at ~5GB each for a 50GB/day index)
+Replica shards:  1   (tolerate 1 node failure; 2 for critical)
+</pre>
+      <h3>Field Mapping (Schema)</h3>
+      <pre class="code">log_id        → keyword   (exact match, unique ID)
+timestamp     → date      (range queries, ILM trigger)
+log_level     → keyword   (aggregations, filter — never analyzed)
+message       → text      (full-text search + standard analyzer)
+service_name  → keyword   (aggregations, cardinality ~1K)
+host, env     → keyword
+namespace     → keyword   (k8s namespace)
+pod_name      → keyword
+trace_id      → keyword   (distributed tracing correlation)</pre>
+      <div class="card note">
+        <strong>Inverted Index:</strong> ES tokenizes message field → "NullPointerException" stored in inverted index → O(1) lookup across billions of logs. Keyword fields skip tokenization for exact match.
+      </div>
+    </div>
+
+    <div class="slide" id="s10" data-title="Search Query Design">
+      <h2>Search Query Design</h2>
+      <h3>Query API</h3>
+      <pre class="code">POST /logs/search
+{
+  "query": "NullPointerException",      // full-text on message field
+  "filters": {
+    "service": "payment-service",
+    "level":   ["ERROR", "FATAL"],
+    "from":    "2024-01-15T10:00:00Z",
+    "to":      "2024-01-15T11:00:00Z"
+  },
+  "aggregations": ["count_by_level", "count_by_service"],
+  "page": 1,
+  "size": 50
+}</pre>
+      <h3>Query Routing by Time Range</h3>
+      <table>
+        <thead><tr><th>Time Range</th><th>Storage Hit</th><th>Latency</th></tr></thead>
+        <tbody>
+          <tr><td>Last 14 days</td><td>Elasticsearch only</td><td>&lt; 200ms</td></tr>
+          <tr><td>14–45 days</td><td>Cassandra only</td><td>1–2s</td></tr>
+          <tr><td>&gt; 45 days</td><td>S3 via Athena</td><td>10–30s</td></tr>
+          <tr><td>Cross-tier (e.g. 60d)</td><td>Fan-out all tiers in parallel, merge</td><td>30s+</td></tr>
+        </tbody>
+      </table>
+      <div class="card note"><strong>Cassandra optimization:</strong> Always include partition key (service_name, log_date) in WHERE clause — otherwise full cluster scan!</div>
+    </div>
+
+    <div class="slide" id="s11" data-title="Index Lifecycle Management (ILM)">
+      <h2>Index Lifecycle Management (ILM)</h2>
+      <pre class="ascii">
+ Day 0 ──────────────────────────────── Day 14 ──── Day 45 ──── Day 90+
+   │                                       │           │            │
+   ▼                                       ▼           ▼            ▼
+ HOT TIER                            WARM TIER    COLD TIER     DELETE
+ Cassandra + ES                      Cassandra    S3 Parquet
+ SSD storage                         HDD storage  Glacier
+ &lt;200ms search                       1–2s search  10–30s (Athena)
+ $0.10/GB/mo                         $0.05/GB/mo  $0.01/GB/mo
+      </pre>
+      <h3>ILM Policy Rules</h3>
+      <pre class="code">Hot → Warm rollover trigger:  50GB OR 7 days (whichever first)
+Warm → Cold:                  Move to S3 Parquet after 45 days
+Cold → Delete:                Per-client retention policy (default 90 days)
+</pre>
+      <div class="card highlight">
+        <strong>Cost Example:</strong> 1TB/day ingestion<br>
+        Hot-only storage: $3,000/month<br>
+        Tiered (hot+warm+cold): $300/month<br>
+        <strong>= 90% cost reduction</strong>
+      </div>
+      <div class="card note"><strong>NEVER skip ILM</strong> — without it, ES indices grow unbounded and the cluster runs out of disk within days at this scale.</div>
+    </div>
+
+    <div class="slide" id="s12" data-title="Distributed Tracing Integration">
+      <h2>Distributed Tracing Integration</h2>
+      <div class="two-col">
+        <div>
+          <h3>The Problem</h3>
+          <p>A user reports checkout failure. The request touched 8 services. How do you find the root cause across 8 separate log streams?</p>
+          <h3>The Solution: trace_id</h3>
+          <pre class="code">// OpenTelemetry SDK injects:
+{
+  "trace_id": "abc-123-xyz",
+  "span_id":  "def-456",
+  "service":  "payment-svc",
+  "msg":      "charge failed"
+}</pre>
+        </div>
+        <div>
+          <h3>Jaeger / OpenTelemetry Flow</h3>
+          <pre class="code">Client Request
+    │
+    ├─ trace_id generated at API Gateway
+    │   (or extracted from X-Trace-ID header)
+    │
+    ├─ Propagated via HTTP headers to each service
+    │   W3C TraceContext: traceparent header
+    │
+    ├─ Each service logs with trace_id field
+    │
+    └─ Search: GET /logs?trace_id=abc-123-xyz
+       → Returns ALL logs across ALL services
+         for this single request, sorted by timestamp</pre>
+        </div>
+      </div>
+      <div class="card note"><strong>Cassandra schema:</strong> logs_by_traceId table has trace_id as partition key — O(1) lookup for all logs in a trace, regardless of how many services touched it.</div>
+    </div>
+
+    <div class="slide" id="s13" data-title="Alerting System Design">
+      <h2>Alerting System Design</h2>
+      <h3>Alert Rule Schema</h3>
+      <pre class="code">condition: {
+  field:    "log_level",
+  operator: "=",
+  value:    "ERROR",
+  count:    100,         // threshold
+  window:   "5m"         // sliding window
+}
+notification_channels: ["email", "slack", "pagerduty"]
+cooldown_period:       10 minutes   // prevent alert spam</pre>
+      <h3>6 Techniques to Prevent Alert Fatigue</h3>
+      <table>
+        <thead><tr><th>Technique</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Aggregation</strong></td><td>Alert on ERROR count &gt;100 in 5 min, not every single ERROR</td></tr>
+          <tr><td><strong>Cooldown</strong></td><td>Don't re-alert same condition for 10 min (configurable)</td></tr>
+          <tr><td><strong>Severity</strong></td><td>P0=page now / P1=email+Slack / P2=Slack / P3=daily digest</td></tr>
+          <tr><td><strong>Deduplication</strong></td><td>Same fingerprint (service+error_type) → grouped summary</td></tr>
+          <tr><td><strong>Escalation</strong></td><td>P1 unacknowledged in 15 min → auto-escalate to P0</td></tr>
+          <tr><td><strong>Rate Limiting</strong></td><td>Max 10 alerts per service per hour</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="slide" id="s14" data-title="Log Retention & Compliance">
+      <h2>Log Retention &amp; Compliance (GDPR)</h2>
+      <h3>PII Scrubbing in the Flink Pipeline</h3>
+      <pre class="code">// Flink enrichment stage — BEFORE writing to storage:
+scrub_patterns = [
+  r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b',  // email
+  r'\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b',           // credit card
+  r'\b\d{3}-\d{2}-\d{4}\b'                               // SSN
+]
+// Replace with: [REDACTED-EMAIL], [REDACTED-CC], [REDACTED-SSN]</pre>
+      <h3>GDPR Deletion Request Flow</h3>
+      <pre class="ascii">
+ GDPR Request: delete all logs for user@example.com
+      │
+      ├─ ES:        DELETE by query  (timestamp range + user_id field)
+      ├─ Cassandra: Soft-delete 7d → hard delete
+      ├─ S3/Athena: Partition scan → rewrite Parquet without matching rows
+      └─ Audit log: Deletion events logged for compliance verification
+      </pre>
+      <div class="card warn">
+        <strong>WORM Storage:</strong> Audit logs (who accessed what) written to S3 Object Lock — cannot be modified or deleted even by admins. Required for SOC2/HIPAA compliance.
+      </div>
+    </div>
+
+    <div class="slide" id="s15" data-title="Structured Logging Schema">
+      <h2>Structured Logging Schema (Standard JSON)</h2>
+      <pre class="code">// Normalized log event — output from Flink pipeline:
+{
+  "log_id":       "uuid-v4",                    // unique, for dedup
+  "timestamp":    "2024-01-15T10:30:00.123Z",   // ISO-8601, UTC
+  "log_level":    "ERROR",                      // DEBUG/INFO/WARN/ERROR/FATAL
+  "service_name": "payment-service",
+  "host":         "ip-10-0-1-42",
+  "env":          "prod",
+  "namespace":    "payments",                   // k8s namespace
+  "pod_name":     "payment-service-7d8f9-xk2p",
+  "trace_id":     "abc123def456",               // distributed tracing
+  "span_id":      "789xyz",
+  "user_id":      "usr_789",                    // for GDPR deletion
+  "message":      "Payment charge failed: ...", // full-text indexed
+  "payload": {                                  // structured metadata
+    "order_id":   "ord_456",
+    "amount":     99.99,
+    "currency":   "USD",
+    "error_code": "INSUFFICIENT_FUNDS"
+  },
+  "schema_version": "v2"                        // for schema evolution
+}</pre>
+    </div>
+
+    <div class="slide" id="s16" data-title="Cold Storage Archival">
+      <h2>Cold Storage Archival — S3 + Athena</h2>
+      <h3>S3 Parquet Layout</h3>
+      <pre class="code">s3://logs-archive/
+  └── year=2024/
+      └── month=01/
+          └── day=15/
+              └── service=payment-service/
+                  └── part-00001.parquet   // Snappy compressed, ~300MB
+// Partition pruning: Athena scans ONLY needed partitions
+// 3:1 compression: 1TB raw → 333GB on S3 = ~$3.33/month storage</pre>
+      <h3>Cost vs Speed Trade-off</h3>
+      <table>
+        <thead><tr><th>Tier</th><th>Storage</th><th>Latency</th><th>Cost/GB/mo</th><th>Use Case</th></tr></thead>
+        <tbody>
+          <tr><td>Hot</td><td>ES + Cassandra SSD</td><td>&lt;200ms</td><td>$0.10</td><td>Active debugging</td></tr>
+          <tr><td>Warm</td><td>Cassandra HDD</td><td>1–2s</td><td>$0.05</td><td>Recent incidents</td></tr>
+          <tr><td>Cold</td><td>S3 Parquet</td><td>10–30s</td><td>$0.01</td><td>Compliance/audit</td></tr>
+        </tbody>
+      </table>
+      <div class="card note">Athena query example: <code>SELECT service_name, COUNT(*) FROM logs WHERE year=2024 AND month=01 AND log_level='ERROR' GROUP BY service_name</code> — scans only relevant partitions, not the entire dataset.</div>
+    </div>
+
+    <div class="slide" id="s17" data-title="Scaling Elasticsearch">
+      <h2>Scaling Elasticsearch</h2>
+      <h3>Shard Sizing Rules</h3>
+      <pre class="code">Target shard size:    20–50GB  (50GB upper limit before performance degrades)
+Primary shards:       10 per daily index
+Replica shards:       1 (double storage but allows horizontal read scaling)
+Daily index at 1TB:   10 shards × ~100GB → too big → use 20 primaries × 50GB</pre>
+      <h3>Scaling Techniques</h3>
+      <table>
+        <thead><tr><th>Technique</th><th>Detail</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Horizontal sharding</strong></td><td>Add data nodes; ES auto-rebalances shards across nodes</td></tr>
+          <tr><td><strong>Cross-cluster replication</strong></td><td>DR region gets async replica — RPO ~5 minutes</td></tr>
+          <tr><td><strong>Query cache</strong></td><td>60s TTL → 80% faster dashboard loads for repeated queries</td></tr>
+          <tr><td><strong>Dedicated master nodes</strong></td><td>3 dedicated masters (never data nodes) — prevents split-brain</td></tr>
+          <tr><td><strong>Frozen tier</strong></td><td>Searchable snapshots — zero replica, on-demand S3 fetch</td></tr>
+          <tr><td><strong>Bulk API</strong></td><td>Flink sends 5K logs per bulk request — 5× higher throughput than single indexing</td></tr>
+        </tbody>
+      </table>
+      <div class="card warn">Never put master and data roles on same node in production — cluster instability under high indexing load.</div>
+    </div>
+
+    <div class="slide" id="s18" data-title="Trade-offs Table">
+      <h2>Trade-offs: ELK vs Splunk vs Loki</h2>
+      <table>
+        <thead><tr><th>Dimension</th><th>ELK Stack</th><th>Splunk</th><th>Grafana Loki</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Cost</strong></td><td>Open source (ops cost)</td><td>Very expensive ($$$)</td><td>Open source (cheapest)</td></tr>
+          <tr><td><strong>Search</strong></td><td>Full-text, fast</td><td>SPL — most powerful</td><td>Label-based only (LogQL)</td></tr>
+          <tr><td><strong>Indexing</strong></td><td>Indexes everything</td><td>Indexes everything</td><td>Labels only (no full-text)</td></tr>
+          <tr><td><strong>Storage</strong></td><td>SSD required</td><td>SSD required</td><td>Object storage (S3) — cheap</td></tr>
+          <tr><td><strong>Scale</strong></td><td>Manual tuning</td><td>Auto-scaling</td><td>Horizontally trivial</td></tr>
+          <tr><td><strong>Best for</strong></td><td>General logging</td><td>Enterprise/compliance</td><td>High-volume, label-filtered</td></tr>
+        </tbody>
+      </table>
+      <h3>Kafka vs Kinesis</h3>
+      <table>
+        <thead><tr><th></th><th>Kafka</th><th>AWS Kinesis</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Throughput</strong></td><td>1M+ msg/s, no shard limit</td><td>1MB/s or 1K records/s per shard</td></tr>
+          <tr><td><strong>Replay</strong></td><td>Configurable retention (default 7d)</td><td>Max 7 days</td></tr>
+          <tr><td><strong>Ops</strong></td><td>Self-managed (or Confluent Cloud)</td><td>Fully managed, auto-scaling</td></tr>
+          <tr><td><strong>Choose when</strong></td><td>Max control, multi-cloud</td><td>AWS-only, simplicity matters</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="slide" id="s19" data-title="Metrics vs Logs vs Traces">
+      <h2>Metrics vs Logs vs Traces — When to Use Each</h2>
+      <div class="three-col">
+        <div class="col-item">
+          <div class="col-title">📈 Metrics (Prometheus)</div>
+          <ul>
+            <li>Aggregated numerical data</li>
+            <li>CPU %, request rate, error rate</li>
+            <li>Low cardinality labels</li>
+            <li>Alerting on thresholds</li>
+            <li>Dashboards / SLOs</li>
+          </ul>
+          <div class="note">Use when: "Is the system healthy?"</div>
+        </div>
+        <div class="col-item">
+          <div class="col-title">📋 Logs (Elasticsearch)</div>
+          <ul>
+            <li>Discrete events with context</li>
+            <li>Error messages, stack traces</li>
+            <li>High cardinality OK</li>
+            <li>Debugging specific failures</li>
+            <li>Compliance/audit trails</li>
+          </ul>
+          <div class="note">Use when: "What exactly went wrong?"</div>
+        </div>
+        <div class="col-item">
+          <div class="col-title">🔗 Traces (Jaeger)</div>
+          <ul>
+            <li>Request journey across services</li>
+            <li>Latency per service/span</li>
+            <li>Dependency visualization</li>
+            <li>Performance bottleneck ID</li>
+            <li>Requires instrumentation</li>
+          </ul>
+          <div class="note">Use when: "Which service slowed us down?"</div>
+        </div>
+      </div>
+      <div class="card highlight">
+        <strong>OpenTelemetry</strong> unifies all three: single SDK for logs, metrics, and traces. Vendor-agnostic. Exports to any backend. The industry standard going forward.
+      </div>
+    </div>
+
+    <div class="slide" id="s20" data-title="Multi-Tenancy Design">
+      <h2>Multi-Tenancy Design</h2>
+      <h3>Index Isolation Strategy</h3>
+      <pre class="code">Option A: Index per tenant (recommended for &lt;1000 tenants)
+  logs-{client_id}-{date}  e.g., logs-acme-2024-01-15
+  → Complete data isolation, easy RBAC, simple deletion
+  → Drawback: Many small indices waste ES cluster metadata
+
+Option B: Shared index, filtered by client_id field
+  logs-{date}  with client_id as keyword field
+  → Fewer indices, simpler cluster management
+  → Risk: Noisy neighbor — one large tenant slows everyone's queries</pre>
+      <h3>Protecting Against Noisy Neighbors</h3>
+      <table>
+        <thead><tr><th>Control</th><th>Mechanism</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Rate Limiting</strong></td><td>Token bucket: 10K logs/min per client at API Gateway</td></tr>
+          <tr><td><strong>Kafka partitioning</strong></td><td>Keyed by client_id — one slow consumer doesn't block others</td></tr>
+          <tr><td><strong>RBAC</strong></td><td>ES document-level security — tenants can only query their own indices</td></tr>
+          <tr><td><strong>Query timeout</strong></td><td>Max 30s per search query; circuit breaker at 80% heap usage</td></tr>
+          <tr><td><strong>Storage quota</strong></td><td>Per-client retention limit stored in ClientDB.pref</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="slide" id="s21" data-title="Senior Q&amp;A — Black Friday Log Surge">
+      <h2>Senior Q&amp;A 1 — Black Friday Log Surge</h2>
+      <div class="card warn">
+        <strong>Q:</strong> It's Black Friday. Log volume spikes 10x — 10M logs/sec. Elasticsearch falls behind and consumer lag grows to 50M messages. What do you do?
+      </div>
+      <h3>Response (5-layer answer):</h3>
+      <pre class="ascii">
+ 1. KAFKA ABSORPTION
+    → Kafka holds the surge — data is safe, not lost
+    → Consumer lag is a performance issue, not a durability issue
+
+ 2. AUTO-SAMPLING (Flink)
+    → Spike detected via Kafka consumer lag metric
+    → DEBUG: 10% → 0.1% (drop 99.9%)
+    → INFO:  50% → 1%
+    → ERROR/FATAL: always 100% (never sample critical logs)
+    → Reduces effective throughput from 10M → ~1M logs/sec
+
+ 3. SCALE FLINK HORIZONTALLY
+    → Add 32 more Flink task slots (pre-provisioned for Black Friday)
+    → Process 2× faster, drain the backlog
+
+ 4. ELASTICSEARCH — REDUCE INDEX REFRESH
+    → Change refresh_interval from 1s → 30s during surge
+    → Trades search freshness (30s delay) for 3× indexing throughput
+
+ 5. ES BULK BATCH SIZE UP
+    → Increase Flink bulk batch from 5K → 50K logs
+    → Fewer round trips, higher throughput
+      </pre>
+    </div>
+
+    <div class="slide" id="s22" data-title="Senior Q&amp;A — GDPR Deletion Request">
+      <h2>Senior Q&amp;A 2 — GDPR Log Deletion</h2>
+      <div class="card warn">
+        <strong>Q:</strong> A user submits a GDPR deletion request. You must remove all logs containing their email address across all storage tiers within 30 days. How do you implement this?
+      </div>
+      <h3>Deletion Pipeline:</h3>
+      <pre class="ascii">
+ Step 1: FUTURE PREVENTION (immediate)
+   → Flink PII scrubber already redacts emails in real-time pipeline
+   → Stops new logs from containing raw email going forward
+
+ Step 2: HOT TIER — Elasticsearch (same day)
+   → POST /logs-*/_delete_by_query
+     { "query": { "term": { "user_id": "usr_789" } } }
+   → Or: match email in message field (regex query)
+   → Takes minutes for 14-day window
+
+ Step 3: WARM TIER — Cassandra (same day)
+   → Soft delete: mark rows deleted=true
+   → Hard delete: background job within 7 days
+   → TTL on tombstones: 10 days
+
+ Step 4: COLD TIER — S3 Parquet (within 30 days)
+   → Athena query to find affected partitions
+   → Rewrite Parquet files without matching rows (Spark job)
+   → Replace original S3 objects atomically
+
+ Step 5: AUDIT LOG
+   → Record deletion event in WORM storage (S3 Object Lock)
+   → Proof of compliance for regulators
+      </pre>
+    </div>
+
+    <div class="slide" id="s23" data-title="Senior Q&amp;A — Correlate Bug Across 50 Microservices">
+      <h2>Senior Q&amp;A 3 — Correlate Bug Without trace_id</h2>
+      <div class="card warn">
+        <strong>Q:</strong> A critical bug is reported. It spans 50 microservices but the engineers forgot to propagate trace_id. How do you correlate the logs?
+      </div>
+      <h3>Forensic Correlation Strategy:</h3>
+      <pre class="ascii">
+ Step 1: NARROW BY TIME WINDOW
+   → Find first ERROR in the chain (timestamp T)
+   → Search all services in window [T-5s, T+60s]
+   → ES query: log_level:ERROR AND timestamp:[T-5s TO T+60s]
+
+ Step 2: CORRELATE BY user_id / session_id / order_id
+   → Even without trace_id, business IDs flow through services
+   → Search: "order_id=ORD_456" across all services
+   → Reconstruct timeline ordered by timestamp
+
+ Step 3: CORRELATE BY IP / request_id / JWT claim
+   → API Gateway logs always have client IP + request_id
+   → Match downstream service logs with same IP in time window
+
+ Step 4: CAUSAL CHAINING
+   → Service A ERROR at T+0ms → Service B first log at T+2ms
+   → ~2ms network hop → likely causal
+   → Build the call graph manually
+
+ Step 5: ADD trace_id RETROACTIVELY
+   → Post-mortem: add OpenTelemetry instrumentation to all 50 services
+   → W3C TraceContext propagation via shared middleware/filter
+   → Never debug this way again
+      </pre>
+    </div>
+
+    <div class="slide" id="s24" data-title="Key Numbers to Remember">
+      <h2>Key Numbers to Remember</h2>
+      <table>
+        <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td>Cloudflare log volume</td><td>100TB+ logs/day at peak</td></tr>
+          <tr><td>Ingestion rate target</td><td>100K–1M logs/sec sustained</td></tr>
+          <tr><td>Agent batch window</td><td>100 logs OR 10 seconds, whichever first</td></tr>
+          <tr><td>Agent local buffer</td><td>10MB disk, 24h retry with exponential backoff</td></tr>
+          <tr><td>Kafka partitions</td><td>100, keyed by client_id; RF=3</td></tr>
+          <tr><td>Kafka throughput</td><td>1M+ msg/sec sustained</td></tr>
+          <tr><td>Flink parallelism</td><td>32 tasks × 100K events/sec each</td></tr>
+          <tr><td>Flink dedup window</td><td>5-minute tumbling window</td></tr>
+          <tr><td>Flink checkpoint interval</td><td>Every 60s → S3 (exactly-once recovery)</td></tr>
+          <tr><td>ES shard size limit</td><td>50GB upper bound before degradation</td></tr>
+          <tr><td>ES search latency (hot)</td><td>&lt; 200ms</td></tr>
+          <tr><td>Cassandra writes/node</td><td>10K writes/sec per node</td></tr>
+          <tr><td>Snappy compression</td><td>3:1 ratio in Kafka and S3 Parquet</td></tr>
+          <tr><td>Sampling impact</td><td>DEBUG=10%, ERROR=100% → 60% volume reduction</td></tr>
+          <tr><td>Watermark delay</td><td>5 min (handles late-arriving logs)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="slide" id="s25" data-title="Closing — Key Takeaways">
+      <h2>Closing — Key Takeaways</h2>
+      <div class="card highlight">
+        <strong>The Core Architecture Pattern:</strong><br>
+        Multi-source ingestion → Kafka buffer → Flink stream processing → Hot/Warm/Cold tiered storage → Elasticsearch search
+      </div>
+      <h3>5 Things That Separate Senior Answers</h3>
+      <div class="topics-grid">
+        <div class="topic-item">Always buffer through Kafka — never write directly to ES during ingestion</div>
+        <div class="topic-item">Return 202 Accepted from ingestion API — decouple write latency from indexing</div>
+        <div class="topic-item">ILM tiering saves 90% storage cost at 1TB/day scale</div>
+        <div class="topic-item">Flink exactly-once + Kafka RF=3 + agent disk buffer = zero log loss</div>
+        <div class="topic-item">PII scrubbing happens in the pipeline, not at query time</div>
+        <div class="topic-item">trace_id propagation via OpenTelemetry is non-negotiable at 50+ services</div>
+      </div>
+      <div class="card note">
+        <strong>Quick Cheat Sheet:</strong>
+        Kafka = decouple + buffer + replay |
+        Cassandra = write-optimized time-series TTL |
+        Elasticsearch = full-text inverted index ILM |
+        Flink = event-time watermarks stateful dedup exactly-once |
+        S3 = cheap cold storage 11-nines durability Athena queries
+      </div>
+    </div>
+
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px"><button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button><button class="btn" id="next-btn" onclick="navigate(1)">Next →</button></div>
+  </div>
+</div>
+<script>
+const ORDER=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25];
+const TOTAL=ORDER.length;const AUTO_INTERVAL=14000;let current=1,autoTimer=null;
+const dc=document.getElementById('slide-dots');
+for(let i=1;i<=TOTAL;i++){const sid=ORDER[i-1];const d=document.createElement('div');d.className='dot'+(i===1?' active':'');d.title=document.getElementById('s'+sid)?.dataset.title||'';d.onclick=(p=>()=>showSlide(p))(i);dc.appendChild(d);}
+function showSlide(n){if(n<1||n>TOTAL)return;const sid=ORDER[n-1];document.querySelectorAll('.slide').forEach(s=>s.classList.remove('active'));const el=document.getElementById('s'+sid);if(el)el.classList.add('active');el&&(el.scrollTop=0);current=n;document.getElementById('counter').textContent=n+' / '+TOTAL;document.getElementById('slide-title').textContent=el?.dataset.title||'';document.getElementById('progress-fill').style.width=((n/TOTAL)*100).toFixed(1)+'%';document.getElementById('prev-btn').disabled=n===1;document.getElementById('next-btn').disabled=n===TOTAL;document.querySelectorAll('.dot').forEach((d,i)=>d.classList.toggle('active',i+1===n));}
+function navigate(dir){showSlide(current+dir);if(autoTimer)resetAuto();}
+function togglePlay(){if(autoTimer){clearInterval(autoTimer);autoTimer=null;document.getElementById('play-btn').textContent='▶ Play';}else startAuto();}
+function startAuto(){document.getElementById('play-btn').textContent='⏸ Pause';autoTimer=setInterval(()=>{if(current<TOTAL)showSlide(current+1);else togglePlay();},AUTO_INTERVAL);}
+function resetAuto(){clearInterval(autoTimer);startAuto();}
+document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key===' '){e.preventDefault();navigate(1);}if(e.key==='ArrowLeft'){e.preventDefault();navigate(-1);}if(e.key==='p'||e.key==='P')togglePlay();});
+showSlide(1);
+</script></body></html>

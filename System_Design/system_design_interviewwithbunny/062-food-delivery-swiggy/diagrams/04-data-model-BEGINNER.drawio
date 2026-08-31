@@ -1,0 +1,253 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Data Model" id="data-model">
+    <mxGraphModel dx="1850" dy="1100" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1850" pageHeight="1100" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Title -->
+        <mxCell id="title" value="ZOMATO/SWIGGY — Data Model (MySQL ACID + Redis GEO + Cassandra Time-Series + Elasticsearch Search + Kafka Events)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1;fontColor=#1a237e" vertex="1" parent="1">
+          <mxGeometry x="20" y="10" width="1810" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="subtitle" value="MySQL for transactional orders • Redis GEO for geospatial indexing • Cassandra for location audit • Elasticsearch for search • Kafka for events" style="text;html=1;strokeColor=none;fillColor=#e8eaf6;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="150" y="45" width="1550" height="25" as="geometry" />
+        </mxCell>
+        
+        <!-- MYSQL SECTION -->
+        <mxCell id="mysql-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f3e5f5;strokeColor=#8e24aa;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="30" y="90" width="930" height="490" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="mysql-label" value="📊 MYSQL (ACID Transactions)" style="text;html=1;strokeColor=none;fillColor=#8e24aa;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="250" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- restaurants table -->
+        <mxCell id="table-restaurants" value="restaurants" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;fontSize=11;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="50" y="150" width="200" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="restaurants-fields" value="id BIGINT PK&#xa;name VARCHAR(200)&#xa;address TEXT&#xa;latitude DECIMAL(9,6)&#xa;longitude DECIMAL(9,6)&#xa;cuisine_type VARCHAR(100)&#xa;avg_rating DECIMAL(3,2)&#xa;prep_time_avg_minutes INT&#xa;is_open BOOLEAN&#xa;created_at TIMESTAMP&#xa;&#xa;INDEX idx_lat_lon (lat,lon)&#xa;INDEX idx_cuisine (cuisine_type)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="60" y="180" width="180" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- menu_items table -->
+        <mxCell id="table-menu-items" value="menu_items" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;fontSize=11;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="270" y="150" width="200" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="menu-items-fields" value="id BIGINT PK&#xa;restaurant_id FK → restaurants&#xa;name VARCHAR(200)&#xa;description TEXT&#xa;price DECIMAL(10,2)&#xa;image_url VARCHAR(500)&#xa;is_available BOOLEAN&#xa;category VARCHAR(100)&#xa;created_at TIMESTAMP&#xa;&#xa;INDEX idx_restaurant (restaurant_id)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="280" y="180" width="180" height="120" as="geometry" />
+        </mxCell>
+        
+        <!-- FK relationship -->
+        <mxCell id="fk-menu-restaurant" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=classic;endFill=1;startArrow=oval;startFill=0" edge="1" parent="1" source="table-menu-items" target="table-restaurants">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="270" y="230" as="sourcePoint" />
+            <mxPoint x="250" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- orders table -->
+        <mxCell id="table-orders" value="orders" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;fontSize=11;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="50" y="350" width="220" height="210" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="orders-fields" value="id BIGINT PK&#xa;user_id BIGINT FK → users&#xa;restaurant_id FK → restaurants&#xa;delivery_partner_id FK&#xa;status ENUM (PLACED,&#xa;  RESTAURANT_ACCEPTED, PREPARING,&#xa;  PARTNER_ASSIGNED, PICKED_UP,&#xa;  OUT_FOR_DELIVERY, DELIVERED)&#xa;total_amount DECIMAL(10,2)&#xa;delivery_lat DECIMAL(9,6)&#xa;delivery_lon DECIMAL(9,6)&#xa;created_at TIMESTAMP&#xa;delivered_at TIMESTAMP&#xa;&#xa;INDEX idx_status (status)&#xa;INDEX idx_partner (partner_id)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="60" y="380" width="200" height="170" as="geometry" />
+        </mxCell>
+        
+        <!-- order_items table -->
+        <mxCell id="table-order-items" value="order_items" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;fontSize=11;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="290" y="350" width="180" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="order-items-fields" value="id BIGINT PK&#xa;order_id FK → orders&#xa;menu_item_id FK → menu_items&#xa;quantity INT&#xa;price_snapshot DECIMAL(10,2)&#xa;&#xa;INDEX idx_order (order_id)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=9;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="300" y="380" width="160" height="90" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="fk-order-items-order" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=classic;endFill=1;startArrow=oval;startFill=0" edge="1" parent="1" source="table-order-items" target="table-orders">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="290" y="415" as="sourcePoint" />
+            <mxPoint x="270" y="415" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- delivery_partners table -->
+        <mxCell id="table-partners" value="delivery_partners" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;fontSize=11;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="500" y="150" width="190" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="partners-fields" value="id BIGINT PK&#xa;name VARCHAR(200)&#xa;phone VARCHAR(15)&#xa;status ENUM (ONLINE,&#xa;  OFFLINE, BUSY)&#xa;current_lat DECIMAL(9,6)&#xa;current_lon DECIMAL(9,6)&#xa;avg_rating DECIMAL(3,2)&#xa;avg_speed_kmph DECIMAL(4,1)&#xa;last_gps_update TIMESTAMP&#xa;&#xa;INDEX idx_status (status)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="510" y="180" width="170" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- payments table -->
+        <mxCell id="table-payments" value="payments" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1bee7;strokeColor=#8e24aa;strokeWidth=2;fontSize=11;fontStyle=1;align=center;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="500" y="350" width="190" height="150" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="payments-fields" value="id BIGINT PK&#xa;order_id FK → orders&#xa;amount DECIMAL(10,2)&#xa;status ENUM (PENDING,&#xa;  SUCCESS, FAILED, REFUNDED)&#xa;payment_method VARCHAR(50)&#xa;stripe_charge_id VARCHAR(100)&#xa;created_at TIMESTAMP&#xa;&#xa;INDEX idx_order (order_id)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="510" y="380" width="170" height="110" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="fk-payments-order" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#8e24aa;endArrow=classic;endFill=1;startArrow=oval;startFill=0" edge="1" parent="1" source="table-payments" target="table-orders">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="500" y="425" as="sourcePoint" />
+            <mxPoint x="270" y="425" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- WHY MySQL box -->
+        <mxCell id="why-mysql" value="❓ WHY MYSQL?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="720" y="150" width="220" height="190" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-mysql-text" value="Order placement is a&#xa;multi-table transaction:&#xa;&#xa;BEGIN;&#xa;  INSERT INTO orders ...;&#xa;  INSERT INTO order_items ...;&#xa;  INSERT INTO payments ...;&#xa;COMMIT;&#xa;&#xa;If payment fails → rollback&#xa;all inserts (ACID guarantee)&#xa;&#xa;NoSQL (Cassandra/Mongo)&#xa;has no cross-table txn&#xa;→ risk orphan order_items&#xa;&#xa;Replicas: 1 master write,&#xa;5 read replicas (scale reads)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="730" y="180" width="200" height="150" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-state-machine" value="❓ WHY ENUM STATUS?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="720" y="360" width="220" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-state-machine-text" value="ENUM enforces valid states&#xa;in database schema itself&#xa;&#xa;Invalid: status='PICKE_UP'&#xa;         (typo rejected by DB)&#xa;&#xa;Application validates&#xa;state transitions:&#xa;PLACED → ACCEPTED (✅)&#xa;DELIVERED → PLACED (❌)&#xa;&#xa;Cassandra audit log tracks&#xa;every state change with&#xa;timestamp (compliance)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="730" y="390" width="200" height="100" as="geometry" />
+        </mxCell>
+        
+        <!-- REDIS SECTION -->
+        <mxCell id="redis-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#d84315;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="980" y="90" width="420" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-label" value="⚡ REDIS (In-Memory Cache &amp; Geospatial)" style="text;html=1;strokeColor=none;fillColor=#d84315;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="990" y="100" width="350" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-geo-title" value="GEOSPATIAL INDEX (delivery_partners)" style="text;html=1;strokeColor=none;fillColor=#ffccbc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="145" width="380" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-geo-keys" value="GEOADD delivery_partners lon lat partnerId&#xa;&#xa;Example:&#xa;GEOADD delivery_partners 77.5946 12.9716 'P123'&#xa;                          77.6028 12.9784 'P456'&#xa;&#xa;GEORADIUS delivery_partners 77.5946 12.9716 5 km&#xa;  WITHDIST ASC COUNT 10&#xa;  → [(P123,0.8km), (P456,1.2km), ...]&#xa;&#xa;Internal: geohash indexing (O(log N) search)&#xa;Performance: 10 nearest from 500K in &lt;10ms" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1010" y="175" width="360" height="90" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-cache-title" value="CACHE PATTERNS (Key-Value Store)" style="text;html=1;strokeColor=none;fillColor=#ffccbc;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="280" width="380" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="redis-cache-patterns" value="menu:{restaurantId}       STRING (JSON)  EX 1800 (30min)&#xa;surge:{geohash7}          STRING (1.5x)  EX 120  (2min)&#xa;session:{userId}         HASH           EX 3600 (1hr)&#xa;order:{orderId}:status   STRING (PLACED) EX 7200 (2hr)&#xa;&#xa;Invalidation:&#xa;• menu updated → DEL menu:{restaurantId}&#xa;• surge calculated every 60s → overwrite with new TTL" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1010" y="310" width="360" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- CASSANDRA SECTION -->
+        <mxCell id="cassandra-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f1f8e9;strokeColor=#558b2f;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="980" y="390" width="420" height="190" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cassandra-label" value="📊 CASSANDRA (Time-Series Data)" style="text;html=1;strokeColor=none;fillColor=#558b2f;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="990" y="400" width="300" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cassandra-table1-title" value="partner_location_history" style="text;html=1;strokeColor=none;fillColor=#c5e1a5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1000" y="445" width="380" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cassandra-table1-schema" value="PRIMARY KEY ((partner_id), recorded_at DESC)&#xa;TTL 30 days (auto-delete after 2592000 seconds)&#xa;&#xa;partner_id TEXT&#xa;recorded_at TIMESTAMP&#xa;latitude DECIMAL&#xa;longitude DECIMAL&#xa;&#xa;Query: SELECT * FROM partner_location_history&#xa;       WHERE partner_id = 'P123'&#xa;       AND recorded_at &gt;= now() - 1 day;" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1010" y="470" width="360" height="85" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY Cassandra -->
+        <mxCell id="why-cassandra" value="❓ WHY CASSANDRA?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1420" y="90" width="250" height="190" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-cassandra-text" value="500K partners × 1 GPS/5s =&#xa;100K writes/sec&#xa;&#xa;MySQL cannot handle:&#xa;• Disk I/O bottleneck&#xa;• Unbounded table growth&#xa;  (1B rows in 30 days)&#xa;&#xa;Cassandra optimized for:&#xa;• Write-heavy (LSM tree)&#xa;• Time-series (partition by&#xa;  partner_id, sort by time)&#xa;• Automatic TTL cleanup&#xa;  (no manual DELETE jobs)&#xa;&#xa;Use case: Customer dispute&#xa;Partner never came to address&#xa;→ replay GPS trail&#xa;&#xa;Query by partition key fast,&#xa;scan all partners slow&#xa;(but we never need that)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1430" y="120" width="230" height="150" as="geometry" />
+        </mxCell>
+        
+        <!-- ELASTICSEARCH SECTION -->
+        <mxCell id="elasticsearch-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff9c4;strokeColor=#f57f17;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="300" width="430" height="280" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="elasticsearch-label" value="🔍 ELASTICSEARCH (Restaurant Search Index)" style="text;html=1;strokeColor=none;fillColor=#f57f17;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="1430" y="310" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="elasticsearch-mapping" value="restaurant_index mapping:" style="text;html=1;strokeColor=none;fillColor=#fff9c4;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="1440" y="355" width="380" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="elasticsearch-schema" value="{&#xa;  &quot;restaurant_id&quot;: { &quot;type&quot;: &quot;keyword&quot; },&#xa;  &quot;name&quot;: { &quot;type&quot;: &quot;text&quot;, &quot;analyzer&quot;: &quot;standard&quot; },&#xa;  &quot;cuisine_type&quot;: { &quot;type&quot;: &quot;keyword&quot; },&#xa;  &quot;location&quot;: { &quot;type&quot;: &quot;geo_point&quot; },&#xa;  &quot;avg_rating&quot;: { &quot;type&quot;: &quot;float&quot; },&#xa;  &quot;is_open&quot;: { &quot;type&quot;: &quot;boolean&quot; },&#xa;  &quot;avg_prep_time&quot;: { &quot;type&quot;: &quot;integer&quot; }&#xa;}&#xa;&#xa;Query example:&#xa;POST /restaurant_index/_search&#xa;{&#xa;  &quot;query&quot;: {&#xa;    &quot;bool&quot;: {&#xa;      &quot;must&quot;: [&#xa;        { &quot;match&quot;: { &quot;name&quot;: &quot;pizza&quot; } },&#xa;        { &quot;term&quot;: { &quot;cuisine_type&quot;: &quot;italian&quot; } },&#xa;        { &quot;term&quot;: { &quot;is_open&quot;: true } },&#xa;        { &quot;range&quot;: { &quot;avg_rating&quot;: { &quot;gte&quot;: 4.0 } } }&#xa;      ],&#xa;      &quot;filter&quot;: {&#xa;        &quot;geo_distance&quot;: {&#xa;          &quot;distance&quot;: &quot;5km&quot;,&#xa;          &quot;location&quot;: { &quot;lat&quot;: 12.9716, &quot;lon&quot;: 77.5946 }&#xa;        }&#xa;      }&#xa;    }&#xa;  },&#xa;  &quot;sort&quot;: [&#xa;    { &quot;_geo_distance&quot;: { &quot;location&quot;: {...}, &quot;order&quot;: &quot;asc&quot; } },&#xa;    { &quot;avg_rating&quot;: { &quot;order&quot;: &quot;desc&quot; } }&#xa;  ]&#xa;}" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1450" y="385" width="360" height="185" as="geometry" />
+        </mxCell>
+        
+        <!-- KAFKA SECTION -->
+        <mxCell id="kafka-section-bg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1f5fe;strokeColor=#01579b;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="30" y="600" width="1420" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-label" value="📡 KAFKA (Event Streaming — 7-day retention)" style="text;html=1;strokeColor=none;fillColor=#01579b;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=14;fontStyle=1;fontColor=#ffffff" vertex="1" parent="1">
+          <mxGeometry x="40" y="610" width="400" height="30" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topics-title" value="TOPICS &amp; PARTITION KEYS" style="text;html=1;strokeColor=none;fillColor=#bbdefb;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=11;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="50" y="655" width="1380" height="20" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="kafka-topics" value="order-placed              partition_key: order_id        payload: {orderId, customerId, restaurantId, items[], total, created_at}&#xa;restaurant-accepted       partition_key: order_id        payload: {orderId, restaurantId, prep_time_minutes, accepted_at}&#xa;partner-assigned          partition_key: order_id        payload: {orderId, partnerId, partner_name, distance_km, assigned_at}&#xa;partner-location-update   partition_key: partner_id      payload: {partnerId, lat, lon, timestamp, speed_kmph} (100K msgs/sec)&#xa;order-delivered           partition_key: order_id        payload: {orderId, partnerId, delivered_at, actual_delivery_time}&#xa;&#xa;Consumers:&#xa;• Notification Service (subscribes to all order events) → push FCM/SMS&#xa;• Real-Time Tracking Service (subscribes to partner-location-update) → SSE push to customer&#xa;• Analytics Service (subscribes to all) → fraud detection, dashboards&#xa;• Cassandra Writer (subscribes to partner-location-update) → audit log with TTL" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="60" y="685" width="1360" height="85" as="geometry" />
+        </mxCell>
+        
+        <!-- WHY Kafka -->
+        <mxCell id="why-kafka-geo" value="❓ WHY KAFKA FOR GPS?" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e8f5e9;strokeColor=#2e7d32;strokeWidth=2;fontSize=11;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="1470" y="600" width="380" height="180" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="why-kafka-geo-text" value="500K partners × 1 GPS/5s = 100K msgs/sec&#xa;&#xa;Why Kafka instead of direct DB writes?&#xa;&#xa;1. Decouple producers (partner apps) from consumers&#xa;   • Location Service writes to Redis GEO&#xa;   • Cassandra Writer archives to audit log&#xa;   • Real-Time Service SSE pushes to customers&#xa;   • Analytics runs ML fraud detection&#xa;&#xa;   All process independently, won't block partner app&#xa;&#xa;2. Replay capability: if Cassandra crashed for 2 min,&#xa;   replay from Kafka offset → no data loss&#xa;&#xa;3. Partitioning by partner_id → ordered per partner&#xa;   (GPS A → B → C always arrive in sequence)&#xa;&#xa;4. 7-day retention → debug &quot;why was partner assigned&#xa;   when they were 10km away?&quot; → replay event stream&#xa;&#xa;RabbitMQ alternative: loses messages on crash,&#xa;no replay, not designed for 100K msgs/sec sustained" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=top;whiteSpace=wrap;rounded=0;fontSize=7;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="1480" y="630" width="360" height="140" as="geometry" />
+        </mxCell>
+        
+        <!-- Data Flow Arrows -->
+        <mxCell id="flow-mysql-redis" value="Read-through cache&#xa;(on miss, load from MySQL)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#757575;fontSize=8;dashed=1;endArrow=classic;endFill=1;startArrow=classic;startFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="960" y="200" as="sourcePoint" />
+            <mxPoint x="980" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        
+        <mxCell id="flow-mysql-es" value="Sync to ES&#xa;(CDC or batch)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#757575;fontSize=8;dashed=1;endArrow=classic;endFill=1" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="960" y="250" as="sourcePoint" />
+            <mxPoint x="1420" y="440" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="1350" y="250" />
+              <mxPoint x="1350" y="440" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Summary Box -->
+        <mxCell id="summary-box" value="📊 DATA FLOW SUMMARY" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f7fa;strokeColor=#006064;strokeWidth=2;fontSize=11;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="30" y="800" width="1820" height="90" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="summary-text" value="1. **Write path**: Customer places order → INSERT to MySQL (orders, order_items, payments in txn) → PUBLISH to Kafka (order-placed event) → Notification Service consumes → push FCM/SMS&#xa;2. **Read path**: Customer browses restaurants → Query Elasticsearch (geo+text+filter ranked by distance+rating) → Read menu from Redis (cache) → if miss, load from MySQL&#xa;3. **GPS tracking**: Partner app sends GPS every 5s → Kafka (partner-location-update) → Location Service GEOADD to Redis GEO + Cassandra INSERT (audit) → Real-Time Service SSE push to customer&#xa;4. **Partner assignment**: GEORADIUS from Redis GEO → filter ONLINE → dispatch → 30s timeout → escalate → UPDATE orders in MySQL → Kafka event → notify customer&#xa;5. **Why polyglot persistence**: Each store optimized for access pattern (MySQL=txn, Redis=latency, Cassandra=write-heavy, Elasticsearch=search, Kafka=events)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="40" y="830" width="1800" height="50" as="geometry" />
+        </mxCell>
+        
+        <!-- Scale Numbers -->
+        <mxCell id="scale-numbers-box" value="📈 SCALE" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff3e0;strokeColor=#e65100;strokeWidth=2;fontSize=11;fontStyle=1;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="30" y="910" width="1820" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="scale-numbers-text" value="MySQL: 5M orders, 200K restaurants, 1M users, 500K partners | Redis GEO: 500K active partners, 100K GEOADD/sec, 10K GEORADIUS/sec | Cassandra: 1B location records (30-day TTL), 100K writes/sec | Elasticsearch: 200K restaurants indexed, 10K searches/sec | Kafka: 100K msgs/sec (partner GPS), 7-day retention = 60TB" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=8;fontFamily=Courier New" vertex="1" parent="1">
+          <mxGeometry x="40" y="940" width="1800" height="20" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

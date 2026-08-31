@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kafka Streams Architecture — ASCII Diagrams &amp; Explanations — Kafka Deep Dive</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#07090f;--surface:#0d1423;--surface2:#111827;--border:#1a2744;--border2:#243558;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;
+  --purple:#8b5cf6;--orange:#f97316;--text:#e2e8f0;--muted:#64748b;--soft:#94a3b8;
+}
+body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;user-select:none}
+#player{width:100vw;height:100vh;display:flex;flex-direction:column}
+#topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--surface);border-bottom:1px solid var(--border);min-height:46px;gap:12px}
+#slide-title{font-size:12.5px;font-weight:600;color:var(--blue);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:62vw;letter-spacing:.01em}
+#counter{color:var(--muted);font-size:11.5px;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:500}
+#progress-bar{height:2px;background:var(--border)}
+#progress-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan),var(--purple));transition:width .4s cubic-bezier(.4,0,.2,1)}
+#slide-area{flex:1;overflow:hidden;position:relative}
+.slide{display:none;width:100%;height:100%;overflow-y:auto;padding:18px 26px 12px;animation:fadeIn .25s ease;scroll-behavior:smooth}
+.slide.active{display:block}
+.slide::-webkit-scrollbar{width:4px}
+.slide::-webkit-scrollbar-track{background:transparent}
+.slide::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+#controls{display:flex;align-items:center;justify-content:space-between;padding:8px 24px;background:var(--surface);border-top:1px solid var(--border)}
+.btn{background:var(--surface2);border:1px solid var(--border2);color:#a0b3c8;padding:5px 18px;border-radius:6px;cursor:pointer;font-size:12.5px;font-family:inherit;font-weight:500;transition:all .18s;letter-spacing:.01em}
+.btn:hover{background:var(--border2);color:#fff;border-color:#3a5070}
+.btn:disabled{opacity:.2;cursor:default}
+#play-btn{background:#1d4ed8;border-color:#2563eb;font-weight:700;padding:5px 22px;color:#fff}
+#play-btn:hover{background:#2563eb}
+#slide-dots{display:flex;gap:3px;flex-wrap:wrap;max-width:55vw;justify-content:center}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border2);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--blue);transform:scale(1.4)}
+.dot:hover{background:#3a5070}
+h1{font-size:1.85rem;font-weight:800;line-height:1.2;letter-spacing:-.02em}
+h2{font-size:1.1rem;font-weight:700;color:var(--blue);margin-bottom:12px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+h2::before{content:'';display:block;width:3px;height:1.1em;background:linear-gradient(180deg,var(--blue),var(--cyan));border-radius:2px;flex-shrink:0}
+h3{font-size:.875rem;font-weight:700;color:#34d399;margin:10px 0 5px;letter-spacing:.005em}
+p,li{font-size:.875rem;line-height:1.7;color:var(--soft)}
+p{margin:6px 0}
+ul{padding-left:16px;margin:6px 0}
+li{margin-bottom:3px}
+strong{color:var(--text);font-weight:600}
+code{color:#fbbf24;background:#0d1423;border:1px solid var(--border2);border-radius:4px;padding:1px 5px;font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:.85em}
+.dia{
+  background:#040b16;border:1px solid #1a2744;border-radius:8px;
+  padding:12px 14px;
+  font-family:'JetBrains Mono','Cascadia Code','Fira Code','Consolas',monospace;
+  font-size:11px;line-height:1.7;white-space:pre;overflow-x:auto;
+  color:#8da9c4;margin:10px 0;
+  box-shadow:inset 0 1px 4px rgba(0,0,0,.5);
+}
+.section-label{display:inline-flex;align-items:center;gap:6px;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 12px;font-size:10.5px;font-weight:600;color:var(--muted);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase}
+.title-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 140px);text-align:center}
+.gradient-text{background:linear-gradient(135deg,var(--blue),var(--cyan),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;justify-content:center}
+.badge{display:inline-block;background:#111827;border:1px solid var(--border2);border-radius:20px;padding:3px 11px;font-size:11px;color:var(--soft);margin:2px;font-weight:500}
+</style>
+</head>
+<body>
+<div id="player">
+  <div id="topbar">
+    <span id="slide-title">Kafka Streams Architecture — ASCII Diagrams &amp; Explanations</span>
+    <span id="counter">1 / 21</span>
+  </div>
+  <div id="progress-bar"><div id="progress-fill" style="width:6.67%"></div></div>
+  <div id="slide-area">
+<div class="slide active" id="s1" data-title="Introduction">
+<div class="title-wrap">
+  <div style="font-size:3rem;margin-bottom:12px">🌊</div>
+  <h1 class="gradient-text">Kafka Streams Architecture — ASCII Diagrams &amp; Explanations</h1>
+  <p style="margin-top:10px;font-size:1rem;color:#475569">Structured walkthrough with ASCII diagrams and explanations</p>
+  <div class="tags"><span class="badge">Topology</span><span class="badge">Sub-Topology</span><span class="badge">Tasks</span></div>
+  <p style="margin-top:28px;color:#1e3a5f;font-size:12px">→ Arrow keys to navigate &nbsp;·&nbsp; P to play/pause &nbsp;·&nbsp; Click dots to jump</p>
+</div>
+</div>
+<div class="slide" id="s2" data-title="Overview">
+<h2>Overview</h2>
+<p>Topics: Stream, Topology, Sub-Topology, Tasks, RocksDB, Change Log, Complete Flow</p>
+</div>
+<div class="slide" id="s3" data-title="What Is a Stream?">
+<h2>What Is a Stream?</h2>
+<p>A stream is an <strong>infinite sequence of events</strong> — no start, no end, just a continuous flow.</p>
+<div class="dia">Normal batch processing:
+  Wait until 3pm → pick up ALL events → process them all at once
+
+Stream processing:
+  Event arrives NOW → process it NOW → next event → process it NOW → ...
+
+  order-1 ──► process ──► output
+  order-2 ──► process ──► output
+  order-3 ──► process ──► output
+  order-4 ──► process ──► output
+  ...forever...</div>
+<p><strong>Kafka Streams</strong> is just a JAR file you add to your application — it's not a cluster or server. Add the dependency → your app becomes a stream processor.</p>
+</div>
+<div class="slide" id="s4" data-title="Topology — The Blueprint">
+<h2>Topology — The Blueprint</h2>
+<p>A <strong>Topology</strong> is the logical map of how data flows through your application: from where it enters, what happens to it, and where it exits.</p>
+<p>Think of it like an <strong>assembly line in a factory</strong>:</p>
+<div class="dia">Factory analogy:
+  Raw material → Cut → Paint → Package → Ship
+
+Kafka Streams topology:
+  Source topic → Processor 1 → Processor 2 → Processor 3 → Sink topic</div>
+<p>It is a <strong>DAG (Directed Acyclic Graph)</strong> — data always flows forward, never loops back.</p>
+<div class="dia">  Source ──► ProcessorA ──► ProcessorB ──► Sink
+               │
+               └──────────► ProcessorC ──► Sink 2</div>
+<p><strong>Key components:</strong></p>
+<div class="dia">┌────────────────────────────────────────────────────────────────┐
+│                         TOPOLOGY                               │
+│                                                                │
+│   ┌────────────┐    ┌───────────────────────────┐    ┌──────┐ │
+│   │   SOURCE   │───►│       PROCESSORS          │───►│ SINK │ │
+│   │            │    │  (your business logic)    │    │      │ │
+│   │ reads from │    │  filter, map, group,      │    │writes│ │
+│   │ Kafka topic│    │  count, join, aggregate   │    │ to   │ │
+│   │            │    │                           │    │topic │ │
+│   └────────────┘    └───────────────────────────┘    └──────┘ │
+│                              │                                 │
+│                              ▼ (if stateful)                   │
+│                        ┌──────────┐                            │
+│                        │ RocksDB  │  ← local state store       │
+│                        └──────────┘                            │
+└────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s5" data-title="Types of Topologies">
+<h2>Types of Topologies</h2>
+<div class="dia">LINEAR TOPOLOGY (simple pipeline)
+────────────────────────────────────────────────────────────────
+  [order-events] ──► filter(&gt;₹100) ──► map(format) ──► [output-topic]
+
+
+BRANCHING TOPOLOGY (split by condition)
+────────────────────────────────────────────────────────────────
+                              ┌──► filter(&gt;=₹1000) ──► [high-value-orders]
+  [order-events] ──► branch ──┤
+                              └──► filter(&lt;₹1000)  ──► [low-value-orders]
+
+
+MULTI-SOURCE JOIN TOPOLOGY (enrich data)
+────────────────────────────────────────────────────────────────
+  [order-events]     ──┐
+                       ├──► JOIN ──► [enriched-orders]
+  [customer-profile] ──┘</div>
+</div>
+<div class="slide" id="s6" data-title="Task — Unit of Parallelism">
+<h2>Task — Unit of Parallelism</h2>
+<p>A <strong>Task</strong> is the smallest unit of work. Multiple tasks run in parallel — that's how Kafka Streams scales.</p>
+<div class="dia">  Topic: order-events  (2 partitions)
+  ┌────────────────────────────────┐
+  │  Partition-0   │  Partition-1  │
+  └────────┬───────┴───────┬───────┘
+           │               │
+           ▼               ▼
+        Task-0           Task-1
+    ┌──────────────┐  ┌──────────────┐
+    │  full        │  │  full        │
+    │  topology    │  │  topology    │
+    │  Source P-0  │  │  Source P-1  │
+    │  Processor   │  │  Processor   │
+    │  Sink        │  │  Sink        │
+    └──────────────┘  └──────────────┘
+
+Number of tasks = number of partitions in source topic
+Task-0 and Task-1 run IN PARALLEL</div>
+<p><strong>Key points:</strong></p>
+<ul><li>Each task gets the <strong>complete topology</strong> to execute</li><li>Within one task, events are processed <strong>one by one</strong> (no parallelism inside a task)</li><li>Tasks are distributed across your application instances (threads)</li></ul>
+</div>
+<div class="slide" id="s7" data-title="The Repartition Problem">
+<h2>The Repartition Problem</h2>
+<p>Repartition is needed when events for the <strong>same key are spread across multiple partitions</strong>.</p>
+<p><strong>Goal:</strong> Count orders per product ID</p>
+<div class="dia">Topic: order-events (key = orderId, NOT productId)
+────────────────────────────────────────────────────────────────
+  Partition-0:                 Partition-1:
+  { orderId:O1, product:P1 }   { orderId:O3, product:P1 }
+  { orderId:O2, product:P2 }   { orderId:O4, product:P2 }
+
+Task-0 sees P1: 1 order         Task-1 sees P1: 1 order
+Task-1 sees P2: 1 order         Task-1 sees P2: 1 order
+
+Which task has the CORRECT total for P1?
+Task-0 says: P1=1  ← WRONG
+Task-1 says: P1=1  ← WRONG
+Real answer:       P1=2  ← neither task can see this!
+
+PROBLEM: data for P1 is SPLIT across 2 partitions → 2 different tasks → wrong aggregation</div>
+</div>
+<div class="slide" id="s8" data-title="Repartition — The Solution">
+<h2>Repartition — The Solution</h2>
+<p>Re-publish events using <strong>product ID as the key</strong> so all events for the same product go to the same partition.</p>
+<div class="dia">STEP 1: Sub-Topology 0 — Re-key and re-publish
+────────────────────────────────────────────────────────────────
+  Source: order-events (key=orderId)
+      │
+      ▼
+  selectKey(productId)   ← repartition step
+      │
+      ▼  publishes to internal repartition topic (key=productId)
+  ┌────────────────────────────────────────────┐
+  │  repartition-topic (auto-created by Kafka) │
+  │  Partition-0: ALL P1 orders                │
+  │  Partition-1: ALL P2 orders                │
+  └────────────────────────────────────────────┘
+  (same key = same partition, guaranteed by Kafka)
+
+
+STEP 2: Sub-Topology 1 — Read re-partitioned topic and count
+────────────────────────────────────────────────────────────────
+  Source: repartition-topic (key=productId)
+      │
+      ▼
+  groupByKey → count
+      │
+      ▼
+  Sink: product-order-count topic
+
+  Task-0 reads Partition-0:  ALL P1 orders → P1=2  ✓
+  Task-1 reads Partition-1:  ALL P2 orders → P2=2  ✓</div>
+</div>
+<div class="slide" id="s9" data-title="Sub-Topology — What It Is">
+<h2>Sub-Topology — What It Is</h2>
+<p>When a repartition step is in your topology, Kafka Streams <strong>automatically splits</strong> it into multiple sub-topologies internally. You don't create sub-topologies — Kafka does it for you.</p>
+<div class="dia">YOUR TOPOLOGY (what you write):
+────────────────────────────────────────────────────────────────
+  source(order-events)
+    → selectKey(productId)      ← repartition step here
+    → groupByKey
+    → count
+    → sink(product-order-count)
+
+
+WHAT KAFKA CREATES INTERNALLY:
+────────────────────────────────────────────────────────────────
+  Sub-Topology 0:
+    source: order-events
+    processor: selectKey(productId)
+    sink: repartition-topic          ← auto-created topic
+
+  Sub-Topology 1:
+    source: repartition-topic        ← reads from auto-created topic
+    processor: groupByKey → count
+    sink: product-order-count</div>
+<p><strong>Rule:</strong> Each sub-topology creates one task per partition of its source topic.</p>
+</div>
+<div class="slide" id="s10" data-title="Task Count Calculation (Full Example)">
+<h2>Task Count Calculation (Full Example)</h2>
+<div class="dia">Setup:
+  order-events topic:     2 partitions (P-0, P-1)
+  repartition-topic:      2 partitions (P-0, P-1)  ← same count as source
+
+Sub-Topology 0 source = order-events (2 partitions) → 2 tasks
+Sub-Topology 1 source = repartition-topic (2 partitions) → 2 tasks
+Total tasks = 4
+
+  Task-0-0  (sub-topology 0, partition 0)
+  Task-0-1  (sub-topology 0, partition 1)
+  Task-1-0  (sub-topology 1, partition 0)
+  Task-1-1  (sub-topology 1, partition 1)</div>
+<p>These 4 tasks get distributed across your application threads:</p>
+<div class="dia">  Application Instance (2 threads)
+  ┌──────────────────────────────────────────┐
+  │  Thread-1            Thread-2            │
+  │  ┌─────────────┐     ┌─────────────┐    │
+  │  │  Task-0-0   │     │  Task-0-1   │    │
+  │  │  Task-1-0   │     │  Task-1-1   │    │
+  │  └─────────────┘     └─────────────┘    │
+  └──────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s11" data-title="RocksDB — Local State Store">
+<h2>RocksDB — Local State Store</h2>
+<p>Each stateful task maintains its own <strong>RocksDB</strong> — a key-value store saved to local disk.</p>
+<div class="dia">  Task-0-0                      Task-1-0
+  ┌──────────────────────┐      ┌──────────────────────┐
+  │  Sub-Topology 0      │      │  Sub-Topology 1      │
+  │  processor...        │      │  groupByKey → count  │
+  │                      │      │                      │
+  │  ┌────────────────┐  │      │  ┌────────────────┐  │
+  │  │  RocksDB       │  │      │  │  RocksDB       │  │
+  │  │  order-store   │  │      │  │  count-store   │  │
+  │  │  (local disk)  │  │      │  │  (local disk)  │  │
+  │  └────────────────┘  │      │  └────────────────┘  │
+  └──────────────────────┘      └──────────────────────┘
+
+RocksDB = key-value file on YOUR machine's disk
+Each task has its OWN RocksDB — they don't share</div>
+</div>
+<div class="slide" id="s12" data-title="Change Log Topic — Crash Recovery for State">
+<h2>Change Log Topic — Crash Recovery for State</h2>
+<p><strong>Problem:</strong> If the machine dies, RocksDB (local disk) is gone. How to recover?</p>
+<p><strong>Solution:</strong> Every write to RocksDB is also published to a <strong>changelog topic</strong> in Kafka.</p>
+<div class="dia">  Task writes to RocksDB:
+  ┌──────────────────────────────────────────────────────────────┐
+  │  count-store (RocksDB):  { P1: 3, P2: 5 }                   │
+  │                 │                                            │
+  │                 │  every update also goes to Kafka           │
+  │                 ▼                                            │
+  │  count-store-changelog topic:                                │
+  │  [ {P1:1}, {P1:2}, {P2:1}, {P1:3}, {P2:2}, {P2:5} ]         │
+  └──────────────────────────────────────────────────────────────┘
+
+Machine crashes:
+  Local RocksDB  ✗  (gone with the machine)
+
+New machine takes over the task:
+  1. Reads count-store-changelog topic from beginning
+  2. Replays all events → rebuilds RocksDB: { P1:3, P2:5 }
+  3. Continues processing from where the old task left off  ✓</div>
+<p><strong>Partition alignment:</strong> Each task reads/writes to the same partition number in the changelog as its source partition.</p>
+<div class="dia">  Task-1-0 (sub-topology 1, partition 0):
+    reads from:   repartition-topic    P-0
+    writes to:    count-store-changelog P-0  ← same partition number
+
+  Task-1-1 (sub-topology 1, partition 1):
+    reads from:   repartition-topic    P-1
+    writes to:    count-store-changelog P-1  ← same partition number</div>
+</div>
+<div class="slide" id="s13" data-title="Complete Picture">
+<h2>Complete Picture</h2>
+<div class="dia">KAFKA CLUSTER
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│  order-events        repartition-topic    product-order-count       │
+│  ┌────┬────┐         ┌────┬────┐          ┌────┬────┐               │
+│  │ P0 │ P1 │         │ P0 │ P1 │          │ P0 │ P1 │               │
+│  └────┴────┘         └────┴────┘          └────┴────┘               │
+│                                                                     │
+│  order-store-changelog    count-store-changelog                     │
+│  ┌────┬────┐              ┌────┬────┐                               │
+│  │ P0 │ P1 │              │ P0 │ P1 │                               │
+│  └────┴────┘              └────┴────┘                               │
+└─────────────────────────────────────────────────────────────────────┘
+                  ▲ reads/writes                 ▲ reads/writes
+                  │                             │
+STREAM APPLICATION INSTANCE
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│  Thread-1                          Thread-2                         │
+│  ┌──────────────────────────┐      ┌──────────────────────────┐    │
+│  │  Task-0-0 (ST0, P0)      │      │  Task-0-1 (ST0, P1)      │    │
+│  │  reads: order-events P0  │      │  reads: order-events P1  │    │
+│  │  RocksDB: order-store    │      │  RocksDB: order-store    │    │
+│  ├──────────────────────────┤      ├──────────────────────────┤    │
+│  │  Task-1-0 (ST1, P0)      │      │  Task-1-1 (ST1, P1)      │    │
+│  │  reads: reptn-topic P0   │      │  reads: reptn-topic P1   │    │
+│  │  RocksDB: count-store    │      │  RocksDB: count-store    │    │
+│  └──────────────────────────┘      └──────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────┘</div>
+</div>
+<div class="slide" id="s14" data-title="Application Startup Flow">
+<h2>Application Startup Flow</h2>
+<div class="dia">Step 1:  App starts with group.id = "stream-analytics"
+Step 2:  Find group coordinator → hash("stream-analytics") % 50 → partition 23
+Step 3:  Connect to broker holding __consumer_offsets partition 23
+Step 4:  Send JoinGroup request — coordinator waits for ALL instances to join
+Step 5:  Stream Partition Assigner runs:
+           - Discovers your topology
+           - Creates sub-topologies
+           - Creates tasks
+           - Creates repartition topic (if needed)
+           - Creates changelog topics (if needed)
+           - Distributes tasks to instances
+Step 6:  Your instance gets assigned tasks (e.g. Task-0-0, Task-1-0)
+Step 7:  For each task — restore RocksDB from changelog topic
+Step 8:  Fetch last committed offset for source partitions
+Step 9:  Start reading events → process through topology → commit offset
+Step 10: Repeat forever ↺</div>
+</div>
+<div class="slide" id="s15" data-title="Quick Reference">
+<h2>Quick Reference</h2>
+<div class="dia">Concept          What it is                           Key point
+───────────────  ───────────────────────────────────  ──────────────────────────────
+Stream           Infinite sequence of events          No start, no end
+Topology         Blueprint of your data flow          DAG — no loops, only forward
+Source           Entry point (reads Kafka topic)      No parent node
+Processor        Your business logic steps            filter, map, count, join, etc.
+Sink             Exit point (writes to Kafka topic)   No child node
+Sub-Topology     A slice of topology split by Kafka   Created automatically at runtime
+Task             Smallest unit of parallelism         1 task per partition per sub-topology
+RocksDB          Local key-value state store          Each task has its own, on local disk
+Changelog topic  Kafka-backed backup of RocksDB       Used to rebuild state after crash
+Repartition      Re-key events by new key             Groups same-key events to one partition
+
+When is sub-topology created?   → when your topology has a repartition step
+When is repartition needed?     → when you groupBy a key that ≠ the source topic key</div>
+</div>
+<div class="slide" id="s16" data-title="Architecture — Topology for Delivery-Rate Aggregation">
+<h2>Architecture — The Actual Topology, Task-by-Task</h2>
+<p>"Let's map this onto real hardware: the delivery-rate topology, and how it splits into sub-topologies and tasks."</p>
+<div class="dia">  Source: delivery_status_events (100 partitions)
+        │
+        ▼ filter(status in DELIVERED/FAILED)     ← SAME sub-topology (no repartition)
+        ▼ groupBy(channel)                        ← re-keys! forces repartition
+        │
+  [Sub-Topology 1: source → filter → repartition-sink]
+        │
+        ▼  repartition topic (internal, Kafka-managed)
+  [Sub-Topology 2: repartition-source → windowedBy(1min) → aggregate → sink]
+        │
+  100 tasks in Sub-Topology 1, up to (repartition topic's partition count)
+  tasks in Sub-Topology 2 — each task = 1 partition, RocksDB-backed</div>
+<p><strong>Scenario-first:</strong> "The groupBy(channel) is the exact moment this topology splits into two sub-topologies — Streams can't guarantee the new 'channel' key is already co-located with the right task, so it must repartition through an internal topic first."</p>
+</div>
+<div class="slide" id="s17" data-title="Cross Questions">
+<h2>Cross Questions Interviewers Ask</h2>
+<div class="dia">Q: Why does a groupBy with a NEW key selector force a repartition, but
+   groupByKey doesn't?
+A: groupByKey reuses the existing key — already correctly partitioned.
+   groupBy can supply an entirely different key, which might belong on a
+   completely different partition, so Streams must physically re-write to
+   a new topic to guarantee correct co-partitioning downstream.
+
+Q: Why does each task get its OWN RocksDB store instead of one shared store?
+A: Tasks are the unit of parallelism and can run on different instances/threads
+   entirely — a shared store would require cross-task coordination on every
+   access, defeating the whole point of partition-based parallelism.
+
+Q: What's the actual role of the changelog topic vs RocksDB?
+A: RocksDB is a local, fast CACHE of state. The changelog topic is the
+   durable SOURCE OF TRUTH — on restart, Streams doesn't recompute from
+   scratch, it replays the changelog to rebuild just the local state.</div>
+</div>
+<div class="slide" id="s18" data-title="Trade-offs">
+<h2>Trade-offs</h2>
+<div class="dia">Decision              Choice              Alternative        Why ours                           When to flip
+──────────────────────  ──────────────────  ─────────────────  ─────────────────────────────────  ─────────────────────
+Filtering placement     Before groupBy       After groupBy       Shrinks repartition topic volume     Never — filter early
+                                                                    to only what's necessary             is essentially always right
+State store              RocksDB (default)    In-memory only       Survives restarts via changelog      State cheap to fully
+                                                                                                            recompute (rare)</div>
+</div>
+<div class="slide" id="s19" data-title="Senior Trap Questions (15 YOE)">
+<h2>Senior Trap Questions (15 YOE)</h2>
+<div class="dia">Trap 1 — "After adding a mapValues before a groupBy, the resulting
+  repartition topic's data volume looks suspiciously large — nearly the
+  size of the entire source topic. Why, and is that expected?"
+  Answer: "Expected — the repartition topic isn't a filtered subset, it
+  re-writes every record that REACHES the groupBy with its new key. If
+  filter/mapValues upstream didn't already shrink the volume, the
+  repartition topic is roughly as large as its input. This is exactly why
+  filtering should happen as EARLY as possible — filter before you group,
+  never after — to shrink what actually needs repartitioning."
+
+Trap 2 — "Your Streams app's local disk usage keeps climbing daily with
+  no bound, even though your window size is fixed at 1 minute. What's wrong?"
+  Answer: "Almost certainly missing retention configuration on the windowed
+  store — retention is separate from window SIZE, and defaults can retain
+  far more historical window state than a live dashboard actually needs. I'd
+  tighten retention to just enough for late-arriving events, relying on the
+  OUTPUT topic (not the internal state store) for any longer history needed."</div>
+</div>
+<div class="slide" id="s20" data-title="WHY We Chose Each Decision">
+<h2>WHY We Chose Each Decision</h2>
+<div class="dia">- Why filter before groupBy, always: minimizes what flows through the
+  (often expensive) repartition topic.
+- Why each task owns its own RocksDB store: matches partition-based
+  parallelism — no cross-task coordination needed on every state access.
+- Why the changelog topic backs every state store: local disk is just a
+  cache; the changelog is what makes state genuinely crash-recoverable.
+- Why sub-topologies split automatically at repartition boundaries: keeps
+  the developer from having to manually manage internal topic wiring.</div>
+</div>
+<div class="slide" id="s21" data-title="Top 2 Technologies — Repartitioning Strategy">
+<h2>Top 2 Technologies — Handling Re-Keyed Aggregation</h2>
+<div class="dia">Accept the Repartition (default)  vs  Pre-Key the Source Topic by Channel
+
+Why pick Accept the Repartition (usually the right default): simplest,
+  Streams manages the internal topic automatically, no upstream coordination needed.
+Why pick Pre-Keying the Source: if you control the PRODUCER and know
+  aggregation will always group by channel, keying by channel from the
+  start avoids the repartition topic entirely.
+
+Example 1 (Accept repartition): Notification System's delivery-rate
+  aggregation — the source topic is keyed by notification_id for good
+  reason (partition-key needs), so repartitioning for channel-based
+  aggregation is the pragmatic choice.
+Example 2 (Pre-key source): A dedicated metrics-only topic where you
+  control the producer and know every consumer aggregates by the same
+  dimension — key by that dimension from the start.</div>
+</div>
+  </div>
+  <div id="controls">
+    <button class="btn" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+    <div id="slide-dots"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="btn" id="play-btn" onclick="togglePlay()">▶ Play</button>
+      <button class="btn" id="next-btn" onclick="navigate(1)">Next →</button>
+    </div>
+  </div>
+</div>
+<script>
+const TOTAL = 21;
+const AUTO_INTERVAL = 14000;
+let current = 1;
+let autoTimer = null;
+
+const dotContainer = document.getElementById('slide-dots');
+for(let i=1; i<=TOTAL; i++){
+  const d = document.createElement('div');
+  d.className = 'dot' + (i===1?' active':'');
+  d.title = document.getElementById('s'+i)?.dataset.title || '';
+  d.onclick = () => showSlide(i);
+  dotContainer.appendChild(d);
+}
+
+function showSlide(n) {
+  if(n<1||n>TOTAL) return;
+  document.querySelectorAll('.slide').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById('s'+n);
+  if(el) el.classList.add('active');
+  el && (el.scrollTop = 0);
+  current = n;
+  document.getElementById('counter').textContent = n + ' / ' + TOTAL;
+  document.getElementById('slide-title').textContent = el?.dataset.title || 'Kafka Streams Architecture — ASCII Diagrams &amp; Explanations';
+  document.getElementById('progress-fill').style.width = ((n/TOTAL)*100).toFixed(2)+'%';
+  document.getElementById('prev-btn').disabled = n===1;
+  document.getElementById('next-btn').disabled = n===TOTAL;
+  document.querySelectorAll('.dot').forEach((d,i) => d.classList.toggle('active', i+1===n));
+}
+
+function navigate(dir) { showSlide(current + dir); if(autoTimer) resetAuto(); }
+function togglePlay() {
+  if(autoTimer) { clearInterval(autoTimer); autoTimer=null; document.getElementById('play-btn').textContent='▶ Play'; }
+  else { startAuto(); }
+}
+function startAuto() {
+  document.getElementById('play-btn').textContent='⏸ Pause';
+  autoTimer = setInterval(() => { if(current < TOTAL) showSlide(current+1); else togglePlay(); }, AUTO_INTERVAL);
+}
+function resetAuto() { clearInterval(autoTimer); startAuto(); }
+
+document.addEventListener('keydown', e => {
+  if(e.key==='ArrowRight'||e.key===' ') { e.preventDefault(); navigate(1); }
+  if(e.key==='ArrowLeft') { e.preventDefault(); navigate(-1); }
+  if(e.key==='p'||e.key==='P') togglePlay();
+  if(e.key==='Home') showSlide(1);
+  if(e.key==='End') showSlide(TOTAL);
+});
+
+const requestedSlide = Number(new URLSearchParams(location.search).get('slide'));
+showSlide(requestedSlide >= 1 && requestedSlide <= TOTAL ? requestedSlide : 1);
+</script>
+</body>
+</html>
