@@ -109,6 +109,8 @@ WHERE video_id = 'abc';
 
 Simple. Clean. Obvious.
 
+`[🖱️ CLICK → Slide 1: The Locking Problem]`
+
 Here's what actually happens at 60,000 writes per second.
 
 When this SQL runs, the database puts a lock on that row.
@@ -145,7 +147,7 @@ They don't need to happen at the same time.
 
 So we separate them entirely.
 
-> 🖥️ **[PRESENTATION — Slide 1: Architecture]** Open `presentation/youtube-view-count-slides.html` in Chrome · F11 full screen
+> 🖥️ **[PRESENTATION — Slide 2: Architecture]** Open `presentation/youtube-view-count-slides.html` in Chrome · F11 full screen
 
 Let me walk through each step.
 
@@ -187,7 +189,7 @@ Instead of 847 individual database writes —
 you do ONE write every 30 seconds.
 That's the core optimisation that makes this whole system work.
 
-`[🖱️ CLICK → Slide 2: Flink vs Kafka Streams]`
+`[🖱️ CLICK → Slide 3: Flink vs Kafka Streams]`
 
 Now you might ask — why Flink and not Kafka Streams?
 Kafka Streams is lighter weight, just a library.
@@ -214,7 +216,7 @@ At 60,000 writes per second that queue becomes enormous.
 
 Redis doesn't do that. Here's why.
 
-`[🖱️ CLICK → Slide 3: Redis Single Thread]`
+`[🖱️ CLICK → Slide 4: Redis Single Thread]`
 
 Redis is **single-threaded**.
 One thread. One command at a time. In order. Always.
@@ -289,7 +291,7 @@ Let me explain how each one works inside.
 
 #### CASSANDRA
 
-`[🖱️ CLICK → Slide 4: Cassandra Write Path]`
+`[🖱️ CLICK → Slide 5: Cassandra Write Path]`
 
 **No boss.**
 
@@ -343,7 +345,7 @@ Downside: uses CPU while running. Real operational cost.
 
 #### BIGTABLE
 
-`[🖱️ CLICK → Slide 5: Bigtable Architecture]`
+`[🖱️ CLICK → Slide 6: Bigtable Architecture]`
 
 **One giant sorted table, cut into pieces.**
 
@@ -398,7 +400,7 @@ That's how Bigtable scales — add servers, split Tablets, spread load.
 ### [10:30 — 11:30]
 
 
-`[🖱️ CLICK → Slide 6: Pick One]`
+`[🖱️ CLICK → Slide 7: Pick One]`
 
 Simple answer:
 
@@ -427,7 +429,7 @@ But what does that actually mean?
 
 Let me show you what's happening inside that window.
 
-`[🖱️ CLICK → Slide 7: Flink Window Internals]`
+`[🖱️ CLICK → Slide 8: Flink Window Internals]`
 
 Imagine 30 seconds of events coming in for one video.
 Could be 50 events. Could be 50,000 if it's going viral.
@@ -498,7 +500,7 @@ but as a safety net for exactly this situation.
 
 ---
 
-`[🖱️ CLICK → Slide 8: The Day the Counter Broke]`
+`[🖱️ CLICK → Slide 9: The Day the Counter Broke]`
 
 In December 2012, a song called Gangnam Style by PSY
 was breaking every record on the internet.
@@ -580,15 +582,16 @@ See you in the next one.
 
 ## PRODUCTION NOTES
 
-**Slides in the deck** (all 8 are ready):
-1. Architecture flow — Client → Kafka → Flink → Redis → Bigtable → CDN
-2. Flink vs Kafka Streams — comparison with code example and trade-offs
-3. Redis single-threaded model — multi-thread race condition vs Redis correctness
-4. Cassandra 3-step write — diary → memory → file, with Bloom Filter
-5. Bigtable architecture — tablets + GCS separation + crash recovery
-6. Bigtable or Cassandra — pick one based on cloud strategy
-7. Inside the 30-second window — dedup, fraud checks, aggregation steps
-8. Gangnam Style overflow — the day the counter broke (32-bit integer limit)
+**Slides in the deck** (9 total, in playback order):
+1. The Locking Problem — 60,000 writers queued on one row, before/after response-time stat
+2. Architecture flow — Client → Kafka → Flink → Redis → Bigtable → CDN
+3. Flink vs Kafka Streams — comparison with code example and trade-offs
+4. Redis single-threaded model — multi-thread race condition vs Redis correctness
+5. Cassandra 3-step write — diary → memory → file, with Bloom Filter
+6. Bigtable architecture — tablets + GCS separation + crash recovery
+7. Bigtable or Cassandra — pick one based on cloud strategy
+8. Inside the 30-second window — dedup, fraud checks, aggregation steps
+9. Gangnam Style overflow — the day the counter broke (32-bit integer limit)
 
 **Tone**: Confident and clear. Speak slightly slower during the architecture section.
 Pause after each concept before moving to the next.

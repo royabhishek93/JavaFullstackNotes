@@ -76,6 +76,32 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .bname{font-size:.8rem;font-weight:700}
 .bsub{font-size:.6rem;color:var(--muted)}
 
+/* ══════════════════ SLIDE 0 — LOCKING PROBLEM ══════════════════ */
+.lock-wrap{display:flex;flex-direction:column;align-items:center;gap:22px;width:100%;max-width:900px}
+.lock-row{display:flex;align-items:center;gap:16px;background:var(--bg2);
+  border:2px solid var(--redis);border-radius:14px;padding:16px 26px;box-shadow:0 0 22px rgba(216,44,32,.2)}
+.lock-icon{font-size:2.4rem}
+.lock-label{font-size:1rem;font-weight:700;font-family:'JetBrains Mono',monospace}
+.lock-sub{font-size:.7rem;color:var(--muted);font-weight:400;font-family:'Inter',sans-serif}
+.queue-row{display:flex;align-items:center;gap:8px;width:100%;justify-content:center;flex-wrap:wrap}
+.w-chip{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;
+  min-width:64px;padding:10px 8px;font-size:.62rem;color:var(--muted);position:relative}
+.w-chip.active{border-color:var(--green);background:rgba(63,185,80,.08);color:var(--green)}
+.w-chip .w-ico{font-size:1.1rem;margin-bottom:2px}
+.w-chip .w-name{font-weight:700;font-size:.62rem}
+.queue-arrow{width:100%;text-align:center;font-size:.7rem;color:var(--redis);font-weight:600}
+.stat-row{display:flex;align-items:stretch;gap:16px;width:100%}
+.stat-card{flex:1;background:var(--bg2);border-radius:14px;padding:18px 20px;text-align:center}
+.stat-card.normal{border:1px solid var(--border)}
+.stat-card.viral{border:2px solid var(--redis);box-shadow:0 0 18px rgba(216,44,32,.2)}
+.stat-label{font-size:.72rem;color:var(--muted);font-weight:600;margin-bottom:6px}
+.stat-val{font-size:1.7rem;font-weight:800;font-family:'JetBrains Mono',monospace}
+.stat-card.normal .stat-val{color:var(--green)}
+.stat-card.viral .stat-val{color:var(--redis)}
+.stat-desc{font-size:.7rem;color:var(--muted);margin-top:6px;line-height:1.5}
+.stat-vs{display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--arrow)}
+
 /* ══════════════════ SLIDE 2 — FLINK VS KAFKA ══════════════════ */
 .fk-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;width:100%;max-width:960px}
 .fk-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px 20px}
@@ -223,8 +249,52 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 
 <div class="slides">
 
-<!-- ═══════════════ SLIDE 1 — ARCHITECTURE ═══════════════ -->
+<!-- ═══════════════ SLIDE 1 — THE LOCKING PROBLEM ═══════════════ -->
 <div class="slide active" id="slide-0">
+  <div class="slide-title">The Obvious Solution Fails</div>
+  <div class="slide-sub">What happens to a single database row under 60,000 writes per second</div>
+  <div class="lock-wrap">
+
+    <div class="lock-row rv" id="lock-row">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-label">video_id = 'abc'<br><span class="lock-sub">view_count row — ONE LOCK, ONE WRITER AT A TIME</span></div>
+    </div>
+
+    <div class="rv" id="lock-queue" style="width:100%">
+      <div class="queue-arrow">↓ 60,000 writers queued behind this one row ↓</div>
+      <div class="queue-row">
+        <div class="w-chip active"><span class="w-ico">✅</span><span class="w-name">Writer 1</span><span>5ms</span></div>
+        <div class="w-chip"><span class="w-ico">⏳</span><span class="w-name">Writer 2</span><span>waiting</span></div>
+        <div class="w-chip"><span class="w-ico">⏳</span><span class="w-name">Writer 3</span><span>waiting</span></div>
+        <div class="w-chip"><span class="w-ico">⋯</span><span class="w-name">⋯</span><span>&nbsp;</span></div>
+        <div class="w-chip"><span class="w-ico">⏳</span><span class="w-name">Writer 60K</span><span>waiting</span></div>
+      </div>
+    </div>
+
+    <div class="stat-row rv" id="lock-result">
+      <div class="stat-card normal">
+        <div class="stat-label">Normal load</div>
+        <div class="stat-val">5 ms</div>
+        <div class="stat-desc">One writer at a time.<br>No contention.</div>
+      </div>
+      <div class="stat-vs">→</div>
+      <div class="stat-card viral">
+        <div class="stat-label">Viral load — 60,000 writers</div>
+        <div class="stat-val">SECONDS</div>
+        <div class="stat-desc">Player stutters.<br>DB is the bottleneck for the whole platform.</div>
+      </div>
+    </div>
+
+    <div class="insight rv" id="lock-insight" style="grid-column:unset;width:100%">
+      💡 The real question isn't "how do I update the counter faster?"<br>
+      <strong>The real question is: what if I don't update it immediately at all?</strong>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 1 — ARCHITECTURE ═══════════════ -->
+<div class="slide" id="slide-1">
   <div class="slide-title">How YouTube Counts 500 Million Views a Day</div>
   <div class="slide-sub">The architecture — playing a video and counting that view are two completely different jobs</div>
   <div class="arch-wrap">
@@ -320,7 +390,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 
 
 <!-- ═══════════════ SLIDE 2 — FLINK VS KAFKA STREAMS ═══════════════ -->
-<div class="slide" id="slide-1">
+<div class="slide" id="slide-2">
   <div class="slide-title">Flink vs Kafka Streams — Which Aggregator?</div>
   <div class="slide-sub">Both do the 30-second windowed aggregation — but they are very different tools</div>
   <div class="fk-grid">
@@ -376,7 +446,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 3 — REDIS SINGLE THREAD ═══════════════ -->
-<div class="slide" id="slide-2">
+<div class="slide" id="slide-3">
   <div class="slide-title">Why Redis INCRBY Needs No Locks</div>
   <div class="slide-sub">The single-threaded model explained</div>
   <div class="two-col">
@@ -407,7 +477,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 4 — CASSANDRA WRITE PATH ═══════════════ -->
-<div class="slide" id="slide-3">
+<div class="slide" id="slide-4">
   <div class="slide-title">Cassandra — Write Path</div>
   <div class="slide-sub">Append-only · never modify old data · clean up in the background</div>
   <div class="steps-row">
@@ -449,7 +519,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 5 — BIGTABLE ═══════════════ -->
-<div class="slide" id="slide-4">
+<div class="slide" id="slide-5">
   <div class="slide-title">Bigtable — Architecture</div>
   <div class="slide-sub">One giant sorted table, cut into pieces · data lives in GCS, not on the server</div>
   <div class="bt-wrap">
@@ -488,7 +558,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 6 — PICK ONE ═══════════════ -->
-<div class="slide" id="slide-5">
+<div class="slide" id="slide-6">
   <div class="slide-title">Bigtable or Cassandra — Which to Pick?</div>
   <div class="slide-sub">Both handle petabyte-scale · the decision is about your cloud strategy</div>
   <div class="pick-grid">
@@ -525,7 +595,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 7 — FLINK WINDOW INTERNALS ═══════════════ -->
-<div class="slide" id="slide-6">
+<div class="slide" id="slide-7">
   <div class="slide-title">Inside the 30-Second Window</div>
   <div class="slide-sub">What Flink actually does with 50,000 events before writing ONE number to Redis</div>
   <div class="fw-pipeline">
@@ -567,7 +637,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 8 — GANGNAM STORY ═══════════════ -->
-<div class="slide" id="slide-7">
+<div class="slide" id="slide-8">
   <div class="slide-title">The Day YouTube's Counter Broke</div>
   <div class="slide-sub">December 2012 — Gangnam Style and the 32-bit integer overflow</div>
   <div class="gangnam-wrap">
@@ -611,7 +681,7 @@ views.groupByKey()<br>
 <div class="hint"><kbd>Space</kbd> / <kbd>→</kbd> advance &nbsp;<kbd>←</kbd> back</div>
 
 <script>
-const TOTAL = 8;
+const TOTAL = 9;
 let cur = 0;
 
 // Build dots
@@ -626,47 +696,52 @@ for(let i=0;i<TOTAL;i++){
 function show(id){const e=document.getElementById(id);if(e){e.classList.add('show')}}
 
 const steps=[
-  // Slide 0 — Architecture
+  // Slide 0 — The Locking Problem
+  [()=>show('lock-row'),
+   ()=>show('lock-queue'),
+   ()=>show('lock-result'),
+   ()=>show('lock-insight')],
+  // Slide 1 — Architecture
   [()=>show('n-client'),
    ()=>{show('a1');show('n-kafka')},
    ()=>{show('a2');show('n-flink')},
    ()=>{show('v-arrow');show('arch-bottom')},
    ()=>show('cdn-card'),
    ()=>show('viewer-card')],
-  // Slide 1 — Flink vs Kafka
+  // Slide 2 — Flink vs Kafka
   [()=>show('fk-kafka'),
    ()=>show('fk-code'),
    ()=>show('fk-k-point'),
    ()=>{show('fk-flink');show('fk-flink-detail')},
    ()=>show('fk-rule')],
-  // Slide 2 — Redis
+  // Slide 3 — Redis
   [()=>show('r-ta1'),()=>show('r-tb1'),
    ()=>show('r-ta2'),()=>show('r-tb2'),()=>show('r-bad'),
    ()=>show('r-q1'),()=>show('r-q2'),()=>show('r-q3'),
    ()=>show('r-note'),()=>show('r-good'),()=>show('r-insight')],
-  // Slide 3 — Cassandra
+  // Slide 4 — Cassandra
   [()=>show('c-s1'),
    ()=>{show('c-a1');show('c-s2')},
    ()=>{show('c-a2');show('c-s3')},
    ()=>show('c-rule'),
    ()=>show('c-compact')],
-  // Slide 4 — Bigtable
+  // Slide 5 — Bigtable
   [()=>show('bt-master'),
    ()=>{show('bt-c1');show('bt-servers')},
    ()=>{show('bt-c2');show('bt-gcs')},
    ()=>show('bt-crash')],
-  // Slide 5 — Pick One
+  // Slide 6 — Pick One
   [()=>show('p-bigtable'),
    ()=>show('p-cassandra'),
    ()=>show('p-rule')],
-  // Slide 6 — Flink Window
+  // Slide 7 — Flink Window
   [()=>show('fw-1'),
    ()=>{show('fw-a1');show('fw-2')},
    ()=>{show('fw-a2');show('fw-3')},
    ()=>{show('fw-a3');show('fw-4')},
    ()=>{show('fw-a4');show('fw-5')},
    ()=>show('fw-kafka')],
-  // Slide 7 — Gangnam
+  // Slide 8 — Gangnam
   [()=>show('g-title'),
    ()=>show('g-1b'),
    ()=>show('g-2b'),
@@ -678,8 +753,8 @@ const steps=[
 let si=new Array(TOTAL).fill(-1);
 
 function goSlide(n){
-  document.getElementById('slide-'+cur).classList.remove('active');
-  document.getElementById('dot-'+cur).classList.remove('active');
+  if(cur < TOTAL) document.getElementById('slide-'+cur).classList.remove('active');
+  if(cur < TOTAL) document.getElementById('dot-'+cur).classList.remove('active');
   cur=Math.max(0,Math.min(TOTAL-1,n));
   document.getElementById('slide-'+cur).classList.add('active');
   document.getElementById('dot-'+cur).classList.add('active');
