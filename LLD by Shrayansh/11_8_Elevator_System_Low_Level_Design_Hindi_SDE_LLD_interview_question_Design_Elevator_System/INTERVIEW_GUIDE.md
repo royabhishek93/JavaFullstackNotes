@@ -1,6 +1,8 @@
 # 🛗 Elevator System - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📕 Difficulty: Advanced** — concurrency, scale, or financial-correctness heavy; aim for this once you're comfortable with the Beginner/Intermediate guides.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -1248,6 +1250,37 @@ redis.subscribe("elevator:*:floor", (channel, message) -> {
 **My Choice**: **Kafka for events** + **Redis Pub/Sub for real-time**
 - Kafka: Audit log, analytics (persistent, replay-able)
 - Redis: Floor displays, dashboards (ephemeral, low latency)
+
+---
+
+## 🔥 Real-World Production Issue: The Starvation Bug in the LOOK Algorithm
+
+*In plain English: picking the "nearest" elevator by distance alone, while ignoring its current direction, makes people wait far longer than necessary during rush hour.*
+
+**The war story:**
+
+"A building-management client had elevators implementing the LOOK algorithm correctly per-elevator, but the DISPATCHER (which elevator answers a new hall call) always picked the 'nearest' elevator by absolute floor distance, ignoring DIRECTION. During a morning office rush (everyone on ground floor going up), this caused a specific, reproducible starvation pattern."
+
+```
+Floor 10 [Elevator B, idle]
+Floor  9
+Floor  8   <- hall call UP button pressed here
+Floor  7
+...
+Floor  1 [Elevator A, currently going DOWN, empty]
+Floor  0 [Lobby, mass boarding, everyone wants UP]
+
+Dispatcher picks Elevator A (nearest by floor distance to floor 8)
+but Elevator A is heading DOWN and must first go to floor 0,
+complete all lobby pickups, THEN reverse -> caller on floor 8
+waited 6 minutes during rush hour, triggering complaints
+```
+
+**Root cause:** the dispatcher's "nearest elevator" heuristic ignored the elevator's CURRENT DIRECTION and travel plan — a classic mistake when the LOOK algorithm is implemented correctly at the single-elevator level but the multi-elevator dispatch strategy isn't direction-aware.
+
+**The fix:** dispatcher scoring now weighs (a) same-direction elevators already passing the requested floor first, (b) idle elevators second, (c) opposite-direction elevators last with an estimated completion-time penalty — matching how real destination-dispatch systems (Otis, Schindler) actually score hall calls.
+
+**Lesson for a new developer:** "Getting ONE elevator's algorithm right (LOOK) is necessary but not sufficient — the DISPATCHER that decides WHICH elevator serves a request is a separate design decision with its own failure modes. Always test your dispatcher under realistic traffic patterns (rush hour direction skew), not just random uniform requests."
 
 ---
 

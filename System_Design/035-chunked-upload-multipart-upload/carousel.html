@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chunked Upload & Multipart Upload — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#22223a;
+    --text:#eaeaf2;
+    --muted:#9a9ac0;
+    --accent:#ff9f43;
+    --accent2:#4ecdc4;
+    --red:#e74c3c;
+    --green:#2ecc71;
+    --s3:#e8703a;
+    --line:#3a3a5c;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,"Segoe UI",Arial,sans-serif;
+    height:100%;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .deck{
+    width:540px;height:540px;
+    margin:24px auto;
+    position:relative;
+    background:var(--bg);
+    border-radius:14px;
+    overflow:hidden;
+    box-shadow:0 0 0 1px var(--line);
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .slide{
+    display:none;
+    width:540px;height:540px;
+    padding:34px 30px 20px 30px;
+    position:relative;
+    background:var(--bg);
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .slide.active{display:flex;flex-direction:column;}
+  .eyebrow{
+    font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--accent);font-weight:700;margin-bottom:6px;
+  }
+  h1{
+    font-size:23px;margin:0 0 10px 0;line-height:1.25;color:var(--text);
+  }
+  h2{font-size:16px;margin:0 0 8px 0;color:var(--accent2);}
+  p{font-size:13.5px;line-height:1.5;color:var(--muted);margin:4px 0;}
+  .big-stat{
+    font-size:46px;font-weight:800;color:var(--red);line-height:1;margin:8px 0;
+  }
+  .stat-sub{font-size:13px;color:var(--muted);}
+  .row{display:flex;align-items:center;gap:14px;}
+  .col{display:flex;flex-direction:column;gap:10px;}
+  .spacer{flex:1;}
+
+  /* ---- Server box icon ---- */
+  .server-box{
+    width:64px;height:80px;border-radius:6px;
+    background:#2c2c4a;border:2px solid var(--accent2);
+    position:relative;flex-shrink:0;
+  }
+  .server-box .slot{
+    height:8px;margin:6px 8px;border-radius:2px;background:var(--line);
+  }
+  .server-box .slot.on{background:var(--accent2);}
+  .server-label{font-size:10px;color:var(--muted);text-align:center;margin-top:4px;}
+
+  /* ---- S3 cylinder icon ---- */
+  .cylinder{
+    width:70px;height:88px;position:relative;flex-shrink:0;
+  }
+  .cylinder .top{
+    width:70px;height:22px;border-radius:50%;
+    background:var(--s3);border:2px solid #ffb37a;
+    position:absolute;top:0;left:0;z-index:2;
+  }
+  .cylinder .body{
+    width:66px;height:66px;
+    background:linear-gradient(180deg,#c85a26,var(--s3));
+    border-left:2px solid #ffb37a;border-right:2px solid #ffb37a;
+    position:absolute;top:14px;left:2px;
+  }
+  .cylinder .bottom{
+    width:66px;height:18px;border-radius:50%;
+    background:#c85a26;border:2px solid #ffb37a;
+    position:absolute;bottom:0;left:2px;
+  }
+  .cyl-label{font-size:10px;color:var(--muted);text-align:center;margin-top:4px;}
+
+  /* ---- Redis-style circular icon (reused as generic cache/id circle when relevant) ---- */
+  .circle-icon{
+    width:44px;height:44px;border-radius:50%;
+    background:#d82c20;color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:18px;flex-shrink:0;
+    border:2px solid #ff6a55;
+  }
+
+  /* ---- File chunk blocks ---- */
+  .chunk-row{display:flex;gap:4px;flex-wrap:wrap;}
+  .chunk{
+    width:26px;height:26px;border-radius:3px;
+    background:var(--line);border:1px solid #55557a;
+    display:flex;align-items:center;justify-content:center;
+    font-size:9px;color:var(--muted);
+  }
+  .chunk.done{background:var(--green);color:#0a2e1a;border-color:#7ee8a8;font-weight:700;}
+  .chunk.fail{background:var(--red);color:#3a0a0a;border-color:#ff9d90;font-weight:700;}
+  .chunk.pending{background:var(--accent2);color:#0a2e2c;border-color:#8ff0e8;font-weight:700;}
+
+  /* ---- Arrows ---- */
+  .arrow{
+    font-size:22px;color:var(--accent2);font-weight:700;
+  }
+  .arrow.red{color:var(--red);}
+  .arrow-label{font-size:9px;color:var(--muted);text-align:center;}
+  .parallel-arrows{display:flex;flex-direction:column;gap:3px;}
+  .parallel-arrows .arrow{font-size:15px;line-height:1;}
+
+  /* ---- Boxes / cards ---- */
+  .card{
+    background:var(--panel);border:1px solid var(--line);
+    border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--muted);
+  }
+  .card b{color:var(--text);}
+  .bad{border-color:var(--red);}
+  .good{border-color:var(--green);}
+  .tag{
+    display:inline-block;font-size:10px;font-weight:700;padding:2px 7px;
+    border-radius:10px;margin-bottom:6px;letter-spacing:0.5px;
+  }
+  .tag.bad{background:rgba(231,76,60,0.18);color:#ff8a80;border:1px solid var(--red);}
+  .tag.good{background:rgba(46,204,113,0.18);color:#7ee8a8;border:1px solid var(--green);}
+
+  table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px;}
+  th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;color:var(--muted);}
+  th{background:var(--panel);color:var(--accent2);font-size:11px;}
+  td b{color:var(--text);}
+
+  .quote-box{
+    background:var(--panel);border-left:4px solid var(--accent);
+    padding:14px 16px;font-size:13.5px;font-style:italic;color:var(--text);
+    border-radius:6px;line-height:1.55;
+  }
+
+  .footer-tag{
+    position:absolute;bottom:14px;left:30px;right:30px;
+    display:flex;justify-content:space-between;
+    font-size:10px;color:var(--muted);letter-spacing:1px;
+  }
+
+  /* ---- Nav (screen only) ---- */
+  .nav{
+    display:flex;justify-content:center;align-items:center;gap:16px;
+    margin:10px auto 30px auto;width:540px;
+  }
+  .nav button{
+    background:var(--panel);color:var(--text);border:1px solid var(--line);
+    padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;
+  }
+  .nav button:hover{border-color:var(--accent2);}
+  .counter{font-size:13px;color:var(--muted);min-width:50px;text-align:center;}
+
+  @media print{
+    @page{size:540px 540px;margin:0;}
+    body{background:var(--bg);}
+    .nav{display:none;}
+    .deck{margin:0;box-shadow:none;border-radius:0;}
+    .slide{display:none !important;page-break-after:always;}
+    .slide.active{display:flex !important;}
+    /* print each slide as its own page by forcing all to print sequentially */
+    .slide{display:flex !important;page-break-after:always;}
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <div class="eyebrow">Ep. 35 — System Design</div>
+    <h1>You're at 99% upload. Connection drops.</h1>
+    <div class="big-stat">0%</div>
+    <div class="stat-sub">A single-request 1GB upload restarts from ZERO on any network hiccup — losing all 990MB you already sent.</div>
+    <div class="spacer"></div>
+    <div class="row" style="align-items:flex-end;gap:6px;">
+      <div class="chunk done">✓</div><div class="chunk done">✓</div><div class="chunk done">✓</div>
+      <div class="chunk done">✓</div><div class="chunk fail">✕</div>
+      <div class="arrow red">⟲</div>
+      <div class="chunk">0</div><div class="chunk">0</div><div class="chunk">0</div>
+    </div>
+    <p>Chunked upload &amp; multipart upload fix this — one dropped chunk retries, not the whole file.</p>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>SWIPE →</span></div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="eyebrow">The Problem</div>
+    <h1>One HTTP request, four ways to fail</h1>
+    <div class="col" style="gap:8px;">
+      <div class="card bad"><span class="tag bad">1. Network Drop</span><br><b>Drops at 990MB of 1GB</b> → server discards everything → client restarts from byte 0.</div>
+      <div class="card bad"><span class="tag bad">2. Mobile Speed</span><br>4G ≈ 6.25 MB/s → 1GB takes <b>160 seconds</b>. Odds of zero interruption: low. Expect <b>3–5 retries</b>.</div>
+      <div class="card bad"><span class="tag bad">3. Server Memory</span><br>Naive buffering: 10 concurrent uploads = <b>10GB RAM</b> → OOM crash on an 8GB server.</div>
+      <div class="card bad"><span class="tag bad">4. LB Timeout</span><br>AWS ALB default timeout: <b>60s</b>. A 170s upload gets killed before it can ever finish.</div>
+    </div>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>2 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 3: MULTIPART FLOW - INITIATE -->
+  <div class="slide">
+    <div class="eyebrow">The Solution — Step 1</div>
+    <h1>Initiate a multipart upload</h1>
+    <div class="row" style="gap:10px;justify-content:center;margin-top:10px;">
+      <div class="col" style="align-items:center;">
+        <div class="server-box"><div class="slot on"></div><div class="slot"></div><div class="slot"></div></div>
+        <div class="server-label">Client</div>
+      </div>
+      <div class="col" style="align-items:center;"><div class="arrow">→</div><div class="arrow-label">initiate</div></div>
+      <div class="col" style="align-items:center;">
+        <div class="server-box"><div class="slot on"></div><div class="slot on"></div><div class="slot"></div></div>
+        <div class="server-label">Your Backend</div>
+      </div>
+      <div class="col" style="align-items:center;"><div class="arrow">→</div><div class="arrow-label">CreateMultipartUpload</div></div>
+      <div class="col" style="align-items:center;">
+        <div class="cylinder"><div class="top"></div><div class="body"></div><div class="bottom"></div></div>
+        <div class="cyl-label">S3 Bucket</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px;">
+      <b>1GB file, 10MB chunks</b> → ⌈1,073,741,824 ÷ 10,485,760⌉ = <b>103 parts</b>.<br>
+      S3 responds with an <b>UploadId</b> — a session token for this upload.
+    </div>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>3 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 4: PARALLEL PARTS + RETRY -->
+  <div class="slide">
+    <div class="eyebrow">The Solution — Step 2</div>
+    <h1>Upload parts in parallel, retry only failures</h1>
+    <p>103 parts, 5 uploading at once:</p>
+    <div class="chunk-row" style="margin:8px 0;">
+      <div class="chunk done">1</div><div class="chunk done">2</div><div class="chunk done">3</div><div class="chunk done">4</div><div class="chunk done">5</div>
+      <div class="chunk done">6</div><div class="chunk fail">7</div><div class="chunk pending">8</div><div class="chunk pending">9</div><div class="chunk pending">10</div>
+      <div class="chunk">…</div><div class="chunk">101</div><div class="chunk">102</div><div class="chunk">103</div>
+    </div>
+    <div class="card bad">
+      <b>Part 7 fails?</b> Retry ONLY part 7 — 10MB — not the full 1GB file. Each successful part returns an <b>ETag</b> (a content fingerprint).
+    </div>
+    <div class="spacer"></div>
+    <div class="card good">
+      <b>Speed win:</b> 5 parallel threads × 100 Mbps = <b>500 Mbps effective</b>. 2GB @ 500 Mbps ≈ <b>32s</b> vs 160s sequential — a 5x speedup.
+    </div>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>4 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 5: COMPLETE + RESUMABLE -->
+  <div class="slide">
+    <div class="eyebrow">The Solution — Step 3</div>
+    <h1>Complete upload &amp; resume after failure</h1>
+    <div class="card good">
+      <b>CompleteMultipartUpload</b>: client sends all 103 part numbers + ETags → backend forwards to S3 → S3 stitches parts into one final object.
+    </div>
+    <h2 style="margin-top:14px;">Resumable uploads</h2>
+    <div class="card">
+      Phone sleeps at 60% (parts 1–60 done). Client stored <b>{uploadId, completedParts, ETags}</b> in localStorage.
+      <br>On resume: check localStorage → call S3 <b>ListParts</b> to confirm → continue from <b>part 61</b>.
+      <br>Only ~400MB re-uploaded, not the full 1GB.
+    </div>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>5 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 6: ANTI-PATTERN vs PRESIGNED URLS -->
+  <div class="slide">
+    <div class="eyebrow">Deep Dive — Trap #1</div>
+    <h1>Never proxy uploads through your server</h1>
+    <div class="row" style="gap:8px;align-items:center;">
+      <span class="tag bad">ANTI-PATTERN</span>
+    </div>
+    <div class="row" style="gap:10px;align-items:center;margin:6px 0;">
+      <div class="col" style="align-items:center;"><div class="server-box"><div class="slot on"></div></div><div class="server-label">Client</div></div>
+      <div class="arrow red">→</div>
+      <div class="col" style="align-items:center;"><div class="server-box"><div class="slot on"></div><div class="slot on"></div><div class="slot on"></div></div><div class="server-label">Your Server</div></div>
+      <div class="arrow red">→</div>
+      <div class="col" style="align-items:center;"><div class="cylinder"><div class="top"></div><div class="body"></div><div class="bottom"></div></div><div class="cyl-label">S3</div></div>
+    </div>
+    <p style="color:var(--red);">Double egress cost. Your server = bandwidth bottleneck. RAM holds every upload buffer.</p>
+    <div class="row" style="gap:8px;align-items:center;margin-top:10px;">
+      <span class="tag good">CORRECT PATTERN</span>
+    </div>
+    <div class="row" style="gap:10px;align-items:center;margin:6px 0;">
+      <div class="col" style="align-items:center;"><div class="server-box"><div class="slot on"></div></div><div class="server-label">Client</div></div>
+      <div class="parallel-arrows"><div class="arrow">→</div><div class="arrow">→</div><div class="arrow">→</div></div>
+      <div class="col" style="align-items:center;"><div class="cylinder"><div class="top"></div><div class="body"></div><div class="bottom"></div></div><div class="cyl-label">S3 (direct)</div></div>
+    </div>
+    <p style="color:var(--green);">Backend only hands out <b>presigned URLs</b> — zero video bytes touch your servers.</p>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>6 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 7: TRAP - ABANDONED UPLOADS -->
+  <div class="slide">
+    <div class="eyebrow">Deep Dive — Trap #2</div>
+    <h1>Abandoned uploads cost you money forever</h1>
+    <div class="card bad">
+      S3 stores <b>incomplete multipart uploads indefinitely</b> by default. A user starts a 1GB upload, quits at part 3 — those parts sit in S3, billed, forever.
+    </div>
+    <div class="card good" style="margin-top:10px;">
+      <b>Fix — S3 Lifecycle Policy:</b>
+      <pre style="white-space:pre-wrap;font-size:11px;color:var(--accent2);margin:6px 0 0 0;">{
+  "Rules": [{
+    "AbortIncompleteMultipartUpload":
+      { "DaysAfterInitiation": 7 }
+  }]
+}</pre>
+    </div>
+    <div class="spacer"></div>
+    <p>One rule. Miss it, and thousands of partial uploads quietly inflate your storage bill.</p>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>7 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 8: COMPARISON TABLE -->
+  <div class="slide">
+    <div class="eyebrow">Comparison</div>
+    <h1>AWS thresholds &amp; upload strategy</h1>
+    <table>
+      <tr><th>File Size</th><th>Strategy</th></tr>
+      <tr><td><b>&lt; 5MB</b></td><td>Single PUT — multipart is overkill</td></tr>
+      <tr><td><b>5MB – 5GB</b></td><td>Multipart <b>recommended</b></td></tr>
+      <tr><td><b>&gt; 5GB</b></td><td>Multipart <b>REQUIRED</b> (single PUT max = 5GB)</td></tr>
+    </table>
+    <table style="margin-top:12px;">
+      <tr><th>Upload Mode</th><th>2GB Upload Time</th></tr>
+      <tr><td>Sequential (1 thread)</td><td><b>~160s</b></td></tr>
+      <tr><td>Parallel (5 threads)</td><td><b>~32s</b> (5x faster)</td></tr>
+    </table>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>8 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 9: REAL WORLD -->
+  <div class="slide">
+    <div class="eyebrow">Real World</div>
+    <h1>The numbers behind large-scale uploads</h1>
+    <div class="card good">
+      <b>OTT Platform (Netflix/Hotstar-style)</b><br>
+      Creators upload 50GB+ raw 4K video. Multipart is <b>mandatory</b> above 5GB. 5 parallel threads × 100 Mbps = <b>500 Mbps effective</b> vs 100 Mbps sequential.
+    </div>
+    <div class="card bad" style="margin-top:10px;">
+      <b>1M daily uploads × 2GB each</b><br>
+      Routed through your own servers: <b>23TB/day</b> of bandwidth through your fleet.<br>
+      With presigned URLs: that traffic goes <b>directly to S3</b> instead.
+    </div>
+    <div class="spacer"></div>
+    <p>Post-upload pipeline: <b>Kafka</b> event → FFmpeg transcoding worker → HLS at 480p/720p/1080p → served via <b>CloudFront</b>.</p>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>9 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <div class="slide">
+    <div class="eyebrow">Decision Tree &amp; Interview Quote</div>
+    <h1>What to say when they ask</h1>
+    <div class="card">
+      <b>File &lt; 100MB?</b> → single PUT is fine.<br>
+      <b>File 100MB – 5GB?</b> → multipart recommended, presigned URLs.<br>
+      <b>File &gt; 5GB?</b> → multipart REQUIRED, presigned URLs, resumable via localStorage + ListParts.
+    </div>
+    <div class="quote-box" style="margin-top:16px;">
+      "For anything over 100MB, use S3 multipart with presigned URLs — your servers never touch the bytes, chunks upload in parallel, and a dropped connection retries one chunk not the whole file."
+    </div>
+    <div class="spacer"></div>
+    <p>Next episode: <b>036 — Write-Ahead Log &amp; Crash Recovery.</b></p>
+    <div class="footer-tag"><span>SYSTEM DESIGN</span><span>10 / 10</span></div>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">← Prev</button>
+  <div class="counter"><span id="cur">1</span> / <span id="total">10</span></div>
+  <button id="nextBtn">Next →</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  function show(i){
+    slides[idx].classList.remove('active');
+    idx = (i + total) % total;
+    slides[idx].classList.add('active');
+    document.getElementById('cur').textContent = idx + 1;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', function(){ show(idx - 1); });
+  document.getElementById('nextBtn').addEventListener('click', function(){ show(idx + 1); });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight'){ show(idx + 1); }
+    if(e.key === 'ArrowLeft'){ show(idx - 1); }
+  });
+</script>
+
+</body>
+</html>

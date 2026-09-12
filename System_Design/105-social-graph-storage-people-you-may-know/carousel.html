@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Social Graph Storage &amp; PYMK — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 50px; height: 56px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 50px; height: 14px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 50px; height: 30px; position: absolute; top: 10px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 50px; height: 14px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 28px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Social Graph Storage &amp; PYMK</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">1B users<br>300B edges</div>
+      <p>"Who follows Alice" can become a scatter query across dozens of shards if you store the graph naively.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>One Table Scatters</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p>Table sharded by user_id: Alice's outgoing edges live on ONE shard. Everyone who follows HER is scattered across whichever shard THEY live on.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Bidirectional Storage</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>connections_by_user</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>connections_by_friend</div>
+      </div>
+      <p style="text-align:center">Write every connection TWICE, atomically. 2x storage → O(1) reads BOTH directions, 2-8ms.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Neo4j for Multi-Hop</h1>
+    <h2>When Cassandra Isn't Enough</h2>
+    <div class="body">
+      <p>"Shortest intro path to a hiring manager" — Cassandra needs a NEW partition read per hop, exploding combinatorially.</p>
+      <p>Neo4j's index-free adjacency: 10-80ms for a 3-4 hop query, even at 50M nodes.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>PYMK Candidate Generation</h1>
+    <h2>2nd-Degree Fan-Out</h2>
+    <div class="body">
+      <p>For each of your friends, fetch THEIR friends. Count mutual-connection paths per candidate. Rank by count, take top 50.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Scary Math</h1>
+    <h2>Where It Explodes</h2>
+    <div class="body">
+      <div class="stat">250,000 → 250 TRILLION</div>
+      <p>500×500 pairs for ONE user, naively, ×1B users. Blows out even a distributed Spark cluster.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Mitigations</h1>
+    <h2>Making It Tractable</h2>
+    <div class="body">
+      <p><span class="check-mark">✓</span> Cap fan-out to ~200 most active connections per user</p>
+      <p><span class="check-mark">✓</span> Sample connections for super-connectors (30K+ recruiters)</p>
+      <p><span class="check-mark">✓</span> Combiners pre-aggregate before final shuffle</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Storage &amp; Compute Comparison</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Read Latency</th><th>Use Case</th></tr>
+        <tr><td>Single normalized table</td><td>50-500ms (scatter)</td><td>&lt;10M edges only</td></tr>
+        <tr><td>Bidirectional Cassandra</td><td>2-8ms</td><td>1-hop lookups at scale</td></tr>
+        <tr><td>Neo4j</td><td>10-80ms</td><td>Multi-hop path-finding</td></tr>
+        <tr><td>Batch PYMK + cache</td><td>&lt;10ms</td><td>Precomputed recommendations</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>1-hop reads dominate? → Bidirectional Cassandra. Multi-hop path-finding needed? → Add Neo4j as a derived store. Graph-wide feature (PYMK)? → Always offline batch.</p>
+      <div class="quote-box">
+        "I would never compute PYMK live on a page load. A full 2-hop fan-out generates up to 250,000 candidate pairs per user before dedup — I'd run it as an offline Spark GraphX batch job nightly, cache the top-50 per user, serve reads in single-digit milliseconds."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

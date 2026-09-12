@@ -1,6 +1,8 @@
 # 🎬 BookMyShow - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📕 Difficulty: Advanced** — concurrency, scale, or financial-correctness heavy; aim for this once you're comfortable with the Beginner/Intermediate guides.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -1260,6 +1262,38 @@ Rules:
 4. **Use Real Numbers**: Vague answers = junior
    - ❌ "We'll cache it"
    - ✅ "Redis cache with 60s TTL gives 95% hit rate, reducing DB queries from 10K/sec to 500/sec"
+
+---
+
+## 🔥 Real-World Production Issue: The Seat-Lock Timeout That Sold the Same Seat Twice
+
+*In plain English: a time-based seat lock that isn't re-checked at confirmation time can let two people pay for the exact same seat.*
+
+**The war story:**
+
+"A movie-ticket booking platform used a `seat_locks` table with a `locked_until` timestamp (pessimistic soft-lock: hold a seat for 5 minutes while the user completes payment). A big-release Friday night caused a very specific concurrency bug that only showed up under real load."
+
+```
+User A: locks Seat H7 at 8:00:00pm, locked_until = 8:05:00pm
+User A: proceeds to payment gateway (external, can take 10-90s normally,
+         but on this Friday, the payment gateway itself was under load
+         and took 6 MINUTES to respond due to ITS OWN downstream issues)
+
+8:05:00pm: lock EXPIRES (background job releases it, seat becomes available again)
+8:05:30pm: User B sees Seat H7 as available, locks it, completes payment
+           successfully in 45 seconds -> Seat H7 now belongs to User B
+8:06:00pm: User A's SLOW payment gateway call FINALLY returns "SUCCESS"
+           -> booking service, unaware the lock expired, marks Seat H7 booked for User A TOO
+
+Result: two confirmed tickets for the same physical seat, discovered
+        only when both parties showed up at the theater
+```
+
+**Root cause:** the seat lock's TTL (5 minutes) was tuned for the NORMAL/expected payment gateway latency, but didn't account for the payment gateway itself having occasional slow-tail latency. Worse, the booking-confirmation step didn't RE-VALIDATE that the lock was still held/owned by User A before confirming — it trusted a lock that may have already expired and been reassigned.
+
+**The fix:** booking confirmation now does a conditional UPDATE ("confirm booking WHERE seat_id=? AND locked_by=? AND locked_until > NOW()") — if User A's slow gateway response arrives after the lock reassignment, this conditional update simply affects ZERO rows, and the system correctly tells User A their booking failed (with a refund) instead of silently double-booking. Also added a payment-gateway circuit breaker so extremely slow responses fail fast instead of waiting indefinitely.
+
+**Lesson for a new developer:** "A time-based lock (TTL) is only as safe as the code that CONFIRMS the locked action later — always re-validate lock ownership at confirmation time with a conditional/atomic check, never assume 'I had the lock 5 minutes ago' is still true when a slow external dependency is involved."
 
 5. **Admit Unknowns**: Senior engineers say "I don't know" + "Here's how I'd find out"
    - "I haven't implemented Saga pattern in production, but I'd start with Temporal workflow engine based on Uber's paper"

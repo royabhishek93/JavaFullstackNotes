@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <rect x="10" y="10" width="1180" height="780" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+  <text x="600" y="40" text-anchor="middle" font-size="20" font-weight="bold" fill="#2d2d2d">Sequence: Media Upload (Two-Step Flow)</text>
+  <line x1="380" y1="52" x2="820" y2="52" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <rect x="20" y="70" width="150" height="46" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="95" y="98" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5e20">Client</text>
+
+  <rect x="220" y="70" width="170" height="46" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="2"/>
+  <text x="305" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#7a4a00">Media Service</text>
+
+  <rect x="440" y="70" width="150" height="46" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="515" y="98" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a0000">S3 Bucket</text>
+
+  <rect x="640" y="70" width="170" height="46" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="2"/>
+  <text x="725" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#7a4a00">Chat Service</text>
+
+  <rect x="860" y="70" width="150" height="46" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="935" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#1a4a7a">CloudFront CDN</text>
+
+  <rect x="1060" y="70" width="130" height="46" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="1125" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#1a5e20">Recipient</text>
+
+  <g stroke="#999" stroke-width="1.5" stroke-dasharray="4,3">
+    <line x1="95" y1="116" x2="95" y2="730"/>
+    <line x1="305" y1="116" x2="305" y2="730"/>
+    <line x1="515" y1="116" x2="515" y2="730"/>
+    <line x1="725" y1="116" x2="725" y2="730"/>
+    <line x1="935" y1="116" x2="935" y2="730"/>
+    <line x1="1125" y1="116" x2="1125" y2="730"/>
+  </g>
+
+  <line x1="95" y1="150" x2="300" y2="150" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="100" y="145" font-size="9" fill="#333">1. GET /media/presign?filename&amp;content_type</text>
+
+  <line x1="305" y1="185" x2="100" y2="185" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="105" y="180" font-size="9" fill="#333">2. returns {presigned_url, media_id, expires_in: 900}</text>
+
+  <line x1="95" y1="230" x2="510" y2="230" stroke="#e6a817" stroke-width="2.5" marker-end="url(#arrOrange)"/>
+  <text x="100" y="222" font-size="10" font-weight="bold" fill="#7a4a00">3. HTTP PUT raw file bytes DIRECTLY to the pre-signed S3 URL</text>
+  <text x="100" y="245" font-size="9" fill="#888" font-style="italic">(bypasses Media Service and Chat Service entirely — bandwidth savings)</text>
+
+  <line x1="515" y1="275" x2="100" y2="275" stroke="#27ae60" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <text x="105" y="270" font-size="9" fill="#27ae60">4. S3 confirms upload succeeded</text>
+
+  <line x1="95" y1="315" x2="720" y2="315" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="100" y="307" font-size="10" fill="#333">5. WS SEND {type: MESSAGE, message_id, content: media_url, msg_type: IMAGE}</text>
+  <text x="100" y="330" font-size="9" fill="#888" font-style="italic">(only the URL travels over WebSocket — never the actual media bytes)</text>
+
+  <rect x="560" y="350" width="330" height="46" rx="5" fill="#fff8f0" stroke="#e6a817" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="570" y="368" font-size="9" fill="#7a4a00">6. Chat Service processes this exactly like a normal text</text>
+  <text x="570" y="384" font-size="9" fill="#7a4a00">message from here — persist, route, deliver (see 04a).</text>
+
+  <line x1="725" y1="420" x2="1120" y2="420" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="730" y="415" font-size="9" fill="#333">7. recipient receives message containing the media URL</text>
+
+  <line x1="1125" y1="455" x2="940" y2="455" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="775" y="450" font-size="10" fill="#333">8. recipient fetches actual image bytes from CDN (not S3 directly)</text>
+
+  <rect x="800" y="480" width="330" height="80" rx="5" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="810" y="500" font-size="10" font-weight="bold" fill="#1a4a7a">9. CDN cache decision</text>
+  <text x="810" y="518" font-size="9" fill="#333">Cache HIT: served from edge, ~20ms</text>
+  <line x1="935" y1="524" x2="800" y2="524" stroke="#4a90d9" stroke-width="1"/>
+  <text x="810" y="540" font-size="9" fill="#333">Cache MISS: CDN fetches from S3 once,</text>
+  <text x="810" y="552" font-size="9" fill="#333">caches it, then serves — ~200ms</text>
+  <line x1="935" y1="546" x2="515" y2="546" stroke="#4a90d9" stroke-width="1" stroke-dasharray="3,2" marker-end="url(#arr)"/>
+
+  <rect x="30" y="600" width="1120" height="90" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="45" y="620" font-size="11" font-weight="bold" fill="#2d2d2d">Why media never goes through WebSocket</text>
+  <text x="45" y="638" font-size="10" fill="#333">A 5MB video as a single WebSocket frame would block that socket for every other message — no partial retry/resume,</text>
+  <text x="45" y="654" font-size="10" fill="#333">and the chat server would become a bottleneck processing every byte. S3 is purpose-built for large binary blobs;</text>
+  <text x="45" y="670" font-size="10" fill="#333">a persistent bidirectional socket is the wrong tool for bulk transfer — hence the direct-to-S3, URL-only-over-WS pattern.</text>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#555"/></marker>
+    <marker id="arrGreen" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#27ae60"/></marker>
+    <marker id="arrOrange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#e6a817"/></marker>
+  </defs>
+
+  <text x="600" y="765" text-anchor="middle" font-size="10" fill="#aaa">Chat System Design — Media Upload Sequence</text>
+</svg>

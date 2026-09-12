@@ -1,0 +1,43 @@
+<mxfile host="app.diagrams.net" modified="2026-08-31T00:00:00.000Z" agent="draft" version="24.7.5" type="device">
+  <diagram name="mTLS Handshake" id="mtls-handshake">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="950" pageHeight="370" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ca" value="Control Plane CA&lt;br&gt;(issues short-lived certs)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="380" y="20" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="app1" value="Cart App&lt;br&gt;(plain HTTP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="p1" value="Envoy Sidecar&lt;br&gt;(Cart)&lt;br&gt;SPIFFE id: .../sa/cart" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="260" y="180" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="p2" value="Envoy Sidecar&lt;br&gt;(Payment)&lt;br&gt;SPIFFE id: .../sa/payment" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="500" y="180" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="app2" value="Payment App&lt;br&gt;(plain HTTP)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="740" y="180" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e0a" value="1. issue cert" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;fontSize=10;" edge="1" parent="1" source="ca" target="p1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e0b" value="1. issue cert" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;fontSize=10;" edge="1" parent="1" source="ca" target="p2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="2. plain HTTP request" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="1" source="app1" target="p1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="3. mTLS handshake: BOTH sides present + verify certs, then encrypted request" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#b85450;fontColor=#b85450;fontStyle=1;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="p1" target="p2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="4. decrypted, plain HTTP" style="edgeStyle=orthogonalEdgeStyle;html=1;fontSize=10;" edge="1" parent="1" source="p2" target="app2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="useCase" value="💡 Use Case: Encrypting service-to-service traffic + proving service identity for compliance (PCI-DSS, HIPAA) without writing TLS code in each service." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=2;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="870" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

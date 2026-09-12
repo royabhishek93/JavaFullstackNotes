@@ -8,6 +8,10 @@
 
 ## How Spring Security Filter Chain Works (Plain English)
 
+### JWT Filter Sequence (ASCII)
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ```
 HTTP Request
     ↓

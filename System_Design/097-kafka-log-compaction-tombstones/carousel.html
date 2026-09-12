@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Kafka Log Compaction &amp; Tombstones — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .server-box {
+    width: 60px; height: 52px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 34px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Kafka Log Compaction</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <p>A "current state per user" topic gets written to for years and never grows unbounded.</p>
+      <div class="stat">1 row per key. Forever.</div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Delete vs Compact</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p><code>cleanup.policy=delete</code>: whole segments dropped after a time window, regardless of key.</p>
+      <p><code>cleanup.policy=compact</code>: background thread keeps only the LATEST value per key, forever.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Before / After Compaction</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <p><b>Before:</b> 7 records, 3 unique keys, 4 stale duplicates (57% dirty)</p>
+      <p><b>After:</b> 3 records survive at their ORIGINAL offsets (3, 5, 6) — order preserved, gaps allowed.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Tombstone Lifecycle</h1>
+    <h2>Deleting a Key</h2>
+    <div class="body">
+      <p>Write NULL value = tombstone. Compaction keeps it for <code>delete.retention.ms</code> (default 24h), then purges it entirely.</p>
+      <p>Within that window: any consumer replaying sees "this key was deleted" and can react.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>KTable Changelogs</h1>
+    <h2>Real Use Case</h2>
+    <div class="body">
+      <p>App crashes and restarts → rebuild RocksDB store by replaying the compacted changelog from offset 0.</p>
+      <p>Compaction guarantees "current value per key" survives — no data lost even after days down.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Downtime Trap</h1>
+    <h2>Where Engineers Get It Wrong</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Consumer<br>down 3 days</div>
+      </div>
+      <p style="text-align:center">If <code>delete.retention.ms</code> = 24h (default), tombstones written &amp; purged during that window are NEVER seen. Deleted keys look "still active" forever.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Compaction Isn't Real-Time</h1>
+    <h2>Two More Traps</h2>
+    <div class="body">
+      <p>Active segment is NEVER compacted — stale duplicates can persist until it rolls.</p>
+      <p>Unbounded key cardinality (random UUID per event) = topic never shrinks. Compaction is the wrong tool there.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Retention Strategy Comparison</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Policy</th><th>Guarantee</th><th>Best For</th></tr>
+        <tr><td>delete</td><td>Bounded by time</td><td>Audit logs, full history</td></tr>
+        <tr><td>compact</td><td>Latest per key, forever</td><td>KTables, config topics</td></tr>
+        <tr><td>compact,delete</td><td>Both + hard ceiling</td><td>GDPR-bound changelogs</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Need "current value per key forever"? → compact. Bounded key cardinality? → compact works. Unbounded? → delete instead.</p>
+      <div class="quote-box">
+        "For a KTable like this, I'd back it with cleanup.policy=compact rather than time-based deletion. For logout, I produce a record with a null value — that's a tombstone. I'd size delete.retention.ms around worst-case consumer downtime, not the default."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

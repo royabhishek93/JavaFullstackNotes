@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Feature Flags: Dynamic Configuration — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .server-box.cool { border-color: var(--green); }
+  .server-box.cool span { background: var(--green); }
+
+  /* Toggle switch icon */
+  .toggle { width: 70px; height: 34px; border-radius: 20px; position: relative; margin: 0 auto; }
+  .toggle.on { background: var(--green); }
+  .toggle.off { background: var(--muted); }
+  .toggle .knob { width: 26px; height: 26px; border-radius: 50%; background: #fff; position: absolute; top: 4px; }
+  .toggle.on .knob { right: 4px; }
+  .toggle.off .knob { left: 4px; }
+
+  /* Percentage rollout bar */
+  .rollout-bar { width: 220px; height: 22px; background: var(--border); border-radius: 11px; position: relative; overflow: hidden; margin: 10px auto; }
+  .rollout-fill { height: 100%; background: var(--accent); display: flex; align-items: center; justify-content: flex-end; }
+  .rollout-fill span { font-size: 11px; font-weight: 700; color: #1a1a2e; padding-right: 8px; }
+  .rollout-marker { position: absolute; top: -4px; width: 2px; height: 30px; background: var(--text); }
+
+  /* Kill switch power icon */
+  .kill-icon { width: 56px; height: 56px; border-radius: 50%; border: 6px solid #e74c3c; position: relative; margin: 6px auto 14px; }
+  .kill-icon::after { content: ''; position: absolute; top: -6px; left: 50%; width: 6px; height: 26px; background: #e74c3c; transform: translateX(-50%); }
+  .kill-icon.safe { border-color: var(--green); }
+  .kill-icon.safe::after { background: var(--green); }
+
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Feature Flags &amp; Dynamic Config</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">&lt;1 second</div>
+      <p>Payment errors spike. An operator flips one dashboard toggle. Every server in the fleet stops using the broken code path in under a second — versus <b>10-30 minutes</b> for a code revert and redeploy.</p>
+      <div class="row" style="margin-top:18px">
+        <div class="col"><div class="toggle on"><div class="knob"></div></div>rollout: 100%</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="toggle off"><div class="knob"></div></div>rollout: 0%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Evaluation vs Distribution</h1>
+    <h2>The Core Architecture</h2>
+    <div class="body">
+      <p>The #1 junior mistake: treating a flag check as a network call per request. Real flag SDKs separate the two:</p>
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Flag Service<br>(source of truth)</div>
+        <div class="arrow">⇢</div>
+        <div class="col"><div class="server-box cool"><span></span><span></span><span></span></div>SDK local cache<br>(in-memory)</div>
+      </div>
+      <p style="text-align:center"><span class="check-mark">✓</span> Startup fetch once, then SSE streams diffs. Evaluation = pure in-memory op, zero network I/O on the hot path.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Percentage Rollout</h1>
+    <h2>Consistent Hashing</h2>
+    <div class="body">
+      <p><code>bucket = hash(userId + flagKey + salt) % 100</code></p>
+      <div class="rollout-bar"><div class="rollout-fill" style="width:25%"></div><div class="rollout-marker" style="left:25%"></div></div>
+      <p style="text-align:center">User 12345 → bucket 17 → <b>enabled</b> (17 &lt; 25%). Same user, same bucket, every server, every request — no per-user state stored anywhere.</p>
+      <p><span class="check-mark">✓</span> Raising 25%→50% keeps everyone already enabled, only adds new buckets — safe staged rollouts.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Kill Switch</h1>
+    <h2>Instant Rollback, No Deploy</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="kill-icon"></div>Flip to 0%</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="kill-icon safe"></div>Fleet updated<br>&lt;1000ms</div>
+      </div>
+      <table>
+        <tr><th>Path</th><th>Time to full fix</th></tr>
+        <tr><td>Flag flip (SSE push)</td><td>~1 second</td></tr>
+        <tr><td>Revert + redeploy</td><td>10-30+ minutes</td></tr>
+      </table>
+      <p><span class="x-mark">✕</span> Trap: kill switch must fall back to last-known-good code, not throw an error — else you trade one outage for another.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Naive-Remote-Call Trap</h1>
+    <h2>Trap 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>Remote check<br>per request</div>
+        <div class="col"><div class="server-box cool"><span></span><span></span><span></span></div>Local cache<br>per request</div>
+      </div>
+      <table>
+        <tr><th>Approach</th><th>Latency</th></tr>
+        <tr><td>Naive remote config call</td><td>20-100ms+</td></tr>
+        <tr><td>In-memory SDK evaluation</td><td>&lt;1 microsecond</td></tr>
+      </table>
+      <p style="text-align:center">A 20,000x-100,000x difference — the entire reason SDKs cache locally instead of calling on every check.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>A/B Test Assignment &amp; Phantom Exposures</h1>
+    <h2>Trap 2</h2>
+    <div class="body">
+      <p><b>Assignment consistency:</b> same hash + salt = same user always gets the same variant for the whole experiment — or your results are contaminated.</p>
+      <p><b>Phantom exposures:</b> logging on flag <i>evaluation</i> (e.g. a pre-fetch) instead of actual render inflates sample size with impressions nobody really saw.</p>
+      <p><span class="check-mark">✓</span> Fix: fire exposure events async, tied to real render, into a Kafka/analytics pipeline.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Flag Lifecycle &amp; Debt</h1>
+    <h2>Trap 3</h2>
+    <div class="body">
+      <p>A team shipping weekly can accumulate <b>200-500 flags/year</b> if none are removed. A stale <code>disable-auth-check-for-debugging</code> flag is an OWASP-relevant misconfiguration risk.</p>
+      <table>
+        <tr><th>Type</th><th>Lifecycle</th></tr>
+        <tr><td>RELEASE</td><td>Delete within weeks of 100%</td></tr>
+        <tr><td>EXPERIMENT</td><td>Delete after analysis</td></tr>
+        <tr><td>OPS</td><td>Semi-permanent kill switch, keep</td></tr>
+        <tr><td>PERMISSION</td><td>Long-lived tier gate, keep</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Real World</h1>
+    <h2>Where This Shows Up</h2>
+    <div class="body">
+      <p><b>Swiggy:</b> a payment gateway kill switch during peak lunch-hour traffic turns a 2-min blip into avoiding a 30-min checkout outage.</p>
+      <p><b>Flipkart:</b> checkout-button A/B tests at sale-scale need assignment consistency, or one bouncing shopper skews millions of data points.</p>
+      <p><b>PhonePe:</b> a new UPI flow ships as 1%→10%→50% staged rollout, never a straight 100% cutover.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Platform Comparison</h1>
+    <h2>LaunchDarkly vs Unleash vs Homegrown</h2>
+    <div class="body">
+      <table>
+        <tr><th>Platform</th><th>Hosting</th><th>Propagation</th><th>Complexity</th></tr>
+        <tr><td>LaunchDarkly</td><td>SaaS (managed)</td><td>~100-500ms SSE</td><td>Low (managed infra)</td></tr>
+        <tr><td>Unleash</td><td>Self-hosted or SaaS</td><td>~100-500ms SSE</td><td>Medium (you run the server)</td></tr>
+        <tr><td>Homegrown (DB-polled config)</td><td>Self-hosted</td><td>15-60s poll interval</td><td>Low to build, high hidden risk</td></tr>
+      </table>
+      <p><span class="x-mark">✕</span> Homegrown polling = no fast kill switch, DB becomes a per-instance dependency.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Need instant kill switch or staged rollout? → Flag platform. Setting never changes at runtime? → Just an env var. Infra-level routing? → Canary/blue-green, not an app flag. Slow-moving settings only, no urgency? → DB-polled config table.</p>
+      <div class="quote-box">
+        "bucket = hash(userId + flagKey + salt) % 100 — deterministic, stateless, stable across servers, requests, and deploys. Evaluation stays local and in-memory; only rule updates get pushed over streaming. A kill switch is the same rollout mechanism flipped to zero, and it's only as good as its fallback to the last-known-good code path."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

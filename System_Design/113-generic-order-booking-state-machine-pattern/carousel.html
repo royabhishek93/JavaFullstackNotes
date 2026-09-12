@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Generic Order/Booking State Machine Pattern — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#22223a;
+    --accent:#e94560;
+    --accent2:#0f9d58;
+    --accent3:#f4b400;
+    --accent4:#4285f4;
+    --muted:#8888a8;
+    --text:#eaeaf5;
+    --line:#3a3a5c;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    background:#0d0d1a;
+    color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  .deck{
+    width:540px;
+    height:540px;
+    margin:24px auto;
+    position:relative;
+    background:var(--bg);
+    border-radius:16px;
+    overflow:hidden;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);
+  }
+  .slide{
+    display:none;
+    width:100%;
+    height:100%;
+    padding:28px 30px 60px 30px;
+    background:var(--bg);
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .slide.active{display:flex;flex-direction:column;}
+  .eyebrow{
+    font-size:11px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--accent3);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  h1{
+    font-size:22px;
+    margin:0 0 10px 0;
+    line-height:1.25;
+    color:var(--text);
+  }
+  h2{
+    font-size:17px;
+    margin:0 0 8px 0;
+    color:var(--text);
+  }
+  p, li{
+    font-size:13px;
+    line-height:1.5;
+    color:var(--muted);
+  }
+  .stat{
+    font-size:34px;
+    font-weight:800;
+    color:var(--accent);
+  }
+  .stat-label{
+    font-size:12px;
+    color:var(--muted);
+  }
+  .body{flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px;}
+  .footer-note{
+    font-size:11px;
+    color:var(--muted);
+    border-top:1px solid var(--line);
+    padding-top:8px;
+    margin-top:auto;
+  }
+
+  /* ---------- generic component "server/state box" ---------- */
+  .statebox{
+    border:2px solid var(--accent4);
+    border-radius:8px;
+    background:rgba(66,133,244,0.08);
+    padding:8px 10px;
+    font-size:12px;
+    font-weight:700;
+    text-align:center;
+    color:var(--text);
+    position:relative;
+    min-width:86px;
+  }
+  .statebox .sub{
+    display:block;
+    font-weight:400;
+    font-size:9.5px;
+    color:var(--muted);
+    margin-top:2px;
+  }
+  .statebox.terminal{border-color:var(--accent2); background:rgba(15,157,88,0.1);}
+  .statebox.danger{border-color:var(--accent); background:rgba(233,69,96,0.1);}
+  .statebox .lines{
+    margin-top:4px;
+  }
+  .statebox .lines span{
+    display:block;
+    height:2px;
+    background:var(--line);
+    margin:3px 4px;
+    border-radius:1px;
+  }
+
+  /* ---------- arrows ---------- */
+  .row{display:flex; align-items:center; gap:4px;}
+  .arrow-h{
+    font-size:16px;
+    color:var(--accent3);
+    font-weight:700;
+    padding:0 2px;
+  }
+  .arrow-down{
+    font-size:16px;
+    color:var(--accent3);
+    text-align:center;
+    line-height:1;
+  }
+  .label-tiny{
+    font-size:8.5px;
+    color:var(--muted);
+    text-align:center;
+    white-space:nowrap;
+  }
+
+  /* ---------- boolean flag squares ---------- */
+  .flags{display:flex; gap:8px; flex-wrap:wrap;}
+  .flagbox{
+    width:82px;
+    height:52px;
+    border-radius:8px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-size:10px;
+    font-weight:700;
+    color:#fff;
+    text-align:center;
+    padding:4px;
+  }
+  .flagbox.on{background:var(--accent2);}
+  .flagbox.on2{background:var(--accent);}
+  .flagbox .val{font-size:9px; font-weight:400; opacity:.85; margin-top:3px;}
+
+  /* ---------- DB cylinder ---------- */
+  .cylinder-wrap{display:flex; flex-direction:column; align-items:center; width:150px;}
+  .cyl-top{
+    width:120px; height:22px;
+    border-radius:50%;
+    border:2px solid var(--accent4);
+    background:rgba(66,133,244,0.25);
+  }
+  .cyl-body{
+    width:120px; height:58px;
+    border-left:2px solid var(--accent4);
+    border-right:2px solid var(--accent4);
+    background:rgba(66,133,244,0.08);
+    margin-top:-11px;
+  }
+  .cyl-bottom{
+    width:120px; height:22px;
+    border-radius:50%;
+    border:2px solid var(--accent4);
+    background:rgba(66,133,244,0.15);
+    margin-top:-11px;
+  }
+  .cyl-wrap-green .cyl-top, .cyl-wrap-green .cyl-body, .cyl-wrap-green .cyl-bottom{
+    border-color:var(--accent2);
+    background:rgba(15,157,88,0.1);
+  }
+  .cyl-caption{font-size:10.5px; color:var(--muted); text-align:center; margin-top:6px;}
+
+  /* ---------- comparison table ---------- */
+  table.cmp{
+    width:100%;
+    border-collapse:collapse;
+    font-size:9.5px;
+  }
+  table.cmp th{
+    text-align:left;
+    color:var(--accent3);
+    padding:4px 5px;
+    border-bottom:1px solid var(--line);
+    font-size:9.5px;
+  }
+  table.cmp td{
+    padding:4px 5px;
+    border-bottom:1px solid var(--line);
+    color:var(--text);
+    vertical-align:top;
+  }
+  table.cmp tr:last-child td{border-bottom:none;}
+  .swatch{
+    display:inline-block;
+    width:10px;height:10px;
+    border-radius:2px;
+    margin-right:5px;
+    vertical-align:middle;
+  }
+
+  /* ---------- decision tree ---------- */
+  .tree-node{
+    border:1px solid var(--line);
+    border-radius:6px;
+    padding:6px 9px;
+    font-size:10.5px;
+    background:rgba(255,255,255,0.03);
+  }
+  .tree-node.yes{border-color:var(--accent2); color:#8fe3b8;}
+  .tree-node.no{border-color:var(--accent); color:#f6a0ad;}
+
+  .quote-box{
+    border-left:3px solid var(--accent3);
+    background:rgba(244,180,0,0.08);
+    padding:10px 12px;
+    font-size:11.5px;
+    font-style:italic;
+    color:var(--text);
+    margin-top:8px;
+  }
+
+  /* ---------- nav / counter (hidden on print) ---------- */
+  .nav{
+    position:fixed;
+    bottom:18px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:12px;
+    align-items:center;
+    z-index:10;
+  }
+  .nav button{
+    background:var(--panel);
+    color:var(--text);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:8px 18px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .nav button:hover{background:var(--accent4);}
+  .counter{
+    position:absolute;
+    top:14px;
+    right:18px;
+    font-size:11px;
+    color:var(--muted);
+    background:rgba(0,0,0,0.35);
+    padding:3px 9px;
+    border-radius:10px;
+  }
+
+  @media print{
+    body{background:#fff;}
+    .nav{display:none;}
+    .deck{
+      width:540px; height:540px; margin:0; box-shadow:none; border-radius:0;
+    }
+    .slide{display:none !important;}
+    .slide.printable{
+      display:flex !important;
+      flex-direction:column;
+      page-break-after:always;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+  }
+  @page{
+    size:540px 540px;
+    margin:0;
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1 : HOOK -->
+  <section class="slide active printable" id="s1">
+    <div class="counter">1 / 10</div>
+    <div class="eyebrow">System Design — Booking State Machines</div>
+    <h1>A cancelled order got shipped.</h1>
+    <div class="body">
+      <div class="row" style="gap:14px;">
+        <div class="flagbox on2">is_cancelled<span class="val">= true</span></div>
+        <div class="flagbox on2">is_shipped<span class="val">= true</span></div>
+      </div>
+      <p style="margin-top:6px;">Same row. Same moment. Nobody wrote a bug —
+      the <b>design</b> was the bug: 5 independent boolean flags give you
+      <b>2⁵ = 32</b> possible combinations, when maybe <b>8</b> are actually
+      legal business states.</p>
+      <div class="stat">32 vs 8</div>
+      <div class="stat-label">possible combinations vs. legal states</div>
+    </div>
+    <div class="footer-note">Source: production incident pattern, e-commerce order lifecycle</div>
+  </section>
+
+  <!-- SLIDE 2 : THE PROBLEM -->
+  <section class="slide printable" id="s2">
+    <div class="counter">2 / 10</div>
+    <div class="eyebrow">The Problem</div>
+    <h1>Boolean flags have no single source of truth</h1>
+    <div class="body">
+      <p>Each flag is set by a <b>different service</b>, at a <b>different time</b>,
+      with zero awareness of the others:</p>
+      <div class="flags">
+        <div class="flagbox on">is_paid<span class="val">payment svc</span></div>
+        <div class="flagbox on">is_shipped<span class="val">warehouse job</span></div>
+        <div class="flagbox on2">is_cancelled<span class="val">support tool</span></div>
+        <div class="flagbox on">is_refunded<span class="val">finance job</span></div>
+        <div class="flagbox on">is_delivered<span class="val">carrier webhook</span></div>
+      </div>
+      <p style="margin-top:4px;">Nothing stops <code style="color:var(--accent3)">is_cancelled</code>
+      and <code style="color:var(--accent3)">is_shipped</code> from both being true.
+      There's no code path whose job is "check all five before allowing a change."</p>
+    </div>
+    <div class="footer-note">Same shape breaks: payments, food delivery, ticket booking, hotel booking, job schedulers, stock trading</div>
+  </section>
+
+  <!-- SLIDE 3 : THE SOLUTION - STATE MACHINE DIAGRAM -->
+  <section class="slide printable" id="s3">
+    <div class="counter">3 / 10</div>
+    <div class="eyebrow">The Solution</div>
+    <h1>One status column. Explicit legal transitions.</h1>
+    <div class="body">
+      <div class="row" style="justify-content:space-between;">
+        <div class="statebox">CREATED</div>
+        <div class="arrow-h">→</div>
+        <div class="statebox">PENDING</div>
+        <div class="arrow-h">→</div>
+        <div class="statebox">CONFIRMED</div>
+      </div>
+      <div class="row" style="justify-content:space-between; margin-top:6px;">
+        <div class="statebox terminal">REFUNDED</div>
+        <div class="arrow-h">←</div>
+        <div class="statebox danger">CANCELLED</div>
+        <div class="arrow-h">←</div>
+        <div class="label-tiny">escape hatch<br>(early states only)</div>
+      </div>
+      <div class="row" style="justify-content:flex-end; margin-top:6px;">
+        <div class="statebox">SHIPPED</div>
+        <div class="arrow-h">→</div>
+        <div class="statebox terminal">DELIVERED</div>
+      </div>
+      <p style="margin-top:6px;">Exactly <b>one</b> value at any moment. CANCELLED/FAILED
+      reachable from CREATED, PENDING, CONFIRMED — <b>never</b> from SHIPPED or DELIVERED
+      (physical goods already in motion → needs a separate return flow).</p>
+    </div>
+    <div class="footer-note">DELIVERED &amp; REFUNDED are terminal — no outgoing rows in the transition table</div>
+  </section>
+
+  <!-- SLIDE 4 : TRANSITION TABLE + REJECTION -->
+  <section class="slide printable" id="s4">
+    <div class="counter">4 / 10</div>
+    <div class="eyebrow">The Guard</div>
+    <h1>The transition table IS the business rule</h1>
+    <div class="body">
+      <p><code style="color:var(--accent3)">Map&lt;(CurrentState, Event), NextState&gt;</code> —
+      anything not listed is rejected, before it ever reaches the database.</p>
+      <div class="row" style="gap:8px;">
+        <div class="statebox terminal" style="min-width:70px;">CONFIRMED</div>
+        <div class="label-tiny">+ HandedToCarrier</div>
+        <div class="arrow-h">→</div>
+        <div class="statebox terminal" style="min-width:70px;">SHIPPED</div>
+      </div>
+      <p style="font-size:11px; color:var(--accent2); margin:2px 0 8px;">✓ found in table — applied</p>
+      <div class="row" style="gap:8px;">
+        <div class="statebox danger" style="min-width:70px;">SHIPPED</div>
+        <div class="label-tiny">+ CustomerCancelled</div>
+        <div class="arrow-h">✕</div>
+        <div class="statebox danger" style="min-width:70px;">NOT FOUND</div>
+      </div>
+      <p style="font-size:11px; color:var(--accent); margin:2px 0 0;">✗ rejected — IllegalStateTransitionException thrown</p>
+    </div>
+    <div class="footer-note">Rejection is a feature, not a bug — it's the whole point of the pattern</div>
+  </section>
+
+  <!-- SLIDE 5 : PERSISTENCE PATTERN -->
+  <section class="slide printable" id="s5">
+    <div class="counter">5 / 10</div>
+    <div class="eyebrow">Persistence Pattern</div>
+    <h1>Same transaction, always</h1>
+    <div class="body">
+      <div class="row" style="justify-content:space-around; align-items:flex-start;">
+        <div class="cylinder-wrap">
+          <div class="cyl-top"></div>
+          <div class="cyl-body"></div>
+          <div class="cyl-bottom"></div>
+          <div class="cyl-caption">orders<br><span style="color:var(--muted)">status, version</span></div>
+        </div>
+        <div class="cylinder-wrap cyl-wrap-green">
+          <div class="cyl-top"></div>
+          <div class="cyl-body"></div>
+          <div class="cyl-bottom"></div>
+          <div class="cyl-caption">order_status_history<br><span style="color:var(--muted)">append-only, never edited</span></div>
+        </div>
+      </div>
+      <p style="margin-top:6px;">
+      <b>1.</b> <code style="color:var(--accent3)">SELECT ... FOR UPDATE</code> locks the row<br>
+      <b>2.</b> <code style="color:var(--accent3)">UPDATE status=?, version=version+1 WHERE version=?</code><br>
+      <b>3.</b> <code style="color:var(--accent3)">INSERT INTO order_status_history(...)</code><br>
+      → same TX. Either both rows change, or neither does.</p>
+    </div>
+    <div class="footer-note">This is the audit trail support &amp; disputes teams query when a customer says "I was charged but it shows cancelled"</div>
+  </section>
+
+  <!-- SLIDE 6 : DUPLICATE EVENT EDGE CASE -->
+  <section class="slide printable" id="s6">
+    <div class="counter">6 / 10</div>
+    <div class="eyebrow">Edge Case #1</div>
+    <h1>Duplicate webhook retry</h1>
+    <div class="body">
+      <p>Warehouse scanner never got its 200 OK → resends the same event.</p>
+      <div class="row" style="gap:6px;">
+        <div class="statebox" style="min-width:64px;">Event 1</div>
+        <div class="arrow-h">→</div>
+        <div class="statebox terminal" style="min-width:110px;">CONFIRMED→SHIPPED<span class="sub">legal, applied, push sent</span></div>
+      </div>
+      <div class="row" style="gap:6px; margin-top:8px;">
+        <div class="statebox danger" style="min-width:64px;">Event 2<span class="sub">retry</span></div>
+        <div class="arrow-h">→</div>
+        <div class="statebox danger" style="min-width:110px;">SHIPPED→SHIPPED?<span class="sub">not in table — rejected</span></div>
+      </div>
+      <p style="margin-top:8px;">Idempotency guard = transition table lookup + version column.
+      No double transition, no duplicate customer notification.</p>
+    </div>
+    <div class="footer-note">Version conflict rate under concurrent writers: ~0.05–0.2% of transitions, retried with backoff</div>
+  </section>
+
+  <!-- SLIDE 7 : OUT-OF-ORDER EVENT EDGE CASE -->
+  <section class="slide printable" id="s7">
+    <div class="counter">7 / 10</div>
+    <div class="eyebrow">Edge Case #2</div>
+    <h1>Out-of-order queue redelivery</h1>
+    <div class="body">
+      <p>Rare, but happens under partition rebalances. Customer cancels while a
+      stale <code style="color:var(--accent3)">PaymentCaptured</code> event is still in-flight.</p>
+      <div class="row" style="gap:6px;">
+        <div class="statebox" style="min-width:70px;">PENDING</div>
+        <div class="arrow-h">→</div>
+        <div class="statebox danger" style="min-width:90px;">CANCELLED<span class="sub">customer cancels first</span></div>
+      </div>
+      <div class="row" style="gap:6px; margin-top:8px;">
+        <div class="statebox danger" style="min-width:70px;">CANCELLED</div>
+        <div class="label-tiny">+ PaymentCaptured</div>
+        <div class="arrow-h">✕</div>
+        <div class="statebox danger" style="min-width:90px;">rejected</div>
+      </div>
+      <p style="margin-top:8px;"><b>This rejection is correct.</b> Silently accepting it
+      would charge a customer for a cancelled order — a silent integrity bug.
+      Route the rejection to an <b>automatic refund workflow</b>, don't just log it.</p>
+    </div>
+    <div class="footer-note">Illegal-transition rejections: ~0.3–0.8% of all transition attempts in production</div>
+  </section>
+
+  <!-- SLIDE 8 : REAL NUMBERS -->
+  <section class="slide printable" id="s8">
+    <div class="counter">8 / 10</div>
+    <div class="eyebrow">Real World — At Scale</div>
+    <h1>Mid-size e-commerce platform</h1>
+    <div class="body">
+      <div class="row" style="justify-content:space-between;">
+        <div><div class="stat" style="font-size:26px;">400K</div><div class="stat-label">orders / day</div></div>
+        <div><div class="stat" style="font-size:26px;">~5</div><div class="stat-label">transitions / order</div></div>
+        <div><div class="stat" style="font-size:26px;">2M</div><div class="stat-label">history rows / day</div></div>
+      </div>
+      <div class="row" style="justify-content:space-between; margin-top:10px;">
+        <div><div class="stat" style="font-size:22px; color:var(--accent3);">~130GB</div><div class="stat-label">history storage / year</div></div>
+        <div><div class="stat" style="font-size:22px; color:var(--accent);">0.3–0.8%</div><div class="stat-label">illegal-transition rejections</div></div>
+        <div><div class="stat" style="font-size:22px; color:var(--accent2);">0.05–0.2%</div><div class="stat-label">optimistic-lock conflicts</div></div>
+      </div>
+      <p style="margin-top:10px;">Same shape scales to: Swiggy-style food delivery
+      (placed→preparing→picked up→delivered), IRCTC/BookMyShow-style ticket booking
+      (held→booked→confirmed), PhonePe/Paytm-style payments (initiated→authorized→captured→settled).</p>
+    </div>
+    <div class="footer-note">Illustrative, order-of-magnitude figures from production telemetry patterns</div>
+  </section>
+
+  <!-- SLIDE 9 : COMPARISON TABLE -->
+  <section class="slide printable" id="s9">
+    <div class="counter">9 / 10</div>
+    <div class="eyebrow">Approach Comparison</div>
+    <h1>State machine vs. the alternatives</h1>
+    <div class="body">
+      <table class="cmp">
+        <tr><th>Approach</th><th>Latency</th><th>Complexity</th><th>Fails When</th></tr>
+        <tr><td><span class="swatch" style="background:var(--accent4);"></span>State machine + table</td><td>~0ms</td><td>Medium</td><td>Table underspecified → silent no-op</td></tr>
+        <tr><td><span class="swatch" style="background:var(--accent);"></span>Boolean flags</td><td>~0ms</td><td>Low*</td><td>Impossible combos trivially reachable</td></tr>
+        <tr><td><span class="swatch" style="background:var(--accent3);"></span>Status string, no guard</td><td>~0ms</td><td>Low</td><td>Same as flags, one column</td></tr>
+        <tr><td><span class="swatch" style="background:#a142f4;"></span>Workflow engine (Temporal)</td><td>10-100ms</td><td>High</td><td>Overkill for simple linear flows</td></tr>
+        <tr><td><span class="swatch" style="background:var(--accent2);"></span>Event sourcing</td><td>1-5ms (projected)</td><td>High</td><td>Reads slow without snapshots</td></tr>
+      </table>
+      <p style="margin-top:6px; font-size:9.5px;">*deceptively low — hides the real complexity of cross-flag consistency</p>
+    </div>
+    <div class="footer-note">See: 025-cqrs-event-sourcing.md, 005-distributed-transactions-saga.md</div>
+  </section>
+
+  <!-- SLIDE 10 : DECISION TREE + CHEAT SHEET -->
+  <section class="slide printable" id="s10">
+    <div class="counter">10 / 10</div>
+    <div class="eyebrow">Decision Tree &amp; Interview Quote</div>
+    <h1>When to reach for it</h1>
+    <div class="body">
+      <div class="row" style="gap:8px; align-items:center;">
+        <div class="tree-node">Has a "point of no return"?</div>
+        <div class="arrow-h">→</div>
+        <div class="tree-node yes">YES: use state machine</div>
+      </div>
+      <div class="row" style="gap:8px; align-items:center; margin-top:6px;">
+        <div class="tree-node">Truly orthogonal flags (is_featured, is_verified)?</div>
+        <div class="arrow-h">→</div>
+        <div class="tree-node no">skip full pattern</div>
+      </div>
+      <div class="row" style="gap:8px; align-items:center; margin-top:6px;">
+        <div class="tree-node">Days-long human-in-loop + compensation?</div>
+        <div class="arrow-h">→</div>
+        <div class="tree-node yes">use workflow engine</div>
+      </div>
+      <div class="quote-box">
+        "One status enum column, NOT N boolean flags. Transition table =
+        Map&lt;(CurrentState, Event), NextState&gt;. Anything not in the table
+        is REJECTED, not silently allowed."
+      </div>
+    </div>
+    <div class="footer-note">Quick Reference Card — Generic Order/Booking State Machine Pattern</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="go(-1)">◀ Prev</button>
+  <button id="nextBtn" onclick="go(1)">Next ▶</button>
+</div>
+
+<script>
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var current = 0;
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.toggle('active', i === current);
+    });
+  }
+
+  function go(delta){
+    current = (current + delta + slides.length) % slides.length;
+    render();
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight'){ go(1); }
+    else if(e.key === 'ArrowLeft'){ go(-1); }
+  });
+
+  render();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Timeout Strategy: Too Short, Too Long — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent: #e94560;
+    --accent2: #4fd1c5;
+    --gold: #f5b942;
+    --text: #eaeaf2;
+    --muted: #9a9ab0;
+    --thread-hot: #e94560;
+    --thread-ok: #4fd1c5;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .deck {
+    width: 540px; height: 540px; margin: 40px auto;
+    position: relative; background: var(--bg);
+    border-radius: 14px; overflow: hidden;
+    box-shadow: 0 0 0 1px #333350;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .slide {
+    display: none;
+    width: 540px; height: 540px;
+    padding: 34px 32px;
+    background: var(--bg);
+    flex-direction: column;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .slide.active { display: flex; }
+  .eyebrow {
+    font-size: 12px; letter-spacing: 2px; color: var(--accent2);
+    text-transform: uppercase; font-weight: 700; margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 25px; margin: 0 0 10px 0; line-height: 1.25; color: #fff;
+  }
+  h2 { font-size: 18px; margin: 0 0 10px 0; color: var(--gold); }
+  p { font-size: 13.5px; line-height: 1.5; color: var(--text); margin: 4px 0; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .stat {
+    font-size: 46px; font-weight: 800; color: var(--accent);
+    margin: 4px 0;
+  }
+  .body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+  .footer { display:flex; justify-content: space-between; align-items:center; margin-top: 8px;}
+  .badge {
+    display:inline-block; background: rgba(233,69,96,0.15); color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 20px; padding: 3px 12px;
+    font-size: 11px; font-weight: 700;
+  }
+
+  /* ---------- CSS clock/timer icon ---------- */
+  .clock {
+    width: 64px; height: 64px; border-radius: 50%;
+    border: 4px solid var(--accent2); position: relative; background: #14142a;
+    flex-shrink: 0;
+  }
+  .clock::before { /* hour hand */
+    content: ""; position: absolute; width: 3px; height: 18px; background: var(--text);
+    top: 12px; left: 50%; transform-origin: bottom center; transform: translateX(-50%) rotate(35deg);
+  }
+  .clock::after { /* minute hand */
+    content: ""; position: absolute; width: 2px; height: 24px; background: var(--gold);
+    top: 6px; left: 50%; transform-origin: bottom center; transform: translateX(-50%) rotate(110deg);
+  }
+  .clock.red { border-color: var(--accent); }
+  .clock.red::after { background: var(--accent); }
+  .clock-row { display:flex; gap: 16px; align-items:center; }
+
+  /* ---------- server box ---------- */
+  .server {
+    width: 100px; height: 66px; border: 2px solid var(--accent2);
+    border-radius: 6px; background: #14142a; position: relative; flex-shrink: 0;
+  }
+  .server .line { height: 6px; margin: 7px 10px; background: var(--accent2); border-radius: 2px; opacity: 0.8; }
+  .server.hung { border-color: var(--accent); }
+  .server.hung .line { background: var(--accent); }
+  .server-label { font-size: 11px; text-align:center; margin-top: 4px; color: var(--muted); }
+
+  /* ---------- thread pool bar ---------- */
+  .pool { display:flex; gap:3px; flex-wrap: wrap; width: 220px; }
+  .thread { width: 12px; height: 20px; border-radius: 2px; background: #2e2e4d; }
+  .thread.stuck { background: var(--thread-hot); }
+  .thread.ok { background: var(--thread-ok); }
+
+  /* ---------- arrows ---------- */
+  .arrow-row { display:flex; align-items:center; gap:6px; }
+  .arrow { font-size: 20px; color: var(--gold); }
+  .flow-box {
+    border: 2px solid #444470; border-radius: 6px; padding: 8px 12px;
+    background: #14142a; font-size: 12px; text-align:center; color: var(--text);
+  }
+  .flow-box.crit { border-color: var(--accent); color: var(--accent); }
+  .flow-box.ok { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ---------- nested chain boxes ---------- */
+  .nest {
+    border: 2px solid var(--accent2); border-radius: 10px; padding: 14px;
+    display:flex; flex-direction: column; gap: 6px; align-items:center;
+  }
+  .nest .nest { border-color: var(--gold); }
+  .nest .nest .nest { border-color: var(--accent); }
+  .nest-label { font-size: 12px; font-weight: 700; }
+
+  /* ---------- table ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { border: 1px solid #35355a; padding: 5px 6px; text-align: left; }
+  th { background: #26264a; color: var(--gold); }
+  td.num { color: var(--accent2); font-weight: 700; }
+
+  /* ---------- decision tree ---------- */
+  .tree-node {
+    border: 2px solid var(--gold); border-radius: 8px; padding: 8px 12px;
+    background: #14142a; font-size: 12px; text-align: center;
+  }
+  .tree-branch { display:flex; gap: 20px; justify-content:center; margin-top: 10px; }
+
+  /* ---------- nav ---------- */
+  .nav {
+    width: 540px; margin: 0 auto 40px auto; display:flex; align-items:center;
+    justify-content: center; gap: 16px; font-family: inherit;
+  }
+  .nav button {
+    background: var(--panel); color: var(--text); border: 1px solid #3a3a5c;
+    border-radius: 8px; padding: 8px 18px; font-size: 14px; cursor: pointer;
+  }
+  .nav button:hover { background: #2c2c50; }
+  .counter { font-size: 13px; color: var(--muted); min-width: 50px; text-align:center; }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: var(--bg); }
+    .nav { display: none; }
+    .deck { margin: 0; box-shadow: none; }
+    .slide { display: none !important; page-break-after: always; }
+    .slide.active { display: flex !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- Slide 1: HOOK -->
+  <div class="slide active">
+    <div class="eyebrow">Episode 44 · System Design</div>
+    <h1>A 60-second timeout let 200 threads freeze checkout — and Order Service took the blame.</h1>
+    <div class="body">
+      <div class="clock-row">
+        <div class="clock red"></div>
+        <div>
+          <div class="stat">200</div>
+          <p class="muted">threads stuck waiting on a hung Payment Service call</p>
+        </div>
+      </div>
+      <p>2 AM page. Alarm says Order Service is down. RCA takes 30 minutes to find the real culprit: Payment Service hanging, and a timeout set way too long.</p>
+    </div>
+    <div class="footer"><span class="badge">TIMEOUT STRATEGY</span><span class="muted">1 / 10</span></div>
+  </div>
+
+  <!-- Slide 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="eyebrow">The Problem</div>
+    <h1>Too short = false failures. Too long = cascade failure.</h1>
+    <div class="body">
+      <div class="arrow-row">
+        <div class="clock" style="width:44px;height:44px;"></div>
+        <div class="flow-box crit">Timeout = 250ms<br><span class="muted">service takes 300ms (GC pause)</span></div>
+        <div class="arrow">→</div>
+        <div class="flow-box crit">"FAILED"<br>retry fires</div>
+      </div>
+      <p class="muted">Healthy service looks dead → unnecessary retries → doubled load.</p>
+      <div class="pool">
+        <div class="thread stuck"></div><div class="thread stuck"></div><div class="thread stuck"></div>
+        <div class="thread stuck"></div><div class="thread stuck"></div><div class="thread stuck"></div>
+        <div class="thread stuck"></div><div class="thread stuck"></div><div class="thread stuck"></div>
+        <div class="thread stuck"></div><div class="thread stuck"></div><div class="thread stuck"></div>
+      </div>
+      <p class="muted">Timeout = 60s on a hung call → thread pool fills, ~200 threads stuck → full cascade.</p>
+    </div>
+    <div class="footer"><span class="badge">ROOT CAUSE</span><span class="muted">2 / 10</span></div>
+  </div>
+
+  <!-- Slide 3: Timeout layers -->
+  <div class="slide">
+    <div class="eyebrow">The Solution — Part 1</div>
+    <h1>Every call has multiple timeout layers</h1>
+    <div class="body">
+      <div class="arrow-row">
+        <div class="server"><div class="line"></div><div class="line"></div></div>
+        <div class="arrow">→</div>
+        <div class="server hung"><div class="line"></div><div class="line"></div></div>
+      </div>
+      <table>
+        <tr><th>Layer</th><th>Typical value</th></tr>
+        <tr><td>Connection timeout</td><td class="num">500ms–2s</td></tr>
+        <tr><td>Read timeout</td><td class="num">1–5s</td></tr>
+        <tr><td>DB pool wait</td><td class="num">5s (HikariCP)</td></tr>
+        <tr><td>DB query timeout</td><td class="num">5–30s</td></tr>
+        <tr><td>DB transaction timeout</td><td class="num">30s</td></tr>
+        <tr><td>API Gateway timeout</td><td class="num">5–30s</td></tr>
+        <tr><td>ALB idle timeout</td><td class="num">60s (AWS default)</td></tr>
+      </table>
+    </div>
+    <div class="footer"><span class="badge">RULE</span><span class="muted">3 / 10</span></div>
+  </div>
+
+  <!-- Slide 4: Timeout chain rule -->
+  <div class="slide">
+    <div class="eyebrow">The Solution — Part 2</div>
+    <h1>Parent timeout must exceed child timeout</h1>
+    <div class="body">
+      <div class="nest">
+        <div class="nest-label">API Gateway — 29s</div>
+        <div class="nest">
+          <div class="nest-label">Order Service — 25s</div>
+          <div class="nest">
+            <div class="nest-label">Payment Service — 5s</div>
+          </div>
+        </div>
+      </div>
+      <p class="muted">Invert it — Payment = 5s but Order Service only waits 3s — and you get an <b>orphaned call</b>: Order gives up, Payment keeps running unheard.</p>
+    </div>
+    <div class="footer"><span class="badge">CHAIN RULE</span><span class="muted">4 / 10</span></div>
+  </div>
+
+  <!-- Slide 5: Cascade before/after -->
+  <div class="slide">
+    <div class="eyebrow">The Solution — Part 3</div>
+    <h1>Same hang, two outcomes</h1>
+    <div class="body">
+      <h2 style="color:var(--accent)">Without timeout (60s)</h2>
+      <div class="arrow-row">
+        <div class="flow-box crit">t=60s: 200 threads stuck</div>
+        <div class="arrow">→</div>
+        <div class="flow-box crit">HTTP 504<br>everything down</div>
+      </div>
+      <h2 style="color:var(--accent2)">With 1s timeout</h2>
+      <div class="arrow-row">
+        <div class="flow-box ok">t=1s: thread released</div>
+        <div class="arrow">→</div>
+        <div class="flow-box ok">circuit opens<br>fallback returned</div>
+      </div>
+      <p class="muted">Blast radius: checkout fails gracefully; browse/cart/recommendations stay up.</p>
+    </div>
+    <div class="footer"><span class="badge">IMPACT</span><span class="muted">5 / 10</span></div>
+  </div>
+
+  <!-- Slide 6: Deadline propagation -->
+  <div class="slide">
+    <div class="eyebrow">Deep Dive — Trap #1</div>
+    <h1>No deadline propagation = double charges</h1>
+    <div class="body">
+      <div class="arrow-row">
+        <div class="flow-box">Client<br>gives 10s</div>
+        <div class="arrow">→</div>
+        <div class="flow-box">Gateway<br>(doesn't tell downstream)</div>
+        <div class="arrow">→</div>
+        <div class="flow-box crit">Payment<br>takes 7s, succeeds</div>
+      </div>
+      <p class="muted">Order returns at 9s. Gateway already gave up at 10s → user sees 504. Payment actually succeeded! User retries → charged twice (no idempotency key).</p>
+      <div class="arrow-row">
+        <div class="flow-box ok">Fix: X-Request-Deadline header</div>
+        <div class="arrow">→</div>
+        <div class="flow-box ok">remaining &lt; 200ms? Skip call.</div>
+      </div>
+      <p class="muted">gRPC does this natively via context deadlines.</p>
+    </div>
+    <div class="footer"><span class="badge">TRAP #1</span><span class="muted">6 / 10</span></div>
+  </div>
+
+  <!-- Slide 7: Circuit breaker / bulkhead / retry -->
+  <div class="slide">
+    <div class="eyebrow">Deep Dive — Trap #2, #3</div>
+    <h1>Timeout alone isn't enough</h1>
+    <div class="body">
+      <div class="arrow-row">
+        <div class="flow-box crit">50% of last 10 calls timeout</div>
+        <div class="arrow">→</div>
+        <div class="flow-box crit">Circuit OPENS<br>stop calling</div>
+      </div>
+      <p><b>Bulkhead:</b> limit threads blocked on any one downstream.</p>
+      <p><b>Retry + Jitter:</b> retry once/twice with backoff after timeout — never immediately.</p>
+      <p class="muted">Trap: one-size-fits-all timeout. Fraud scoring needs 500ms (skip if slow). S3 upload needs 30–120s. Same value for both breaks one of them.</p>
+    </div>
+    <div class="footer"><span class="badge">TRAP #2 &amp; #3</span><span class="muted">7 / 10</span></div>
+  </div>
+
+  <!-- Slide 8: Real world examples -->
+  <div class="slide">
+    <div class="eyebrow">Real World</div>
+    <h1>Indian tech platforms, real numbers</h1>
+    <div class="body">
+      <div class="arrow-row">
+        <div class="flow-box ok">Swiggy / Zomato<br>restaurant confirm</div>
+        <div class="arrow">→</div>
+        <div class="flow-box">3s timeout<br>of 5s total budget</div>
+      </div>
+      <p class="muted">No confirmation in 3s → auto-accept + SMS restaurant. 2s left for driver assignment.</p>
+      <div class="arrow-row">
+        <div class="flow-box ok">E-commerce (Flipkart-style)</div>
+      </div>
+      <p>Recommendations: <span class="badge" style="background:transparent;">200ms</span> (skip if slow) &nbsp;|&nbsp; Cart: <span class="badge" style="background:transparent;">2s</span> (must complete)</p>
+      <div class="arrow-row">
+        <div class="flow-box ok">Payment gateway (bank SLA)</div>
+      </div>
+      <p>P99 = 800ms → timeout set at <b>1200ms</b> (P99 + 50%)</p>
+    </div>
+    <div class="footer"><span class="badge">EXAMPLES</span><span class="muted">8 / 10</span></div>
+  </div>
+
+  <!-- Slide 9: Comparison table -->
+  <div class="slide">
+    <div class="eyebrow">Timeout Values By Use Case</div>
+    <h1>Connection vs. read timeout, by service type</h1>
+    <div class="body">
+      <table>
+        <tr><th>Call type</th><th>Conn.</th><th>Read</th></tr>
+        <tr><td>Internal microservice</td><td class="num">500ms</td><td class="num">1–2s</td></tr>
+        <tr><td>Payment gateway (Stripe)</td><td class="num">2s</td><td class="num">5s</td></tr>
+        <tr><td>Fraud scoring (real-time)</td><td class="num">500ms</td><td class="num">500ms</td></tr>
+        <tr><td>Email service (async)</td><td class="num">1s</td><td class="num">3s</td></tr>
+        <tr><td>S3 file upload</td><td class="num">2s</td><td class="num">30–120s</td></tr>
+        <tr><td>DB query (OLTP)</td><td class="num">pool 5s</td><td class="num">5–10s</td></tr>
+        <tr><td>DB query (reporting)</td><td class="num">pool 5s</td><td class="num">30–300s</td></tr>
+        <tr><td>Geolocation API</td><td class="num">1s</td><td class="num">2s</td></tr>
+      </table>
+    </div>
+    <div class="footer"><span class="badge">CHEAT SHEET</span><span class="muted">9 / 10</span></div>
+  </div>
+
+  <!-- Slide 10: Decision tree + interview quote -->
+  <div class="slide">
+    <div class="eyebrow">Decision Tree + Interview Answer</div>
+    <h1>How to pick the right timeout</h1>
+    <div class="body">
+      <div class="tree-node">What's P99 latency of downstream?</div>
+      <div class="tree-branch">
+        <div class="tree-node">Known →<br>timeout = P99 + 50%</div>
+        <div class="tree-node">Unknown →<br>measure first, never guess</div>
+      </div>
+      <p style="margin-top:14px; font-style: italic; border-left: 3px solid var(--gold); padding-left: 10px;">
+      "Too short a timeout causes false positives — healthy services look dead. Too long causes cascade — slow services exhaust your thread pool. Right timeout = P99 + buffer. Pair it with circuit breaker so when timeouts are frequent, you stop calling the service and return a fallback."
+      </p>
+    </div>
+    <div class="footer"><span class="badge">INTERVIEW QUOTE</span><span class="muted">10 / 10</span></div>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="changeSlide(-1)">← Prev</button>
+  <span class="counter"><span id="counter">1 / 10</span></span>
+  <button id="nextBtn" onclick="changeSlide(1)">Next →</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var current = 0;
+
+  function showSlide(idx) {
+    if (idx < 0 || idx >= slides.length) return;
+    slides[current].classList.remove('active');
+    current = idx;
+    slides[current].classList.add('active');
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + slides.length;
+  }
+
+  function changeSlide(delta) {
+    showSlide(current + delta);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') changeSlide(1);
+    if (e.key === 'ArrowLeft') changeSlide(-1);
+  });
+</script>
+
+</body>
+</html>

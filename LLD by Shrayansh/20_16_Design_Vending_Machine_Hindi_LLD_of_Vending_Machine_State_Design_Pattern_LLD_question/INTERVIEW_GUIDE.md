@@ -1,6 +1,8 @@
 # 🎰 Vending Machine - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -1038,6 +1040,37 @@ func (vm *VendingMachine) HandleRequest(req Request) {
 ```
 
 **My Choice**: **C++ for embedded**, **Java for networked/cloud-connected** machines.
+
+---
+
+## 🔥 Real-World Production Issue: The State Machine That Allowed a Free Snack
+
+*In plain English: an incomplete state-transition table let the machine be tricked into skipping payment validation entirely.*
+
+**The war story:**
+
+"A connected vending machine fleet used the State Pattern correctly (Idle -> HasMoney -> Dispensing -> Idle), but an engineer added a new state, `MaintenanceState`, for remote restocking, and wired the state TRANSITION table incompletely — it allowed `HasMoneyState -> MaintenanceState` (which shouldn't be reachable while a paid transaction is pending), because the transition table was a loosely-typed `Map<String,String>` instead of an explicit, exhaustively-checked state graph."
+
+```
+Exploited sequence (discovered by a curious customer, not malicious intent):
+
+1. Insert coin -> IdleState -> HasMoneyState (money held, waiting for selection)
+2. Remote maintenance ping happens to arrive at this exact moment
+   -> incorrectly transitions machine to MaintenanceState
+   -> MaintenanceState's "select item" handler had a BUG: it dispensed
+      the item WITHOUT checking if payment was still valid/captured,
+      because MaintenanceState was designed assuming NO paid transaction
+      could ever be in progress (an assumption the transition table violated)
+3. Result: free snack, AND the machine's money-count went out of sync
+   with its dispensed-item-count across the whole fleet within a week
+   once word spread on social media
+```
+
+**Root cause:** the State Pattern's core safety guarantee — "each state only allows the transitions/operations that make sense for it" — was undermined by an incomplete, stringly-typed transition table that didn't exhaustively enumerate which states can validly transition to which. A new state was added without verifying it couldn't be entered from every existing state.
+
+**The fix:** replaced the loose `Map<String,String>` transition table with an explicit `EnumMap<State, Set<State>>` of ALLOWED transitions, with a unit test asserting every state has a fully enumerated, reviewed transition set — `HasMoneyState` can only transition to `DispensingState` or back to `IdleState` (on cancel/refund), never to `MaintenanceState` while money is held.
+
+**Lesson for a new developer:** "The State Pattern's safety comes from an EXHAUSTIVE, explicit transition graph — not just 'each state has its own class'. When adding a new state to an existing state machine, always explicitly verify (ideally via a test) which EXISTING states can and cannot transition into it, especially states holding a financial or otherwise sensitive invariant (money captured, order placed, etc)."
 
 ---
 

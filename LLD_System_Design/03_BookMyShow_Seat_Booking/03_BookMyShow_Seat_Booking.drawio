@@ -1,0 +1,554 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== INTERFACES ===== -->
+
+        <!-- PaymentGateway -->
+        <mxCell id="iface_pg" value="&lt;&lt;interface&gt;&gt;&#xa;PaymentGateway" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="290" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_pg_m1" value="+charge(token, amount): PaymentResult" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_pg">
+          <mxGeometry x="0" y="40" width="290" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_pg_m2" value="+refund(txnId, amount): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_pg">
+          <mxGeometry x="0" y="65" width="290" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- NotificationService -->
+        <mxCell id="iface_ns" value="&lt;&lt;interface&gt;&gt;&#xa;NotificationService" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="370" y="40" width="330" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ns_m1" value="+sendBookingConfirmation(userId, booking)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_ns">
+          <mxGeometry x="0" y="40" width="330" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ns_m2" value="+sendCancellationConfirmation(userId, refund)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_ns">
+          <mxGeometry x="0" y="65" width="330" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CLASSES ===== -->
+
+        <!-- Seat -->
+        <mxCell id="class_seat" value="Seat" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="250" width="240" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_seat_f1" value="-seatId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_seat">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_seat_f2" value="-row: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_seat">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_seat_f3" value="-number: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_seat">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_seat_f4" value="-type: SeatType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_seat">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_seat_f5" value="-price: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_seat">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_seat_m1" value="+getSeatId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_seat">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_seat_m2" value="+getPrice(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_seat">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_seat_m3" value="+getType(): SeatType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_seat">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- SeatHold -->
+        <mxCell id="class_sh" value="SeatHold" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="310" y="250" width="260" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sh_f1" value="-holdId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sh">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sh_f2" value="-showId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sh">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sh_f3" value="-seatIds: List&lt;String&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sh">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sh_f4" value="-userId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sh">
+          <mxGeometry x="0" y="96" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sh_f5" value="-expiresAt: LocalDateTime" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sh">
+          <mxGeometry x="0" y="118" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sh_m1" value="+getHoldId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sh">
+          <mxGeometry x="0" y="140" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sh_m2" value="+getSeatIds(): List&lt;String&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sh">
+          <mxGeometry x="0" y="162" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sh_m3" value="+getExpiresAt(): LocalDateTime" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sh">
+          <mxGeometry x="0" y="184" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Show -->
+        <mxCell id="class_show" value="Show" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="600" y="250" width="300" height="272" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_f1" value="-showId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="30" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_f2" value="-movieId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="52" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_f3" value="-screenId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="74" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_f4" value="-startTime: LocalDateTime" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="96" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_f5" value="-seatStatusMap: ConcurrentHashMap&lt;String, SeatStatus&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="118" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_f6" value="-seatHoldMap: ConcurrentHashMap&lt;String, String&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="140" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_f7" value="-showLock: ReentrantLock" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="162" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_m1" value="+holdSeats(userId, seatIds, mins): SeatHold" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="184" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_m2" value="+confirmSeats(holdId, seatIds): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="206" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_m3" value="+releaseHold(holdId, seatIds): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="228" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_show_m4" value="+getSeatStatusSnapshot(): Map" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_show">
+          <mxGeometry x="0" y="250" width="300" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Booking -->
+        <mxCell id="class_bkg" value="Booking" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="930" y="250" width="260" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_f1" value="-bookingId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_f2" value="-showId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_f3" value="-userId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_f4" value="-seatIds: List&lt;String&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="96" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_f5" value="-totalAmount: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="118" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_f6" value="-status: BookingStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="140" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_m1" value="+getBookingId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="162" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_m2" value="+getShowId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="184" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_m3" value="+getSeatIds(): List&lt;String&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="206" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bkg_m4" value="+setStatus(status): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bkg">
+          <mxGeometry x="0" y="228" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- BookingService -->
+        <mxCell id="class_bs" value="BookingService" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="250" width="290" height="228" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_f1" value="-shows: Map&lt;String, Show&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_f2" value="-bookings: Map&lt;String, Booking&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="52" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_f3" value="-paymentGateway: PaymentGateway" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="74" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_f4" value="-notifier: NotificationService" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="96" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_m1" value="+holdSeats(userId, showId, seatIds): SeatHold" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="118" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_m2" value="+confirmBooking(holdId, showId, ...): Booking" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="140" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_m3" value="+cancelBooking(bookingId): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="162" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_m4" value="+calculateRefund(booking): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="184" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bs_m5" value="+addShow(show): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bs">
+          <mxGeometry x="0" y="206" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ENUMS / UTILITIES (y=560) ===== -->
+
+        <!-- SeatStatus -->
+        <mxCell id="enum_ss" value="&lt;&lt;enum&gt;&gt;&#xa;SeatStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="200" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ss_v1" value="AVAILABLE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ss">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ss_v2" value="HELD" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ss">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ss_v3" value="CONFIRMED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ss">
+          <mxGeometry x="0" y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- SeatType -->
+        <mxCell id="enum_st" value="&lt;&lt;enum&gt;&gt;&#xa;SeatType" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="270" y="560" width="200" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_st_v1" value="REGULAR" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_st">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_st_v2" value="PREMIUM" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_st">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_st_v3" value="RECLINER" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_st">
+          <mxGeometry x="0" y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- BookingStatus -->
+        <mxCell id="enum_bkst" value="&lt;&lt;enum&gt;&gt;&#xa;BookingStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="500" y="560" width="200" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_bkst_v1" value="CONFIRMED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_bkst">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_bkst_v2" value="CANCELLED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_bkst">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- PaymentResult -->
+        <mxCell id="class_pr" value="PaymentResult" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="730" y="560" width="240" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pr_m1" value="+isSuccess(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pr">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pr_m2" value="+getError(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pr">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pr_m3" value="+getTransactionId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pr">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Payment -->
+        <mxCell id="class_pay" value="Payment" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="560" width="240" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pay_f1" value="-paymentId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pay">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pay_f2" value="-bookingId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pay">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pay_f3" value="-amount: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pay">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pay_f4" value="-gatewayRef: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pay">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pay_f5" value="-status: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pay">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== EDGES ===== -->
+
+        <!-- BookingService uses PaymentGateway -->
+        <mxCell id="edge_bs_pg" value="uses" style="endArrow=open;" edge="1" source="class_bs" target="iface_pg" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- BookingService uses NotificationService -->
+        <mxCell id="edge_bs_ns" value="uses" style="endArrow=open;" edge="1" source="class_bs" target="iface_ns" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- BookingService has-a Show -->
+        <mxCell id="edge_bs_show" value="has-a" style="endArrow=open;" edge="1" source="class_bs" target="class_show" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- BookingService has-a Booking -->
+        <mxCell id="edge_bs_bkg" value="has-a" style="endArrow=open;" edge="1" source="class_bs" target="class_bkg" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Show creates SeatHold -->
+        <mxCell id="edge_show_sh" value="creates" style="endArrow=open;" edge="1" source="class_show" target="class_sh" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Show uses SeatStatus -->
+        <mxCell id="edge_show_ss" value="uses" style="endArrow=open;" edge="1" source="class_show" target="enum_ss" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Seat uses SeatType -->
+        <mxCell id="edge_seat_st" value="uses" style="endArrow=open;" edge="1" source="class_seat" target="enum_st" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Booking uses BookingStatus -->
+        <mxCell id="edge_bkg_bkst" value="uses" style="endArrow=open;" edge="1" source="class_bkg" target="enum_bkst" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- PaymentGateway returns PaymentResult -->
+        <mxCell id="edge_pg_pr" value="returns" style="endArrow=open;" edge="1" source="iface_pg" target="class_pr" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Booking associated with Payment -->
+        <mxCell id="edge_bkg_pay" value="associated" style="endArrow=open;" edge="1" source="class_bkg" target="class_pay" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CORE ENTITIES (y=750) ===== -->
+
+        <!-- Movie -->
+        <mxCell id="class_Movie" value="Movie" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="750" width="250" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Movie_f1" value="-title: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Movie">
+          <mxGeometry x="0" y="30" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Movie_f2" value="-genre: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Movie">
+          <mxGeometry x="0" y="52" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Movie_f3" value="-duration: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Movie">
+          <mxGeometry x="0" y="74" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Movie_f4" value="-rating: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Movie">
+          <mxGeometry x="0" y="96" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Theatre -->
+        <mxCell id="class_Theatre" value="Theatre" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="750" width="260" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Theatre_f1" value="-name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Theatre">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Theatre_f2" value="-location: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Theatre">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Theatre_f3" value="-screens: List&lt;Screen&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Theatre">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Screen -->
+        <mxCell id="class_Screen" value="Screen" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="610" y="750" width="260" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Screen_f1" value="-screenNumber: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Screen">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Screen_f2" value="-rows: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Screen">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Screen_f3" value="-seats: List&lt;Seat&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Screen">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== EXCEPTION CLASSES (green) ===== -->
+
+        <!-- SeatNotAvailableException -->
+        <mxCell id="class_SeatNotAvail" value="&lt;&lt;exception&gt;&gt;&#xa;SeatNotAvailableException" style="swimlane;startSize=40;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="900" y="750" width="280" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- PaymentFailedException -->
+        <mxCell id="class_PaymentFailed" value="&lt;&lt;exception&gt;&gt;&#xa;PaymentFailedException" style="swimlane;startSize=40;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="750" width="280" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- HoldExpiredException -->
+        <mxCell id="class_HoldExpired" value="&lt;&lt;exception&gt;&gt;&#xa;HoldExpiredException" style="swimlane;startSize=40;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="820" width="280" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== NEW EDGES ===== -->
+
+        <!-- Screen has-a Seat -->
+        <mxCell id="edge_screen_seat" value="has-a" style="endArrow=open;" edge="1" source="class_Screen" target="class_seat" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Theatre has-a Screen -->
+        <mxCell id="edge_theatre_screen" value="has-a" style="endArrow=open;" edge="1" source="class_Theatre" target="class_Screen" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== LIFELINES ===== -->
+
+        <mxCell id="life_user" value="User" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="650" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_bs" value="BookingService" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="650" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_show" value="Show" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="650" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_pg" value="PaymentGateway" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="650" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_ns" value="NotificationService" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="650" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== MESSAGES — HOLD PHASE ===== -->
+
+        <!-- 1. User -> BookingService: holdSeats -->
+        <mxCell id="msg_1" value="holdSeats(userId, showId, seatIds)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="150" as="sourcePoint"/>
+            <mxPoint x="330" y="150" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2. BookingService -> Show: holdSeats -->
+        <mxCell id="msg_2" value="holdSeats(userId, seatIds, 10min)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="185" as="sourcePoint"/>
+            <mxPoint x="530" y="185" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3. Show internal: acquire lock, check availability -->
+        <mxCell id="msg_3" value="[acquire showLock]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="215" as="sourcePoint"/>
+            <mxPoint x="595" y="215" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4. Show internal: verify all AVAILABLE, mark HELD -->
+        <mxCell id="msg_4" value="[verify AVAILABLE, mark all HELD atomically]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="250" as="sourcePoint"/>
+            <mxPoint x="595" y="250" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5. Show -> BookingService: return SeatHold -->
+        <mxCell id="ret_1" value="return SeatHold" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="285" as="sourcePoint"/>
+            <mxPoint x="330" y="285" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 6. BookingService -> User: return SeatHold -->
+        <mxCell id="ret_2" value="return SeatHold (holdId, expiresAt)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="315" as="sourcePoint"/>
+            <mxPoint x="130" y="315" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Divider label -->
+        <mxCell id="label_pay" value="--- User proceeds to payment page (10-min TTL running) ---" style="text;html=1;strokeColor=none;fillColor=#f5f5f5;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="60" y="340" width="480" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== MESSAGES — PAYMENT + CONFIRM PHASE ===== -->
+
+        <!-- 7. User -> BookingService: confirmBooking -->
+        <mxCell id="msg_5" value="confirmBooking(holdId, showId, seatIds, amount, paymentToken)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="390" as="sourcePoint"/>
+            <mxPoint x="330" y="390" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 8. BookingService -> PaymentGateway: charge -->
+        <mxCell id="msg_6" value="charge(paymentToken, amount)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="425" as="sourcePoint"/>
+            <mxPoint x="730" y="425" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 9. PaymentGateway -> BookingService: PaymentResult -->
+        <mxCell id="ret_3" value="PaymentResult (success=true, txnId)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="460" as="sourcePoint"/>
+            <mxPoint x="330" y="460" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 10. BookingService -> Show: confirmSeats -->
+        <mxCell id="msg_7" value="confirmSeats(holdId, seatIds)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="495" as="sourcePoint"/>
+            <mxPoint x="530" y="495" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 11. Show -> BookingService: return true -->
+        <mxCell id="ret_4" value="return true (seats CONFIRMED)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="530" as="sourcePoint"/>
+            <mxPoint x="330" y="530" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 12. BookingService -> NotificationService: sendBookingConfirmation -->
+        <mxCell id="msg_8" value="sendBookingConfirmation(userId, booking)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="565" as="sourcePoint"/>
+            <mxPoint x="930" y="565" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 13. BookingService -> User: return Booking -->
+        <mxCell id="ret_5" value="return Booking (CONFIRMED)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="600" as="sourcePoint"/>
+            <mxPoint x="130" y="600" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Failure path note -->
+        <mxCell id="note_fail" value="[Alt: if confirmSeats returns false (hold expired) =&gt; paymentGateway.refund(txnId) + throw HoldExpiredException]" style="text;html=1;strokeColor=#d6b656;fillColor=#fff2cc;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="560" y="510" width="440" height="40" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

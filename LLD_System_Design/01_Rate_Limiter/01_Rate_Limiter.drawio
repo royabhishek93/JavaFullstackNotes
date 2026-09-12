@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" modified="2024-01-01T00:00:00.000Z" agent="Claude" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- ══════ INTERFACES — Row 1 ══════ -->
+
+        <mxCell id="iface_Resettable" value="&lt;&lt;interface&gt;&gt;&#xa;ResettableRateLimiter" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Resettable_m1" value="+ reset(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Resettable">
+          <mxGeometry x="0" y="40" width="240" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Resettable_m2" value="+ resetAll(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Resettable">
+          <mxGeometry x="0" y="65" width="240" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_TokenBased" value="&lt;&lt;interface&gt;&gt;&#xa;TokenBasedRateLimiter" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="280" y="40" width="250" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_TokenBased_m1" value="+ getRemainingTokens(key): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_TokenBased">
+          <mxGeometry x="0" y="40" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_TokenBased_m2" value="+ getNextRefillTime(key): long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_TokenBased">
+          <mxGeometry x="0" y="65" width="250" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_RateLimiter" value="&lt;&lt;interface&gt;&gt;&#xa;RateLimiter" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="550" y="40" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_RateLimiter_m1" value="+ allowRequest(key: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_RateLimiter">
+          <mxGeometry x="0" y="40" width="240" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_RateLimiter_m2" value="+ reset(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_RateLimiter">
+          <mxGeometry x="0" y="65" width="240" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_Observable" value="&lt;&lt;interface&gt;&gt;&#xa;ObservableRateLimiter" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="810" y="40" width="240" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Observable_m1" value="+ getStats(key: String): RateLimiterStats" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Observable">
+          <mxGeometry x="0" y="40" width="240" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_Persistent" value="&lt;&lt;interface&gt;&gt;&#xa;PersistentRateLimiter" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="40" width="230" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Persistent_m1" value="+ saveState(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Persistent">
+          <mxGeometry x="0" y="40" width="230" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Persistent_m2" value="+ loadState(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Persistent">
+          <mxGeometry x="0" y="65" width="230" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_Storage" value="&lt;&lt;interface&gt;&gt;&#xa;RateLimiterStorage" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1320" y="40" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Storage_m1" value="+ save(key, state): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Storage">
+          <mxGeometry x="0" y="40" width="240" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Storage_m2" value="+ load(key): RateLimiterState" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Storage">
+          <mxGeometry x="0" y="65" width="240" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- sub-interfaces extend RateLimiter -->
+        <mxCell id="edge_Resettable_ext" style="endArrow=block;endFill=0;" edge="1" source="iface_Resettable" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_TokenBased_ext" style="endArrow=block;endFill=0;" edge="1" source="iface_TokenBased" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_Observable_ext" style="endArrow=block;endFill=0;" edge="1" source="iface_Observable" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_Persistent_ext" style="endArrow=block;endFill=0;" edge="1" source="iface_Persistent" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════ CONCRETE CLASSES — Row 2 (y=220) ══════ -->
+
+        <mxCell id="class_TokenBucket" value="TokenBucketRateLimiter" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="220" width="280" height="162" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_TokenBucket_f1" value="- capacity: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_TokenBucket">
+          <mxGeometry x="0" y="30" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_TokenBucket_f2" value="- refillRate: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_TokenBucket">
+          <mxGeometry x="0" y="52" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_TokenBucket_f3" value="- buckets: Map&lt;String, Bucket&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_TokenBucket">
+          <mxGeometry x="0" y="74" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_TokenBucket_m1" value="+ allowRequest(key: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_TokenBucket">
+          <mxGeometry x="0" y="96" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_TokenBucket_m2" value="+ reset(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_TokenBucket">
+          <mxGeometry x="0" y="118" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_TokenBucket_m3" value="+ printStatus(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_TokenBucket">
+          <mxGeometry x="0" y="140" width="280" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_LeakyBucket" value="LeakyBucketRateLimiter" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="220" width="240" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LeakyBucket_f1" value="- queue: Queue&lt;Request&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LeakyBucket">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LeakyBucket_m1" value="+ allowRequest(key: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LeakyBucket">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_FixedWindow" value="FixedWindowRateLimiter" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="580" y="220" width="270" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_FixedWindow_f1" value="- maxRequests: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_FixedWindow">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_FixedWindow_f2" value="- windowSizeMs: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_FixedWindow">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_FixedWindow_f3" value="- windows: Map&lt;String, Window&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_FixedWindow">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_FixedWindow_m1" value="+ allowRequest(key: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_FixedWindow">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_FixedWindow_m2" value="+ reset(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_FixedWindow">
+          <mxGeometry x="0" y="118" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_SlidingLog" value="SlidingWindowLogRateLimiter" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="870" y="220" width="290" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingLog_f1" value="- maxRequests: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingLog">
+          <mxGeometry x="0" y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingLog_f2" value="- windowSizeMs: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingLog">
+          <mxGeometry x="0" y="52" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingLog_f3" value="- requestLogs: Map&lt;String, LinkedList&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingLog">
+          <mxGeometry x="0" y="74" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingLog_m1" value="+ allowRequest(key: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingLog">
+          <mxGeometry x="0" y="96" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingLog_m2" value="+ reset(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingLog">
+          <mxGeometry x="0" y="118" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_SlidingCounter" value="SlidingWindowCounterRateLimiter" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="220" width="300" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingCounter_f1" value="- maxRequests: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingCounter">
+          <mxGeometry x="0" y="30" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingCounter_f2" value="- windowSizeMs: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingCounter">
+          <mxGeometry x="0" y="52" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingCounter_f3" value="- windows: Map&lt;String, WindowData&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingCounter">
+          <mxGeometry x="0" y="74" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingCounter_m1" value="+ allowRequest(key: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingCounter">
+          <mxGeometry x="0" y="96" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SlidingCounter_m2" value="+ reset(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SlidingCounter">
+          <mxGeometry x="0" y="118" width="300" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- implements edges: algorithm classes to interfaces -->
+        <mxCell id="edge_TB_impl_RL" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_TokenBucket" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_TB_impl_TBI" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_TokenBucket" target="iface_TokenBased" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_TB_impl_Res" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_TokenBucket" target="iface_Resettable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_LB_impl_RL" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_LeakyBucket" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_FW_impl_RL" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_FixedWindow" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_SL_impl_RL" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_SlidingLog" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_SL_impl_Obs" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_SlidingLog" target="iface_Observable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_SC_impl_RL" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_SlidingCounter" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════ DISTRIBUTED + GATEWAY — Row 3 (y=420) ══════ -->
+
+        <mxCell id="class_DistRL" value="DistributedRateLimiter" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="420" width="280" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DistRL_f1" value="- redis: RedisClient" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DistRL">
+          <mxGeometry x="0" y="30" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DistRL_f2" value="- maxRequests: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DistRL">
+          <mxGeometry x="0" y="52" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DistRL_f3" value="- windowSizeMs: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DistRL">
+          <mxGeometry x="0" y="74" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DistRL_m1" value="+ allowRequest(key: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DistRL">
+          <mxGeometry x="0" y="96" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DistRL_m2" value="+ reset(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DistRL">
+          <mxGeometry x="0" y="118" width="280" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_RedisFixed" value="RedisFixedWindowRateLimiter" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="420" width="280" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_RedisFixed_f1" value="- redis: RedisClient" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_RedisFixed">
+          <mxGeometry x="0" y="30" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_RedisFixed_f2" value="- maxRequests: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_RedisFixed">
+          <mxGeometry x="0" y="52" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_RedisFixed_f3" value="- windowSizeMs: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_RedisFixed">
+          <mxGeometry x="0" y="74" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_RedisFixed_m1" value="+ allowRequest(key: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_RedisFixed">
+          <mxGeometry x="0" y="96" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_RedisFixed_m2" value="+ reset(key: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_RedisFixed">
+          <mxGeometry x="0" y="118" width="280" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_APIGateway" value="APIGateway" style="swimlane;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="620" y="420" width="270" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_APIGateway_f1" value="- limiter: RateLimiter" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_APIGateway">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_APIGateway_m1" value="+ handleRequest(request): Response" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_APIGateway">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_APIGateway_m2" value="+ setRateLimiter(limiter): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_APIGateway">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="edge_DistRL_impl_RL" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_DistRL" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_DistRL_impl_Pers" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_DistRL" target="iface_Persistent" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_RF_impl_RL" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_RedisFixed" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_GW_uses_RL" value="«uses» (DIP)" style="endArrow=open;" edge="1" source="class_APIGateway" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════ CONFIG / FACTORY / UTILITY — Row 4 (y=610) ══════ -->
+
+        <mxCell id="class_Config" value="RateLimiterConfig" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="20" y="610" width="270" height="184" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Config_f1" value="- maxRequests: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Config">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Config_f2" value="- windowSizeMs: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Config">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Config_m1" value="+ getMaxRequests(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Config">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Config_m2" value="+ getWindowSizeMs(): long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Config">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Config_m3" value="+ perSecond(n: int): RateLimiterConfig" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Config">
+          <mxGeometry x="0" y="118" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Config_m4" value="+ perMinute(n: int): RateLimiterConfig" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Config">
+          <mxGeometry x="0" y="140" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Config_m5" value="+ perHour(n: int): RateLimiterConfig" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Config">
+          <mxGeometry x="0" y="162" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_Factory" value="RateLimiterFactory" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="310" y="610" width="280" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Factory_m1" value="+ create(algorithm, config): RateLimiter" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Factory">
+          <mxGeometry x="0" y="30" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Factory_note" value="  &lt;&lt;Factory Pattern&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;fontStyle=2;" vertex="1" parent="class_Factory">
+          <mxGeometry x="0" y="52" width="280" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_Algo" value="&lt;&lt;enum&gt;&gt;&#xa;RateLimitAlgorithm" style="swimlane;startSize=40;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="610" y="610" width="270" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Algo_v1" value="TOKEN_BUCKET" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Algo">
+          <mxGeometry x="0" y="40" width="270" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Algo_v2" value="LEAKY_BUCKET" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Algo">
+          <mxGeometry x="0" y="60" width="270" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Algo_v3" value="FIXED_WINDOW" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Algo">
+          <mxGeometry x="0" y="80" width="270" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Algo_v4" value="SLIDING_WINDOW_LOG" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Algo">
+          <mxGeometry x="0" y="100" width="270" height="20" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Algo_v5" value="SLIDING_WINDOW_COUNTER" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Algo">
+          <mxGeometry x="0" y="120" width="270" height="20" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_Metrics" value="RateLimiterMetrics" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="900" y="610" width="270" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Metrics_f1" value="- allowed: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Metrics">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Metrics_f2" value="- denied: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Metrics">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Metrics_m1" value="+ recordAllowed(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Metrics">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Metrics_m2" value="+ recordDenied(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Metrics">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Metrics_m3" value="+ getAllowRate(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Metrics">
+          <mxGeometry x="0" y="118" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="edge_Factory_creates" value="«creates»" style="endArrow=open;" edge="1" source="class_Factory" target="iface_RateLimiter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_Factory_uses_Config" style="endArrow=open;" edge="1" source="class_Factory" target="class_Config" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_Factory_uses_Algo" style="endArrow=open;" edge="1" source="class_Factory" target="class_Algo" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="seq_title" value="Rate Limiter — allowRequest() Sequence (Token Bucket + Distributed Redis)" style="text;fontSize=15;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="200" y="10" width="900" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════ LIFELINES ══════ -->
+        <mxCell id="life_Client" value="Client" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="120" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_GW" value="APIGateway" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="280" y="50" width="150" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_TB" value="TokenBucketRateLimiter" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="540" y="50" width="190" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_Redis" value="Redis" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="850" y="50" width="120" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_Backend" value="Backend API" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1090" y="50" width="130" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- ══════ TOKEN BUCKET FLOW ══════ -->
+
+        <!-- 1: Client -> APIGateway -->
+        <mxCell id="msg1" value="1: handleRequest(userId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="160" as="sourcePoint"/>
+            <mxPoint x="280" y="160" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2: APIGateway -> TokenBucket -->
+        <mxCell id="msg2" value="2: allowRequest(userId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="430" y="205" as="sourcePoint"/>
+            <mxPoint x="540" y="205" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3: TokenBucket self-call refill -->
+        <mxCell id="msg3" value="3: refill(elapsed)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="248" as="sourcePoint"/>
+            <mxPoint x="730" y="268" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="790" y="248"/>
+              <mxPoint x="790" y="268"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- alt frame -->
+        <mxCell id="alt_tokens" value="alt  [tokens &gt; 0]" style="swimlane;startSize=20;fillColor=none;dashed=1;strokeColor=#555555;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="285" width="1000" height="290" as="geometry"/>
+        </mxCell>
+
+        <!-- else divider line -->
+        <mxCell id="alt_else_line" style="endArrow=none;dashed=1;strokeColor=#555555;" edge="1" parent="alt_tokens">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="0" y="150" as="sourcePoint"/>
+            <mxPoint x="1000" y="150" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="alt_else_text" value="[else — no tokens available]" style="text;align=left;fontStyle=2;fontSize=11;" vertex="1" parent="alt_tokens">
+          <mxGeometry x="5" y="152" width="220" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- 4: tokens-- self call -->
+        <mxCell id="msg4" value="4: tokens--" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="322" as="sourcePoint"/>
+            <mxPoint x="730" y="342" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="800" y="322"/>
+              <mxPoint x="800" y="342"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5: return true -->
+        <mxCell id="ret1" value="return true" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="368" as="sourcePoint"/>
+            <mxPoint x="430" y="368" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 6: processRequest -->
+        <mxCell id="msg5" value="5: processRequest(request)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="430" y="398" as="sourcePoint"/>
+            <mxPoint x="1090" y="398" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 7: 200 OK -->
+        <mxCell id="ret2" value="200 OK" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="428" as="sourcePoint"/>
+            <mxPoint x="180" y="428" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 8: return false (else branch) -->
+        <mxCell id="ret3" value="return false" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="462" as="sourcePoint"/>
+            <mxPoint x="430" y="462" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 9: 429 -->
+        <mxCell id="ret4" value="429 Too Many Requests" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="280" y="492" as="sourcePoint"/>
+            <mxPoint x="180" y="492" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ══════ DISTRIBUTED REDIS FLOW ══════ -->
+        <mxCell id="dist_section" value="Distributed Rate Limiting via Redis (DistributedRateLimiter — Sliding Window Log)" style="text;fontSize=12;fontStyle=1;fillColor=#ffe6cc;strokeColor=#d79b00;align=left;" vertex="1" parent="1">
+          <mxGeometry x="60" y="600" width="800" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- D1: Client -> DistRL (reusing TB lifeline for DistributedRateLimiter role) -->
+        <mxCell id="msgD1" value="D1: allowRequest(key)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="180" y="645" as="sourcePoint"/>
+            <mxPoint x="540" y="645" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D2: zRemRangeByScore -->
+        <mxCell id="msgD2" value="D2: zRemRangeByScore(key, 0, now-window)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="673" as="sourcePoint"/>
+            <mxPoint x="850" y="673" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D3: zCard -->
+        <mxCell id="msgD3" value="D3: zCard(key)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="700" as="sourcePoint"/>
+            <mxPoint x="850" y="700" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D4: count returned -->
+        <mxCell id="retD1" value="count" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="850" y="722" as="sourcePoint"/>
+            <mxPoint x="730" y="722" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D5: [count < max] zAdd + expire -->
+        <mxCell id="msgD4" value="D5 [count &lt; max]: zAdd(key,now,uuid) + expire(key,ttl)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="748" as="sourcePoint"/>
+            <mxPoint x="850" y="748" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- D6: return true/false to client -->
+        <mxCell id="retD2" value="return true / false" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="540" y="772" as="sourcePoint"/>
+            <mxPoint x="180" y="772" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

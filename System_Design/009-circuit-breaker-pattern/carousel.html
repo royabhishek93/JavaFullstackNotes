@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Circuit Breaker Pattern — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .server-box {
+    width: 62px; height: 54px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .server-box.ok { border-color: #2ecc71; }
+  .server-box.ok span { background: #2ecc71; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-open { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .badge-closed { background: rgba(46,204,113,0.2); color: #2ecc71; }
+  .badge-half { background: rgba(245,166,35,0.2); color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Circuit Breaker Pattern</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">200 → 0</div>
+      <p>A notification service slows from 200ms to 30s. In 12 seconds, all 200 order-service threads are blocked. New orders start timing out.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cascade Failure</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Order<br>Service</div>
+        <div class="arrow x-mark">✕</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Notification<br>Service (slow)</div>
+      </div>
+      <p style="text-align:center">One slow downstream service exhausts the caller's ENTIRE thread pool. Order logic is fine — email isn't.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>CLOSED — Normal Operation</h1>
+    <h2>State 1</h2>
+    <div class="body">
+      <p><span class="badge badge-closed">CLOSED</span></p>
+      <p>Requests flow through normally. Circuit breaker silently counts failures in the background.</p>
+      <p>5 failures in 60s → trip to OPEN.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>OPEN — Tripped</h1>
+    <h2>State 2</h2>
+    <div class="body">
+      <p><span class="badge badge-open">OPEN</span></p>
+      <p>Every request fails <b>instantly</b> — no call attempted, no thread blocked. Order processing continues normally.</p>
+      <p>After 30s wait → move to HALF-OPEN.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>HALF-OPEN — Recovery Probe</h1>
+    <h2>State 3</h2>
+    <div class="body">
+      <p><span class="badge badge-half">HALF-OPEN</span></p>
+      <p>ONE request allowed through as a test.</p>
+      <p><span class="check-mark">✓</span> Succeeds → circuit CLOSES &nbsp; <span class="x-mark">✕</span> Fails → back to OPEN, wait again</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Resilience4j Config</h1>
+    <h2>Key Knobs</h2>
+    <div class="body">
+      <p><code>failureRateThreshold</code>: 50% of last 10 calls</p>
+      <p><code>slowCallDurationThreshold</code>: 2s</p>
+      <p><code>waitDurationInOpenState</code>: 30s</p>
+      <p><code>permittedNumberOfCallsInHalfOpenState</code>: 3</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Always Pair With a Fallback</h1>
+    <h2>The Trap</h2>
+    <div class="body">
+      <p><span class="x-mark">✕</span> No fallback = you replaced a slow error with a fast one.</p>
+      <p><span class="check-mark">✓</span> Return cached data &nbsp; <span class="check-mark">✓</span> Return a default &nbsp; <span class="check-mark">✓</span> Enqueue for async retry (Kafka/SQS)</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Sync + Circuit Breaker vs Async Event</h1>
+    <h2>Better Fix, Where Possible</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>Sync + Circuit Breaker</th><th>Async Event (Kafka)</th></tr>
+        <tr><td>Blocking risk</td><td>Mitigated, not eliminated</td><td>None — never blocks</td></tr>
+        <tr><td>Downstream down 1hr</td><td>Fallback needed</td><td>Consumer just retries</td></tr>
+        <tr><td>Best for</td><td>Must-have-now calls (fraud check)</td><td>Email/SMS/notifications</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Can the call be async? → Make it async, skip the circuit breaker. Must be synchronous? → Circuit breaker + fallback, always.</p>
+      <div class="quote-box">
+        "Circuit breaker prevents cascade failure by short-circuiting calls to a failing downstream service. In OPEN state, calls return immediately with a fallback — no threads blocked, no cascade. After a cooldown, one probe request tests recovery."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

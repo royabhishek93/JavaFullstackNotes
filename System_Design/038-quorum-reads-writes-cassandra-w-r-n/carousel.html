@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Quorum Reads/Writes (Cassandra W+R&gt;N) — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent: #4cc9f0;
+    --accent2: #f72585;
+    --good: #2ec4b6;
+    --bad: #e63946;
+    --warn: #ffb703;
+    --text: #eaeaf0;
+    --muted: #9a9ab0;
+    --node-cyl: #4361ee;
+    --node-cyl-body: #3a56d4;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    height: 100%;
+  }
+  .deck {
+    width: 540px; height: 540px; margin: 30px auto; position: relative;
+    background: var(--bg); border-radius: 12px; overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+  }
+  .slide {
+    display: none; width: 540px; height: 540px; padding: 28px 30px;
+    position: absolute; top: 0; left: 0;
+    background: var(--bg);
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .slide.active { display: block; }
+  .kicker {
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 24px; margin: 0 0 10px 0; line-height: 1.25; color: var(--text);
+  }
+  h2 {
+    font-size: 19px; margin: 0 0 10px 0; color: var(--text);
+  }
+  p, li { font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+  .stat {
+    font-size: 46px; font-weight: 800; color: var(--accent2);
+    line-height: 1;
+  }
+  .stat-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px;
+    font-size: 11px; font-weight: 700; letter-spacing: .5px;
+  }
+  .badge.good { background: rgba(46,196,182,.15); color: var(--good); border: 1px solid var(--good); }
+  .badge.bad { background: rgba(230,57,70,.15); color: var(--bad); border: 1px solid var(--bad); }
+  .badge.warn { background: rgba(255,183,3,.15); color: var(--warn); border: 1px solid var(--warn); }
+
+  /* ---- CSS-drawn "database" cylinder representing a Cassandra node ---- */
+  .cyl-wrap { display: flex; gap: 22px; justify-content: center; align-items: flex-end; margin-top: 18px; }
+  .cyl { width: 78px; text-align: center; }
+  .cyl-top {
+    width: 78px; height: 20px; border-radius: 50%;
+    background: var(--node-cyl);
+    border: 2px solid #7b8cf5;
+  }
+  .cyl-body {
+    width: 74px; height: 58px; margin: -10px auto 0 auto;
+    background: linear-gradient(180deg, var(--node-cyl), var(--node-cyl-body));
+    border-left: 2px solid #7b8cf5; border-right: 2px solid #7b8cf5;
+    position: relative;
+  }
+  .cyl-body::after {
+    content: ""; position: absolute; left: 2px; right: 2px; bottom: -9px; height: 18px;
+    border-radius: 50%; background: var(--node-cyl-body); border: 2px solid #7b8cf5; border-top: none;
+  }
+  .cyl-label { margin-top: 14px; font-size: 12px; font-weight: 700; color: var(--text); }
+  .cyl-sub { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+  .cyl.stale .cyl-top, .cyl.stale .cyl-body, .cyl.stale .cyl-body::after { background: var(--bad); border-color: #ff8a8a; }
+  .cyl.fresh .cyl-top, .cyl.fresh .cyl-body, .cyl.fresh .cyl-body::after { background: var(--good); border-color: #7fe3d6; }
+  .cyl.idle .cyl-top, .cyl.idle .cyl-body, .cyl.idle .cyl-body::after { background: #45456a; border-color: #5c5c88; }
+
+  /* ---- Server box with horizontal lines (coordinator / client) ---- */
+  .server-box {
+    width: 130px; margin: 0 auto; border: 2px solid var(--accent);
+    border-radius: 6px; background: rgba(76,201,240,.08); padding: 8px 10px;
+  }
+  .server-box .line { height: 4px; background: var(--accent); opacity: .5; border-radius: 2px; margin: 5px 0; }
+  .server-label { text-align: center; font-size: 11px; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+
+  /* ---- Arrows (pure CSS/text) ---- */
+  .arrow-down { text-align: center; font-size: 22px; color: var(--accent); margin: 4px 0; }
+  .arrow-row { display: flex; justify-content: center; gap: 40px; margin: 6px 0 2px 0; }
+  .arrow-row .arrow { font-size: 20px; color: var(--muted); }
+  .arrow-row .arrow.ack { color: var(--good); }
+  .arrow-row .arrow.stale { color: var(--bad); }
+
+  /* ---- Quorum overlap circles (Venn) ---- */
+  .venn-wrap { position: relative; height: 190px; margin-top: 10px; }
+  .venn-circle {
+    position: absolute; width: 190px; height: 190px; border-radius: 50%;
+    border: 3px solid; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; opacity: 0.85;
+  }
+  .venn-circle.write { left: 60px; top: 0; border-color: var(--accent2); background: rgba(247,37,133,.12); }
+  .venn-circle.read  { left: 190px; top: 0; border-color: var(--accent); background: rgba(76,201,240,.12); }
+  .venn-label-write { position: absolute; left: 75px; top: 6px; font-size: 12px; color: var(--accent2); font-weight: 800; }
+  .venn-label-read { position: absolute; left: 340px; top: 6px; font-size: 12px; color: var(--accent); font-weight: 800; }
+  .venn-overlap-label {
+    position: absolute; left: 213px; top: 84px; font-size: 11px; font-weight: 800;
+    color: var(--warn); text-align: center; width: 110px;
+  }
+
+  /* ---- Tables ---- */
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11.5px; }
+  th, td { border: 1px solid #3a3a5c; padding: 5px 6px; text-align: center; color: var(--text); }
+  th { background: #2b2b4a; color: var(--accent); font-size: 10.5px; }
+  tr.highlight-good td { background: rgba(46,196,182,.12); }
+  tr.highlight-bad td { background: rgba(230,57,70,.12); }
+
+  ul { margin: 8px 0; padding-left: 18px; }
+
+  .footer-quote {
+    margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--accent2);
+    background: rgba(247,37,133,.08); font-size: 12.5px; font-style: italic; color: var(--text);
+  }
+
+  .nav-controls {
+    width: 540px; margin: 12px auto 40px auto; display: flex; align-items: center;
+    justify-content: center; gap: 16px; color: var(--text); font-family: inherit;
+  }
+  .nav-controls button {
+    background: var(--panel); color: var(--text); border: 1px solid #3a3a5c;
+    padding: 8px 18px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 700;
+  }
+  .nav-controls button:hover { background: #2b2b4a; }
+  #counter { font-size: 13px; color: var(--muted); min-width: 50px; text-align: center; }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: white; }
+    .nav-controls { display: none; }
+    .deck { margin: 0; box-shadow: none; }
+    .slide { display: none; position: static; page-break-after: always; }
+    .slide.active { display: block; }
+    .slide, .cyl-top, .cyl-body, .cyl-body::after, .venn-circle, .server-box, tr, th, td {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active" data-slide="1">
+    <div class="kicker">Episode 38 · Distributed Systems</div>
+    <h1>A user's message vanishes on refresh.<br>No error. No warning.</h1>
+    <div class="stat">W=1, R=1</div>
+    <div class="stat-sub">Cassandra's DEFAULT consistency level — and the exact reason "sent" messages disappear.</div>
+    <div class="cyl-wrap">
+      <div class="cyl fresh"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 1</div><div class="cyl-sub">$150 ✓</div></div>
+      <div class="cyl idle"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 2</div><div class="cyl-sub">not asked</div></div>
+      <div class="cyl stale"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 3</div><div class="cyl-sub">$100 ✗ stale</div></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide" data-slide="2">
+    <div class="kicker">The Problem</div>
+    <h2>Write hits 1 node. Read hits a different node.</h2>
+    <div class="server-box"><div class="server-label">Client</div><div class="line"></div></div>
+    <div class="arrow-down">▼ write balance=$150</div>
+    <div class="server-box"><div class="server-label">Coordinator</div><div class="line"></div><div class="line"></div></div>
+    <div class="arrow-row">
+      <span class="arrow ack">▼ W=1 ✓</span>
+      <span class="arrow">skipped</span>
+      <span class="arrow">skipped</span>
+    </div>
+    <div class="cyl-wrap">
+      <div class="cyl fresh"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 1</div><div class="cyl-sub">$150</div></div>
+      <div class="cyl idle"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 2</div><div class="cyl-sub">$100</div></div>
+      <div class="cyl stale"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 3</div><div class="cyl-sub">$100 ← read hits here</div></div>
+    </div>
+    <p style="margin-top:8px;">Read consistency R=1 trusts whichever single node answers. If that node hasn't replicated yet → <b style="color:var(--bad)">stale read</b>. W + R = 1 + 1 = 2 ≤ N=3.</p>
+  </div>
+
+  <!-- SLIDE 3: N, W, R DEFINITIONS -->
+  <div class="slide" data-slide="3">
+    <div class="kicker">The Core Concept</div>
+    <h2>N, W, R — the majority-vote knobs</h2>
+    <ul>
+      <li><b style="color:var(--text)">N</b> = total replicas of your data (e.g., 3)</li>
+      <li><b style="color:var(--text)">W</b> = write quorum — how many nodes must confirm the write</li>
+      <li><b style="color:var(--text)">R</b> = read quorum — how many nodes must respond to the read</li>
+    </ul>
+    <p>Like 3 senators: a decision is valid if 2 of 3 agree. You don't need all 3 — just a majority. Tolerates 1 senator being unavailable, prevents deadlock.</p>
+    <div class="cyl-wrap">
+      <div class="cyl idle"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 1</div></div>
+      <div class="cyl idle"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 2</div></div>
+      <div class="cyl idle"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 3</div></div>
+    </div>
+    <div class="footer-quote">The magic rule: <b>if W + R &gt; N, you get strong consistency.</b></div>
+  </div>
+
+  <!-- SLIDE 4: WRITE QUORUM FLOW -->
+  <div class="slide" data-slide="4">
+    <div class="kicker">The Solution — Step 1</div>
+    <h2>Write with N=3, W=2</h2>
+    <div class="server-box"><div class="server-label">Coordinator</div><div class="line"></div></div>
+    <div class="arrow-row">
+      <span class="arrow ack">▼ ACK</span>
+      <span class="arrow ack">▼ ACK</span>
+      <span class="arrow">▼ async</span>
+    </div>
+    <div class="cyl-wrap">
+      <div class="cyl fresh"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 1</div><div class="cyl-sub">$150 ✓</div></div>
+      <div class="cyl fresh"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 2</div><div class="cyl-sub">$150 ✓</div></div>
+      <div class="cyl idle"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 3</div><div class="cyl-sub">catching up…</div></div>
+    </div>
+    <p style="margin-top:10px;">Coordinator waits for <b style="color:var(--good)">2 of 3</b> ACKs (W=2), then tells client "write successful." Node 3 gets it eventually — coordinator doesn't wait.</p>
+  </div>
+
+  <!-- SLIDE 5: READ QUORUM FLOW -->
+  <div class="slide" data-slide="5">
+    <div class="kicker">The Solution — Step 2</div>
+    <h2>Read with N=3, R=2</h2>
+    <div class="server-box"><div class="server-label">Coordinator</div><div class="line"></div></div>
+    <div class="arrow-row">
+      <span class="arrow ack">▲ $150 @T2</span>
+      <span class="arrow ack">▲ $150 @T2</span>
+      <span class="arrow">not asked</span>
+    </div>
+    <div class="cyl-wrap">
+      <div class="cyl fresh"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 1</div><div class="cyl-sub">$150</div></div>
+      <div class="cyl fresh"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 2</div><div class="cyl-sub">$150</div></div>
+      <div class="cyl idle"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-label">Node 3</div><div class="cyl-sub">–</div></div>
+    </div>
+    <p style="margin-top:10px;">Both responding nodes agree at timestamp T2 → coordinator returns <b style="color:var(--good)">$150</b>. R=2 achieved. W+R = 2+2 = 4 &gt; N=3.</p>
+  </div>
+
+  <!-- SLIDE 6: THE OVERLAP PROOF -->
+  <div class="slide" data-slide="6">
+    <div class="kicker">Why It Works</div>
+    <h2>The overlap proof</h2>
+    <div class="venn-wrap">
+      <div class="venn-circle write"></div>
+      <div class="venn-circle read"></div>
+      <div class="venn-label-write">WRITE SET (W=2)</div>
+      <div class="venn-label-read">READ SET (R=2)</div>
+      <div class="venn-overlap-label">≥1 node always overlaps → has fresh data</div>
+    </div>
+    <p>Write went to [1,2]. Read from [2,3] → overlap [2] ✓. Read from [1,3] → overlap [1] ✓. Read from [1,2] → overlap both ✓. <b style="color:var(--good)">Every case has ≥1 overlapping node.</b></p>
+  </div>
+
+  <!-- SLIDE 7: CASSANDRA CONSISTENCY LEVELS -->
+  <div class="slide" data-slide="7">
+    <div class="kicker">Deep Dive</div>
+    <h2>Cassandra's named consistency levels</h2>
+    <table>
+      <tr><th>Level</th><th>Meaning</th><th>Notes</th></tr>
+      <tr><td>ONE</td><td>W=1 or R=1</td><td>fastest, no guarantee</td></tr>
+      <tr><td>QUORUM</td><td>(N/2)+1</td><td>N=3→2, N=5→3</td></tr>
+      <tr><td>ALL</td><td>W or R = N</td><td>1 node down = failure</td></tr>
+      <tr><td>LOCAL_QUORUM</td><td>quorum in local DC</td><td>multi-DC</td></tr>
+      <tr><td>EACH_QUORUM</td><td>quorum in every DC</td><td>strongest multi-DC</td></tr>
+    </table>
+    <p style="margin-top:10px;">Common combos: <b style="color:var(--good)">Read ONE + Write QUORUM</b> (write-heavy feeds), <b style="color:var(--good)">Read QUORUM + Write QUORUM</b> (financial data). Never: <b style="color:var(--bad)">Read ALL + Write ONE</b>.</p>
+  </div>
+
+  <!-- SLIDE 8: READ REPAIR + TRAPS -->
+  <div class="slide" data-slide="8">
+    <div class="kicker">Deep Dive — Where Engineers Get It Wrong</div>
+    <h2>Read repair &amp; hidden traps</h2>
+    <ul>
+      <li>Disagreeing replicas → coordinator picks latest timestamp, returns it, then <b style="color:var(--text)">background-repairs</b> the stale node</li>
+      <li><code style="color:var(--accent)">read_repair_chance</code> default <b>10%</b> — triggers repair even with no visible mismatch</li>
+      <li>QUORUM waits for the <b style="color:var(--bad)">2nd-slowest</b> node (~200ms), not the fastest (~10ms at ONE)</li>
+      <li>W=ALL, R=ALL: 1 node down → <b style="color:var(--bad)">every op fails</b>. "Never use in practice."</li>
+      <li>Hinted handoff: coordinator stores an IOU for a down node, replays it when it returns</li>
+    </ul>
+  </div>
+
+  <!-- SLIDE 9: COMPARISON TABLE (second-to-last) -->
+  <div class="slide" data-slide="9">
+    <div class="kicker">Comparison</div>
+    <h2>Tunable consistency matrix (N=3)</h2>
+    <table>
+      <tr><th>W</th><th>R</th><th>W+R</th><th>Consistent?</th><th>Use case</th></tr>
+      <tr class="highlight-bad"><td>1</td><td>1</td><td>2</td><td>No</td><td>Metrics, counters</td></tr>
+      <tr><td>1</td><td>2</td><td>3</td><td>No</td><td>Cache-like reads</td></tr>
+      <tr><td>2</td><td>1</td><td>3</td><td>No</td><td>Write-heavy, stale OK</td></tr>
+      <tr class="highlight-good"><td>2</td><td>2</td><td>4</td><td>Yes ✓</td><td>Strong consistency</td></tr>
+      <tr><td>3</td><td>1</td><td>4</td><td>Yes ✓</td><td>Max durability writes</td></tr>
+      <tr><td>1</td><td>3</td><td>4</td><td>Yes ✓</td><td>Max freshness reads</td></tr>
+      <tr class="highlight-bad"><td>3</td><td>3</td><td>6</td><td>Yes ✓</td><td>Never use — 0 fault tolerance</td></tr>
+    </table>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <div class="slide" data-slide="10">
+    <div class="kicker">Cheat Sheet</div>
+    <h2>Decision tree</h2>
+    <p>
+      Need speed only? → <span class="badge warn">ONE / ONE</span><br>
+      Need balance? → <span class="badge good">ONE (read) / QUORUM (write)</span><br>
+      Need strong consistency? → <span class="badge good">QUORUM / QUORUM</span><br>
+      Money movement itself? → <span class="badge bad">Use MySQL/Postgres, not Cassandra</span>
+    </p>
+    <div class="footer-quote">
+      "QUORUM on both reads and writes guarantees that at least one node in the read set was written to.
+      That node has fresh data. The cost is you wait for the (N/2)+1th response instead of the first."
+    </div>
+    <p style="margin-top:10px;">Architect's one-liner: <i>"W+R greater than N is the quorum overlap guarantee — at least one node that was written to is always in your read set, so you always get fresh data."</i></p>
+  </div>
+
+</div>
+
+<div class="nav-controls">
+  <button id="prevBtn">← Prev</button>
+  <span id="counter">1 / 10</span>
+  <button id="nextBtn">Next →</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 1;
+
+  function showSlide(n) {
+    if (n < 1) n = 1;
+    if (n > total) n = total;
+    current = n;
+    slides.forEach(function (s) {
+      s.classList.toggle('active', parseInt(s.getAttribute('data-slide'), 10) === current);
+    });
+    document.getElementById('counter').textContent = current + ' / ' + total;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', function () { showSlide(current - 1); });
+  document.getElementById('nextBtn').addEventListener('click', function () { showSlide(current + 1); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') showSlide(current + 1);
+    if (e.key === 'ArrowLeft') showSlide(current - 1);
+  });
+
+  showSlide(1);
+</script>
+
+</body>
+</html>

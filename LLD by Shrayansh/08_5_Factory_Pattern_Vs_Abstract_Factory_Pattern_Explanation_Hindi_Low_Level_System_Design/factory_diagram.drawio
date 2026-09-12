@@ -1,0 +1,35 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Factory vs Abstract Factory" id="factory-pattern">
+    <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="900" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="FACTORY VS ABSTRACT FACTORY" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#1e293b;fontColor=#ffffff;fontSize=22;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="100" y="20" width="640" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="problem" value="THE PROBLEM&lt;br&gt;Object creation logic (which concrete class to build) is&lt;br&gt;scattered across 100s of call-sites in the codebase" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fee2e2;strokeColor=#b91c1c;fontColor=#7f1d1d;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="100" y="110" width="640" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="structure" value="PATTERN STRUCTURE&lt;br&gt;Factory: ShapeFactory.getShape(type) -&gt; Circle | Square | Rectangle&lt;br&gt;Abstract Factory: CarFactoryProducer.getFactory(segment)&lt;br&gt;-&gt; EconomicCarFactory | LuxuryCarFactory -&gt; getInstance(price)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e0f2fe;strokeColor=#0369a1;fontColor=#0c4a6e;fontSize=13;align=center;" vertex="1" parent="1">
+          <mxGeometry x="100" y="230" width="640" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="prodissue" value="PRODUCTION ISSUE&lt;br&gt;The Notification-Channel Factory That Leaked Memory&lt;br&gt;A 'factory' was mutated into an unbounded cache keyed by&lt;br&gt;per-user tokens -&gt; OutOfMemoryError after 3 days in prod" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffedd5;strokeColor=#c2410c;fontColor=#7c2d12;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="100" y="360" width="640" height="90" as="geometry" />
+        </mxCell>
+
+        <mxCell id="takeaway" value="KEY TAKEAWAY&lt;br&gt;Factory decides WHICH class to instantiate - it should never&lt;br&gt;manage caching/lifetime, that is Object Pool's job (bounded, with eviction)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dcfce7;strokeColor=#15803d;fontColor=#14532d;fontSize=13;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="100" y="490" width="640" height="80" as="geometry" />
+        </mxCell>
+
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#334155;strokeWidth=2;" edge="1" parent="1" source="problem" target="structure"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#334155;strokeWidth=2;" edge="1" parent="1" source="structure" target="prodissue"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#334155;strokeWidth=2;" edge="1" parent="1" source="prodissue" target="takeaway"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

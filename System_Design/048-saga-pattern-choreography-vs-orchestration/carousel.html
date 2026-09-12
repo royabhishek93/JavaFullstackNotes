@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Saga Pattern — Choreography vs Orchestration — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .step-box {
+    width: 84px; height: 56px; border: 2px solid var(--blue); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-size: 11px; color: var(--text); padding: 6px; margin: 0 auto; background: rgba(51,103,145,0.15);
+  }
+  .step-box.done { border-color: var(--green); background: rgba(0,191,165,0.12); }
+  .step-box.failed { border-color: #e74c3c; background: rgba(231,76,60,0.15); }
+  .orchestrator-box {
+    width: 96px; height: 56px; border: 3px solid var(--accent); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-size: 12px; font-weight: 700; color: var(--accent); margin: 0 auto; background: rgba(245,166,35,0.1);
+  }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .comp-arrow { font-size: 22px; color: #e74c3c; font-weight: 700; }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  code, .code-box {
+    display: block; background: #14141f; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; font-family: "SF Mono", Menlo, monospace; font-size: 11px; color: var(--text);
+    white-space: pre-wrap; line-height: 1.4;
+  }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Saga Pattern</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">0 locks</div>
+      <p>Order placement touches <b>3 databases</b> — inventory, payment, shipment. 2PC locks all three until the slowest one answers. Saga replaces the lock with local transactions + compensating rollbacks — and eventual, not instant, atomicity.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Saga = Relay Race, Not a Frozen Kitchen</h1>
+    <h2>The Concept</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="step-box done">Runner 1<br>local txn</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="step-box done">Runner 2<br>local txn</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="step-box failed">Runner 3<br>drops baton</div></div>
+      </div>
+      <p style="text-align:center">Each service locks only its <b>own</b> DB. If a step fails, compensating transactions run backward. No coordinator ever freezes the whole system.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Choreography</h1>
+    <h2>Event-Driven, No Coordinator</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="step-box done">Order<br>PENDING</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="step-box done">Inventory<br>StockReserved</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="step-box failed">Payment<br>PaymentFailed</div></div>
+      </div>
+      <div class="row">
+        <div class="comp-arrow">↩ compensate</div>
+      </div>
+      <p style="text-align:center">Each service reacts to the previous service's Kafka event. PaymentFailed → Inventory restores stock. No one is "in charge" — everyone just listens.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Orchestration</h1>
+    <h2>Central Saga Orchestrator</h2>
+    <div class="body">
+      <div class="row">
+        <div class="orchestrator-box">Orchestrator</div>
+      </div>
+      <div class="row">
+        <div class="col"><div class="step-box done">1. Reserve<br>Inventory</div></div>
+        <div class="col"><div class="step-box failed">2. Charge<br>Payment ✕</div></div>
+        <div class="col"><div class="step-box">3. Create<br>Shipment</div></div>
+      </div>
+      <div class="row">
+        <div class="comp-arrow">← 2 fails → orchestrator calls Inventory.release()</div>
+      </div>
+      <p style="text-align:center">Orchestrator persists state: <code>current_step, status=COMPENSATING</code>. It drives every forward call and every rollback call.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Choreography vs Orchestration</h1>
+    <h2>Trade-off Table</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>Choreography</th><th>Orchestration</th></tr>
+        <tr><td>Coupling</td><td><span class="check-mark">✓</span> Loose</td><td>Coordinator = coupling point</td></tr>
+        <tr><td>Traceability</td><td><span class="x-mark">✕</span> Hard to trace</td><td><span class="check-mark">✓</span> Flow in one place</td></tr>
+        <tr><td>Adding steps</td><td><span class="x-mark">✕</span> Update all subscribers</td><td><span class="check-mark">✓</span> Easy, one place</td></tr>
+        <tr><td>Best for</td><td>2-3 step simple flows</td><td>5+ step complex flows</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Idempotency Trap</h1>
+    <h2>Compensating Transactions Must Be Safe to Retry</h2>
+    <div class="body">
+      <p><span class="badge badge-cp">BAD</span> <code style="display:inline">"Refund $100"</code> — called twice on retry → user gets $200 back.</p>
+      <p><span class="badge badge-ap">GOOD</span></p>
+      <div class="code-box">SET status='REFUNDED', amount=100
+WHERE payment_id='pay-123' AND status != 'REFUNDED'
+-- 2nd call: already REFUNDED → no-op</div>
+      <p>Dedup pattern: <code style="display:inline">INSERT INTO processed_saga_steps(step_id) ... ON DUPLICATE KEY IGNORE</code></p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Semantic Undo, Not Literal Undo</h1>
+    <h2>Trap: Compensation ≠ Reverse of INSERT</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="step-box failed">✕ Rollback the<br>raw INSERT</div>Loses audit trail</div>
+        <div class="arrow">vs</div>
+        <div class="col"><div class="step-box done">✓ Mark item<br>as REMOVED</div>Keeps history</div>
+      </div>
+      <p style="text-align:center">"Remove item from cart" is a compensating <b>action</b>, not a literal DB rollback. Every forward step needs a matching semantic undo step.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Real World</h1>
+    <h2>Indian Tech Saga Flows</h2>
+    <div class="body">
+      <p><b>Swiggy:</b> order → payment → restaurant confirm → driver assign. Restaurant rejects → compensate payment + release driver, in exact reverse order.</p>
+      <p><b>PhonePe / Paytm:</b> debit source → convert currency → credit destination. Conversion fails → orchestrator credits source back automatically via Temporal.</p>
+      <p><b>Flipkart:</b> flash-sale checkout — reserve inventory → charge → confirm. PaymentFailed → choreography saga releases stock within milliseconds.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Saga Orchestration Tools</h1>
+    <h2>Slide 9 / 10 — Tech Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Tool</th><th>Style</th><th>Used By</th></tr>
+        <tr><td>Temporal</td><td>Code-first, durable execution</td><td>Netflix, Stripe, DoorDash</td></tr>
+        <tr><td>Conductor</td><td>Netflix OSS, JSON/BPMN workflow</td><td>Netflix</td></tr>
+        <tr><td>Axon Framework</td><td>Java, event sourcing + saga built-in</td><td>Enterprise Java shops</td></tr>
+        <tr><td>AWS Step Functions</td><td>Managed orchestrator</td><td>AWS-native teams</td></tr>
+        <tr><td>Manual</td><td><code style="display:inline">saga_status</code> column on Order table</td><td>Simple 2-3 step sagas</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>2-3 simple linear steps? → Choreography + Kafka events. 5+ steps, branching, retries? → Orchestration + Temporal/Conductor. Either way: every forward step needs an idempotent, semantic compensating step.</p>
+      <div class="quote-box">
+        "Saga replaces 2PC's distributed lock with a sequence of local transactions. If a step fails, we run compensating transactions to undo completed steps. No distributed lock means no blocking on coordinator failure — at the cost of eventual consistency instead of atomic consistency."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

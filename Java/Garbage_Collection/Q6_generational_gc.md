@@ -26,6 +26,48 @@ This is a **critical senior interview question**. Understanding GC types and Sto
 
 ## 📊 Visual Understanding
 
+### Which GC Runs When (ASCII Decision Flow)
+
+```
+                    +------------------------+
+                    |   Allocation request   |
+                    +-----------+------------+
+                                |
+                                v
+                    +------------------------+
+                    |      Eden full?        |
+                    +----+--------------+----+
+                     Yes |              | No
+                         v              v
+      +----------------------------+  +-----------------------+
+      | Minor GC: Young Gen only   |  |  Resume app threads   |
+      | (10-50ms, frequent)        |  +-----------^-----------+
+      +--------------+-------------+              |
+                     |                             |
+                     v                             |
+        +-------------------------+                |
+        | Old Gen nearly full?    |                |
+        +----+---------------+---+                |
+         Yes |               | No------------------+
+             v
+   +-----------------------------+
+   | Major GC: Old Gen           |
+   | (100ms-5s, rare)            |
+   +--------------+--------------+
+                  |
+                  v
+     +-------------------------+
+     | Heap still critical?    |
+     +----+---------------+----+
+      Yes |               | No-----------------------+
+          v                                          |
+ +---------------------------------+                  |
+ | Full GC: entire heap +          |                  |
+ | Metaspace (1-10s+, emergency)   |------------------>+--> Resume app threads (see above)
+ +----------------------------------+
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ### Minor GC (Young Generation Collection)
 
 **Before:**

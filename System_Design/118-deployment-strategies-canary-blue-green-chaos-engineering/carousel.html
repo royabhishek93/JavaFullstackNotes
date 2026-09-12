@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Deployment Strategies: Canary, Blue-Green &amp; Chaos Engineering</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #16213e;
+    --blue: #4361ee;
+    --green: #2ec4b6;
+    --amber: #ff9f1c;
+    --red: #e63946;
+    --text: #edf2f4;
+    --muted: #a0a3bd;
+    --border: #3a3d5c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    height: 100%;
+  }
+
+  .deck {
+    position: relative;
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    background: var(--bg);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    padding: 34px 36px 30px;
+    background: var(--bg);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    flex-direction: column;
+  }
+
+  .slide.active { display: flex; }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--amber);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-size: 26px;
+    margin: 0 0 10px;
+    line-height: 1.25;
+  }
+
+  h2 {
+    font-size: 20px;
+    margin: 0 0 10px;
+    color: var(--green);
+  }
+
+  p, li {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .muted { color: var(--muted); }
+
+  .stat {
+    font-size: 44px;
+    font-weight: 800;
+    color: var(--red);
+    margin: 6px 0;
+  }
+
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .footer-tag {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  /* ---------- Server / environment boxes ---------- */
+  .env-row {
+    display: flex;
+    gap: 18px;
+    align-items: flex-end;
+    justify-content: center;
+    margin: 10px 0;
+  }
+
+  .box {
+    width: 150px;
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 10px 12px;
+    background: var(--panel);
+  }
+
+  .box .label {
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .box .line {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    margin-bottom: 6px;
+  }
+
+  .box.blue { border-color: var(--blue); }
+  .box.blue .line { background: var(--blue); opacity: 0.55; }
+  .box.blue .label { color: var(--blue); }
+
+  .box.green { border-color: var(--green); }
+  .box.green .line { background: var(--green); opacity: 0.55; }
+  .box.green .label { color: var(--green); }
+
+  .box.amber { border-color: var(--amber); }
+  .box.amber .line { background: var(--amber); opacity: 0.6; }
+  .box.amber .label { color: var(--amber); }
+
+  .box.dim { opacity: 0.45; }
+
+  /* ---------- LB + arrows ---------- */
+  .lb {
+    align-self: center;
+    border: 2px solid var(--text);
+    border-radius: 6px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: var(--panel);
+  }
+
+  .arrows {
+    display: flex;
+    justify-content: center;
+    gap: 60px;
+    margin-bottom: -4px;
+  }
+
+  .arrow-down {
+    font-size: 20px;
+    color: var(--muted);
+  }
+
+  .weight-tag {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  /* ---------- traffic split bar ---------- */
+  .split-bar {
+    display: flex;
+    width: 100%;
+    height: 26px;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    margin: 10px 0;
+  }
+
+  .split-bar .seg {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #0a0a12;
+  }
+
+  .seg.stable { background: var(--blue); color: #eef2ff; }
+  .seg.canary { background: var(--amber); }
+
+  /* ---------- step list ---------- */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .step {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border-left: 3px solid var(--green);
+    padding: 6px 10px;
+    background: var(--panel);
+    border-radius: 0 6px 6px 0;
+  }
+
+  .step .num {
+    font-weight: 800;
+    color: var(--green);
+    min-width: 20px;
+  }
+
+  .step.contract { border-left-color: var(--red); }
+  .step.contract .num { color: var(--red); }
+
+  /* ---------- comparison table ---------- */
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+  }
+
+  table.cmp th, table.cmp td {
+    border: 1px solid var(--border);
+    padding: 6px 5px;
+    text-align: left;
+  }
+
+  table.cmp th {
+    background: var(--panel);
+    color: var(--amber);
+    font-size: 10.5px;
+  }
+
+  table.cmp td.name {
+    font-weight: 700;
+    color: var(--green);
+  }
+
+  /* ---------- decision tree ---------- */
+  .tree {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12.5px;
+  }
+
+  .tree .q {
+    font-weight: 700;
+    color: var(--amber);
+  }
+
+  .tree .a {
+    margin-left: 16px;
+    color: var(--text);
+  }
+
+  blockquote {
+    border-left: 3px solid var(--green);
+    margin: 10px 0 0;
+    padding: 8px 12px;
+    background: var(--panel);
+    font-size: 12.5px;
+    font-style: italic;
+    color: var(--text);
+    border-radius: 0 6px 6px 0;
+  }
+
+  /* ---------- comparison squares (tech legend) ---------- */
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+  }
+
+  .sq {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    display: inline-block;
+  }
+
+  .sq.blue { background: var(--blue); }
+  .sq.green { background: var(--green); }
+  .sq.amber { background: var(--amber); }
+  .sq.red { background: var(--red); }
+
+  /* ---------- nav ---------- */
+  .nav {
+    width: 540px;
+    margin: 0 auto 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+  }
+
+  .nav button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  .nav button:hover { background: var(--blue); }
+
+  .counter {
+    font-size: 13px;
+    color: var(--muted);
+    min-width: 60px;
+    text-align: center;
+  }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: var(--bg); }
+    .nav { display: none; }
+    .deck { margin: 0; box-shadow: none; }
+    .slide {
+      display: flex !important;
+      page-break-after: always;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1 : HOOK -->
+  <section class="slide active">
+    <div class="eyebrow">Deployment Strategies · Slide 1</div>
+    <h1>Your checkout rewrite touches the schema. Error rate just spiked.</h1>
+    <div class="content">
+      <div class="stat">2x</div>
+      <p class="muted">infra cost during a blue-green cutover window — vs. an instant, redeploy-free rollback if you get it right.</p>
+      <p>Netflix built <strong>Chaos Monkey</strong> to randomly kill its own production servers — on purpose — because an untested resilience claim is just a hopeful assumption.</p>
+    </div>
+    <div class="footer-tag">Canary · Blue-Green · Rolling · Expand-Contract · Chaos Engineering</div>
+  </section>
+
+  <!-- SLIDE 2 : THE PROBLEM -->
+  <section class="slide">
+    <div class="eyebrow">The Problem · Slide 2</div>
+    <h2>Big-bang deploys have zero blast-radius control</h2>
+    <div class="content">
+      <div class="lb" style="align-self:center;">LOAD BALANCER</div>
+      <div class="arrows"><span class="arrow-down">&#8595;</span></div>
+      <div class="env-row">
+        <div class="box red" style="border-color:var(--red);">
+          <div class="label" style="color:var(--red);">v2.0 — NEW</div>
+          <div class="line"></div><div class="line"></div><div class="line"></div>
+        </div>
+      </div>
+      <p style="text-align:center;font-weight:700;color:var(--red);">100% of traffic · 0% warning</p>
+      <p class="muted">Old kitchen closes at midnight, new kitchen opens at 6AM — if the new chef burns the eggs, <em>every</em> customer that morning gets a bad meal before anyone notices.</p>
+    </div>
+    <div class="footer-tag">Staging never has real traffic, real data shape, real concurrency</div>
+  </section>
+
+  <!-- SLIDE 3 : BLUE-GREEN -->
+  <section class="slide">
+    <div class="eyebrow">The Solution · Slide 3</div>
+    <h2>Blue-Green: instant switch, instant rollback</h2>
+    <div class="content">
+      <div class="lb">LOAD BALANCER</div>
+      <div class="arrows">
+        <span class="arrow-down">&#8595;</span>
+        <span class="arrow-down">&#8595;</span>
+      </div>
+      <div class="env-row">
+        <div class="box blue">
+          <div class="label">BLUE (v1.0) — LIVE</div>
+          <div class="line"></div><div class="line"></div><div class="line"></div>
+        </div>
+        <div class="box green dim">
+          <div class="label">GREEN (v2.0) — idle, warmed</div>
+          <div class="line"></div><div class="line"></div><div class="line"></div>
+        </div>
+      </div>
+      <p style="text-align:center;">Cutover = flip LB target. Rollback = flip it back. <strong>No redeploy.</strong></p>
+      <p class="muted">Cost: 2x steady-state capacity during the transition window — best for infrequent, high-risk releases.</p>
+    </div>
+    <div class="footer-tag">Two full, independent environments</div>
+  </section>
+
+  <!-- SLIDE 4 : CANARY -->
+  <section class="slide">
+    <div class="eyebrow">The Solution · Slide 4</div>
+    <h2>Canary: gradual, metric-gated promotion</h2>
+    <div class="content">
+      <div class="lb">LOAD BALANCER (weighted routing)</div>
+      <div class="split-bar">
+        <div class="seg stable" style="width:95%;">v1.0 stable — 95%</div>
+        <div class="seg canary" style="width:5%;">5%</div>
+      </div>
+      <p class="muted" style="text-align:center;">Automated canary analysis watches: error rate · p99 latency · CPU</p>
+      <div class="split-bar">
+        <div class="seg stable" style="width:50%;">50%</div>
+        <div class="seg canary" style="width:50%;">50%</div>
+      </div>
+      <p style="text-align:center;">Healthy → promote 5% → 25% → 50% → 100% (10–30 min gated windows)</p>
+      <p style="text-align:center;color:var(--red);font-weight:700;">Degraded → auto-rollback: weight → 0%, alert on-call</p>
+    </div>
+    <div class="footer-tag">Spinnaker / Argo Rollouts style promotion</div>
+  </section>
+
+  <!-- SLIDE 5 : ROLLING -->
+  <section class="slide">
+    <div class="eyebrow">The Solution · Slide 5</div>
+    <h2>Rolling: replace one cook at a time</h2>
+    <div class="content">
+      <div class="env-row">
+        <div class="box blue"><div class="label">v1.0</div><div class="line"></div></div>
+        <div class="box blue"><div class="label">v1.0</div><div class="line"></div></div>
+        <div class="box green"><div class="label">v1.1</div><div class="line"></div></div>
+      </div>
+      <p style="text-align:center;">Both versions run simultaneously — never zero capacity.</p>
+      <p class="muted" style="text-align:center;">No infra overhead — but no single-switch rollback either. Reverting means rolling the old version back out gradually, too.</p>
+      <p style="text-align:center;font-weight:700;color:var(--green);">Best default for low-risk, well-tested changes</p>
+    </div>
+    <div class="footer-tag">Simple, cheap, gradually reversible</div>
+  </section>
+
+  <!-- SLIDE 6 : EXPAND-CONTRACT -->
+  <section class="slide">
+    <div class="eyebrow">The Solution · Slide 6</div>
+    <h2>Expand-Contract: zero-downtime schema change</h2>
+    <div class="content">
+      <div class="steps">
+        <div class="step"><span class="num">1</span><span><strong>EXPAND</strong> — add <code>username</code>, keep <code>user_name</code>. App writes both, reads old.</span></div>
+        <div class="step"><span class="num">2</span><span><strong>BACKFILL</strong> — copy old → new in a throttled batch job (avoid replication lag spikes).</span></div>
+        <div class="step"><span class="num">3</span><span><strong>MIGRATE READS</strong> — app reads new column, still writes both. Verify.</span></div>
+        <div class="step contract"><span class="num">4</span><span><strong>CONTRACT</strong> — write only new column, then <code>DROP COLUMN user_name</code>.</span></div>
+      </div>
+      <p class="muted">Every intermediate step is valid for both old and new code running concurrently during a rolling deploy — that's what makes it zero-downtime.</p>
+    </div>
+    <div class="footer-tag">Never couple a schema change to a code rollout</div>
+  </section>
+
+  <!-- SLIDE 7 : CHAOS ENGINEERING -->
+  <section class="slide">
+    <div class="eyebrow">Deep Dive · Slide 7</div>
+    <h2>Chaos Engineering: break it on purpose</h2>
+    <div class="content">
+      <p><strong>Hypothesis:</strong> payment-service fails over to a secondary AZ within 30s, no customer-visible errors.</p>
+      <div class="env-row">
+        <div class="box red" style="border-color:var(--red);">
+          <div class="label" style="color:var(--red);">AZ-1: pods killed</div>
+          <div class="line"></div>
+        </div>
+        <div class="box green">
+          <div class="label">AZ-2: takes over</div>
+          <div class="line"></div><div class="line"></div>
+        </div>
+      </div>
+      <p class="muted">Blast radius capped &lt;5% of production traffic, automated abort if customer-facing errors cross a threshold.</p>
+      <p style="font-weight:700;color:var(--amber);">A chaos experiment that FAILS is more valuable — it found the gap before a real outage did.</p>
+    </div>
+    <div class="footer-tag">Netflix Chaos Monkey — hospital-generator discipline</div>
+  </section>
+
+  <!-- SLIDE 8 : PROBES + REAL NUMBERS -->
+  <section class="slide">
+    <div class="eyebrow">Deep Dive · Slide 8</div>
+    <h2>Readiness vs. Liveness — don't mix these up</h2>
+    <div class="content">
+      <div class="legend" style="flex-direction:column;gap:10px;">
+        <div class="swatch"><span class="sq green"></span><strong>Readiness</strong> — "ready for traffic now?" Fail → pulled from LB pool. Gates canary/rolling promotion.</div>
+        <div class="swatch"><span class="sq red"></span><strong>Liveness</strong> — "still alive?" Fail → pod killed &amp; restarted. Self-healing, not routing.</div>
+      </div>
+      <table class="cmp" style="margin-top:10px;">
+        <tr><th>Metric</th><th>Real number</th></tr>
+        <tr><td class="name">Blue-green cost</td><td>2x steady-state capacity during cutover</td></tr>
+        <tr><td class="name">Canary window</td><td>10–30 min per promotion step</td></tr>
+        <tr><td class="name">Chaos blast radius</td><td>&lt;5% of prod traffic, capped + abortable</td></tr>
+      </table>
+    </div>
+    <div class="footer-tag">Wiring canary gating to the wrong probe misroutes traffic</div>
+  </section>
+
+  <!-- SLIDE 9 : COMPARISON TABLE -->
+  <section class="slide">
+    <div class="eyebrow">Decision Framework · Slide 9</div>
+    <h2>Strategy comparison</h2>
+    <div class="content">
+      <table class="cmp">
+        <tr><th>Strategy</th><th>Rollback</th><th>Infra Cost</th><th>Blast Radius</th></tr>
+        <tr><td class="name">Blue-green</td><td>Instant (LB switch)</td><td>2x cutover</td><td>100% if not caught</td></tr>
+        <tr><td class="name">Canary</td><td>Fast (weight→0%)</td><td>1-2 extra instances</td><td>Small %, observable</td></tr>
+        <tr><td class="name">Rolling</td><td>Slow, gradual</td><td>None extra</td><td>Grows over rollout</td></tr>
+        <tr><td class="name">Chaos exp.</td><td>N/A (validation)</td><td>Small, controlled</td><td>&lt;5% typical</td></tr>
+        <tr><td class="name">Expand-contract</td><td>Each step reversible</td><td>Temp dual-write</td><td>None if steps ordered</td></tr>
+      </table>
+      <div class="legend">
+        <div class="swatch"><span class="sq blue"></span>Blue-green</div>
+        <div class="swatch"><span class="sq amber"></span>Canary</div>
+        <div class="swatch"><span class="sq green"></span>Rolling / Expand-contract</div>
+        <div class="swatch"><span class="sq red"></span>Chaos experiment</div>
+      </div>
+    </div>
+    <div class="footer-tag">Pick the tool by risk profile, not by habit</div>
+  </section>
+
+  <!-- SLIDE 10 : DECISION TREE + INTERVIEW QUOTE -->
+  <section class="slide">
+    <div class="eyebrow">Interview Answer · Slide 10</div>
+    <h2>Decision tree &amp; the exact quote to give</h2>
+    <div class="content">
+      <div class="tree">
+        <div class="q">Schema change involved?</div>
+        <div class="a">→ Use expand-contract, independent of code rollout.</div>
+        <div class="q">High-risk, infrequent release?</div>
+        <div class="a">→ Blue-green: instant switch, accept 2x cutover cost.</div>
+        <div class="q">Frequent / revenue-critical release?</div>
+        <div class="a">→ Canary: automated metric-gated promotion.</div>
+        <div class="q">Need to validate resilience claims?</div>
+        <div class="a">→ Chaos experiment, bounded blast radius.</div>
+      </div>
+      <blockquote>"I'd split this into two separate problems: the schema change and the code rollout, because coupling them is exactly what removes your rollback option."</blockquote>
+    </div>
+    <div class="footer-tag">Save this for your next system design interview</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">&larr; Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="nextBtn">Next &rarr;</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  function render() {
+    slides.forEach(function (s, i) {
+      s.classList.toggle('active', i === current);
+    });
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + total;
+  }
+
+  function next() {
+    current = (current + 1) % total;
+    render();
+  }
+
+  function prev() {
+    current = (current - 1 + total) % total;
+    render();
+  }
+
+  document.getElementById('nextBtn').addEventListener('click', next);
+  document.getElementById('prevBtn').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowLeft') prev();
+  });
+
+  render();
+</script>
+
+</body>
+</html>

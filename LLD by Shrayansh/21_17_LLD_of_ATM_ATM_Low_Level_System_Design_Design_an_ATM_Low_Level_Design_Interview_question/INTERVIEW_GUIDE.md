@@ -1,6 +1,8 @@
 # 🏧 ATM System - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📕 Difficulty: Advanced** — concurrency, scale, or financial-correctness heavy; aim for this once you're comfortable with the Beginner/Intermediate guides.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -1296,6 +1298,34 @@ session.setMaxInactiveInterval(300);  // 5 min
 - **Simplicity**: No JWT signing/verification overhead
 
 **Mobile banking**: Use JWT (millions of concurrent users).
+
+---
+
+## 🔥 Real-World Production Issue: The Cash-Dispense Chain of Responsibility That Ran Out of Notes Mid-Dispense
+
+*In plain English: cash-dispensing logic that can't report partial success can short-change a customer while still deducting the full amount from their account.*
+
+**The war story:**
+
+"An ATM fleet used Chain of Responsibility for cash dispensing (Hundred-note handler -> Fifty-note handler -> Twenty-note handler, greedily reducing the amount). It worked in every test because test ATMs were always freshly restocked with plenty of every denomination. Production ATMs, closer to a restocking cycle, sometimes run low on ONE denomination."
+
+```
+Customer requests ₹2,300
+Hundred-note handler: dispense 23 x ₹100 notes... but ATM only has 15 x ₹100 left!
+   handler dispensed 15 notes (₹1,500), then had NO fallback logic for
+   the remaining ₹800 -> simply THREW an exception mid-dispense
+
+Result: customer's ACCOUNT was already debited ₹2,300 (debit happened
+        BEFORE the dispense chain ran, per the original design),
+        but only ₹1,500 physically came out of the machine
+        -> customer short-changed by ₹800, had to file a dispute
+```
+
+**Root cause:** the Chain of Responsibility handlers each greedily tried to dispense as many of their denomination as possible, but had no way to communicate back "I couldn't fully complete my part" to trigger either (a) a fallback to smaller denominations for the remainder, or (b) aborting the ENTIRE transaction (including reversing the debit) before any cash was dispensed. The debit-then-dispense ordering compounded the problem.
+
+**The fix:** two changes: (1) each handler now returns a `DispenseResult` reporting exactly how much it could and couldn't fulfill, letting the NEXT handler in the chain pick up the remainder or a fallback handler split into smaller denominations; (2) reordered the flow to RESERVE cash availability and validate the FULL amount can be physically dispensed BEFORE debiting the account, with the actual debit only committed after a successful full dispense (or reversed automatically on any dispense failure).
+
+**Lesson for a new developer:** "When Chain of Responsibility handlers manage a SHARED, DEPLETABLE resource (cash notes, inventory, rate-limited quota), each handler must be able to report PARTIAL success/failure back through the chain, not just fully succeed or throw. And when a chain is one part of a larger financial transaction, always validate all resources are available BEFORE committing the irreversible side-effect (debiting an account)."
 
 ---
 

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Retry, Exponential Backoff &amp; Jitter — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --red: #e74c3c; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .server-box {
+    width: 60px; height: 50px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: var(--red); }
+  .server-box.hot span { background: var(--red); }
+  .server-box.ok { border-color: var(--green); }
+  .server-box.ok span { background: var(--green); }
+  .client-dot {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--blue); display: inline-block; margin: 2px;
+  }
+  .client-dot.spike { background: var(--red); }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: var(--red); font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-retry { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-noretry { background: rgba(231,76,60,0.2); color: var(--red); }
+  .timeline { position: relative; height: 60px; background: #14142a; border-radius: 6px; margin: 10px 0; }
+  .tick { position: absolute; bottom: 0; width: 6px; border-radius: 2px 2px 0 0; }
+  .tick.blue { background: var(--blue); }
+  .tick.spike { background: var(--red); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Retry, Backoff &amp; Jitter</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">1,000 retries</div>
+      <p>...all firing at the <b>exact same second</b>. A payment gateway that was just starting to recover gets hammered back down — a thundering herd caused by naive retry logic.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Thundering Herd</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p>1,000 clients fail at t=0. All retry immediately at t=1s. Same error. Retry again at t=2s. Service never gets a chance to recover.</p>
+      <div class="row">
+        <span class="client-dot spike"></span><span class="client-dot spike"></span><span class="client-dot spike"></span>
+        <span class="client-dot spike"></span><span class="client-dot spike"></span><span class="client-dot spike"></span>
+        <span class="arrow">→</span>
+        <div class="server-box hot"><span></span><span></span><span></span></div>
+      </div>
+      <p style="text-align:center;color:var(--muted)">Synchronized waves = repeated overload, every second.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Backoff Alone Isn't Enough</h1>
+    <h2>Still Synchronized</h2>
+    <div class="body">
+      <p>Every client waits exactly 1s, then 2s, then 4s. They're STILL all synchronized — spikes just move to t=1, t=3, t=7.</p>
+      <div class="timeline">
+        <div class="tick spike" style="left:8%;height:50px;"></div>
+        <div class="tick spike" style="left:9%;height:48px;"></div>
+        <div class="tick spike" style="left:10%;height:52px;"></div>
+        <div class="tick spike" style="left:35%;height:50px;"></div>
+        <div class="tick spike" style="left:36%;height:48px;"></div>
+        <div class="tick spike" style="left:75%;height:50px;"></div>
+        <div class="tick spike" style="left:76%;height:48px;"></div>
+      </div>
+      <p style="text-align:center;color:var(--muted)">t=1s, t=3s, t=7s — spikes, not spread.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Full Jitter Fixes It</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <p><b>delay = random(0, min(cap, base × 2^attempt))</b></p>
+      <div class="timeline">
+        <div class="tick blue" style="left:5%;height:20px;"></div>
+        <div class="tick blue" style="left:14%;height:35px;"></div>
+        <div class="tick blue" style="left:22%;height:15px;"></div>
+        <div class="tick blue" style="left:33%;height:42px;"></div>
+        <div class="tick blue" style="left:45%;height:25px;"></div>
+        <div class="tick blue" style="left:58%;height:38px;"></div>
+        <div class="tick blue" style="left:70%;height:18px;"></div>
+        <div class="tick blue" style="left:82%;height:30px;"></div>
+      </div>
+      <p style="text-align:center;color:var(--muted)">Each client picks a random wait → smooth, spread load.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Jitter Strategies</h1>
+    <h2>Comparison Table</h2>
+    <div class="body">
+      <table>
+        <tr><th>Strategy</th><th>Formula</th><th>Best For</th></tr>
+        <tr><td>No Jitter</td><td>base × 2^n</td><td>❌ Avoid — synchronized</td></tr>
+        <tr><td>Full Jitter</td><td>random(0, cap)</td><td>Most cases</td></tr>
+        <tr><td>Equal Jitter</td><td>half + random(half)</td><td>Predictable minimum</td></tr>
+        <tr><td>Decorrelated</td><td>random(base, prev×3)</td><td>High contention (AWS)</td></tr>
+      </table>
+      <p style="margin-top:12px;"><span class="badge badge-retry">base=1s</span> <span class="badge badge-retry">cap=30s</span> <span class="badge badge-retry">max=5 attempts</span></p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Which Errors To Retry</h1>
+    <h2>Deep Dive — Trap #1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><span class="x-mark" style="font-size:24px;">400</span>Bad Request</div>
+        <div class="col"><span class="x-mark" style="font-size:24px;">401</span>Unauthorized</div>
+        <div class="col"><span class="x-mark" style="font-size:24px;">404</span>Not Found</div>
+        <div class="col"><span class="x-mark" style="font-size:24px;">422</span>Invalid</div>
+      </div>
+      <p style="text-align:center">☝️ NEVER retry — same request = same error forever</p>
+      <div class="row">
+        <div class="col"><span class="check-mark" style="font-size:24px;">429</span>Rate Limited</div>
+        <div class="col"><span class="check-mark" style="font-size:24px;">503</span>Unavailable</div>
+        <div class="col"><span class="check-mark" style="font-size:24px;">502</span>Bad Gateway</div>
+      </div>
+      <p style="text-align:center">☝️ Retry with backoff + jitter — transient failures</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Idempotency Keys</h1>
+    <h2>Deep Dive — Trap #2</h2>
+    <div class="body">
+      <p>Payment POST times out → caller retries → bank had already processed it → <b>customer charged twice.</b></p>
+      <div class="row">
+        <div class="col">Request<br>+ X-Idempotency-Key</div>
+        <span class="arrow">→</span>
+        <div class="server-box ok"><span></span><span></span><span></span></div>
+        <span class="arrow">→</span>
+        <div class="col">Retry same key<br>= same result,<br>no double charge</div>
+      </div>
+      <p style="text-align:center;color:var(--muted)">SendGrid uses X-Message-ID the same way to prevent duplicate emails.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Real World: SendGrid 429</h1>
+    <h2>Production Example</h2>
+    <div class="body">
+      <p>10,000 notifications in a burst → SendGrid returns <b>429 Too Many Requests</b>.</p>
+      <ol style="padding-left:18px;">
+        <li>Check <b>Retry-After</b> header — honor it exactly if present</li>
+        <li>No header? Full jitter: base=1s, cap=30s, max 5 attempts</li>
+        <li>Retry only 429 / 503 / 502 / network errors</li>
+        <li>Attach X-Message-ID (notification UUID) — dedupes on SendGrid's side</li>
+      </ol>
+      <p style="color:var(--muted)">Same pattern: Apple APNs 429s, RFC 5321 SMTP backoff (5min→10min→20min→40min→24hr)</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Line</h1>
+    <h2>Cheat Sheet</h2>
+    <div class="body">
+      <p>Transient error (429/503/502/timeout)? → Backoff + jitter + idempotency key. Permanent error (400/401/404/422)? → Do NOT retry.</p>
+      <div class="quote-box">
+        "Exponential backoff gives a struggling service breathing room between retries; jitter ensures those retries don't all arrive at the same moment and recreate the original spike."
+      </div>
+      <p style="margin-top:10px;color:var(--muted)">Combine with: Circuit breaker (stop hammering) + Dead-letter queue (nothing silently lost).</p>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button onclick="nav(-1)">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button onclick="nav(1)">Next →</button>
+</div>
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let idx = 0;
+  function render() {
+    slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+    document.getElementById('counter').textContent = (idx + 1) + ' / ' + slides.length;
+  }
+  function nav(dir) {
+    idx = Math.max(0, Math.min(slides.length - 1, idx + dir));
+    render();
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') nav(1);
+    if (e.key === 'ArrowLeft') nav(-1);
+  });
+  render();
+</script>
+</body>
+</html>

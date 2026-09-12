@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Scalability &amp; Load Balancing — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 26px; margin: 0 auto;
+  }
+  .server-box {
+    width: 60px; height: 52px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Scalability &amp; Load Balancing</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">10×</div>
+      <p>normal traffic, for 2 hours, starting at midnight. If ONE part of your stack still remembers "which server a user was talking to," the whole sale collapses under its own auto-scaling.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Horizontal Scaling Needs a Traffic Cop</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Pod 1</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Pod 2</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Pod 3</div>
+      </div>
+      <p style="text-align:center">L4 LB: routes by IP+port, fast, blind to content. L7 LB: reads the HTTP request, routes by path, terminates SSL.</p>
+      <p style="text-align:center">Every pod must be <b>stateless</b> — no local memory of "who" a user is.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Flash-Sale Request Path</h1>
+    <h2>The Architecture</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Route53</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>CDN</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>ALB</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Pods</div>
+      </div>
+      <div class="row">
+        <div class="col"><div class="redis-icon">R</div>Redis</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Aurora +5 replicas</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Pre-Sale Checklist</h1>
+    <h2>Scenario 1 — Before Traffic Hits</h2>
+    <div class="body">
+      <p><span class="check-mark">✓</span> Pre-scale pods manually (HPA reacts in 2-3 min, spikes hit in seconds)</p>
+      <p><span class="check-mark">✓</span> Pre-warm Redis with hot product/inventory data</p>
+      <p><span class="check-mark">✓</span> Route reads to replicas, writes only to primary</p>
+      <p><span class="check-mark">✓</span> Aggressive CDN caching (long TTL for images, 5min for price)</p>
+      <p><span class="check-mark">✓</span> Circuit breakers around payment/inventory dependencies</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Queue-Based Order Acceptance</h1>
+    <h2>Scenario 1 — During the Sale</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Client</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>200 OK</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>SQS</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DB</div>
+      </div>
+      <p style="text-align:center">Order accepted instantly, processed at a controlled rate. Rate limit: 5 req/sec/user via token bucket in Redis.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Consistent Hashing — Cache Avalanche</h1>
+    <h2>Scenario 2</h2>
+    <div class="body">
+      <p>Plain <code>hash(key) % N</code>: adding a 5th Redis node remaps <b>100%</b> of keys — cache hit rate crashes from 100% to 0%, all traffic slams the DB at once.</p>
+      <p><b>Fix:</b> consistent hashing ring — adding/removing a node remaps only ~1/N of keys. Use Redis Cluster's built-in hash slots.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Sticky Sessions Break Auto-Scaling</h1>
+    <h2>Trap 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Pod 4-10<br>10% CPU</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Pod 3<br>80% CPU</div>
+      </div>
+      <p style="text-align:center">All sticky users pinned to Pod 3 — new pods sit idle. If Pod 3 OOMs, every pinned user loses their session mid-sale.</p>
+      <p style="text-align:center"><b>Fix:</b> sessions in Redis, not pod memory.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>L7 SSL Termination Leaks the Real IP</h1>
+    <h2>Trap 2</h2>
+    <div class="body">
+      <p><code>request.getRemoteAddr()</code> returns the LOAD BALANCER's IP, not the client's.</p>
+      <p>Rate limiter keyed on that IP blocks EVERY user the moment ANY user exceeds the limit.</p>
+      <p><b>Fix:</b> read <code>X-Forwarded-For</code> / <code>X-Real-IP</code>, or set <code>forward-headers-strategy: framework</code> in Spring Boot.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Connection Draining vs No Draining</h1>
+    <h2>Rolling Deploys — Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Without Draining</th><th>With Draining</th></tr>
+        <tr><td>In-flight requests killed mid-flight</td><td>30s deregistration delay lets them finish</td></tr>
+        <tr><td>New pod gets traffic before ready → 503s</td><td>Readiness probe gates traffic</td></tr>
+        <tr><td>LB races pod termination</td><td>preStop sleep 10s avoids the race</td></tr>
+        <tr><td>Result: visible 502s</td><td>Result: zero dropped requests</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Any user-specific state? → Move it to Redis, keep pods stateless.</p>
+      <p>Expecting a traffic spike? → Pre-scale + pre-warm, don't rely on HPA alone.</p>
+      <p>Deploying under load? → Connection draining + readiness probe + preStop sleep.</p>
+      <div class="quote-box">
+        "For any scale problem I start with making services stateless — sessions in Redis, not memory. ALB at L7 routes by path; consistent hashing in the cache layer prevents cache avalanche. For flash sales: pre-scale before traffic hits, pre-warm caches, and put order submission behind an async queue. The most common trap is sticky sessions — it kills auto-scaling because all load pins to one server."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

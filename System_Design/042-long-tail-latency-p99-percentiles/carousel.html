@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Long-Tail Latency & P99 Percentiles — Carousel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: #1a1a2e;
+    color: #e8e8f0;
+    font-family: Georgia, 'Times New Roman', serif;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  .deck {
+    position: relative;
+    width: 540px;
+    height: 540px;
+    margin: 20px auto;
+    background: #1a1a2e;
+    border: 1px solid #33334d;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .slide {
+    position: absolute;
+    top: 0; left: 0;
+    width: 540px;
+    height: 540px;
+    display: none;
+    flex-direction: column;
+    padding: 28px 30px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: #1a1a2e;
+  }
+  .slide.active { display: flex; }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #ff6b6b;
+    font-family: Arial, sans-serif;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 24px;
+    color: #ffffff;
+    line-height: 1.25;
+    margin-bottom: 10px;
+  }
+  h2 {
+    font-size: 18px;
+    color: #ffd166;
+    margin-bottom: 8px;
+    font-family: Arial, sans-serif;
+  }
+  p, li {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: #c8c8dc;
+    font-family: Arial, sans-serif;
+  }
+  .stat {
+    font-size: 40px;
+    color: #ff6b6b;
+    font-weight: bold;
+    font-family: Arial, sans-serif;
+  }
+  .sub {
+    font-size: 12.5px;
+    color: #8888aa;
+    font-family: Arial, sans-serif;
+    margin-top: 4px;
+  }
+  .visual {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10px 0;
+    position: relative;
+  }
+  .footer-quote {
+    font-size: 12px;
+    font-style: italic;
+    color: #8888aa;
+    font-family: Arial, sans-serif;
+  }
+
+  /* ---------- Histogram bars (latency distribution) ---------- */
+  .hist {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 220px;
+    width: 100%;
+    padding: 0 6px;
+  }
+  .bar {
+    flex: 1;
+    background: linear-gradient(180deg, #4ecdc4, #2b8f88);
+    border-radius: 3px 3px 0 0;
+    position: relative;
+  }
+  .bar.tail {
+    background: linear-gradient(180deg, #ff6b6b, #c0392b);
+  }
+  .bar-label {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    color: #8888aa;
+    font-family: Arial, sans-serif;
+    white-space: nowrap;
+  }
+  .marker {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    color: #ffd166;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    white-space: nowrap;
+  }
+
+  /* ---------- Server / component boxes ---------- */
+  .box {
+    border: 2px solid #4ecdc4;
+    border-radius: 6px;
+    padding: 10px 14px;
+    background: #22223a;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: #e8e8f0;
+    position: relative;
+  }
+  .box.slow { border-color: #ff6b6b; }
+  .box .line { border-top: 1px solid #444466; margin: 5px 0; }
+  .box-row { display: flex; gap: 16px; align-items: center; justify-content: center; }
+
+  /* ---------- Arrows ---------- */
+  .arrow-right::after {
+    content: "──────►";
+    color: #ffd166;
+    font-size: 14px;
+    letter-spacing: -1px;
+  }
+  .arrow-down {
+    text-align: center;
+    color: #ffd166;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* ---------- DB cylinder ---------- */
+  .cylinder {
+    width: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: Arial, sans-serif;
+  }
+  .cyl-top {
+    width: 60px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #4ecdc4;
+    background: #2b3a4a;
+  }
+  .cyl-body {
+    width: 56px;
+    height: 34px;
+    border-left: 2px solid #4ecdc4;
+    border-right: 2px solid #4ecdc4;
+    background: #22334a;
+    margin-top: -7px;
+  }
+  .cyl-bottom {
+    width: 60px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid #4ecdc4;
+    background: #2b3a4a;
+    margin-top: -7px;
+  }
+  .cylinder.lagging .cyl-top, .cylinder.lagging .cyl-bottom { border-color: #ff6b6b; }
+  .cylinder.lagging .cyl-body { border-color: #ff6b6b; background: #4a2222; }
+  .cyl-label { font-size: 10px; color: #c8c8dc; margin-top: 4px; text-align: center; }
+
+  /* ---------- Redis icon ---------- */
+  .redis-circle {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: #d82c20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 20px;
+    box-shadow: 0 0 0 3px #2a1a1a;
+  }
+
+  /* ---------- Fan-out tree ---------- */
+  .tree {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-family: Arial, sans-serif;
+  }
+  .tree-row { display: flex; gap: 10px; }
+  .leaf {
+    border: 1px solid #4ecdc4;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 10px;
+    background: #22223a;
+  }
+
+  /* ---------- Table ---------- */
+  table { width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 10.5px; }
+  th, td { border: 1px solid #33334d; padding: 5px 6px; text-align: left; color: #c8c8dc; }
+  th { background: #2a2a45; color: #ffd166; }
+  td.fix { color: #4ecdc4; }
+
+  /* ---------- Nav ---------- */
+  .nav {
+    width: 540px;
+    margin: 10px auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-family: Arial, sans-serif;
+  }
+  .nav button {
+    background: #2a2a45;
+    color: #e8e8f0;
+    border: 1px solid #4ecdc4;
+    border-radius: 5px;
+    padding: 8px 18px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .nav button:hover { background: #33334d; }
+  .counter { color: #8888aa; font-size: 13px; }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: #1a1a2e; }
+    .nav { display: none; }
+    .deck { margin: 0; border: none; }
+    .slide { display: none !important; page-break-after: always; }
+    .slide.active { display: flex !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- Slide 1: HOOK -->
+  <div class="slide active">
+    <div class="eyebrow">Episode 42 · System Design</div>
+    <h1>Your average latency is 20ms. Your users are furious.</h1>
+    <div class="visual">
+      <div style="text-align:center;">
+        <div class="stat">63%</div>
+        <div class="sub">of user sessions hit at least one slow request<br>when P99 = 1% slow and a session makes 100 API calls</div>
+      </div>
+    </div>
+    <p>1,000,000 requests/day × 1% slow = <b>10,000 slow requests, every single day</b> — invisible to your average.</p>
+  </div>
+
+  <!-- Slide 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="eyebrow">The Problem</div>
+    <h2>Averages hide the coffee shop's slowest order</h2>
+    <div class="visual">
+      <div class="hist">
+        <div class="bar" style="height:30%"></div>
+        <div class="bar" style="height:55%"></div>
+        <div class="bar" style="height:80%"></div>
+        <div class="bar" style="height:95%"><span class="marker">P50</span></div>
+        <div class="bar" style="height:70%"></div>
+        <div class="bar" style="height:40%"></div>
+        <div class="bar" style="height:20%"></div>
+        <div class="bar tail" style="height:15%"></div>
+        <div class="bar tail" style="height:35%"><span class="marker">P99</span></div>
+        <div class="bar tail" style="height:60%"><span class="marker">P99.9</span></div>
+      </div>
+    </div>
+    <p>100 customers, 99 served in 2 min, 1 custom order takes 10 min → average 2.08 min looks fine. That "1 customer" is a <i>different random user every time</i> in production.</p>
+  </div>
+
+  <!-- Slide 3: Percentile distribution -->
+  <div class="slide">
+    <div class="eyebrow">Concept 1</div>
+    <h2>Percentile distribution — sorted by latency</h2>
+    <div class="visual">
+      <div class="hist">
+        <div class="bar" style="height:10%"><span class="bar-label">P1: 1ms</span></div>
+        <div class="bar" style="height:25%"><span class="bar-label">P10: 5ms</span></div>
+        <div class="bar" style="height:40%"><span class="marker">P50</span><span class="bar-label">10ms</span></div>
+        <div class="bar" style="height:60%"></div>
+        <div class="bar" style="height:70%"><span class="marker">P90</span><span class="bar-label">50ms</span></div>
+        <div class="bar" style="height:78%"><span class="marker">P95</span><span class="bar-label">100ms</span></div>
+        <div class="bar tail" style="height:88%"><span class="marker">P99</span><span class="bar-label">500ms</span></div>
+        <div class="bar tail" style="height:100%"><span class="marker">P99.9</span><span class="bar-label">2000ms</span></div>
+      </div>
+    </div>
+    <p style="margin-top:22px;">Average ≈ 15ms — completely dominated by the fast majority. It hides the 500ms and 2000ms outliers entirely.</p>
+  </div>
+
+  <!-- Slide 4: Fan-out multiplication -->
+  <div class="slide">
+    <div class="eyebrow">Concept 2</div>
+    <h2>Fan-out multiplication — why P99 matters more than it looks</h2>
+    <div class="visual">
+      <div class="tree">
+        <div class="box">User Session</div>
+        <div class="arrow-down">▼ ▼ ▼ ▼ ▼</div>
+        <div class="tree-row">
+          <div class="leaf">call 1</div><div class="leaf">call 2</div><div class="leaf">…</div><div class="leaf">call 100</div>
+        </div>
+      </div>
+    </div>
+    <p>1 call: P(slow)=1% &nbsp;|&nbsp; 10 calls: 1-0.99<sup>10</sup>=<b>9.6%</b> &nbsp;|&nbsp; 100 calls: 1-0.99<sup>100</sup>=<b>63.4%</b></p>
+    <p class="sub">5 microservices in series, each P99=99% fast → composed P99 = 0.99⁵ = 95.1%. End-to-end is worse than any single hop — measure the whole chain.</p>
+  </div>
+
+  <!-- Slide 5: Root cause - GC pauses -->
+  <div class="slide">
+    <div class="eyebrow">Root Cause 1</div>
+    <h2>GC pauses — invisible at P50, brutal at P99</h2>
+    <div class="visual">
+      <div class="box-row">
+        <div class="box">Minor GC<div class="line"></div>1–5ms<br><span class="sub">P50 unaffected</span></div>
+        <div class="box slow">Major GC<div class="line"></div>50ms–2s<br><span class="sub">stops all threads</span></div>
+      </div>
+    </div>
+    <p>P50: 10ms (untouched) &nbsp;→&nbsp; P99: 800ms (~1 in 100 requests caught mid-collection).</p>
+    <p class="sub"><b>Fix:</b> tune G1GC (MaxGCPauseMillis=100), pre-allocate heap (-Xms=-Xmx), or move to ZGC/Shenandoah for sub-10ms pauses.</p>
+  </div>
+
+  <!-- Slide 6: Root cause - hot/lagging replica -->
+  <div class="slide">
+    <div class="eyebrow">Root Cause 2</div>
+    <h2>Hot / lagging replica</h2>
+    <div class="visual">
+      <div class="box-row">
+        <div class="cylinder">
+          <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+          <div class="cyl-label">Replica 1<br>lag 0ms · 15ms</div>
+        </div>
+        <div class="cylinder">
+          <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+          <div class="cyl-label">Replica 2<br>lag 0ms · 18ms</div>
+        </div>
+        <div class="cylinder lagging">
+          <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+          <div class="cyl-label">Replica 3<br>lag 2s · 2100ms</div>
+        </div>
+      </div>
+    </div>
+    <p>Load balancer sends 33% of reads to each replica → 33% of reads silently hit the 2.1s slow follower.</p>
+    <p class="sub"><b>Fix:</b> health-check replicas on lag, exclude lagging nodes from the read pool.</p>
+  </div>
+
+  <!-- Slide 7: Thread pool + network + lock -->
+  <div class="slide">
+    <div class="eyebrow">Root Causes 3, 4, 5</div>
+    <h2>Thread pools, network jitter, hot rows</h2>
+    <div class="visual">
+      <div class="box-row">
+        <div class="box slow">Tomcat Pool<div class="line"></div>200 max, 201st waits<br>P99 150ms (3x)</div>
+        <div class="box slow">TCP Retransmit<div class="line"></div>0.01% loss<br>+200ms–1s (P99.9)</div>
+      </div>
+    </div>
+    <p><b>Thread pool:</b> 150/200 busy → request 201 queues → P99 = 50ms + 50ms queue + 50ms exec = 150ms.</p>
+    <p><b>Lock contention:</b> 10 writes to same row, thread 10 waits 45ms behind 9 locks → that row's P99 = 50ms vs 5ms elsewhere.</p>
+    <p class="sub"><b>Fix:</b> size pools with Little's Law, add jitter to retries, batch hot-row updates.</p>
+  </div>
+
+  <!-- Slide 8: Hedged requests solution -->
+  <div class="slide">
+    <div class="eyebrow">The Fix — Google's Technique</div>
+    <h2>Hedged requests</h2>
+    <div class="visual">
+      <div class="tree">
+        <div class="box">Client</div>
+        <div class="arrow-down">▼</div>
+        <div class="tree-row">
+          <div class="box slow">Server A<br><span class="sub">GC pause → 800ms</span></div>
+          <div class="box">Server B<br><span class="sub">sent at P95=95ms → 110ms</span></div>
+        </div>
+      </div>
+    </div>
+    <p>No response by P95 threshold (95ms) → duplicate request to Server B → use whichever replies first.</p>
+    <p><b>Result:</b> 800ms → 110ms (7x improvement) for ~1% extra requests on the tail. Used by Google BigTable, Cassandra (speculative execution), AWS S3.</p>
+  </div>
+
+  <!-- Slide 9: Comparison table -->
+  <div class="slide">
+    <div class="eyebrow">Comparison</div>
+    <h2>Mitigation techniques at a glance</h2>
+    <div class="visual" style="align-items:flex-start;">
+      <table>
+        <tr><th>Technique</th><th>Effect</th><th>Cost</th></tr>
+        <tr><td>Hedged requests</td><td class="fix">800ms → 110ms (7x)</td><td>~1% extra traffic</td></tr>
+        <tr><td>Timeout + jitter</td><td class="fix">avoids retry stampede</td><td>slightly higher latency</td></tr>
+        <tr><td>Pool sizing (Little's Law)</td><td class="fix">250ms → 50ms (5x)</td><td>more DB connections</td></tr>
+        <tr><td>ZGC / Shenandoah</td><td class="fix">200ms → 1-5ms GC pause</td><td>~15% throughput</td></tr>
+        <tr><td>Async offload (Kafka)</td><td class="fix">585ms → 80ms (7x)</td><td>eventual delivery</td></tr>
+      </table>
+    </div>
+    <p class="sub">Cache lookup (Redis) budget: 5ms of a 300ms P99 SLA.</p>
+    <div style="position:absolute; right:30px; bottom:70px;" class="redis-circle">R</div>
+  </div>
+
+  <!-- Slide 10: Decision tree + quote -->
+  <div class="slide">
+    <div class="eyebrow">Cheat Sheet</div>
+    <h2>Diagnosis decision tree</h2>
+    <div class="visual" style="flex-direction:column; align-items:flex-start;">
+      <p>1. P99 spikes periodic? → correlate with GC logs</p>
+      <p>2. Slow by server tag? → check replica lag (pg_stat_replication)</p>
+      <p>3. Slow under high RPS? → check thread pool / queue depth</p>
+      <p>4. Slow on one entity ID? → hot row / lock contention</p>
+      <p>5. Random P99.9 spikes? → network jitter, TCP retransmit</p>
+    </div>
+    <p class="footer-quote">"P99 latency matters more than average — when users make 100 API calls per session, a 1% slow tail means 63% of sessions hit it; measure with histograms, fix with hedging and root-cause tracing."</p>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">◀ Prev</button>
+  <span class="counter"><span id="cur">1</span> / <span id="total">10</span></span>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  function show(i) {
+    idx = (i + total) % total;
+    slides.forEach(function(s, n) { s.classList.toggle('active', n === idx); });
+    document.getElementById('cur').textContent = idx + 1;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', function () { show(idx - 1); });
+  document.getElementById('nextBtn').addEventListener('click', function () { show(idx + 1); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') show(idx + 1);
+    if (e.key === 'ArrowLeft') show(idx - 1);
+  });
+
+  show(0);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,486 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- NotificationService Interface -->
+        <mxCell id="iface_notif" value="&lt;&lt;interface&gt;&gt;&#xa;NotificationService" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="250" height="115" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_notif_m1" value="+ notifyRestaurant(restaurantId, msg)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_notif">
+          <mxGeometry x="0" y="40" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_notif_m2" value="+ notifyCustomer(customerId, msg)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_notif">
+          <mxGeometry x="0" y="65" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_notif_m3" value="+ notifyPartner(partnerId, msg)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_notif">
+          <mxGeometry x="0" y="90" width="250" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- PaymentService Interface -->
+        <mxCell id="iface_payment" value="&lt;&lt;interface&gt;&gt;&#xa;PaymentService" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="320" y="40" width="230" height="115" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_payment_m1" value="+ hold(customerId, amount)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_payment">
+          <mxGeometry x="0" y="40" width="230" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_payment_m2" value="+ capture(customerId, amount)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_payment">
+          <mxGeometry x="0" y="65" width="230" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_payment_m3" value="+ release(customerId, amount)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_payment">
+          <mxGeometry x="0" y="90" width="230" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- CartItem class -->
+        <mxCell id="class_cartitem" value="CartItem" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="220" width="220" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_cartitem_f1" value="- menuItemId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_cartitem">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_cartitem_f2" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_cartitem">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_cartitem_f3" value="- price: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_cartitem">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_cartitem_f4" value="- quantity: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_cartitem">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_cartitem_m1" value="+ total(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_cartitem">
+          <mxGeometry x="0" y="108" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Order class -->
+        <mxCell id="class_order" value="Order" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="290" y="220" width="280" height="360" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f1" value="- orderId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="30" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f2" value="- customerId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="52" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f3" value="- restaurantId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="74" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f4" value="- items: List&lt;CartItem&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="96" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f5" value="- status: OrderStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="118" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f6" value="- deliveryPartnerId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="140" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f7" value="- totalAmount: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="162" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f8" value="- deliveryFee: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="184" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f9" value="- deliveryAddress: Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="206" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f10" value="- placedAt: Instant" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="228" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m1" value="+ transitionTo(newStatus): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="260" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m2" value="- isValidTransition(from, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="282" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m3" value="+ getStatus(): OrderStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="304" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m4" value="+ setDeliveryPartnerId(id)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="326" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m5" value="+ setEstimatedDelivery(time)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="348" width="280" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- OrderService class -->
+        <mxCell id="class_orderservice" value="OrderService" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="600" y="40" width="300" height="440" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_f1" value="- orders: Map&lt;String, Order&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="30" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_f2" value="- partners: Map&lt;String, DeliveryPartner&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="52" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_f3" value="- restaurants: Map&lt;String, Restaurant&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="74" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_f4" value="- notifier: NotificationService" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="96" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_f5" value="- paymentService: PaymentService" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="118" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_f6" value="- scheduler: ScheduledExecutorService" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="140" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m1" value="+ placeOrder(customerId, restaurantId, items, addr): Order" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="172" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m2" value="+ restaurantAccept(orderId, prepMinutes)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="194" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m3" value="+ restaurantReject(orderId, reason)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="216" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m4" value="- handleRestaurantTimeout(order)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="238" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m5" value="- assignDeliveryPartner(order)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="260" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m6" value="- findBestPartner(restaurantLoc): Optional&lt;DeliveryPartner&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="282" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m7" value="- partnerScore(p, loc): double  [0.5*dist+0.3*rating+0.2*orders]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="304" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m8" value="+ partnerPickedUp(orderId)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="326" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m9" value="+ orderDelivered(orderId)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="348" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m10" value="- calculateDeliveryFee(restaurant, delivery): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="370" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderservice_m11" value="+ addRestaurant(r) / addPartner(p)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderservice">
+          <mxGeometry x="0" y="392" width="300" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- DeliveryPartner class -->
+        <mxCell id="class_partner" value="DeliveryPartner" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="930" y="40" width="260" height="290" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_f1" value="- partnerId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_f2" value="- location: Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_f3" value="- status: Status" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_f4" value="- activeOrders: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="96" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_f5" value="- rating: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="118" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_m1" value="+ assign(): boolean  [atomic, IDLE-&gt;ASSIGNED]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="150" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_m2" value="+ pickupFood()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="172" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_m3" value="+ delivered()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="194" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_m4" value="+ updateLocation(loc)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="216" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_m5" value="+ getLocation() / getStatus() / getRating()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="238" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_partner_m6" value="+ getActiveOrders(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_partner">
+          <mxGeometry x="0" y="260" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Restaurant class -->
+        <mxCell id="class_restaurant" value="Restaurant" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="40" width="200" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_restaurant_f1" value="- restaurantId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_restaurant">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_restaurant_f2" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_restaurant">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_restaurant_f3" value="- location: Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_restaurant">
+          <mxGeometry x="0" y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_restaurant_m1" value="+ isOpen(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_restaurant">
+          <mxGeometry x="0" y="96" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_restaurant_m2" value="+ getLocation(): Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_restaurant">
+          <mxGeometry x="0" y="118" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Location class -->
+        <mxCell id="class_location" value="Location" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1220" y="210" width="200" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_location_f1" value="- lat: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_location">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_location_f2" value="- lng: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_location">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_location_m1" value="+ distanceKm(other: Location): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_location">
+          <mxGeometry x="0" y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- OrderStatus enum -->
+        <mxCell id="enum_orderstatus" value="&lt;&lt;enum&gt;&gt;&#xa;OrderStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="290" y="630" width="210" height="230" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_v1" value="PLACED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_v2" value="CONFIRMED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_v3" value="BEING_PREPARED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="74" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_v4" value="READY_FOR_PICKUP" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="96" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_v5" value="PARTNER_ASSIGNED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="118" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_v6" value="OUT_FOR_DELIVERY" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="140" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_v7" value="DELIVERED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="162" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_v8" value="CANCELLED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="184" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- DeliveryPartner.Status enum -->
+        <mxCell id="enum_partnerstatus" value="&lt;&lt;enum&gt;&gt;&#xa;DeliveryPartner.Status" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="930" y="370" width="200" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_partnerstatus_v1" value="IDLE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_partnerstatus">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_partnerstatus_v2" value="ASSIGNED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_partnerstatus">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_partnerstatus_v3" value="PICKED_UP" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_partnerstatus">
+          <mxGeometry x="0" y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_partnerstatus_v4" value="OFFLINE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_partnerstatus">
+          <mxGeometry x="0" y="96" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Edges -->
+        <mxCell id="edge_1" value="uses" style="endArrow=open;" edge="1" source="class_orderservice" target="iface_notif" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_2" value="uses" style="endArrow=open;" edge="1" source="class_orderservice" target="iface_payment" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_3" value="manages" style="endArrow=open;" edge="1" source="class_orderservice" target="class_order" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_4" value="assigns" style="endArrow=open;" edge="1" source="class_orderservice" target="class_partner" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_5" value="queries" style="endArrow=open;" edge="1" source="class_orderservice" target="class_restaurant" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_6" value="contains" style="endArrow=open;" edge="1" source="class_order" target="class_cartitem" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_7" value="uses" style="endArrow=open;" edge="1" source="class_order" target="enum_orderstatus" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_8" value="deliveryAddress" style="endArrow=open;" edge="1" source="class_order" target="class_location" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_9" value="uses" style="endArrow=open;" edge="1" source="class_partner" target="enum_partnerstatus" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_10" value="location" style="endArrow=open;" edge="1" source="class_partner" target="class_location" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_11" value="location" style="endArrow=open;" edge="1" source="class_restaurant" target="class_location" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Lifelines -->
+        <mxCell id="life_customer" value="Customer" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_orderservice" value="OrderService" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_payment" value="PaymentService" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_notif" value="NotificationService" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_restaurant" value="Restaurant" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_partner" value="DeliveryPartner" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- Messages -->
+        <!-- 1: Customer -> OrderService: placeOrder() -->
+        <mxCell id="msg_1" value="placeOrder(customerId, items, deliveryAddress)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="160" as="sourcePoint"/>
+            <mxPoint x="330" y="160" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2: OrderService -> PaymentService: hold() -->
+        <mxCell id="msg_2" value="hold(customerId, totalAmount + deliveryFee)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="200" as="sourcePoint"/>
+            <mxPoint x="530" y="200" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3: PaymentService -> OrderService: return holdId -->
+        <mxCell id="ret_1" value="holdId" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="225" as="sourcePoint"/>
+            <mxPoint x="330" y="225" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4: OrderService -> NotificationService: notifyRestaurant() -->
+        <mxCell id="msg_3" value="notifyRestaurant(restaurantId, orderId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="260" as="sourcePoint"/>
+            <mxPoint x="730" y="260" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5: OrderService schedules 3-min timeout (note) -->
+        <mxCell id="msg_note1" value="[schedule] 3-min timeout → auto-cancel if no response" style="text;align=center;fillColor=#ffffc0;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="340" y="278" width="300" height="24" as="geometry"/>
+        </mxCell>
+
+        <!-- 6: Restaurant -> OrderService: restaurantAccept() -->
+        <mxCell id="msg_4" value="restaurantAccept(orderId, estimatedPrepMinutes)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="330" as="sourcePoint"/>
+            <mxPoint x="330" y="330" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 7: OrderService -> PaymentService: capture() -->
+        <mxCell id="msg_5" value="capture(customerId, amount)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="370" as="sourcePoint"/>
+            <mxPoint x="530" y="370" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 8: OrderService -> NotificationService: notifyCustomer confirmed -->
+        <mxCell id="msg_6" value="notifyCustomer('Order confirmed! ETA: X min')" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="400" as="sourcePoint"/>
+            <mxPoint x="730" y="400" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 9: OrderService schedules assignDeliveryPartner (note) -->
+        <mxCell id="msg_note2" value="[schedule] assign partner (prepTime - 5 min)" style="text;align=center;fillColor=#ffffc0;strokeColor=#000000;" vertex="1" parent="1">
+          <mxGeometry x="340" y="418" width="280" height="24" as="geometry"/>
+        </mxCell>
+
+        <!-- 10: OrderService -> DeliveryPartner: assign() -->
+        <mxCell id="msg_7" value="assign()  [score = 0.5*dist + 0.3*rating + 0.2*orders]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="470" as="sourcePoint"/>
+            <mxPoint x="1130" y="470" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 11: DeliveryPartner -> OrderService: return true -->
+        <mxCell id="ret_2" value="true (assigned)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="495" as="sourcePoint"/>
+            <mxPoint x="330" y="495" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 12: OrderService -> NotificationService: notifyPartner -->
+        <mxCell id="msg_8" value="notifyPartner(partnerId, 'Pickup from restaurant')" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="525" as="sourcePoint"/>
+            <mxPoint x="730" y="525" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 13: OrderService -> NotificationService: notifyCustomer partner assigned -->
+        <mxCell id="msg_9" value="notifyCustomer('Partner assigned')" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="555" as="sourcePoint"/>
+            <mxPoint x="730" y="555" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 14: DeliveryPartner -> OrderService: partnerPickedUp() -->
+        <mxCell id="msg_10" value="partnerPickedUp(orderId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="595" as="sourcePoint"/>
+            <mxPoint x="330" y="595" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 15: OrderService -> NotificationService: notifyCustomer on the way -->
+        <mxCell id="msg_11" value="notifyCustomer('Your order is on its way!')" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="625" as="sourcePoint"/>
+            <mxPoint x="730" y="625" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 16: DeliveryPartner -> OrderService: orderDelivered() -->
+        <mxCell id="msg_12" value="orderDelivered(orderId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="660" as="sourcePoint"/>
+            <mxPoint x="330" y="660" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 17: OrderService -> NotificationService: notifyCustomer delivered -->
+        <mxCell id="msg_13" value="notifyCustomer('Order delivered! Please rate.')" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="690" as="sourcePoint"/>
+            <mxPoint x="730" y="690" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 18: OrderService -> Customer: return Order -->
+        <mxCell id="ret_3" value="Order (PLACED)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="185" as="sourcePoint"/>
+            <mxPoint x="130" y="185" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

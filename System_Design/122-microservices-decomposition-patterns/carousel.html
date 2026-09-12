@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Microservices Decomposition Patterns — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent: #e94560;
+    --accent2: #0f9b8e;
+    --accent3: #f5a623;
+    --accent4: #4d7ef7;
+    --text: #eaeaf0;
+    --muted: #9a9ab0;
+    --line: #3a3a5c;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    height: 100%;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+    background: var(--bg);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px var(--line);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    padding: 34px 34px 24px 34px;
+    background: var(--bg);
+    color: var(--text);
+    position: relative;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-size: 11px;
+    color: var(--accent3);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 25px;
+    line-height: 1.25;
+    margin: 0 0 10px 0;
+    color: var(--text);
+  }
+  h2 {
+    font-size: 19px;
+    margin: 0 0 10px 0;
+    color: var(--accent4);
+  }
+  p.body {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--muted);
+    margin: 0 0 10px 0;
+  }
+  .highlight { color: var(--accent); font-weight: 700; }
+  .highlight2 { color: var(--accent2); font-weight: 700; }
+  .highlight3 { color: var(--accent3); font-weight: 700; }
+
+  .diagram {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 6px 0;
+  }
+
+  /* ---------- server / box ---------- */
+  .box {
+    background: var(--panel);
+    border: 2px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    position: relative;
+  }
+  .box .box-title {
+    font-size: 11px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .box .rule {
+    height: 2px;
+    background: var(--line);
+    margin: 5px 0;
+    border-radius: 2px;
+  }
+  .box.accent { border-color: var(--accent2); }
+  .box.warn { border-color: var(--accent); }
+  .box.gold { border-color: var(--accent3); }
+  .box.blue { border-color: var(--accent4); }
+
+  /* ---------- cylinder (database) ---------- */
+  .cylinder {
+    width: 60px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .cyl-top {
+    width: 60px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--line);
+    border: 2px solid #55557a;
+  }
+  .cyl-body {
+    width: 60px;
+    height: 34px;
+    background: var(--panel);
+    border-left: 2px solid #55557a;
+    border-right: 2px solid #55557a;
+    margin-top: -8px;
+  }
+  .cyl-bottom {
+    width: 60px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 2px solid #55557a;
+    margin-top: -8px;
+  }
+  .cyl-label { font-size: 9px; color: var(--muted); margin-top: 4px; }
+
+  /* ---------- arrows ---------- */
+  .arrow-down {
+    width: 2px;
+    height: 20px;
+    background: var(--muted);
+    margin: 0 auto;
+    position: relative;
+  }
+  .arrow-down::after {
+    content: "";
+    position: absolute;
+    bottom: -1px; left: 50%;
+    transform: translateX(-50%);
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 8px solid var(--muted);
+  }
+  .arrow-right {
+    height: 2px;
+    background: var(--muted);
+    flex: 1;
+    position: relative;
+    margin-top: 20px;
+  }
+  .arrow-right::after {
+    content: "";
+    position: absolute;
+    right: -1px; top: 50%;
+    transform: translateY(-50%);
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+    border-left: 8px solid var(--muted);
+  }
+
+  /* ---------- swatch legend ---------- */
+  .swatch-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 6px 0;
+    font-size: 12px;
+  }
+  .swatch {
+    width: 16px; height: 16px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* ---------- table ---------- */
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+  }
+  table.cmp th, table.cmp td {
+    border: 1px solid var(--line);
+    padding: 5px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.cmp th {
+    background: #2b2b48;
+    color: var(--accent3);
+    font-size: 10px;
+  }
+  table.cmp td.pattern { color: var(--accent4); font-weight: 700; white-space: nowrap; }
+
+  /* ---------- monolith blob ---------- */
+  .blob {
+    width: 140px; height: 100px;
+    background: linear-gradient(135deg, #3a3a5c, #2b2b48);
+    border: 2px solid var(--accent);
+    border-radius: 45% 55% 60% 40% / 50% 45% 55% 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--accent);
+    text-align: center;
+  }
+
+  /* footer / counter */
+  .footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid var(--line);
+  }
+
+  /* nav controls (hidden on print) */
+  .controls {
+    width: 540px;
+    margin: 0 auto 40px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+  }
+  .controls button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: var(--accent4); }
+  .controls .counter { font-size: 13px; color: var(--muted); min-width: 60px; text-align: center; }
+  .hint { text-align: center; color: var(--muted); font-size: 11px; margin-bottom: 10px; }
+
+  @media print {
+    body { margin: 0; }
+    .controls, .hint { display: none !important; }
+    .deck { margin: 0; box-shadow: none; }
+    .slide { display: none; page-break-after: always; }
+    .slide.active { display: flex; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hint">Use ← → arrow keys or the buttons below to navigate</div>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active">
+    <div class="eyebrow">Episode 122 · Microservices Decomposition</div>
+    <h1>A big-bang monolith rewrite tests your new system against <span class="highlight">real production traffic</span> for the first time — on the same day it fully replaces the old one.</h1>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+        <div class="box warn" style="width:220px;">
+          <div class="box-title" style="color:#e94560;">10-YEAR-OLD MONOLITH</div>
+          <div class="rule"></div><div class="rule"></div><div class="rule"></div>
+        </div>
+        <div class="arrow-down"></div>
+        <div class="box" style="width:220px; border-color:#e94560; background:#3a1a28;">
+          <div class="box-title" style="color:#e94560;">FRIDAY 11PM — FULL CUTOVER</div>
+          <p style="margin:0; font-size:11px; color:#f0a0ae;">Zero rollback path. Zero prior production validation.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Strangler Fig · BFF · Anti-Corruption Layer</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <section class="slide">
+    <div class="eyebrow">The Problem</div>
+    <h1>You can't evacuate an occupied building to demolish it.</h1>
+    <p class="body">The monolith is ugly and hard to scale — but it's making the company money <em>right now</em>. Patch it forever, and coupling gets worse. Rewrite it all at once, and you bet the whole business on one deployment.</p>
+    <div class="diagram">
+      <div style="display:flex; gap:26px; align-items:center;">
+        <div class="blob">MONOLITH<br>(all tenants<br>inside)</div>
+        <div style="font-size:28px; color:var(--muted);">≠</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div class="box accent" style="width:120px; font-size:10px;">Evacuate everyone?</div>
+          <div class="box warn" style="width:120px; font-size:10px;">Demolish + rebuild for 2 years?</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>The Problem</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 3: STRANGLER FIG -->
+  <section class="slide">
+    <div class="eyebrow">Scenario 1</div>
+    <h2>Strangler Fig — migrate one capability at a time</h2>
+    <p class="body">A routing facade (often your API Gateway) sits in front of the monolith. Only <span class="highlight2">one route</span> goes to the new service — everything else hits the monolith unchanged. Break something? Flip <span class="highlight">one route</span> back.</p>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+        <div class="box blue" style="width:230px; text-align:center;">
+          <div class="box-title">ROUTING FACADE</div>
+          <p style="margin:0; font-size:10px; color:var(--muted);">/search → NEW &nbsp;·&nbsp; /orders, /profile → OLD</p>
+        </div>
+        <div style="display:flex; width:100%; justify-content:center; gap:40px; margin-top:8px;">
+          <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="arrow-down"></div>
+            <div class="box accent" style="width:110px; font-size:10px; text-align:center;">NEW Search Service<br>(own DB)</div>
+          </div>
+          <div style="display:flex; flex-direction:column; align-items:center;">
+            <div class="arrow-down"></div>
+            <div class="box warn" style="width:110px; font-size:10px; text-align:center;">OLD Monolith<br>(orders/profile/reviews)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Strangler Fig</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 4: MIGRATION ORDER / TRAP -->
+  <section class="slide">
+    <div class="eyebrow">Trap #1</div>
+    <h2>Migrating checkout first is the classic mistake</h2>
+    <p class="body">Correct order: <span class="highlight2">low-risk</span> if it breaks, <span class="highlight3">high-value</span> to prove the pattern, <span class="highlight2">loosely coupled</span> in legacy code.</p>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; gap:10px; width:100%;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="swatch" style="background:#0f9b8e;"></div>
+          <div class="box accent" style="flex:1; font-size:11px;">1. Search / catalog display — read-heavy, low-risk</div>
+        </div>
+        <div class="arrow-down"></div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="swatch" style="background:#f5a623;"></div>
+          <div class="box gold" style="flex:1; font-size:11px;">2. Profile updates — write path, lower blast radius</div>
+        </div>
+        <div class="arrow-down"></div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="swatch" style="background:#e94560;"></div>
+          <div class="box warn" style="flex:1; font-size:11px;">3. Checkout / payment — LAST, once pattern is proven</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Migration Order</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 5: BFF -->
+  <section class="slide">
+    <div class="eyebrow">Scenario 2</div>
+    <h2>Backend-For-Frontend (BFF)</h2>
+    <p class="body">One aggregation layer <span class="highlight2">per client type</span> — mobile stays lean, web gets richer payloads, partner gets a stable contract. Backend services stay generic.</p>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+        <div style="display:flex; justify-content:space-between; width:100%;">
+          <div class="box blue" style="width:100px; font-size:9.5px; text-align:center;">Mobile BFF<br>(lean)</div>
+          <div class="box gold" style="width:100px; font-size:9.5px; text-align:center;">Web BFF<br>(rich)</div>
+          <div class="box accent" style="width:100px; font-size:9.5px; text-align:center;">Partner BFF<br>(stable)</div>
+        </div>
+        <div class="arrow-down"></div>
+        <div style="display:flex; justify-content:center; gap:20px;">
+          <div class="box" style="width:110px; font-size:10px; text-align:center;">Product Svc</div>
+          <div class="box" style="width:110px; font-size:10px; text-align:center;">Inventory Svc</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Backend-For-Frontend</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 6: ACL -->
+  <section class="slide">
+    <div class="eyebrow">Scenario 3</div>
+    <h2>Anti-Corruption Layer (ACL)</h2>
+    <p class="body">A 2014 hotfix crammed 3 concepts into one <code>status_code</code> column. The ACL translates legacy quirks at the boundary — the new service <span class="highlight2">never sees the mess</span>.</p>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; align-items:center; width:100%;">
+        <div class="box blue" style="width:220px; font-size:10.5px; text-align:center;">NEW Order Service<br><span style="color:var(--muted); font-size:9px;">clean model: PLACED/PAID/SHIPPED</span></div>
+        <div class="arrow-down"></div>
+        <div class="box gold" style="width:260px; font-size:9.5px;">
+          <div class="box-title" style="color:#f5a623;">ANTI-CORRUPTION LAYER</div>
+          status_code==3 &amp; payment_flag='Y' → PAID<br>
+          status_code==3 &amp; payment_flag='N' → PLACED
+        </div>
+        <div class="arrow-down"></div>
+        <div class="box warn" style="width:220px; font-size:10px; text-align:center;">LEGACY MONOLITH DB<br><span style="color:#f0a0ae; font-size:9px;">15 years of schema quirks, untouched</span></div>
+      </div>
+    </div>
+    <div class="footer"><span>Anti-Corruption Layer</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 7: DB-PER-SERVICE + API COMPOSITION -->
+  <section class="slide">
+    <div class="eyebrow">Scenario 4</div>
+    <h2>Database-per-service breaks your JOINs</h2>
+    <p class="body">One SQL JOIN becomes a cross-service call. Fix it with <span class="highlight2">API composition</span> (parallel fan-out) or, at scale, a <span class="highlight3">precomputed CQRS read model</span>.</p>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; align-items:center; width:100%; gap:6px;">
+        <div class="box blue" style="width:230px; font-size:10px; text-align:center;">Composition Service</div>
+        <div class="arrow-down"></div>
+        <div style="display:flex; gap:24px;">
+          <div style="text-align:center;">
+            <div class="box accent" style="width:100px; font-size:9.5px;">Order Svc</div>
+            <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+            <div class="cyl-label">own DB</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="box gold" style="width:100px; font-size:9.5px;">Product Svc</div>
+            <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+            <div class="cyl-label">own DB</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Database-per-service</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 8: REAL NUMBERS -->
+  <section class="slide">
+    <div class="eyebrow">Real Numbers</div>
+    <h2>Sequential vs. parallel composition</h2>
+    <p class="body">4 services joined <span class="highlight">sequentially</span>: 100–200ms added vs. a monolith JOIN's single-digit ms. Fan-out in <span class="highlight2">parallel</span>: cost drops to roughly the slowest single call.</p>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; gap:14px; width:100%;">
+        <div>
+          <div style="font-size:11px; color:var(--accent); margin-bottom:4px;">Sequential — 4 hops chained</div>
+          <div style="display:flex; gap:2px;">
+            <div style="height:22px; flex:1; background:#e94560; border-radius:3px;"></div>
+            <div style="height:22px; flex:1; background:#e94560; border-radius:3px;"></div>
+            <div style="height:22px; flex:1; background:#e94560; border-radius:3px;"></div>
+            <div style="height:22px; flex:1; background:#e94560; border-radius:3px;"></div>
+          </div>
+          <div style="font-size:10px; color:var(--muted); margin-top:3px;">≈150ms total</div>
+        </div>
+        <div>
+          <div style="font-size:11px; color:var(--accent2); margin-bottom:4px;">Parallel fan-out — 4 hops at once</div>
+          <div style="display:flex; gap:2px;">
+            <div style="height:22px; width:25%; background:#0f9b8e; border-radius:3px;"></div>
+          </div>
+          <div style="font-size:10px; color:var(--muted); margin-top:3px;">≈45ms total (slowest hop wins)</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Latency: 5–50ms per hop, same-DC vs cross-region</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <section class="slide">
+    <div class="eyebrow">Decision Framework</div>
+    <h2>Pattern comparison</h2>
+    <div class="diagram" style="align-items:flex-start;">
+      <table class="cmp">
+        <tr><th>Pattern</th><th>Solves</th><th>Cost/Tradeoff</th></tr>
+        <tr><td class="pattern">Strangler Fig</td><td>Incremental monolith migration, no big-bang cutover</td><td>Months–years; needs routing facade + careful order</td></tr>
+        <tr><td class="pattern">BFF</td><td>Competing mobile/web/partner response shapes</td><td>Extra layer per client type; some duplicated logic</td></tr>
+        <tr><td class="pattern">Anti-Corruption Layer</td><td>Legacy schema quirks vs. clean new domain model</td><td>Translation code to maintain, but contained to one boundary</td></tr>
+        <tr><td class="pattern">DB-per-service</td><td>Prevents re-coupling via shared tables</td><td>Old JOINs become API composition / read model</td></tr>
+        <tr><td class="pattern">API Composition</td><td>Cross-service joins at query time</td><td>Added latency; mitigate with parallel fan-out</td></tr>
+        <tr><td class="pattern">Precomputed Read Model</td><td>Frequent, perf-sensitive cross-service reads</td><td>More infra (event pipeline) but much faster reads</td></tr>
+      </table>
+    </div>
+    <div class="footer"><span>Decision Framework</span><span class="page-num"></span></div>
+  </section>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <section class="slide">
+    <div class="eyebrow">Interview Answer</div>
+    <h2>Decision tree + the exact quote to use</h2>
+    <div class="diagram" style="flex-direction:column; align-items:flex-start;">
+      <div style="font-size:10.5px; color:var(--muted); line-height:1.6; margin-bottom:8px;">
+        10yo monolith → too risky to rewrite all at once?<br>
+        &nbsp;&nbsp;→ <span class="highlight2">Strangler fig</span>: routing facade, migrate low-risk reads first, checkout last<br>
+        &nbsp;&nbsp;→ New service needs legacy data? <span class="highlight3">Anti-Corruption Layer</span><br>
+        &nbsp;&nbsp;→ Multiple client types? <span class="highlight">BFF</span> per client<br>
+        &nbsp;&nbsp;→ Cross-service read after DB-per-service? <span class="highlight2">API composition</span> (parallel) or CQRS read model
+      </div>
+      <div class="box blue" style="width:100%; font-size:10.5px; font-style:italic;">
+        "I would explicitly reject a big-bang rewrite... Instead, I'd use the strangler fig pattern: put a routing facade in front of the monolith, and migrate ONE capability at a time, starting with something read-heavy and low-risk, like product search, not the checkout flow."
+      </div>
+    </div>
+    <div class="footer"><span>Save this for your next interview</span><span class="page-num"></span></div>
+  </section>
+
+</div>
+
+<div class="controls">
+  <button id="prevBtn">◀ Prev</button>
+  <div class="counter"><span id="cur">1</span> / <span id="total">10</span></div>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+  (function () {
+    var slides = document.querySelectorAll('.slide');
+    var total = slides.length;
+    var idx = 0;
+
+    document.getElementById('total').textContent = total;
+
+    function render() {
+      slides.forEach(function (s, i) {
+        s.classList.toggle('active', i === idx);
+      });
+      document.getElementById('cur').textContent = idx + 1;
+    }
+
+    function go(delta) {
+      idx = (idx + delta + total) % total;
+      render();
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', function () { go(-1); });
+    document.getElementById('nextBtn').addEventListener('click', function () { go(1); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowLeft') go(-1);
+      if (e.key === 'ArrowRight') go(1);
+    });
+
+    render();
+  })();
+</script>
+
+</body>
+</html>

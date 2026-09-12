@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="2450" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <rect x="10" y="10" width="1180" height="2430" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+  <text x="600" y="42" text-anchor="middle" font-size="20" font-weight="bold" fill="#2d2d2d">Master End-to-End Flow — All 8 Phases</text>
+  <line x1="380" y1="54" x2="820" y2="54" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- PHASE 1 -->
+  <rect x="30" y="70" width="1140" height="140" rx="6" fill="#e8f4fd" fill-opacity="0.5" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="45" y="92" font-size="13" font-weight="bold" fill="#1a4a7a">PHASE 1 — User Registration</text>
+  <text x="45" y="114" font-size="10" fill="#333">1. User installs app &#8594; POST /register {phone_number, name}</text>
+  <text x="45" y="132" font-size="10" fill="#333">2. User Service creates user record in PostgreSQL</text>
+  <text x="45" y="150" font-size="10" fill="#333">3. JWT token returned to client</text>
+
+  <!-- PHASE 2 -->
+  <rect x="30" y="220" width="1140" height="230" rx="6" fill="#fff3cd" fill-opacity="0.4" stroke="#e6a817" stroke-width="1.5"/>
+  <text x="45" y="242" font-size="13" font-weight="bold" fill="#7a4a00">PHASE 2 — Login + WebSocket Establishment</text>
+  <text x="45" y="264" font-size="10" fill="#333">4. POST /login {phone, OTP}</text>
+  <text x="45" y="282" font-size="10" fill="#333">5. User Service validates OTP &#8594; returns JWT</text>
+  <text x="45" y="300" font-size="10" fill="#333">6. Client sends HTTP Upgrade request to WebSocket Gateway with JWT</text>
+  <text x="45" y="318" font-size="10" fill="#333">7. Gateway validates JWT &#8594; upgrades to WebSocket</text>
+  <text x="45" y="336" font-size="10" fill="#333">8. Chat Server: HSET ws_registry {user_id &#8594; server_id, conn_id}</text>
+  <text x="45" y="354" font-size="10" fill="#333">9. Chat Server queries Cassandra for PENDING messages</text>
+  <text x="45" y="372" font-size="10" fill="#333">10. Pending messages pushed to client via WebSocket</text>
+  <text x="45" y="390" font-size="10" fill="#333">11. Client sends DELIVERY_ACK &#8594; Cassandra updated &#8594; sender gets double tick</text>
+  <text x="45" y="424" font-size="9" fill="#7a4a00" font-style="italic">Steps 4-11 also run automatically on every later reconnect, not just first login.</text>
+
+  <!-- PHASE 3 -->
+  <rect x="30" y="470" width="1140" height="220" rx="6" fill="#e8f5e9" fill-opacity="0.4" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="45" y="492" font-size="13" font-weight="bold" fill="#1a5e20">PHASE 3 — Sending a Message (Online Recipient)</text>
+  <text x="45" y="514" font-size="10" fill="#333">12. User types &#8594; WS SEND {chat_id, content, msg_type}</text>
+  <text x="45" y="532" font-size="10" fill="#333">13. Chat Server persists to Cassandra, status = PENDING</text>
+  <text x="45" y="550" font-size="10" fill="#333">14. Chat Server looks up recipient in ws_registry</text>
+  <text x="45" y="568" font-size="10" fill="#333">15. Recipient ONLINE &#8594; XADD to Redis Stream of recipient's server</text>
+  <text x="45" y="586" font-size="10" fill="#333">16. Sender gets single tick</text>
+  <text x="45" y="604" font-size="10" fill="#333">17. Recipient's Chat Server reads stream &#8594; pushes via WebSocket</text>
+  <text x="45" y="622" font-size="10" fill="#333">18. Recipient sends DELIVERY_ACK &#8594; 19. Cassandra updated status=DELIVERED &#8594; 20. Sender gets double tick</text>
+
+  <!-- PHASE 4 -->
+  <rect x="30" y="710" width="1140" height="150" rx="6" fill="#fde8e8" fill-opacity="0.4" stroke="#e74c3c" stroke-width="1.5"/>
+  <text x="45" y="732" font-size="13" font-weight="bold" fill="#7a0000">PHASE 4 — Sending a Message (Offline Recipient)</text>
+  <text x="45" y="754" font-size="10" fill="#333">21. Same send as step 12   22. Recipient NOT in ws_registry</text>
+  <text x="45" y="772" font-size="10" fill="#333">23. INSERT to Cassandra, status = PENDING   24. Sender gets single tick</text>
+  <text x="45" y="790" font-size="10" fill="#333">25. Notification Service triggers FCM/APNs push</text>
+  <text x="45" y="808" font-size="10" fill="#333">26. When recipient reconnects &#8594; steps 4-11 handle delivery</text>
+
+  <!-- PHASE 5 -->
+  <rect x="30" y="880" width="1140" height="150" rx="6" fill="#f5f0ff" fill-opacity="0.4" stroke="#8e44ad" stroke-width="1.5"/>
+  <text x="45" y="902" font-size="13" font-weight="bold" fill="#4a0a7a">PHASE 5 — Sending Media</text>
+  <text x="45" y="924" font-size="10" fill="#333">27. User selects image &#8594; HTTP POST /media/upload to Media Service</text>
+  <text x="45" y="942" font-size="10" fill="#333">28. Media Service uploads to S3 &#8594; returns media_url</text>
+  <text x="45" y="960" font-size="10" fill="#333">29. Client sends WS SEND {msg_type: IMAGE, content: media_url}</text>
+  <text x="45" y="978" font-size="10" fill="#333">30. Flow continues same as steps 13-20   31. Recipient fetches image from CloudFront CDN, not S3 directly</text>
+
+  <!-- PHASE 6 -->
+  <rect x="30" y="1050" width="1140" height="150" rx="6" fill="#e8f4fd" fill-opacity="0.5" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="45" y="1072" font-size="13" font-weight="bold" fill="#1a4a7a">PHASE 6 — Group Message</text>
+  <text x="45" y="1094" font-size="10" fill="#333">32. WS SEND {group_id, content}   33. Chat Service calls Group Service &#8594; get all member user_ids</text>
+  <text x="45" y="1112" font-size="10" fill="#333">34. For each member: check ws_registry online/offline</text>
+  <text x="45" y="1130" font-size="10" fill="#333">35. Online members: push via Redis Streams &#8594; their Chat Server &#8594; WebSocket</text>
+  <text x="45" y="1148" font-size="10" fill="#333">36. Offline members: persist to Cassandra + FCM push   37. Per-member delivery tracked in group_message_delivery table</text>
+
+  <!-- PHASE 7 -->
+  <rect x="30" y="1220" width="1140" height="110" rx="6" fill="#fff3cd" fill-opacity="0.4" stroke="#e6a817" stroke-width="1.5"/>
+  <text x="45" y="1242" font-size="13" font-weight="bold" fill="#7a4a00">PHASE 7 — Read Receipt</text>
+  <text x="45" y="1264" font-size="10" fill="#333">38. Recipient opens chat &#8594; READ_ACK sent via WebSocket</text>
+  <text x="45" y="1282" font-size="10" fill="#333">39. Chat Server updates Cassandra: status = READ</text>
+  <text x="45" y="1300" font-size="10" fill="#333">40. Sender's Chat Server notified via Redis Streams &#8594; sender gets blue tick</text>
+
+  <!-- PHASE 8 -->
+  <rect x="30" y="1350" width="1140" height="160" rx="6" fill="#e8f5e9" fill-opacity="0.4" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="45" y="1372" font-size="13" font-weight="bold" fill="#1a5e20">PHASE 8 — Presence / Last Seen</text>
+  <text x="45" y="1394" font-size="10" fill="#333">41. WebSocket registry entry TTL = 60s, heartbeat every 30s refreshes it</text>
+  <text x="45" y="1412" font-size="10" fill="#333">42. User closes app &#8594; heartbeat stops &#8594; TTL expires after 60s</text>
+  <text x="45" y="1430" font-size="10" fill="#333">43. Redis keyspace expiry event fires   44. User Management Service: UPDATE users SET last_seen = NOW()</text>
+  <text x="45" y="1448" font-size="10" fill="#333">45. PUBLISH presence:offline &#8594; contacts with open chats see "last seen X"</text>
+
+  <!-- Connecting arrows between phase bands -->
+  <g stroke="#999" stroke-width="1.5" marker-end="url(#arr)">
+    <line x1="600" y1="210" x2="600" y2="220"/>
+    <line x1="600" y1="450" x2="600" y2="470"/>
+    <line x1="600" y1="690" x2="600" y2="710"/>
+    <line x1="600" y1="860" x2="600" y2="880"/>
+    <line x1="600" y1="1030" x2="600" y2="1050"/>
+    <line x1="600" y1="1200" x2="600" y2="1220"/>
+    <line x1="600" y1="1330" x2="600" y2="1350"/>
+  </g>
+
+  <rect x="30" y="1540" width="1140" height="200" rx="6" fill="#2d2d2d"/>
+  <text x="600" y="1568" text-anchor="middle" font-size="12" fill="#f8f8f2" font-family="monospace">This 45-step flow is the complete story: any single feature discussed in this system</text>
+  <text x="600" y="1592" text-anchor="middle" font-size="12" fill="#f8f8f2" font-family="monospace">(text send, offline delivery, media, groups, read receipts, presence) maps to one of these 8 phases.</text>
+  <text x="600" y="1620" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">P99 delivery &lt; 100ms | ~700K msg/sec peak | at-least-once delivery + client dedup = exactly-once UX</text>
+  <text x="600" y="1646" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">Cassandra is written BEFORE any ACK is sent — every phase's durability rests on that one guarantee.</text>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#555"/></marker>
+  </defs>
+
+  <text x="600" y="1780" text-anchor="middle" font-size="10" fill="#aaa">Chat System Design — Master End-to-End Flow</text>
+</svg>

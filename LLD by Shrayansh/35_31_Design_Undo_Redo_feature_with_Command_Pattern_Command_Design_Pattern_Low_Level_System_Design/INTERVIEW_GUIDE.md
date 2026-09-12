@@ -1,6 +1,8 @@
 # ↩️ Undo/Redo Feature - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -336,6 +338,35 @@ Most editors (MS Word, VS Code) limit undo history to a fixed number of steps (e
 ## 9. Technology Choices
 
 **You**: "For collaborative undo/redo (Google Docs style) - this gets MUCH harder. Simple Command stack breaks down with concurrent multi-user edits. Production systems use **Operational Transformation (OT)** or **CRDTs (Conflict-free Replicated Data Types)** which handle undo in a distributed, conflict-tolerant way. Worth mentioning to show awareness of the added complexity in collaborative contexts."
+
+---
+
+## 🔥 Real-World Production Issue: The Undo Stack That Grew Without Bound and Crashed the App
+
+*In plain English: an undo history with no size limit will eventually exhaust memory, even if each individual entry is small.*
+
+**The war story:**
+
+"A design tool's undo/redo used the Command Pattern's delta-based approach exactly as this guide recommends — memory-efficient per-command, in theory. But the `undoStack` itself (a `List<Command>`) had NO maximum size cap, on the assumption that 'deltas are small, users won't undo THAT many times in one session.'"
+
+```
+Power users doing iterative design work (hundreds of small tweaks
+over a multi-hour session): 50,000+ commands pushed onto undoStack
+over the course of a single long editing session
+
+Each delta command: ~2KB (small individually, exactly as designed)
+50,000 commands x 2KB = 100MB just for the undo history of ONE document
+
+Browser tab (this was a web-based design tool) hit its memory limit,
+tab crashed, ALL unsaved work lost -- including the very edits the
+user was trying to protect by having undo/redo in the first place
+```
+
+**Root cause:** "delta storage is memory-efficient PER COMMAND" (true, and correctly implemented) doesn't mean the AGGREGATE undo history is bounded — an unbounded list of even small deltas grows linearly with session length, and a long enough session (or a scripted/automated series of many small edits) will eventually exhaust memory regardless of how small each individual delta is.
+
+**The fix:** capped `undoStack` at a configurable maximum size (e.g., 500 commands), evicting the OLDEST commands first (FIFO) once the cap is reached — accepting that very old undo history becomes unavailable in exchange for a bounded, predictable memory footprint; also added periodic "checkpoint" full-snapshots every N commands so evicting old deltas doesn't leave the undo history in an inconsistent state if a very old snapshot is ever needed for recovery.
+
+**Lesson for a new developer:** "Command Pattern's per-operation memory efficiency (deltas vs. full snapshots) solves ONE dimension of the memory problem, but doesn't automatically bound the OTHER dimension: how many commands can accumulate over an unbounded session length. Always cap unbounded collections (undo stacks, event logs, in-memory caches) with an explicit eviction policy, even when each individual entry is 'small'."
 
 ---
 

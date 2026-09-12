@@ -36,6 +36,10 @@ Two-Phase Commit (2PC) in microservices:
 
 ### Choreography Saga (Event-Driven, No Central Coordinator)
 
+### Sequence Diagram (ASCII)
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ```
 OrderService          InventoryService        PaymentService
      │                      │                      │

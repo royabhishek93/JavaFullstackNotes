@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1250" height="1100" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <rect x="10" y="10" width="1230" height="1080" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+  <text x="625" y="42" text-anchor="middle" font-size="20" font-weight="bold" fill="#2d2d2d">End-to-End Encryption — X3DH and Double Ratchet</text>
+  <line x1="380" y1="54" x2="870" y2="54" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- PART 1: X3DH -->
+  <text x="30" y="80" font-size="14" font-weight="bold" fill="#1a4a7a">Part 1 — X3DH: Offline Key Exchange</text>
+  <text x="30" y="98" font-size="10" fill="#555" font-style="italic">Lets Alice message Bob securely even while Bob is completely offline.</text>
+
+  <rect x="30" y="110" width="560" height="140" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="45" y="130" font-size="11" font-weight="bold" fill="#1a4a7a">Setup (once, at registration) — Bob uploads to server:</text>
+  <text x="45" y="150" font-size="9" fill="#333">&#8226; Identity Key — permanent public key, never changes</text>
+  <text x="45" y="166" font-size="9" fill="#333">&#8226; Signed Pre-Key — rotated monthly</text>
+  <text x="45" y="182" font-size="9" fill="#333">&#8226; ~100 One-Time Pre-Keys — single-use, replenished as consumed</text>
+  <text x="45" y="204" font-size="9" fill="#1a4a7a" font-style="italic">All public keys — the server stores these openly, no secrecy needed here.</text>
+  <text x="45" y="222" font-size="9" fill="#1a4a7a" font-style="italic">Bob's private keys never leave his device, ever.</text>
+
+  <rect x="620" y="110" width="580" height="46" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="635" y="130" font-size="10" font-weight="bold" fill="#1a5e20">Alice</text>
+  <rect x="620" y="200" width="580" height="46" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="635" y="220" font-size="10" font-weight="bold" fill="#7a0000">Server (blind relay — stores ciphertext it physically cannot decrypt)</text>
+
+  <line x1="910" y1="156" x2="910" y2="900" stroke="#999" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <line x1="910" y1="246" x2="910" y2="900" stroke="#999" stroke-width="1.5" stroke-dasharray="4,3" transform="translate(0,0)"/>
+
+  <line x1="910" y1="280" x2="915" y2="280" stroke="none"/>
+  <line x1="908" y1="280" x2="1180" y2="280" stroke="#555" stroke-width="1.3" marker-end="url(#arr)"/>
+  <text x="920" y="275" font-size="9" fill="#333">1. Alice fetches Bob's public keys from server</text>
+
+  <rect x="920" y="295" width="290" height="46" rx="4" fill="#e8f5e9" stroke="#27ae60" stroke-width="1"/>
+  <text x="930" y="313" font-size="8" fill="#1a5e20">2. Alice runs X3DH math locally — 4 Diffie-Hellman</text>
+  <text x="930" y="326" font-size="8" fill="#1a5e20">operations, deriving a shared secret with NO live</text>
+  <text x="930" y="337" font-size="8" fill="#1a5e20">coordination needed with Bob.</text>
+
+  <text x="920" y="365" font-size="9" fill="#333">3. Alice encrypts her message with the derived shared key</text>
+
+  <line x1="908" y1="390" x2="700" y2="390" stroke="#555" stroke-width="1.3" marker-end="url(#arr)"/>
+  <text x="710" y="385" font-size="9" fill="#333">4. server stores only the encrypted ciphertext blob — cannot decrypt it (no private key)</text>
+
+  <line x1="700" y1="420" x2="908" y2="420" stroke="#c8b89a" stroke-width="1" stroke-dasharray="6,3"/>
+  <text x="720" y="435" font-size="9" fill="#888" font-style="italic">5. ... later, Bob comes online, fetches the encrypted blob ...</text>
+
+  <rect x="920" y="450" width="290" height="60" rx="4" fill="#fde8e8" stroke="#e74c3c" stroke-width="1"/>
+  <text x="930" y="468" font-size="8" fill="#7a0000">6. Bob runs the same X3DH math using his own private</text>
+  <text x="930" y="480" font-size="8" fill="#7a0000">keys, deriving the identical shared secret.</text>
+  <text x="930" y="497" font-size="8" fill="#7a0000">7. Bob decrypts locally, on-device.</text>
+
+  <rect x="30" y="530" width="1170" height="60" rx="6" fill="#2d2d2d"/>
+  <text x="625" y="555" text-anchor="middle" font-size="11" fill="#f8f8f2">The server is a "blind relay" — it stores ciphertext it cannot read.</text>
+  <text x="625" y="575" text-anchor="middle" font-size="11" fill="#f8f8f2">Private keys NEVER leave the device, at any point in this exchange.</text>
+
+  <!-- PART 2: Double Ratchet -->
+  <text x="30" y="630" font-size="14" font-weight="bold" fill="#4a0a7a">Part 2 — Double Ratchet: Forward Secrecy</text>
+  <text x="30" y="648" font-size="10" fill="#555" font-style="italic">Each message derives a brand-new key from the previous one via a one-way key-derivation function (KDF).</text>
+
+  <rect x="60" y="665" width="140" height="50" rx="5" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="130" y="695" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">Key 1</text>
+  <line x1="200" y1="690" x2="290" y2="690" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+  <text x="210" y="682" font-size="9" fill="#4a0a7a">KDF</text>
+
+  <rect x="290" y="665" width="140" height="50" rx="5" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="360" y="695" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">Key 2</text>
+  <line x1="430" y1="690" x2="520" y2="690" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+  <text x="440" y="682" font-size="9" fill="#4a0a7a">KDF</text>
+
+  <rect x="520" y="665" width="140" height="50" rx="5" fill="#fde8e8" stroke="#e74c3c" stroke-width="2.5"/>
+  <text x="590" y="695" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a0000">Key 3 (stolen)</text>
+  <line x1="660" y1="690" x2="750" y2="690" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+  <text x="670" y="682" font-size="9" fill="#4a0a7a">KDF</text>
+
+  <rect x="750" y="665" width="140" height="50" rx="5" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="820" y="695" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">Key 4</text>
+
+  <text x="60" y="740" font-size="10" fill="#333">Scenario: attacker steals Bob's device mid-conversation and somehow extracts Key 3 (used for message 3).</text>
+
+  <rect x="60" y="755" width="440" height="70" rx="5" fill="#e8f5e9" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="70" y="775" font-size="9" font-weight="bold" fill="#1a5e20">Cannot decrypt messages 1 and 2</text>
+  <text x="70" y="793" font-size="8" fill="#333">The KDF is mathematically one-way — Key 3 cannot be</text>
+  <text x="70" y="806" font-size="8" fill="#333">reversed to recover Key 1 or Key 2.</text>
+
+  <rect x="520" y="755" width="440" height="70" rx="5" fill="#e8f5e9" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="530" y="775" font-size="9" font-weight="bold" fill="#1a5e20">Cannot decrypt messages 4+</text>
+  <text x="530" y="793" font-size="8" fill="#333">Deriving the next key needs additional interactive</text>
+  <text x="530" y="806" font-size="8" fill="#333">data the attacker doesn't have from just Key 3.</text>
+
+  <text x="60" y="850" font-size="10" fill="#333" font-weight="bold">Each message is protected by a key that exists only for that single message —</text>
+  <text x="60" y="866" font-size="10" fill="#333">this is why even WhatsApp itself cannot read past chat history, even under legal compulsion,</text>
+  <text x="60" y="882" font-size="10" fill="#333">because it never possessed any of these keys in the first place.</text>
+
+  <rect x="30" y="920" width="1170" height="80" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="45" y="942" font-size="11" font-weight="bold" fill="#2d2d2d">TLS vs End-to-End Encryption — not the same guarantee</text>
+  <text x="45" y="962" font-size="10" fill="#333">TLS encrypts data only in transit between device and server — the server itself can still decrypt at rest.</text>
+  <text x="45" y="980" font-size="10" fill="#333">End-to-end encryption means only the two devices ever hold the decryption keys; the server never can, at any point.</text>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#555"/></marker>
+    <marker id="arrPurple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#8e44ad"/></marker>
+  </defs>
+
+  <text x="625" y="1050" text-anchor="middle" font-size="10" fill="#aaa">Chat System Design — End-to-End Encryption</text>
+</svg>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Leader Election: ZooKeeper &amp; Raft — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#22223a;
+    --gold:#e6b800;
+    --blue:#4fa8da;
+    --red:#ff5c5c;
+    --green:#4fd18b;
+    --text:#eaeaf2;
+    --muted:#9a9ab0;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family: Georgia, 'Times New Roman', serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .deck{
+    width:540px;height:540px;margin:40px auto;
+    position:relative;background:var(--bg);
+    border-radius:14px;overflow:hidden;
+    box-shadow:0 0 40px rgba(0,0,0,0.5);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .slide{
+    display:none;
+    width:540px;height:540px;
+    padding:34px 32px;
+    flex-direction:column;
+    background:var(--bg);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .slide.active{display:flex;}
+  .slide h1{
+    font-size:24px;margin:0 0 6px 0;color:var(--gold);
+    letter-spacing:0.5px;
+  }
+  .slide h2{
+    font-size:15px;margin:0 0 16px 0;color:var(--muted);
+    font-weight:normal;font-style:italic;
+  }
+  .tag{
+    display:inline-block;font-size:11px;font-weight:bold;letter-spacing:1px;
+    color:var(--bg);background:var(--gold);padding:3px 10px;border-radius:20px;
+    margin-bottom:10px;width:fit-content;text-transform:uppercase;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;}
+  .stat{
+    font-size:46px;color:var(--red);font-weight:bold;text-align:center;
+  }
+  .stat-label{text-align:center;color:var(--muted);font-size:14px;}
+  p.plain{font-size:15px;line-height:1.5;color:var(--text);margin:0;}
+  ul.points{margin:0;padding-left:18px;font-size:14px;line-height:1.6;color:var(--text);}
+  ul.points li{margin-bottom:6px;}
+  .footer{
+    margin-top:auto;font-size:11px;color:var(--muted);text-align:center;
+    border-top:1px solid #333355;padding-top:8px;
+  }
+
+  /* ---- Node box (server box with horizontal lines = log entries) ---- */
+  .node-box{
+    width:82px;height:66px;border-radius:6px;border:2px solid var(--blue);
+    background:rgba(79,168,218,0.08);padding:5px 6px;position:relative;
+    display:flex;flex-direction:column;justify-content:flex-start;gap:3px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .node-box .label{font-size:10px;font-weight:bold;color:var(--text);text-align:center;}
+  .node-box .line{height:3px;background:var(--blue);opacity:0.6;border-radius:2px;}
+  .node-box.leader{border-color:var(--gold);background:rgba(230,184,0,0.12);}
+  .node-box.leader .line{background:var(--gold);}
+  .node-box.leader .label{color:var(--gold);}
+  .node-box.candidate{border-color:var(--red);background:rgba(255,92,92,0.12);}
+  .node-box.candidate .line{background:var(--red);}
+  .node-box.candidate .label{color:var(--red);}
+  .node-box.dead{border-color:#555;background:rgba(80,80,80,0.15);opacity:0.5;}
+  .badge{
+    position:absolute;top:-9px;right:-9px;background:var(--gold);color:var(--bg);
+    font-size:9px;font-weight:bold;border-radius:10px;padding:2px 6px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .badge.red{background:var(--red);color:#fff;}
+
+  .row{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+
+  /* ---- Arrows ---- */
+  .arrow{position:relative;width:46px;height:2px;background:var(--blue);align-self:center;}
+  .arrow::after{
+    content:"";position:absolute;right:-1px;top:-4px;
+    border-left:8px solid var(--blue);border-top:5px solid transparent;border-bottom:5px solid transparent;
+  }
+  .arrow.dashed{background:transparent;border-top:2px dashed var(--muted);height:0;}
+  .arrow.dashed::after{border-left-color:var(--muted);}
+  .arrow.gold{background:var(--gold);}
+  .arrow.gold::after{border-left-color:var(--gold);}
+  .arrow.red{background:var(--red);}
+  .arrow.red::after{border-left-color:var(--red);}
+  .vlabel{font-size:10px;color:var(--muted);text-align:center;}
+
+  /* ---- znode tree ---- */
+  .znode-tree{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .znode-root{
+    font-size:11px;color:var(--muted);border:1px dashed var(--muted);
+    padding:3px 10px;border-radius:4px;
+  }
+  .znode-children{display:flex;gap:8px;margin-top:4px;}
+  .znode{
+    width:64px;padding:6px 4px;border:2px solid var(--blue);border-radius:5px;
+    text-align:center;font-size:9px;background:rgba(79,168,218,0.08);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .znode.lowest{border-color:var(--gold);background:rgba(230,184,0,0.15);color:var(--gold);font-weight:bold;}
+  .znode.gone{border-color:#555;opacity:0.35;text-decoration:line-through;}
+
+  /* ---- comparison table ---- */
+  table.cmp{width:100%;border-collapse:collapse;font-size:11px;}
+  table.cmp th{background:#2c2c4a;color:var(--gold);padding:6px 5px;text-align:left;border:1px solid #3a3a5c;}
+  table.cmp td{padding:6px 5px;border:1px solid #3a3a5c;color:var(--text);}
+  table.cmp tr:nth-child(even) td{background:#20203a;}
+
+  /* ---- decision tree ---- */
+  .dtree{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .dbox{
+    border:2px solid var(--blue);border-radius:6px;padding:8px 12px;font-size:12px;
+    text-align:center;background:rgba(79,168,218,0.08);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .dbox.q{border-color:var(--gold);color:var(--gold);font-weight:bold;}
+  .dline{width:2px;height:14px;background:var(--muted);}
+  .quote-box{
+    margin-top:10px;border-left:4px solid var(--gold);padding:10px 14px;
+    background:rgba(230,184,0,0.08);font-size:12px;line-height:1.5;font-style:italic;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* ---- nav ---- */
+  .nav{
+    width:540px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;
+    padding:10px 4px;font-family:sans-serif;
+  }
+  .nav button{
+    background:var(--gold);color:var(--bg);border:none;padding:8px 18px;
+    border-radius:20px;font-weight:bold;cursor:pointer;font-size:13px;
+  }
+  .nav button:disabled{opacity:0.35;cursor:default;}
+  .counter{color:var(--muted);font-family:sans-serif;font-size:13px;}
+
+  @media print{
+    @page{ size:540px 540px; margin:0; }
+    body{margin:0;background:var(--bg);}
+    .nav{display:none;}
+    .deck{margin:0;box-shadow:none;border-radius:0;}
+    .slide{
+      display:flex !important;
+      page-break-after:always;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active" data-idx="0">
+    <span class="tag">Episode 33</span>
+    <h1>Two Leaders. Same Key. Different Values.</h1>
+    <h2>The 4-second window that corrupts your data</h2>
+    <div class="body">
+      <div class="row">
+        <div class="node-box leader"><span class="label">Node A</span><div class="line"></div><div class="line"></div><span class="badge">LEADER</span></div>
+        <div style="font-size:22px;color:var(--red);font-weight:bold;">⚡ CONFLICT</div>
+        <div class="node-box leader"><span class="label">Node B</span><div class="line"></div><div class="line"></div><span class="badge red">LEADER</span></div>
+      </div>
+      <div class="stat">2</div>
+      <div class="stat-label">nodes both think they're the primary — writing conflicting values to the same key, at the same time</div>
+    </div>
+    <div class="footer">Leader Election: ZooKeeper &amp; Raft — how production systems prevent this</div>
+  </section>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <section class="slide" data-idx="1">
+    <span class="tag">The Problem</span>
+    <h1>5 Nodes. Who Gets to Write?</h1>
+    <h2>Without a single leader, every write is a race</h2>
+    <div class="body">
+      <div class="row">
+        <div class="node-box"><span class="label">A</span><div class="line"></div></div>
+        <div class="node-box"><span class="label">B</span><div class="line"></div></div>
+        <div class="node-box"><span class="label">C</span><div class="line"></div></div>
+        <div class="node-box"><span class="label">D</span><div class="line"></div></div>
+        <div class="node-box"><span class="label">E</span><div class="line"></div></div>
+      </div>
+      <p class="plain">If all 5 nodes accept writes independently, two nodes can write different values to the same key simultaneously — split brain. The fix: designate exactly ONE leader. All writes funnel through it; the leader replicates to followers.</p>
+      <ul class="points">
+        <li>Must always elect exactly one leader — never zero, never two</li>
+        <li>Must elect a leader even if some nodes are down</li>
+        <li>Must detect leader death and re-elect automatically, no human on call</li>
+      </ul>
+    </div>
+    <div class="footer">This is the leader election problem — ZooKeeper and Raft are the two dominant answers</div>
+  </section>
+
+  <!-- SLIDE 3: ZooKeeper ephemeral sequential znodes -->
+  <section class="slide" data-idx="2">
+    <span class="tag">ZooKeeper</span>
+    <h1>Ephemeral Sequential Znodes</h1>
+    <h2>Lowest sequence number wins — no voting required</h2>
+    <div class="body">
+      <div class="znode-tree">
+        <div class="znode-root">/election</div>
+        <div class="znode-children">
+          <div class="znode lowest">candidate-0001<br>(Node A)</div>
+          <div class="znode">candidate-0002<br>(Node B)</div>
+          <div class="znode">candidate-0003<br>(Node C)</div>
+          <div class="znode">candidate-0004<br>(Node D)</div>
+          <div class="znode">candidate-0005<br>(Node E)</div>
+        </div>
+      </div>
+      <p class="plain">Each candidate creates a znode; ZooKeeper guarantees strictly increasing sequence numbers — no two nodes ever collide. Every node checks: "Am I the lowest number?" Node A (0001) says yes → Node A is leader. Everyone else is a follower.</p>
+    </div>
+    <div class="footer">No coordination round-trip — just compare sequence numbers</div>
+  </section>
+
+  <!-- SLIDE 4: chain watching + failure/re-election -->
+  <section class="slide" data-idx="3">
+    <span class="tag">ZooKeeper</span>
+    <h1>Chain Watching &amp; Failover</h1>
+    <h2>Why followers watch their neighbor, not the leader</h2>
+    <div class="body">
+      <div class="row">
+        <div class="node-box dead"><span class="label">A (0001)</span><div class="line"></div></div>
+        <div class="arrow dashed"></div>
+        <div class="node-box leader"><span class="label">B (0002)</span><div class="line"></div><span class="badge">NEW LEADER</span></div>
+        <div class="arrow dashed"></div>
+        <div class="node-box"><span class="label">C (0003)</span><div class="line"></div></div>
+        <div class="arrow dashed"></div>
+        <div class="node-box"><span class="label">D (0004)</span><div class="line"></div></div>
+      </div>
+      <p class="plain">Each follower watches only the node <b>one position below it</b> — B watches A, C watches B, D watches C. If every follower watched the leader directly, all 4 would fire simultaneously when it dies (thundering herd on ZooKeeper).</p>
+      <ul class="points">
+        <li>t=0: Node A disconnects</li>
+        <li>t=1: ZooKeeper detects via session timeout (10–30s)</li>
+        <li>t=2: ephemeral znode 0001 auto-deleted</li>
+        <li>t=3: Node B notified, confirms it's now lowest → becomes leader</li>
+      </ul>
+    </div>
+    <div class="footer">Total re-election time ≈ ZK session timeout (10–30s); writes rejected until then</div>
+  </section>
+
+  <!-- SLIDE 5: Raft roles + heartbeats -->
+  <section class="slide" data-idx="4">
+    <span class="tag">Raft</span>
+    <h1>Three Roles, One Heartbeat</h1>
+    <h2>Leader → Follower → Candidate</h2>
+    <div class="body">
+      <div class="row">
+        <div class="node-box leader"><span class="label">Leader</span><div class="line"></div><div class="line"></div></div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="arrow gold"></div>
+          <div class="arrow gold"></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="node-box"><span class="label">Follower 1</span><div class="line"></div></div>
+          <div class="node-box"><span class="label">Follower 2</span><div class="line"></div></div>
+        </div>
+      </div>
+      <p class="plain">Leader continuously sends heartbeats. Every heartbeat resets a follower's <b>election timeout</b> — a random value between 150ms and 300ms. If a follower goes that long with zero heartbeats, it assumes the leader is dead and becomes a Candidate.</p>
+    </div>
+    <div class="footer">All nodes start as Followers — there is no manual designation</div>
+  </section>
+
+  <!-- SLIDE 6: Raft election process -->
+  <section class="slide" data-idx="5">
+    <span class="tag">Raft</span>
+    <h1>Election In ~150ms</h1>
+    <h2>Timeout fires → vote request → majority wins</h2>
+    <div class="body">
+      <div class="row">
+        <div class="node-box candidate"><span class="label">Node 2</span><div class="line"></div><span class="badge red">term=5</span></div>
+        <div class="arrow red"></div>
+        <div class="node-box"><span class="label">Node 1</span><div class="line"></div></div>
+      </div>
+      <div class="row">
+        <div class="arrow red" style="align-self:flex-start;"></div>
+        <div class="node-box"><span class="label">Node 3</span><div class="line"></div></div>
+      </div>
+      <ul class="points">
+        <li>Node 2's timeout fires first (153ms) → becomes Candidate</li>
+        <li>Increments term: 4 → 5. Votes for itself.</li>
+        <li>Sends RequestVote(term=5, lastLogIndex=99) to all nodes</li>
+        <li>Node 1 &amp; Node 3 check: term higher? log as current? → grant vote</li>
+        <li>Node 2 has 3/5 votes = majority → declares itself Leader, sends heartbeats</li>
+      </ul>
+    </div>
+    <div class="footer">Total election time: ~150ms — vs. ZooKeeper's 10–30s session timeout</div>
+  </section>
+
+  <!-- SLIDE 7: split vote problem -->
+  <section class="slide" data-idx="6">
+    <span class="tag">Raft — Deep Dive</span>
+    <h1>The Split Vote Trap</h1>
+    <h2>Why the timeout MUST be randomized</h2>
+    <div class="body">
+      <p class="plain"><b>Without randomization:</b> if all 4 followers share the same fixed timeout, all 4 become Candidates at once. Each votes for itself. No one reaches a majority. Stalemate.</p>
+      <div class="row">
+        <div class="node-box candidate"><span class="label">N1</span><span class="badge red">153ms</span></div>
+        <div class="node-box candidate"><span class="label">N2</span><span class="badge red">201ms</span></div>
+        <div class="node-box candidate"><span class="label">N3</span><span class="badge red">267ms</span></div>
+        <div class="node-box candidate"><span class="label">N4</span><span class="badge red">289ms</span></div>
+      </div>
+      <p class="plain"><b>With randomization (150–300ms range):</b> one node almost always fires first and wins before others even start their clocks. Rare ties simply reset to a new random timeout and retry.</p>
+    </div>
+    <div class="footer">Randomized timeout = the single mechanism that avoids permanent stalemate</div>
+  </section>
+
+  <!-- SLIDE 8: Raft log safety -->
+  <section class="slide" data-idx="7">
+    <span class="tag">Raft — Deep Dive</span>
+    <h1>Stale Nodes Can't Win</h1>
+    <h2>Raft's safety guarantee against data loss</h2>
+    <div class="body">
+      <div class="row">
+        <div class="node-box candidate"><span class="label">Node E</span><div class="line"></div><span class="badge red">log=85</span></div>
+        <div class="arrow red"></div>
+        <div class="node-box"><span class="label">Node B</span><div class="line"></div><div class="line"></div><span class="badge">log=100</span></div>
+      </div>
+      <p class="plain">Node E was partitioned and only replicated up to entry 85; Nodes B, C, D have all 100 entries. When E requests votes, every voter checks: <b>is candidate's log at least as current as mine?</b> 85 &lt; 100 → DENY. E cannot win, no majority — no data loss.</p>
+      <p class="plain">Later, Node B (log=100) requests votes, gets granted by C and D, and wins — carrying the full committed log forward.</p>
+    </div>
+    <div class="footer">Vote rule = higher/equal term AND equal-or-greater log recency — both must hold</div>
+  </section>
+
+  <!-- SLIDE 9: comparison table -->
+  <section class="slide" data-idx="8">
+    <span class="tag">Comparison</span>
+    <h1>ZooKeeper vs etcd vs Self-Implemented Raft</h1>
+    <h2>Which one runs under your favorite systems</h2>
+    <div class="body">
+      <table class="cmp">
+        <tr><th></th><th>ZooKeeper</th><th>etcd (Raft)</th><th>Self-Implemented Raft</th></tr>
+        <tr><td>Protocol</td><td>Zab (Raft-like)</td><td>Raft</td><td>Raft</td></tr>
+        <tr><td>Election time</td><td>~200ms (ZK itself)</td><td>~150–300ms</td><td>~150–300ms</td></tr>
+        <tr><td>Session/failover</td><td>10–30s (default)</td><td>lease-based</td><td>configurable</td></tr>
+        <tr><td>Used by</td><td>Kafka, HBase, YARN, TinyURL ID ranges</td><td>Kubernetes, Consul, CockroachDB</td><td>Embedded in your app</td></tr>
+      </table>
+      <p class="plain">Real-world election times: etcd 150–300ms · ZooKeeper ~200ms (internal Zab) · Redis Sentinel 10–30s (configured session timeout).</p>
+    </div>
+    <div class="footer">Pick based on: do you need hierarchical coordination (ZK) or embeddable consensus (Raft)?</div>
+  </section>
+
+  <!-- SLIDE 10: decision tree + interview quote -->
+  <section class="slide" data-idx="9">
+    <span class="tag">Cheat Sheet</span>
+    <h1>Decision Tree &amp; Interview Quote</h1>
+    <h2>What to say when asked "how does leader election work?"</h2>
+    <div class="body">
+      <div class="dtree">
+        <div class="dbox q">Need coordination + locks + config?</div>
+        <div class="dline"></div>
+        <div class="row">
+          <div class="dbox">Yes → ZooKeeper<br><span style="color:var(--muted);font-size:10px;">znodes, 10–30s failover</span></div>
+          <div class="dbox">No, need embedded consensus → Raft / etcd<br><span style="color:var(--muted);font-size:10px;">~150–300ms failover</span></div>
+        </div>
+      </div>
+      <div class="quote-box">
+        "Leader election solves the single-writer problem in distributed systems. Raft uses randomized timeouts and a log-currency check — the node with the most up-to-date log wins. This guarantees at most one leader per term and prevents stale nodes from winning and overwriting committed data."
+      </div>
+    </div>
+    <div class="footer">Episode 33 — Next up: Episode 34, Gossip Protocol &amp; Node Discovery</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="nav(-1)">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="nextBtn" onclick="nav(1)">Next →</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.toggle('active', i === current);
+    });
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + total;
+    document.getElementById('prevBtn').disabled = current === 0;
+    document.getElementById('nextBtn').disabled = current === total - 1;
+  }
+
+  function nav(delta){
+    var next = current + delta;
+    if(next < 0 || next >= total) return;
+    current = next;
+    render();
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight') nav(1);
+    if(e.key === 'ArrowLeft') nav(-1);
+  });
+
+  render();
+</script>
+
+</body>
+</html>

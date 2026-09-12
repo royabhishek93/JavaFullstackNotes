@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Data Privacy in System Design — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent1: #4cc9f0;
+    --accent2: #f72585;
+    --accent3: #7b2ff7;
+    --accent4: #ffbe0b;
+    --accent5: #3aa8d8;
+    --text: #eaeaf5;
+    --muted: #9a9ab0;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    height: 100%;
+  }
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+    background: var(--bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+  }
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    padding: 30px 34px;
+    background: var(--bg);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    position: relative;
+    overflow: hidden;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent4);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 26px;
+    margin: 0 0 10px 0;
+    line-height: 1.25;
+  }
+  h2 {
+    font-size: 20px;
+    margin: 0 0 12px 0;
+    color: var(--accent1);
+  }
+  p, li { font-size: 14.5px; line-height: 1.5; color: var(--text); }
+  .muted { color: var(--muted); font-size: 13px; }
+  .body { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+  .stat {
+    font-size: 46px;
+    font-weight: 800;
+    color: var(--accent2);
+    line-height: 1;
+  }
+  .row { display: flex; align-items: center; gap: 14px; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .arrow {
+    font-size: 26px;
+    color: var(--accent4);
+    font-weight: 700;
+  }
+  .arrow-down { font-size: 22px; color: var(--accent4); font-weight: 700; }
+  .label { font-size: 11px; color: var(--muted); text-align: center; max-width: 100px; }
+
+  /* ---- DB Cylinder ---- */
+  .db { display: flex; flex-direction: column; align-items: center; width: 64px; }
+  .db-top { width: 64px; height: 16px; border-radius: 50%; border: 2px solid #fff; }
+  .db-body { width: 64px; height: 40px; margin-top: -9px; border-left: 2px solid #fff; border-right: 2px solid #fff; }
+  .db-bottom { width: 64px; height: 16px; border-radius: 50%; border: 2px solid #fff; margin-top: -9px; }
+  .db.c1 .db-top, .db.c1 .db-bottom { background: var(--accent1); }
+  .db.c1 .db-body { background: var(--accent1); }
+  .db.c2 .db-top, .db.c2 .db-bottom { background: var(--accent3); }
+  .db.c2 .db-body { background: var(--accent3); }
+  .db.c3 .db-top, .db.c3 .db-bottom { background: var(--accent2); }
+  .db.c3 .db-body { background: var(--accent2); }
+  .db.c4 .db-top, .db.c4 .db-bottom { background: var(--accent5); }
+  .db.c4 .db-body { background: var(--accent5); }
+  .db.c5 .db-top, .db.c5 .db-bottom { background: #555; }
+  .db.c5 .db-body { background: #555; }
+
+  /* ---- Server box ---- */
+  .server {
+    width: 84px; height: 56px;
+    background: #2e2e4d;
+    border: 2px solid var(--accent3);
+    border-radius: 4px;
+    padding: 6px 8px;
+    display: flex; flex-direction: column; justify-content: center; gap: 4px;
+  }
+  .server .line { height: 3px; background: var(--accent3); border-radius: 2px; }
+
+  /* ---- Lock icon ---- */
+  .lock-wrap { display: flex; flex-direction: column; align-items: center; margin-top: 22px; }
+  .lock-shackle {
+    width: 22px; height: 20px;
+    border: 5px solid var(--accent2);
+    border-bottom: none;
+    border-radius: 50% 50% 0 0;
+    margin-bottom: -3px;
+  }
+  .lock-body {
+    width: 36px; height: 30px;
+    background: var(--accent2);
+    border-radius: 4px;
+    position: relative;
+  }
+  .lock-body::after {
+    content: '';
+    position: absolute;
+    top: 8px; left: 15px;
+    width: 6px; height: 10px;
+    background: #1a1a2e;
+    border-radius: 2px;
+  }
+
+  /* ---- Key icon ---- */
+  .key-wrap { display: flex; align-items: center; }
+  .key-head {
+    width: 20px; height: 20px;
+    border: 5px solid var(--accent4);
+    border-radius: 50%;
+  }
+  .key-shaft { width: 26px; height: 6px; background: var(--accent4); margin-left: -3px; }
+  .key-teeth { display:flex; margin-left: -2px; }
+  .key-tooth { width: 5px; height: 10px; background: var(--accent4); margin-right: 2px; }
+
+  /* ---- Comparison squares ---- */
+  .tags { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .tag {
+    width: 92px; height: 66px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; font-size: 11.5px; font-weight: 700;
+    padding: 4px; color: #10101c;
+  }
+  .tag.a { background: #d0f0fd; }
+  .tag.b { background: #c9e4ff; }
+  .tag.c { background: #ffd4e5; }
+  .tag.d { background: #ffe1a8; }
+  .tag.e { background: #ff9aa8; }
+
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.cmp th, table.cmp td {
+    border: 1px solid #3a3a5c;
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.cmp th {
+    background: var(--accent3);
+    color: #fff;
+  }
+  table.cmp tr:nth-child(even) td { background: #24243f; }
+  table.cmp tr:nth-child(odd) td { background: #1e1e36; }
+
+  .trap {
+    border: 2px solid var(--accent2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    background: rgba(247,37,133,0.08);
+  }
+  .trap b { color: var(--accent2); }
+
+  .quote {
+    font-size: 15px;
+    font-style: italic;
+    border-left: 4px solid var(--accent1);
+    padding-left: 14px;
+    color: #dfe8ff;
+    line-height: 1.55;
+  }
+
+  .footer-nav {
+    width: 540px;
+    margin: 0 auto 40px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+  }
+  .footer-nav button {
+    background: var(--accent3);
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .footer-nav button:hover { background: var(--accent2); }
+  #counter {
+    font-size: 14px;
+    color: var(--muted);
+    min-width: 60px;
+    text-align: center;
+  }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: var(--bg); }
+    .footer-nav { display: none; }
+    .deck { margin: 0; box-shadow: none; }
+    .slide { display: none !important; page-break-after: always; }
+    .slide.print-show { display: flex !important; }
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active">
+    <div class="eyebrow">Data Privacy in System Design</div>
+    <h1>TLS everywhere. Still breached.</h1>
+    <div class="body">
+      <div class="row" style="justify-content:center; gap:30px;">
+        <div class="col">
+          <div class="server">
+            <div class="line" style="background:#4cc9f0"></div>
+            <div class="line" style="background:#4cc9f0"></div>
+            <div class="line" style="background:#4cc9f0"></div>
+          </div>
+          <div class="label">Network hop<br>TLS ✓ encrypted</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="db c5">
+            <div class="db-top"></div>
+            <div class="db-body"></div>
+            <div class="db-bottom"></div>
+          </div>
+          <div class="label" style="color:var(--accent2)">Disk at rest<br>✗ plaintext</div>
+        </div>
+      </div>
+      <p style="text-align:center; margin-top:6px;">A stolen backup tape or a public storage bucket exposes <b>every card number, every medical record</b> — because "encryption" only ever covered the wire, never the disk.</p>
+    </div>
+    <div class="muted">Slide 1 of 10</div>
+  </section>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <section class="slide">
+    <div class="eyebrow">The Problem</div>
+    <h1>Deleting a user isn't one DELETE.</h1>
+    <div class="body">
+      <div class="col" style="align-items:center;">
+        <div class="lock-wrap"><div class="lock-shackle"></div><div class="lock-body"></div></div>
+        <div class="label">User clicks "Delete my account"</div>
+      </div>
+      <div class="row" style="justify-content:center; flex-wrap:wrap; gap:16px; margin-top:6px;">
+        <div class="col"><div class="db c1"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">Primary DB</div></div>
+        <div class="col"><div class="db c2"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">Search Index</div></div>
+        <div class="col"><div class="db c3"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">Cache</div></div>
+        <div class="col"><div class="db c4"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">Analytics WH</div></div>
+        <div class="col"><div class="db c5"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">3rd-party tool</div></div>
+      </div>
+      <p style="text-align:center;">The data was copied into all five. GDPR's "right to be forgotten" requires <b>verifiable deletion in every copy</b>, not just row one.</p>
+    </div>
+    <div class="muted">Slide 2 of 10</div>
+  </section>
+
+  <!-- SLIDE 3: TOKENIZATION VAULT -->
+  <section class="slide">
+    <div class="eyebrow">Scenario — Tokenization</div>
+    <h1>One vault. Every else gets a token.</h1>
+    <div class="body">
+      <div class="row" style="justify-content:center; gap:16px;">
+        <div class="col"><div class="server"><div class="line" style="background:#ffbe0b"></div><div class="line" style="background:#ffbe0b"></div></div><div class="label">Checkout Service<br>4111-1111-1111-1111</div></div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="lock-wrap"><div class="lock-shackle"></div><div class="lock-body"></div></div>
+          <div class="label"><b>VAULT</b><br>real card ↔ token</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db c1"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">tok_9f8a3b2c only</div></div>
+      </div>
+      <p style="text-align:center;">Breach the analytics warehouse → attacker gets <b>tokens</b>, not card numbers. Delete one vault row → every token everywhere is instantly meaningless.</p>
+      <div class="trap"><b>TRAP:</b> storing the raw card number in "a column with an encryption flag" pulls your ENTIRE app into PCI-DSS scope.</div>
+    </div>
+    <div class="muted">Slide 3 of 10</div>
+  </section>
+
+  <!-- SLIDE 4: DELETION ORCHESTRATOR / SAGA -->
+  <section class="slide">
+    <div class="eyebrow">Scenario — GDPR Erasure Saga</div>
+    <h1>Deletion is an orchestrated workflow.</h1>
+    <div class="body">
+      <div class="col" style="align-items:center;">
+        <div class="server" style="width:140px;"><div class="line"></div><div class="line"></div></div>
+        <div class="label"><b>Deletion Orchestrator (Saga)</b></div>
+      </div>
+      <div class="arrow-down" style="text-align:center;">↓ ↓ ↓ ↓ ↓</div>
+      <div class="row" style="justify-content:center; flex-wrap:wrap; gap:14px;">
+        <div class="col"><div class="db c1"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">DB: delete + tombstone</div></div>
+        <div class="col"><div class="db c2"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">ES: delete doc</div></div>
+        <div class="col"><div class="db c3"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">Redis: invalidate</div></div>
+        <div class="col"><div class="db c4"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">S3: delete files</div></div>
+        <div class="col"><div class="db c5"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div><div class="label">Backup: pending-purge list</div></div>
+      </div>
+      <div class="trap"><b>TRAP:</b> backups can't be edited in place — they're tracked and purged only on natural retention expiry. And every step must land in an <b>audit log</b> — GDPR requires proof, not good faith.</div>
+    </div>
+    <div class="muted">Slide 4 of 10</div>
+  </section>
+
+  <!-- SLIDE 5: IN TRANSIT VS AT REST -->
+  <section class="slide">
+    <div class="eyebrow">Scenario — Two Different Threats</div>
+    <h1>In transit vs. at rest.</h1>
+    <div class="body">
+      <div class="row" style="justify-content:center; gap:24px;">
+        <div class="col">
+          <div class="server"><div class="line" style="background:#4cc9f0"></div></div>
+          <div class="arrow">→ TLS 1.3 →</div>
+          <div class="server"><div class="line" style="background:#4cc9f0"></div></div>
+          <div class="label">Protects against a network eavesdropper mid-wire</div>
+        </div>
+        <div class="col">
+          <div class="lock-wrap"><div class="lock-shackle"></div><div class="lock-body"></div></div>
+          <div class="label">AES-256 disk / column<br>Protects against a stolen disk or public bucket</div>
+        </div>
+      </div>
+      <div class="trap"><b>TRAP:</b> having one does NOT imply the other. Verify both layers explicitly — they stop completely different attackers.</div>
+    </div>
+    <div class="muted">Slide 5 of 10</div>
+  </section>
+
+  <!-- SLIDE 6: ENVELOPE ENCRYPTION / KMS -->
+  <section class="slide">
+    <div class="eyebrow">Scenario — Envelope Encryption</div>
+    <h1>The master key never leaves the KMS.</h1>
+    <div class="body">
+      <div class="row" style="justify-content:center; gap:20px;">
+        <div class="col">
+          <div class="key-wrap"><div class="key-head"></div><div class="key-shaft"></div><div class="key-teeth"><div class="key-tooth"></div><div class="key-tooth"></div></div></div>
+          <div class="label"><b>Master Key</b><br>stays in KMS/HSM</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="lock-wrap"><div class="lock-shackle"></div><div class="lock-body"></div></div>
+          <div class="label">DEK (plaintext) encrypts data → discarded</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="db c3"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>
+          <div class="label">store: encrypted DEK + encrypted data</div>
+        </div>
+      </div>
+      <p style="text-align:center;">Rotate the master key later → only re-wrap DEKs, never re-encrypt the whole dataset.</p>
+    </div>
+    <div class="muted">Slide 6 of 10</div>
+  </section>
+
+  <!-- SLIDE 7: DATA CLASSIFICATION -->
+  <section class="slide">
+    <div class="eyebrow">Scenario — Data Classification</div>
+    <h1>Not all data needs the same lock.</h1>
+    <div class="body">
+      <div class="tags">
+        <div class="tag a">PUBLIC<br>no special handling</div>
+        <div class="tag b">INTERNAL<br>access control only</div>
+        <div class="tag c">PII<br>encrypt at rest + deletion rights</div>
+        <div class="tag d">SENSITIVE PII<br>field-level encryption</div>
+        <div class="tag e">REGULATED<br>tokenization / vault</div>
+      </div>
+      <div class="trap" style="margin-top:14px;"><b>TRAP:</b> encrypting everything uniformly wastes effort AND gives false confidence that your most sensitive fields are actually protected.</div>
+    </div>
+    <div class="muted">Slide 7 of 10</div>
+  </section>
+
+  <!-- SLIDE 8: REAL NUMBERS -->
+  <section class="slide">
+    <div class="eyebrow">Real Numbers</div>
+    <h1>What this costs in production.</h1>
+    <div class="body">
+      <div class="row" style="justify-content:space-between;">
+        <div class="stat">&lt;5ms</div>
+        <p style="max-width:280px;">Tokenization vault lookup — added only at actual card-charge time, not on every token reference.</p>
+      </div>
+      <div class="row" style="justify-content:space-between;">
+        <div class="stat">30d</div>
+        <p style="max-width:280px;">GDPR erasure SLA — "without undue delay," commonly a 30-day max — why deletion is a saga, not a sync call.</p>
+      </div>
+      <div class="row" style="justify-content:space-between;">
+        <div class="stat">&lt;1ms</div>
+        <p style="max-width:280px;">AES-256 field encrypt/decrypt CPU cost — the KMS DEK unwrap round-trip (a few ms) dominates, so DEKs get cached.</p>
+      </div>
+    </div>
+    <div class="muted">Slide 8 of 10</div>
+  </section>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <section class="slide">
+    <div class="eyebrow">Decision Framework</div>
+    <h1>Protection vs. Architecture Pattern</h1>
+    <div class="body">
+      <table class="cmp">
+        <tr><th>Data Type</th><th>Protection</th><th>Pattern</th></tr>
+        <tr><td>Regulated (cards, gov IDs)</td><td>Isolate, don't propagate</td><td>Tokenization vault</td></tr>
+        <tr><td>Sensitive PII (health, geo)</td><td>Field-level encryption</td><td>Encrypt specific columns</td></tr>
+        <tr><td>Standard PII (name, email)</td><td>Encrypt at rest + deletion</td><td>KMS + deletion orchestrator</td></tr>
+        <tr><td>Internal / non-sensitive</td><td>Access control only</td><td>No encryption mandate</td></tr>
+        <tr><td>Any data in transit</td><td>TLS everywhere</td><td>Service mesh mTLS</td></tr>
+        <tr><td>Deleting a user</td><td>Orchestrated + audited</td><td>Deletion saga across DB/index/cache/CDN/backups</td></tr>
+      </table>
+    </div>
+    <div class="muted">Slide 9 of 10</div>
+  </section>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <section class="slide">
+    <div class="eyebrow">Interview Cheat Sheet</div>
+    <h1>Decision tree + the exact answer.</h1>
+    <div class="body">
+      <p><b>Is it card/gov-ID data?</b> → Tokenization vault, isolate compliance scope.<br>
+      <b>Is it health/precise-location?</b> → Field-level encryption + strict access logging.<br>
+      <b>Is it name/email/address?</b> → Encrypt at rest + deletion-saga path.<br>
+      <b>Is it in transit?</b> → TLS everywhere, including service-to-service mTLS.<br>
+      <b>Deleting a user?</b> → Orchestrated saga, not a single DELETE.</p>
+      <div class="quote">"The first architectural decision is to never let the raw card number propagate beyond the minimum system that legally needs it... rotating the master key later doesn't require re-encrypting the entire dataset."</div>
+    </div>
+    <div class="muted">Slide 10 of 10</div>
+  </section>
+
+</div>
+
+<div class="footer-nav">
+  <button id="prevBtn" onclick="changeSlide(-1)">← Prev</button>
+  <span id="counter">1 / 10</span>
+  <button id="nextBtn" onclick="changeSlide(1)">Next →</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  function showSlide(idx) {
+    if (idx < 0) idx = 0;
+    if (idx >= total) idx = total - 1;
+    slides.forEach(function(s, i) {
+      s.classList.toggle('active', i === idx);
+      s.classList.toggle('print-show', i === idx);
+    });
+    current = idx;
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + total;
+  }
+
+  function changeSlide(delta) {
+    showSlide(current + delta);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') changeSlide(1);
+    if (e.key === 'ArrowLeft') changeSlide(-1);
+  });
+
+  showSlide(0);
+</script>
+
+</body>
+</html>

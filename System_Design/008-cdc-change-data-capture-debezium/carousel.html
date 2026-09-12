@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Change Data Capture with Debezium — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 56px; height: 62px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 56px; height: 16px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 56px; height: 34px; position: absolute; top: 12px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 56px; height: 16px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .redis-icon {
+    width: 50px; height: 50px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; margin: 0 auto;
+  }
+  .server-box {
+    width: 58px; height: 50px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 6px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 34px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Change Data Capture w/ Debezium</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">DB ✓ / Kafka ✕</div>
+      <p>A DB write and a Kafka publish are two separate operations. If Kafka blips for 100ms mid-write, you're silently out of sync — <b>forever</b>.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Dual-Write Is Fragile</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DB write<br>✓ success</div>
+        <div class="arrow x-mark">✕</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Kafka<br>publish fails</div>
+      </div>
+      <p style="text-align:center">No error surfaces. Downstream services silently drift out of sync.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>WAL → Debezium → Kafka</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Postgres<br>WAL</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Debezium</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Kafka</div>
+      </div>
+      <p style="text-align:center">Reads the SAME log used for crash recovery. Zero application code changes needed.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>One Stream, Many Consumers</h1>
+    <h2>Fan-Out</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Elasticsearch<br>~100ms</div>
+        <div class="col"><div class="redis-icon">R</div>Cache invalidate<br>~50ms</div>
+      </div>
+      <div class="row">
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Analytics<br>15-min batch</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Audit log<br>immutable</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Snapshot Mode</h1>
+    <h2>Handling Existing Data</h2>
+    <div class="body">
+      <p><b>Phase 1 — Snapshot:</b> read the whole table once, publish each row as a "read" event.</p>
+      <p><b>Phase 2 — Streaming:</b> switch to live WAL streaming from that point, zero gaps, zero data loss.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Outbox Pattern</h1>
+    <h2>True Atomicity</h2>
+    <div class="body">
+      <p>Same DB transaction: <code>INSERT orders</code> + <code>INSERT outbox</code>. Both commit or neither does.</p>
+      <p>Debezium streams the outbox table like any other — the Outbox Router routes by event type, keyed by aggregate ID for ordering.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Replication Slot Lag</h1>
+    <h2>The #1 Operational Trap</h2>
+    <div class="body">
+      <p>If the Kafka consumer falls behind, Postgres <b>cannot reclaim WAL disk space</b> until the slot catches up.</p>
+      <p><span class="check-mark">✓</span> Alert above ~500MB &nbsp; <span class="x-mark">✕</span> Emergency &gt;5GB — drop slot, re-snapshot</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>CDC vs Polling vs Dual-Write</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Consistency</th><th>Latency</th><th>Misses changes?</th></tr>
+        <tr><td>Dual-write</td><td>Not atomic</td><td>&lt;10ms</td><td>Yes</td></tr>
+        <tr><td>Polling</td><td>Eventual</td><td>1-60s</td><td>Yes (deletes)</td></tr>
+        <tr><td>CDC (Debezium)</td><td>Eventual</td><td>50-150ms</td><td>No</td></tr>
+        <tr><td>Outbox + CDC</td><td>Atomic</td><td>50-150ms</td><td>No</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Need atomicity with your own event schema? → Outbox + CDC. Can't touch legacy app code? → Raw CDC. Simple, low-scale? → Polling is fine.</p>
+      <div class="quote-box">
+        "CDC with Debezium reads PostgreSQL's Write-Ahead Log — the same mechanism used for crash recovery — and publishes every INSERT, UPDATE, and DELETE as a Kafka event, solving the dual-write atomicity problem without changing a single line of application code."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

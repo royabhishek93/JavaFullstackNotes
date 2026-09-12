@@ -1,6 +1,8 @@
 # 💰 Splitwise - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📕 Difficulty: Advanced** — concurrency, scale, or financial-correctness heavy; aim for this once you're comfortable with the Beginner/Intermediate guides.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -1416,6 +1418,39 @@ eventSource.addEventListener('balance-update', (event) => {
 - **Auto-reconnect** built-in
 
 **WebSocket if**: Building chat feature or collaborative expense editing.
+
+---
+
+## 🔥 Real-World Production Issue: The Floating-Point Split That Caused Balances to Never Reach Zero
+
+*In plain English: using floating-point numbers for money can make an "is this balance zero?" check fail even after it's actually been paid off.*
+
+**The war story:**
+
+"An expense-sharing app used `double` for money amounts (against the guide's own advice!) to split a ₹100 restaurant bill three ways. `100.0 / 3 = 33.333333333333336` — a repeating decimal that CANNOT be represented exactly in binary floating point, unlike the guide's 'last person absorbs rounding error' strategy, which assumed the imprecision was only a rounding/UX concern, not a correctness one."
+
+```
+Split ₹100 three ways using double:
+  person A owes: 33.333333333333336
+  person B owes: 33.333333333333336
+  person C owes: 33.333333333333336 (rounded for "last person absorbs remainder")
+
+BUT the settlement/payment logic compared balances using ==
+for "is this debt fully settled?" checks:
+  if (balance == 0.0) markSettled();
+
+After A pays exactly what they "owed" (33.33), the STORED balance
+was 33.333333333333336 - 33.33 = 0.0000033333333336 (floating-point
+representation error) -- NOT exactly zero, so markSettled() never
+fired -- thousands of "ghost" balances of a fraction of a paisa
+lingered forever, corrupting the "you're all settled up!" UI state
+```
+
+**Root cause:** using `double` for money is a well-known anti-pattern precisely because of binary floating-point's inability to exactly represent most decimal fractions — and the bug here wasn't even about visible rounding errors in DISPLAYED amounts (which people forgive), it was about EQUALITY comparisons silently failing due to residual floating-point noise, breaking a business-critical "is this debt settled" check.
+
+**The fix:** migrated all monetary fields to `BigDecimal` with a fixed scale (2 decimal places) and `RoundingMode.HALF_UP`, and replaced all `== 0` balance checks with `balance.compareTo(BigDecimal.ZERO) == 0` (or better, a small epsilon-free exact comparison since BigDecimal at a fixed scale has no floating-point noise).
+
+**Lesson for a new developer:** "'Use BigDecimal for money, never double' isn't just a rounding-display nicety — it's a correctness requirement, because floating-point noise can silently break EQUALITY/comparison logic (like 'is this balance zero') in ways that are invisible until you specifically look for accumulated micro-discrepancies. Any financial system comparing balances to zero or to each other must never use floating-point types."
 
 ---
 

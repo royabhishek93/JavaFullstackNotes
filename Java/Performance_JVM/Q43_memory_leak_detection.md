@@ -10,7 +10,19 @@ App memory grows from 500MB → 5GB over 3 days. Memory leak!
 
 ---
 
-## 📌 Common Causes
+## Retained Reference Chain (ASCII)
+
+```
+[GC Root: static List<User> userData]
+        |--> [User #1]
+        |--> [User #2]
+        '--> [User #3 ... never removed]
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
+As long as the static list holds a reference, GC treats every `User` as reachable — it can never collect them, no matter how unused they are.
+
+## �📌 Common Causes
 
 1. **Static collections** - Keep growing
 2. **Event listeners** - Not unregistered

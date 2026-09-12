@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Database Scaling &amp; Sharding — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 26px; margin: 0 auto;
+  }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .poly-square {
+    width: 52px; height: 52px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; color: #fff; font-size: 12px;
+  }
+  .poly-pg { background: var(--blue); }
+  .poly-cas { background: var(--yellow); color: #1a1a2e; }
+  .poly-es { background: var(--green); }
+  .poly-redis { background: var(--redis); }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Database Scaling &amp; Sharding</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">500M rows</div>
+      <p>Queries that took 50ms now take <b>10 seconds</b>. Your first instinct: shard the table. Pick the wrong strategy and you create one hot shard instead of fixing the problem.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Scaling Ladder</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Single DB</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>+Replicas</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Sharded</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Polyglot</div>
+      </div>
+      <p style="text-align:center">80% of traffic is reads — replicas come first. Sharding is last, only once writes outgrow one primary.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Range Sharding</h1>
+    <h2>Strategy 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Shard 0<br>1-10M</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Shard 1<br>10-20M</div>
+        <div class="col"><div class="db-icon db-red"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Shard 2<br>NEW rows</div>
+      </div>
+      <p><span class="check-mark">✓</span> Simple range queries hit one shard &nbsp; <span class="x-mark">✕</span> All new orders → latest shard = hot shard</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Hash Sharding</h1>
+    <h2>Strategy 2</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>hash%4==0</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>hash%4==1</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>hash%4==2</div>
+      </div>
+      <p><span class="check-mark">✓</span> Even distribution, no hot shards &nbsp; <span class="x-mark">✕</span> Range queries fan out to ALL shards</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Directory Sharding</h1>
+    <h2>Strategy 3</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Directory<br>lookup table</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Any shard</div>
+      </div>
+      <p><span class="check-mark">✓</span> Move individual users between shards; isolate hot users &nbsp; <span class="x-mark">✕</span> Extra lookup hop, must be cached</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Celebrity / Hot Shard Problem</h1>
+    <h2>Trap 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>999 shards<br>idle</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>Shard 345<br>50M reads/min</div>
+      </div>
+      <p style="text-align:center">1 celebrity account, 1 shard, all the load. Fix: dedicated VIP shard, aggressive Redis caching, fan-out-on-write for &gt;1M followers.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cross-Shard Queries</h1>
+    <h2>Trap 2</h2>
+    <div class="body">
+      <p>"Orders $1000-5000 in Mumbai last month" fans out to ALL shards — slow, expensive.</p>
+      <p><b>Fix:</b> stream writes via Kafka into a separate OLAP store (Redshift/BigQuery) or Elasticsearch for analytics — never run ad-hoc analytical queries against the sharded transactional DB.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Replication Lag &amp; Connection Exhaustion</h1>
+    <h2>Trap 3 &amp; 4</h2>
+    <div class="body">
+      <p><b>Replication lag:</b> order written to primary, "My Orders" reads a replica 200ms behind → order appears missing → user duplicates it. Fix: read-your-own-writes, route to primary for 1-2s post-write.</p>
+      <p><b>Connection exhaustion:</b> 50 pods × 10 connections = 500, but Postgres max_connections=100. Fix: RDS Proxy / PgBouncer multiplexes thousands of app connections onto a small real pool.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Polyglot Persistence</h1>
+    <h2>Right DB for the Right Job</h2>
+    <div class="body">
+      <div class="row">
+        <div class="poly-square poly-pg">PG</div>
+        <div class="poly-square poly-cas">CAS</div>
+        <div class="poly-square poly-es">ES</div>
+        <div class="poly-square poly-redis">R</div>
+      </div>
+      <table>
+        <tr><th>Use Case</th><th>Database</th></tr>
+        <tr><td>Orders, payments</td><td>PostgreSQL/Aurora</td></tr>
+        <tr><td>Activity feed</td><td>Cassandra</td></tr>
+        <tr><td>Search/autocomplete</td><td>Elasticsearch</td></tr>
+        <tr><td>Sessions/counters</td><td>Redis</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Read-heavy? → Read replicas first. Auto-scaling pods? → RDS Proxy/PgBouncer. Writes outgrowing 1 primary? → Shard (hash=even, range=time-series, directory=multi-tenant).</p>
+      <div class="quote-box">
+        "At scale you hit the DB ceiling in order: read replicas first, then RDS Proxy to prevent connection exhaustion, then sharding when writes can't keep up. Hash sharding for even distribution, range for time-series, directory for large multi-tenant systems. Analytics queries go to a separate OLAP system, never the transactional sharded DB."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

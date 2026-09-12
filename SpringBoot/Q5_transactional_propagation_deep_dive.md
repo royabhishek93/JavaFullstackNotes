@@ -60,6 +60,10 @@ Technically: unbind the current ConnectionHolder from ThreadLocal,
 
 ## BIG PICTURE — The Three Propagation Types Visualised
 
+### Side-by-Side Comparison (ASCII)
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ```
  SCENARIO: OrderService.placeOrder() calls AuditService.log()
            and RewardService.addPoints()

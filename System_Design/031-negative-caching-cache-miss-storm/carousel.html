@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Negative Caching & Cache Miss Storm — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent: #e94560;
+    --redis: #d82c20;
+    --good: #2ecc71;
+    --bad: #ff4d4d;
+    --text: #eaeaf0;
+    --muted: #9a9ab0;
+    --border: #3a3a5a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    padding: 28px 30px;
+    position: absolute;
+    top: 0; left: 0;
+    background: var(--bg);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide.active { display: block; }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 26px;
+    margin: 0 0 10px 0;
+    line-height: 1.25;
+  }
+  h2 {
+    font-size: 19px;
+    margin: 0 0 12px 0;
+    color: var(--text);
+  }
+  p, li { font-size: 13.5px; line-height: 1.5; color: var(--text); }
+  .muted { color: var(--muted); }
+  .stat {
+    font-size: 46px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    margin: 10px 0;
+  }
+  .stat-label { font-size: 13px; color: var(--muted); }
+  ul { margin: 8px 0; padding-left: 18px; }
+  li { margin-bottom: 6px; }
+  .row { display: flex; align-items: center; justify-content: center; gap: 18px; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+
+  /* ---- DB cylinder ---- */
+  .db {
+    width: 70px;
+    text-align: center;
+  }
+  .db-top {
+    width: 70px; height: 18px;
+    border-radius: 50%;
+    background: var(--dbcolor, #3a6ea5);
+    border: 2px solid #1a1a2e;
+  }
+  .db-body {
+    width: 70px; height: 38px;
+    background: var(--dbcolor, #3a6ea5);
+    border-left: 2px solid #1a1a2e;
+    border-right: 2px solid #1a1a2e;
+    margin-top: -9px;
+  }
+  .db-bottom {
+    width: 70px; height: 18px;
+    border-radius: 50%;
+    background: var(--dbcolor, #2c557f);
+    border: 2px solid #1a1a2e;
+    margin-top: -9px;
+  }
+  .db-label { font-size: 11px; margin-top: 6px; color: var(--muted); }
+
+  /* ---- Redis icon ---- */
+  .redis {
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    background: var(--redis);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 22px; color: white;
+    border: 2px solid #7a1a12;
+  }
+
+  /* ---- Server box ---- */
+  .server {
+    width: 74px; height: 52px;
+    background: #2c2c48;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    display: flex; flex-direction: column; justify-content: center; gap: 5px;
+  }
+  .server .line { height: 3px; background: var(--muted); border-radius: 2px; }
+  .server .line.short { width: 60%; }
+
+  /* ---- Arrow ---- */
+  .arrow-right { font-size: 20px; color: var(--muted); }
+  .arrow-down { font-size: 20px; color: var(--muted); }
+
+  /* ---- Bloom filter icon ---- */
+  .bloom {
+    width: 74px; height: 52px;
+    background: #2c2c48;
+    border: 2px dashed #7d5fff;
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3px;
+    padding: 6px;
+  }
+  .bloom .bit {
+    width: 10px; height: 10px; border-radius: 2px;
+    background: #444466;
+  }
+  .bloom .bit.on { background: #7d5fff; }
+
+  /* ---- Gauge ---- */
+  .gauge {
+    width: 120px; height: 60px;
+    border-radius: 60px 60px 0 0;
+    background: conic-gradient(from 180deg at 50% 100%, var(--good) 0deg, #f5c518 90deg, var(--bad) 160deg);
+    position: relative;
+  }
+  .gauge-needle {
+    position: absolute;
+    bottom: 0; left: 50%;
+    width: 3px; height: 50px;
+    background: white;
+    transform-origin: bottom center;
+    transform: translateX(-50%) rotate(70deg);
+  }
+
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    margin-top: 8px;
+  }
+  table.cmp th, table.cmp td {
+    border: 1px solid var(--border);
+    padding: 5px 6px;
+    text-align: left;
+  }
+  table.cmp th {
+    background: #2c2c48;
+    color: var(--accent);
+  }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    font-weight: 700;
+  }
+  .badge.yes { background: rgba(46,204,113,0.15); color: var(--good); border: 1px solid var(--good); }
+  .badge.no { background: rgba(255,77,77,0.15); color: var(--bad); border: 1px solid var(--bad); }
+
+  .quote-box {
+    background: #2c2c48;
+    border-left: 4px solid var(--accent);
+    padding: 14px 16px;
+    font-size: 13px;
+    font-style: italic;
+    line-height: 1.55;
+    margin-top: 10px;
+    border-radius: 4px;
+  }
+
+  .footer-tag {
+    position: absolute;
+    bottom: 14px; left: 30px;
+    font-size: 10px; color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .counter {
+    position: absolute;
+    bottom: 14px; right: 30px;
+    font-size: 11px; color: var(--muted);
+    font-weight: 700;
+  }
+
+  /* ---- Nav ---- */
+  .nav {
+    width: 540px;
+    margin: 12px auto 40px auto;
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+  }
+  .nav button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .nav button:hover { background: var(--accent); border-color: var(--accent); }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { margin: 0; }
+    .nav { display: none; }
+    .deck { margin: 0; border: none; }
+    .slide { display: none; page-break-after: always; }
+    .slide.active { display: block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <div class="eyebrow">Episode 31 · Negative Caching</div>
+    <h1>A bot sent 1,000,000 requests<br>for a code that doesn't exist.</h1>
+    <div class="row" style="margin-top:20px;">
+      <div class="col">
+        <div class="server">
+          <div class="line"></div><div class="line short"></div><div class="line"></div>
+        </div>
+        <div class="db-label">Bot Client</div>
+      </div>
+      <div class="arrow-right">&#8594;</div>
+      <div class="col">
+        <div class="gauge"><div class="gauge-needle"></div></div>
+        <div class="db-label">DB CPU: 100%</div>
+      </div>
+    </div>
+    <div class="stat">0%</div>
+    <div class="stat-label">cache hit rate — because the cache never learned "not found"</div>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">1 / 10</div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="eyebrow">The Problem</div>
+    <h2>Cache Miss Storm</h2>
+    <p class="muted">Cache only stores things that EXIST. "Not found" is never cached.</p>
+    <div class="row" style="margin-top:10px; align-items:flex-start;">
+      <div class="col">
+        <div class="server"><div class="line"></div><div class="line short"></div></div>
+        <div class="db-label">Request ×1,000,000</div>
+      </div>
+      <div class="arrow-right">&#8594;</div>
+      <div class="col">
+        <div class="redis" style="background:#555577; border-color:#333355;">&#10006;</div>
+        <div class="db-label">Cache MISS<br>(every time)</div>
+      </div>
+      <div class="arrow-right">&#8594;</div>
+      <div class="col">
+        <div class="db" style="--dbcolor:#a83232;">
+          <div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div>
+        </div>
+        <div class="db-label">DB: 1M queries<br>for "zzz999"</div>
+      </div>
+    </div>
+    <p style="margin-top:14px;">Each query: 1–5ms CPU, index scans, shared locks. At 1,000 RPS the DB saturates on queries that return <b>nothing</b> — and real traffic starts timing out.</p>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">2 / 10</div>
+  </div>
+
+  <!-- SLIDE 3: THE SOLUTION -->
+  <div class="slide">
+    <div class="eyebrow">The Solution</div>
+    <h2>Cache the Absence</h2>
+    <p>Store the "not found" result too — with a short TTL.</p>
+    <div class="row" style="margin-top:10px;">
+      <div class="col">
+        <div class="server"><div class="line"></div><div class="line short"></div></div>
+        <div class="db-label">Request 1</div>
+      </div>
+      <div class="arrow-right">&#8594;</div>
+      <div class="col">
+        <div class="db" style="--dbcolor:#3a6ea5;">
+          <div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div>
+        </div>
+        <div class="db-label">"not found"</div>
+      </div>
+      <div class="arrow-right">&#8594;</div>
+      <div class="col">
+        <div class="redis">R</div>
+        <div class="db-label">SET NULL_SENTINEL<br>TTL=60s</div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:18px;">
+      <div class="col">
+        <div class="server"><div class="line"></div><div class="line short"></div></div>
+        <div class="db-label">Requests 2–1,000,000</div>
+      </div>
+      <div class="arrow-right">&#8594;</div>
+      <div class="col">
+        <div class="redis">R</div>
+        <div class="db-label">Cache HIT (NULL)<br>&lt;1ms, return 404</div>
+      </div>
+      <div class="arrow-right">&#8594;</div>
+      <div class="col">
+        <div class="db" style="--dbcolor:#2e7d32;">
+          <div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div>
+        </div>
+        <div class="db-label">0 queries</div>
+      </div>
+    </div>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">3 / 10</div>
+  </div>
+
+  <!-- SLIDE 4: THREE-LAYER DEFENSE -->
+  <div class="slide">
+    <div class="eyebrow">Architecture</div>
+    <h2>Three-Layer Defense</h2>
+    <div class="col" style="gap:4px;">
+      <div class="row">
+        <div class="server" style="width:200px;"><div class="line"></div><div class="line short"></div></div>
+        <div class="db-label">Bot Attack: 1M req "zzz999"</div>
+      </div>
+      <div class="arrow-down">&#8595;</div>
+      <div class="row">
+        <div class="server" style="width:200px;"><div class="line"></div><div class="line"></div><div class="line short"></div></div>
+        <div class="db-label">Layer 3 — API Gateway Rate Limit (&gt;10/60s blocked)</div>
+      </div>
+      <div class="arrow-down">&#8595;</div>
+      <div class="row">
+        <div class="bloom"><div class="bit on"></div><div class="bit"></div><div class="bit on"></div><div class="bit"></div><div class="bit"></div><div class="bit on"></div><div class="bit"></div><div class="bit"></div></div>
+        <div class="db-label">Layer 1 — Bloom Filter<br>"definitely not exists" → 404</div>
+      </div>
+      <div class="arrow-down">&#8595;</div>
+      <div class="row">
+        <div class="redis">R</div>
+        <div class="db-label">Layer 2 — Negative Cache<br>catches the ~1% false positives</div>
+      </div>
+      <div class="arrow-down">&#8595;</div>
+      <div class="row">
+        <div class="db" style="--dbcolor:#2e7d32;"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>
+        <div class="db-label">Database — sees ~0 queries</div>
+      </div>
+    </div>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">4 / 10</div>
+  </div>
+
+  <!-- SLIDE 5: BLOOM FILTER DEEP DIVE -->
+  <div class="slide">
+    <div class="eyebrow">Deep Dive</div>
+    <h2>Bloom Filter: The First Line</h2>
+    <div class="row">
+      <div class="bloom"><div class="bit on"></div><div class="bit"></div><div class="bit on"></div><div class="bit"></div><div class="bit"></div><div class="bit on"></div><div class="bit"></div><div class="bit on"></div></div>
+    </div>
+    <ul style="margin-top:14px;">
+      <li><b>False negatives:</b> impossible — if X was added, always answers "probably yes"</li>
+      <li><b>False positives:</b> ~1% — says "probably yes" for a key never added</li>
+      <li>10M codes → <b>~12MB</b> memory at 1% FPR</li>
+      <li>99% of non-existent code requests blocked here: <b>0 cache, 0 DB</b></li>
+      <li>1% (false positives) fall through to the negative cache layer</li>
+    </ul>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">5 / 10</div>
+  </div>
+
+  <!-- SLIDE 6: TTL STRATEGY -->
+  <div class="slide">
+    <div class="eyebrow">Deep Dive</div>
+    <h2>TTL Strategy by Use Case</h2>
+    <table class="cmp">
+      <tr><th>Use Case</th><th>Neg. TTL</th><th>Pos. TTL</th></tr>
+      <tr><td>URL shortener</td><td>60s</td><td>3600s</td></tr>
+      <tr><td>User profile lookup</td><td>30s</td><td>1800s</td></tr>
+      <tr><td>Product ID lookup</td><td>300s</td><td>3600s</td></tr>
+      <tr><td>Discontinued product</td><td>3600s+</td><td>N/A</td></tr>
+      <tr><td>Username existence</td><td>30s</td><td>900s</td></tr>
+    </table>
+    <p style="margin-top:12px;"><b>Rule of thumb:</b> negative TTL = how long you're willing to serve a stale "not found" after the key is actually created.</p>
+    <p><span class="badge no">NEVER</span> set negative TTL = infinite — a registered user could get a permanent phantom 404.</p>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">6 / 10</div>
+  </div>
+
+  <!-- SLIDE 7: INVALIDATION TRAP -->
+  <div class="slide">
+    <div class="eyebrow">Trap #1 — The Big One</div>
+    <h2>Forgetting to Invalidate on Write</h2>
+    <div class="col" style="align-items:flex-start; gap:10px; margin-top:6px;">
+      <p><b>t=0:</b> "user123" doesn't exist → cache NULL, TTL=60s</p>
+      <p><b>t=30:</b> user registers as "user123" → DB write succeeds</p>
+      <p><b>t=31:</b> lookup for "user123" → <span class="badge no">CACHE HIT (NULL)</span> → still 404</p>
+      <p class="muted">User thinks signup failed → retries → "username taken" → support ticket filed</p>
+    </div>
+    <div class="quote-box">
+      Correct write path: INSERT into DB → <b>redis.delete(key)</b> → redis.setex(key, ttl, data) → bloom_filter.add(key)
+    </div>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">7 / 10</div>
+  </div>
+
+  <!-- SLIDE 8: WHAT IT DOES NOT PROTECT -->
+  <div class="slide">
+    <div class="eyebrow">Deep Dive</div>
+    <h2>What Negative Caching Does NOT Fix</h2>
+    <ul>
+      <li><b>Infinite unique keys:</b> bot never repeats a key → cache fills with millions of one-time entries, each still costs 1 DB lookup. Fix: rate-limit by IP at ingress.</li>
+      <li><b>Cache stampede:</b> 1,000s of requests for the same missing key arrive before the first negative entry is set → all hit DB at once. Fix: distributed lock or early refresh.</li>
+      <li><b>Rapid churn data:</b> keys created/deleted many times/min → negative TTL must be &lt;5s, protection is limited.</li>
+    </ul>
+    <p style="margin-top:10px;"><b>90 bytes</b> per negative entry (1M entries = 90MB) vs. <b>2,000 CPU-seconds</b> wasted on 1M uncached DB queries (2ms each). RAM wins.</p>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">8 / 10</div>
+  </div>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <div class="slide">
+    <div class="eyebrow">Approach Comparison</div>
+    <h2>Cache Null vs No Entry</h2>
+    <table class="cmp">
+      <tr><th>Option</th><th>Approach</th><th>Verdict</th></tr>
+      <tr><td>A — Sentinel</td><td>redis.setex(key,60,"__NULL__")</td><td><span class="badge yes">RECOMMENDED</span></td></tr>
+      <tr><td>B — Empty string</td><td>redis.setex(key,60,"")</td><td><span class="badge no">AMBIGUOUS</span></td></tr>
+      <tr><td>C — Separate keyspace</td><td>notfound:key</td><td><span class="badge no">2 LOOKUPS</span></td></tr>
+    </table>
+    <p style="margin-top:12px;">Option A: explicit intent, single lookup, easy to grep in logs and monitor.</p>
+    <div class="row" style="margin-top:10px;">
+      <div class="redis">R</div>
+      <div class="db-label" style="max-width:280px; text-align:left;">Single Redis lookup returns either positive value, NULL sentinel, or true cache miss — three clean states.</div>
+    </div>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">9 / 10</div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + QUOTE -->
+  <div class="slide">
+    <div class="eyebrow">Interview Cheat Sheet</div>
+    <h2>Decision Tree</h2>
+    <ul>
+      <li>User-supplied ID can miss + misses repeat? → <span class="badge yes">USE negative cache</span></li>
+      <li>Strict consistency (financial account lookup)? → <span class="badge no">SKIP</span></li>
+      <li>Changes every second (live inventory)? → <span class="badge no">SKIP — TTL too short to help</span></li>
+      <li>Static/rarely-created keyspace? → <span class="badge yes">long TTL (1hr+)</span></li>
+    </ul>
+    <div class="quote-box">
+      "Cache the 'not found' answer with a short TTL — a negative cache entry costs 100 bytes but saves one full DB round-trip for every repeat miss."
+    </div>
+    <div class="footer-tag">NEGATIVE CACHING & CACHE MISS STORM</div>
+    <div class="counter">10 / 10</div>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="nav(-1)">&#8592; Prev</button>
+  <button id="nextBtn" onclick="nav(1)">Next &#8594;</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var idx = 0;
+
+  function render() {
+    slides.forEach(function(s, i) {
+      s.classList.toggle('active', i === idx);
+    });
+  }
+
+  function nav(delta) {
+    idx = (idx + delta + slides.length) % slides.length;
+    render();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') nav(1);
+    if (e.key === 'ArrowLeft') nav(-1);
+  });
+
+  render();
+</script>
+
+</body>
+</html>

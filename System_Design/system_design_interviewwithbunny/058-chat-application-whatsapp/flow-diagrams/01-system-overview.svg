@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="700" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <rect x="10" y="10" width="980" height="680" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+
+  <text x="500" y="42" text-anchor="middle" font-size="20" font-weight="bold" fill="#2d2d2d">WhatsApp-Style Chat System — Overview</text>
+  <line x1="250" y1="54" x2="750" y2="54" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <text x="30" y="78" font-size="12" fill="#555" font-style="italic">Core challenge: deliver messages at-least-once, in per-conversation order, real-time when online, reliable when offline.</text>
+
+  <rect x="30" y="92" width="300" height="90" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="180" y="112" text-anchor="middle" font-size="13" font-weight="bold" fill="#1a4a7a">Connection Layer</text>
+  <text x="45" y="130" font-size="10" fill="#333">WebSocket servers holding</text>
+  <text x="45" y="144" font-size="10" fill="#333">persistent client connections</text>
+  <text x="45" y="160" font-size="9" fill="#888">Stateless behind sticky LB</text>
+
+  <rect x="350" y="92" width="300" height="90" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="2.5"/>
+  <text x="500" y="112" text-anchor="middle" font-size="13" font-weight="bold" fill="#7a4a00">Chat Service</text>
+  <text x="365" y="130" font-size="10" fill="#333">Validates + persists messages,</text>
+  <text x="365" y="144" font-size="10" fill="#333">routes via Redis Streams</text>
+  <text x="365" y="160" font-size="9" fill="#888">Assigns server-side sequence</text>
+
+  <rect x="670" y="92" width="300" height="90" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="820" y="112" text-anchor="middle" font-size="13" font-weight="bold" fill="#7a0000">Message Store</text>
+  <text x="685" y="130" font-size="10" fill="#333">Cassandra — time-ordered,</text>
+  <text x="685" y="144" font-size="10" fill="#333">append-only writes, TTL for pending</text>
+  <text x="685" y="160" font-size="9" fill="#888">Source of truth for delivery state</text>
+
+  <rect x="30" y="200" width="300" height="90" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="180" y="220" text-anchor="middle" font-size="13" font-weight="bold" fill="#1a4a7a">Presence Service</text>
+  <text x="45" y="238" font-size="10" fill="#333">Redis Pub/Sub — online/offline</text>
+  <text x="45" y="252" font-size="10" fill="#333">status, registry TTL = 60s</text>
+  <text x="45" y="268" font-size="9" fill="#888">Heartbeat every 30s refreshes it</text>
+
+  <rect x="350" y="200" width="300" height="90" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="500" y="220" text-anchor="middle" font-size="13" font-weight="bold" fill="#1a5e20">Media Service</text>
+  <text x="365" y="238" font-size="10" fill="#333">S3 + CloudFront CDN</text>
+  <text x="365" y="252" font-size="10" fill="#333">pre-signed direct upload/download</text>
+  <text x="365" y="268" font-size="9" fill="#888">Bytes never pass through Chat Service</text>
+
+  <rect x="670" y="200" width="300" height="90" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="820" y="220" text-anchor="middle" font-size="13" font-weight="bold" fill="#4a0a7a">Notification Service</text>
+  <text x="685" y="238" font-size="10" fill="#333">FCM / APNs push</text>
+  <text x="685" y="252" font-size="10" fill="#333">wakes a device with no live socket</text>
+  <text x="685" y="268" font-size="9" fill="#888">Not proof of delivery by itself</text>
+
+  <rect x="30" y="308" width="940" height="90" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="45" y="328" font-size="12" font-weight="bold" fill="#2d2d2d">Key Trade-off: Group Fanout Strategy</text>
+  <text x="45" y="346" font-size="10" fill="#333">Fan-out-on-write: push message to each member's inbox immediately — simple, but 256 members = 256 writes/message.</text>
+  <text x="45" y="362" font-size="10" fill="#333">Fan-out-on-read: store once, each member fetches on open — 1 write, but complex membership computation + higher read latency.</text>
+  <text x="45" y="380" font-size="10" fill="#7a4a00" font-weight="bold">Chosen: fan-out-on-write for groups &#8804; 256 members (the accepted product-level cap).</text>
+
+  <text x="30" y="425" font-size="12" font-weight="bold" fill="#2d2d2d">Delivery Receipt Ticks</text>
+  <rect x="30" y="434" width="300" height="46" rx="5" fill="#f0f0f0" stroke="#888" stroke-width="1"/>
+  <text x="45" y="454" font-size="14" fill="#888" font-weight="bold">&#10003;</text>
+  <text x="65" y="454" font-size="10" fill="#333">single tick — server received</text>
+  <rect x="350" y="434" width="300" height="46" rx="5" fill="#f0f0f0" stroke="#888" stroke-width="1"/>
+  <text x="365" y="454" font-size="14" fill="#888" font-weight="bold">&#10003;&#10003;</text>
+  <text x="400" y="454" font-size="10" fill="#333">double tick — device received</text>
+  <rect x="670" y="434" width="300" height="46" rx="5" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1"/>
+  <text x="685" y="454" font-size="14" fill="#4a90d9" font-weight="bold">&#10003;&#10003;</text>
+  <text x="720" y="454" font-size="10" fill="#1a4a7a">blue tick — message was read</text>
+
+  <rect x="30" y="500" width="940" height="130" rx="4" fill="#2d2d2d"/>
+  <text x="500" y="522" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">2B registered users | 500M daily active users | ~700K messages/sec peak</text>
+  <text x="500" y="542" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">4.4 TB messages/day | ~625 WebSocket servers (64-core) | ~200 Cassandra nodes</text>
+  <text x="500" y="562" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">~50 Kafka brokers (search/analytics/CDC only) | group size cap: 256 members</text>
+  <text x="500" y="586" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">P99 delivery &lt; 100ms | media upload P95 &lt; 500ms | presence update lag &lt; 1s</text>
+  <text x="500" y="610" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">at-least-once delivery + client-side idempotent dedup = exactly-once user experience</text>
+
+  <text x="500" y="668" text-anchor="middle" font-size="10" fill="#aaa">Chat System Design — System Overview</text>
+</svg>

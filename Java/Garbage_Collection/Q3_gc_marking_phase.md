@@ -30,6 +30,23 @@ Think of it like a treasure hunt:
 
 ## 📊 Visual Understanding
 
+### Reachability Graph (ASCII)
+
+```
+ [GC Root: Stack (p)] ---> [Person] (LIVE)
+                              |--> [Address] (LIVE)
+                              '--> [List] (LIVE)
+                                     |--> [Order1] (LIVE)
+                                     '--> [Order2] (LIVE)
+
+ [GC Root: Static Config.db] ---> [Database] (LIVE)
+
+ [Orphan] - - (no GC Root points here) - -> [LostObject] (DEAD, unreachable)
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
+Green = marked/reachable/kept. Red = unmarked/unreachable/deleted in the Sweep phase.
+
 ### Example Object Graph
 
 ```

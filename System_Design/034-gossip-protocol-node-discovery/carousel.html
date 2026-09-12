@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Gossip Protocol & Node Discovery — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent: #4ecca3;
+    --accent2: #ff6b6b;
+    --text: #eaeaea;
+    --dim: #9a9ab0;
+    --gold: #ffd166;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    height: 100%;
+  }
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+    background: var(--bg);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+  }
+  .slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 30px 34px 20px;
+    flex-direction: column;
+    position: relative;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide.active { display: flex; }
+  .kicker {
+    color: var(--accent);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 10px;
+    line-height: 1.25;
+    color: var(--text);
+  }
+  h2 {
+    font-size: 19px;
+    margin: 0 0 10px;
+    color: var(--gold);
+  }
+  p, li { font-size: 14px; line-height: 1.5; color: var(--text); }
+  .dim { color: var(--dim); }
+  .stat {
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--accent2);
+    margin: 6px 0;
+  }
+  .body { flex: 1; overflow: hidden; }
+  ul { margin: 6px 0; padding-left: 18px; }
+  li { margin-bottom: 6px; }
+
+  /* ===== Server box (rectangle with horizontal lines) ===== */
+  .server-box {
+    width: 64px; height: 44px;
+    background: #2c2c4a;
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    position: relative;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .server-box::before, .server-box::after {
+    content: "";
+    position: absolute;
+    left: 8px; right: 8px;
+    height: 2px;
+    background: var(--dim);
+  }
+  .server-box::before { top: 12px; }
+  .server-box::after { top: 22px; }
+  .server-box .line3 {
+    position: absolute; left: 8px; right: 8px; top: 32px; height: 2px;
+    background: var(--dim);
+  }
+  .server-box.dead { border-color: var(--accent2); opacity: 0.55; }
+  .server-box.dead::before, .server-box.dead::after, .server-box.dead .line3 { background: var(--accent2); }
+
+  /* ===== Node ring for gossip fan-out ===== */
+  .node-ring {
+    position: relative;
+    width: 300px; height: 260px;
+    margin: 6px auto;
+  }
+  .node {
+    position: absolute;
+    width: 34px; height: 34px;
+    border-radius: 50%;
+    background: #2c2c4a;
+    border: 2px solid var(--dim);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .node.knows { border-color: var(--accent); background: #16463d; color: var(--accent); }
+  .node.origin { border-color: var(--accent2); background: #4a1f1f; color: var(--accent2); }
+  .node.dead { border-color: var(--accent2); background: #2c2c4a; color: var(--accent2); opacity: 0.5; }
+
+  .gossip-arrow {
+    position: absolute;
+    height: 2px;
+    background: var(--accent);
+    transform-origin: left center;
+  }
+  .gossip-arrow::after {
+    content: "";
+    position: absolute; right: -1px; top: -4px;
+    border: 5px solid transparent;
+    border-left-color: var(--accent);
+  }
+
+  /* ===== Redis icon ===== */
+  .redis-icon {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: #d82c20;
+    color: #fff;
+    font-weight: 800;
+    font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ===== flow row with arrows ===== */
+  .flow-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .flow-arrow { color: var(--accent); font-size: 20px; font-weight: 700; }
+  .pill {
+    background: #2c2c4a;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--text);
+  }
+  .pill.warn { border-color: var(--accent2); color: var(--accent2); }
+  .pill.gold { border-color: var(--gold); color: var(--gold); }
+
+  /* ===== table ===== */
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td {
+    border: 1px solid #3a3a5a;
+    padding: 5px 6px;
+    text-align: left;
+  }
+  th { background: #262646; color: var(--gold); }
+  td.good { color: var(--accent); }
+  td.bad { color: var(--accent2); }
+
+  /* ===== nav ===== */
+  .nav {
+    position: absolute;
+    bottom: 10px; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 30px;
+  }
+  .nav button {
+    background: var(--accent);
+    color: #0d0d1a;
+    border: none;
+    border-radius: 6px;
+    padding: 7px 16px;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 13px;
+  }
+  .nav button:disabled { opacity: 0.35; cursor: default; }
+  .counter { font-size: 12px; color: var(--dim); }
+
+  .decision-box {
+    border: 1px dashed var(--gold);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 12.5px;
+    margin-bottom: 8px;
+  }
+  .quote {
+    font-style: italic;
+    color: var(--accent);
+    border-left: 3px solid var(--accent);
+    padding-left: 10px;
+    font-size: 13px;
+  }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: var(--bg); }
+    .deck { margin: 0; box-shadow: none; border-radius: 0; }
+    .nav { display: none; }
+    .slide { display: none !important; page-break-after: always; }
+    .slide.active { display: flex !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <div class="kicker">Episode 34 · System Design</div>
+    <h1>A node dies at 2 AM.<br>1000 nodes know within 6 seconds.</h1>
+    <div class="body">
+      <div class="stat">~6 sec</div>
+      <p>No master crashed. No ZooKeeper poll. No central health-check service.</p>
+      <p class="dim">Just nodes whispering to a few random peers — the same way office gossip spreads.</p>
+      <div class="node-ring" id="ring1"></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="kicker">The Problem</div>
+    <h2>Direct ping-everyone doesn't scale</h2>
+    <div class="body">
+      <p>Every node checks every other node directly:</p>
+      <div class="flow-row">
+        <span class="pill warn">N × (N−1) msgs/round</span>
+      </div>
+      <p style="margin-top:10px;">At 1000 nodes → <b style="color:var(--accent2);">999,000 messages</b>, every single round, forever.</p>
+      <p style="margin-top:14px;">Alternative: one master tracks everyone's health.</p>
+      <div class="flow-row">
+        <div class="server-box"></div>
+        <span class="flow-arrow">→</span>
+        <span class="pill gold">Master = O(N) msgs</span>
+      </div>
+      <p style="margin-top:10px;" class="dim">But the master IS a single point of failure. Master dies → nobody knows who's alive. You've recreated the exact problem you tried to solve.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: HOW GOSSIP PROPAGATES -->
+  <div class="slide">
+    <div class="kicker">The Solution</div>
+    <h2>Round 1 → Round 2: 8 nodes, full spread</h2>
+    <div class="body">
+      <p>Node A restarts with new state. Each round, informed nodes gossip to <b>3 random peers</b>.</p>
+      <div class="node-ring" id="ring2"></div>
+      <p class="dim" style="margin-top:6px;">Round 1: A → B, D, F. Round 2: B/D/F → C, E, G, H (duplicates OK — gossip is idempotent). All 8 nodes converged in 2 rounds.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: THE MATH -->
+  <div class="slide">
+    <div class="kicker">Why It Scales</div>
+    <h2>log₃(N) rounds beats N² messages</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>8 nodes</th><th>1000 nodes</th></tr>
+        <tr><td>Rounds to converge</td><td class="good">~2</td><td class="good">~6</td></tr>
+        <tr><td>Gossip messages total</td><td class="good">~24</td><td class="good">18,000</td></tr>
+        <tr><td>Naive broadcast/round</td><td class="bad">56</td><td class="bad">999,000</td></tr>
+      </table>
+      <p style="margin-top:14px;">Formula: convergence ≈ log<sub>K</sub>(N) rounds, where K = peers contacted per round (typically 3).</p>
+      <div class="quote">"Gossip spreads cluster state like a rumour — no coordinator, no SPOF, scales to thousands of nodes."</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: THE HANDSHAKE -->
+  <div class="slide">
+    <div class="kicker">Under The Hood</div>
+    <h2>Cassandra's 3-step gossip handshake</h2>
+    <div class="body">
+      <div class="flow-row">
+        <div class="server-box"></div>
+        <span class="pill">SYN: digest (node, gen, version)</span>
+        <span class="flow-arrow">→</span>
+        <div class="server-box"></div>
+      </div>
+      <div class="flow-row" style="margin-top:10px;">
+        <div class="server-box"></div>
+        <span class="flow-arrow">←</span>
+        <span class="pill">ACK: newer states + requested digests</span>
+        <div class="server-box"></div>
+      </div>
+      <div class="flow-row" style="margin-top:10px;">
+        <div class="server-box"></div>
+        <span class="pill">ACK2: full state for what was requested</span>
+        <span class="flow-arrow">→</span>
+        <div class="server-box"></div>
+      </div>
+      <p style="margin-top:14px;">Merge rule: for each node's record, keep the <b style="color:var(--gold);">highest (generation, version)</b> pair. Generation increments on restart; version increments on every state change.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: WHAT GETS GOSSIPED -->
+  <div class="slide">
+    <div class="kicker">Cluster Metadata, Not Data</div>
+    <h2>What's actually inside a gossip message</h2>
+    <div class="body">
+      <p><b>Cassandra:</b> STATUS, LOAD, SCHEMA hash, DC/RACK, RELEASE_VERSION, TOKENS, HOST_ID</p>
+      <p class="dim">Gossip is completely separate from data replication (storage engine) and read/write coordination.</p>
+      <div class="flow-row" style="margin-top:14px;">
+        <div class="redis-icon">R</div>
+        <div>
+          <p style="margin:0;"><b>Redis Cluster gossip:</b></p>
+          <p class="dim" style="margin:0;">node IDs · master/replica links · hash slots · ping-pong timestamps · FAIL/PFAIL flags</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: FAILURE DETECTION -->
+  <div class="slide">
+    <div class="kicker">Deep Dive — Trap #1 &amp; #2</div>
+    <h2>One missed ping ≠ dead node</h2>
+    <div class="body">
+      <div class="decision-box">
+        Phi Accrual Failure Detector: each node computes <b>phi</b> for every peer from historical heartbeat timing.<br>
+        phi &gt; 8 (default) → SUSPECT.
+      </div>
+      <p>Node only declared <b style="color:var(--accent2);">DOWN</b> once a <b>majority of independent observers</b> mark it SUSPECT — protects against one flaky network link.</p>
+      <div class="node-ring" id="ring3"></div>
+      <p class="dim">State update "10.0.0.4: STATUS=DOWN" gossips to all nodes in 3–5 seconds. Coordinator then routes reads/writes only to UP nodes.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: SEED NODES & JOIN LIFECYCLE -->
+  <div class="slide">
+    <div class="kicker">Deep Dive — Trap #3 &amp; #4</div>
+    <h2>Seed nodes ≠ master. JOINING ≠ ready.</h2>
+    <div class="body">
+      <ul>
+        <li>Seed nodes = 2–3 well-known bootstrap contacts, configured in <code>cassandra.yaml</code>. Not special after the first handshake.</li>
+        <li>New node contacts a seed → learns cluster state via gossip in 5–10 sec (100-node cluster).</li>
+        <li>Status flow: <b>JOINING</b> (streaming token ranges) → <b>NORMAL</b> (serving traffic).</li>
+        <li>Rolling restart across 100 nodes: ~20–30 min, zero client downtime — gossip re-adds each node in seconds.</li>
+      </ul>
+      <p class="dim">Trap: assuming "gossip knows about it" means "it's ready to serve." It isn't, until streaming completes.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <div class="slide">
+    <div class="kicker">Approach Comparison</div>
+    <h2>Gossip vs Master-based vs Broadcast</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>Gossip</th><th>Master-based</th><th>Broadcast</th></tr>
+        <tr><td>Messages</td><td class="good">O(N log N)</td><td>O(N)</td><td class="bad">O(N²)</td></tr>
+        <tr><td>Scale</td><td class="good">1000s</td><td>100s</td><td class="bad">&lt;50</td></tr>
+        <tr><td>SPOF</td><td class="good">None</td><td class="bad">Master</td><td class="good">None</td></tr>
+        <tr><td>Convergence</td><td>O(log N) rounds</td><td class="good">Instant</td><td>1 round</td></tr>
+        <tr><td>Consistency</td><td>Eventual</td><td class="good">Strong</td><td class="good">Strong</td></tr>
+        <tr><td>Partition-tolerant</td><td class="good">Yes</td><td class="bad">No</td><td class="good">Yes</td></tr>
+        <tr><td>Examples</td><td>Cassandra, Redis Cluster, Consul</td><td>ZooKeeper, etcd</td><td>OSPF routing</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + QUOTE -->
+  <div class="slide">
+    <div class="kicker">Interview Cheat Sheet</div>
+    <h2>When to reach for gossip</h2>
+    <div class="body">
+      <div class="decision-box">
+        ✓ 50+ nodes &nbsp;·&nbsp; ✓ partition tolerance needed for membership &nbsp;·&nbsp; ✓ eventual consistency OK &nbsp;·&nbsp; ✓ no central coordinator desired
+      </div>
+      <div class="decision-box" style="border-color:var(--accent2);">
+        ✗ need exact strong consistency (use Raft/ZooKeeper) &nbsp;·&nbsp; ✗ need sub-second propagation &nbsp;·&nbsp; ✗ need guaranteed delivery
+      </div>
+      <div class="quote">"Gossip is O(log N) epidemic broadcast — each node infects a few random peers, they infect a few more, and within seconds every node in a 1000-node cluster knows about a topology change with no central coordinator."</div>
+    </div>
+  </div>
+
+  <div class="nav">
+    <button id="prevBtn" onclick="go(-1)">◀ Prev</button>
+    <span class="counter" id="counter">1 / 10</span>
+    <button id="nextBtn" onclick="go(1)">Next ▶</button>
+  </div>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var idx = 0;
+
+  function render() {
+    slides.forEach(function(s, i) { s.classList.toggle('active', i === idx); });
+    document.getElementById('counter').textContent = (idx + 1) + ' / ' + slides.length;
+    document.getElementById('prevBtn').disabled = idx === 0;
+    document.getElementById('nextBtn').disabled = idx === slides.length - 1;
+  }
+
+  function go(delta) {
+    var next = idx + delta;
+    if (next >= 0 && next < slides.length) { idx = next; render(); }
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') go(1);
+    if (e.key === 'ArrowLeft') go(-1);
+  });
+
+  // ---- build node ring diagrams programmatically ----
+  function buildRing(id, count, states, arrowsFrom) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var cx = 150, cy = 130, r = 105;
+    var positions = [];
+    for (var i = 0; i < count; i++) {
+      var angle = (2 * Math.PI * i / count) - Math.PI / 2;
+      var x = cx + r * Math.cos(angle) - 17;
+      var y = cy + r * Math.sin(angle) - 17;
+      positions.push({x: x, y: y});
+      var node = document.createElement('div');
+      node.className = 'node ' + (states[i] || '');
+      node.style.left = x + 'px';
+      node.style.top = y + 'px';
+      node.textContent = String.fromCharCode(65 + i);
+      el.appendChild(node);
+    }
+    if (arrowsFrom) {
+      arrowsFrom.forEach(function(pair) {
+        var from = positions[pair[0]], to = positions[pair[1]];
+        var fx = from.x + 17, fy = from.y + 17;
+        var tx = to.x + 17, ty = to.y + 17;
+        var dx = tx - fx, dy = ty - fy;
+        var len = Math.sqrt(dx*dx + dy*dy) - 20;
+        var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        var arrow = document.createElement('div');
+        arrow.className = 'gossip-arrow';
+        arrow.style.width = len + 'px';
+        arrow.style.left = fx + 'px';
+        arrow.style.top = fy + 'px';
+        arrow.style.transform = 'rotate(' + angle + 'deg)';
+        el.appendChild(arrow);
+      });
+    }
+  }
+
+  // Slide 1: origin node ring, all "knows" (final converged state)
+  buildRing('ring1', 8, ['origin','knows','knows','knows','knows','knows','knows','knows']);
+
+  // Slide 3: round1 -> round2 fan out from A
+  buildRing('ring2', 8,
+    ['origin','knows','knows','knows','knows','knows','knows','knows'],
+    [[0,1],[0,3],[0,5], [1,2],[1,4],[1,6], [3,2],[3,4],[3,7], [5,2],[5,6],[5,7]]
+  );
+
+  // Slide 7: failure detection - node D dead, others know
+  buildRing('ring3', 8, ['knows','knows','knows','dead','knows','knows','knows','knows']);
+
+  render();
+</script>
+
+</body>
+</html>

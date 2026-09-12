@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>PageRank Algorithm — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .node { width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 34px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>PageRank Algorithm</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="row">
+        <div class="node" style="background:#336791;">50</div>
+        <span style="align-self:center;">vs</span>
+        <div class="node" style="background:#e74c3c;">1</div>
+      </div>
+      <p style="text-align:center">1 vote from an important node can outrank 50 votes from unimportant ones. This is the recursive math Google built search on in 1998.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Importance Is Recursive</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p>A professor's importance depends on how important their recommenders are — which depends on THEIR recommenders. Circular.</p>
+      <p>PageRank solves it with <b>power iteration</b>: guess equal scores, recompute based on current scores, repeat until stable.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Core Formula</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <p><code>PR(A) = (1-d)/N + d × Σ[PR(Ti)/C(Ti)]</code></p>
+      <p>for every page Ti linking to A. d = damping factor (0.85), N = total pages, C(Ti) = out-degree of Ti.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Random Surfer</h1>
+    <h2>Why Damping Factor = 0.85</h2>
+    <div class="body">
+      <p>85% of the time: follow a link. 15% of the time: teleport to a random page.</p>
+      <p>This teleport probability is what <b>guarantees convergence</b> instead of an infinite loop.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Converging Over Iterations</h1>
+    <h2>Worked Example (4 pages)</h2>
+    <div class="body">
+      <table>
+        <tr><th>Iteration</th><th>A</th><th>B</th><th>C</th><th>D</th></tr>
+        <tr><td>0 (guess)</td><td>0.25</td><td>0.25</td><td>0.25</td><td>0.25</td></tr>
+        <tr><td>1</td><td>0.356</td><td>0.250</td><td>0.250</td><td>0.144</td></tr>
+        <tr><td>3</td><td>0.273</td><td>0.302</td><td>0.243</td><td>0.182</td></tr>
+      </table>
+      <p>Real graphs: 50-100 iterations, stop when change &lt; 1e-6.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Dangling Node Trap</h1>
+    <h2>Where PageRank Breaks</h2>
+    <div class="body">
+      <p>A page with ZERO outbound links leaks its "mass" out of the system if skipped — total PageRank drops below 1.0.</p>
+      <p><b>Fix:</b> redistribute dangling mass uniformly across ALL nodes each iteration — O(1) correction, not per-edge.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Sparse Matrix at Web Scale</h1>
+    <h2>Distributed Computation</h2>
+    <div class="body">
+      <p>50B-page graph: ~1 non-zero entry per billion possible — never a dense matrix.</p>
+      <p>Computed as MapReduce/Pregel "supersteps": emit score/out-degree → shuffle+reduce sum → check convergence → repeat.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>PageRank vs Alternatives</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Gameable?</th><th>Compute Cost</th></tr>
+        <tr><td>PageRank</td><td>Hard</td><td>50-100 iterations</td></tr>
+        <tr><td>Raw in-degree count</td><td>Very easy</td><td>1 pass</td></tr>
+        <tr><td>HITS (hubs/authorities)</td><td>Medium</td><td>Similar to PageRank</td></tr>
+        <tr><td>Personalized PageRank</td><td>Hard</td><td>Per-seed-set cost</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Need recursive, hard-to-game importance? → PageRank. Need real-time per-query ranking? → Personalized PageRank or a learned model instead.</p>
+      <div class="quote-box">
+        "This is structurally the same problem PageRank solved for the web — importance is recursive: you're important if important nodes point to you. The damping factor keeps every node with a nonzero minimum score and guarantees the iteration converges."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

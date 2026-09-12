@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CAP Theorem Applied — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 56px; height: 62px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 56px; height: 16px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 56px; height: 34px; position: absolute; top: 12px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 56px; height: 16px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .server-box {
+    width: 60px; height: 52px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>CAP Theorem Applied</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <p>Same network partition. Your <b>feed</b> shows a 30-second-old post. Your <b>payment system</b> returns a 503.</p>
+      <div class="stat">Both are correct.</div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Partitions Are Mandatory</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p><span class="badge badge-cp">CP</span> MySQL (sync), ZooKeeper, HBase, etcd — refuse rather than risk wrong data</p>
+      <p><span class="badge badge-ap">AP</span> Cassandra, DynamoDB, CouchDB, Riak — stay available, tolerate staleness</p>
+      <p style="text-align:center">Partition tolerance isn't optional — the real choice is C vs A when it happens.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Social Feed → AP</h1>
+    <h2>Scenario 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>US Replica</div>
+        <div class="arrow x-mark">✕</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>EU Replica<br>(isolated)</div>
+      </div>
+      <p>EU reader sees the OLD post for a few seconds. <span class="badge badge-ap">AP</span> — acceptable, nobody's balance is wrong.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Payment System → CP</h1>
+    <h2>Scenario 2</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Primary</div>
+        <div class="arrow x-mark">✕</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Replica<br>(isolated)</div>
+      </div>
+      <p>Replica can't confirm latest balance → returns <b>503</b>. <span class="badge badge-cp">CP</span> — an error beats a wrong balance.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>One Product, Different CAP Choices</h1>
+    <h2>The Trap Nobody Expects</h2>
+    <div class="body">
+      <p><span class="badge badge-ap">AP</span> Product catalog — stale price for 30s is annoying, tolerable</p>
+      <p><span class="badge badge-cp">CP</span> Inventory decrement at checkout — overselling zero-stock items is a real disaster</p>
+      <p style="text-align:center">CAP is a per-subsystem decision, not a whole-system decision.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Last-Write-Wins vs CRDT Counters</h1>
+    <h2>Conflict Resolution Trap</h2>
+    <div class="body">
+      <p>Default LWW (timestamp-based) can silently LOSE increments on a "like count" during concurrent writes.</p>
+      <p><b>Fix:</b> Cassandra counter columns use CRDTs — merge by <b>summing</b>, never overwriting. No increment lost.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>PACELC &gt; CAP Day-to-Day</h1>
+    <h2>The More Useful Model</h2>
+    <div class="body">
+      <p>During a <b>Partition</b>: choose Availability or Consistency.</p>
+      <p><b>Else</b> (normal ops, no partition): choose Latency or Consistency.</p>
+      <p>QUORUM reads in Cassandra = stronger consistency, but waits for 2/3 nodes → visible latency spike. This is the "Else" trade-off you make every day.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Systems Mapped</h1>
+    <h2>What Actually Breaks</h2>
+    <div class="body">
+      <table>
+        <tr><th>System</th><th>Choice</th><th>What Breaks</th></tr>
+        <tr><td>Cassandra</td><td>AP (default)</td><td>Stale reads post-partition</td></tr>
+        <tr><td>MySQL (sync)</td><td>CP</td><td>503s during failover</td></tr>
+        <tr><td>ZooKeeper</td><td>CP always</td><td>Unavailable during election</td></tr>
+        <tr><td>Redis Cluster</td><td>AP</td><td>Writes lost during failover</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Is a wrong answer worse than no answer? → CP. Is downtime worse than staleness? → AP.</p>
+      <div class="quote-box">
+        "Different subsystems in the same product make different CAP choices — catalog is AP, payments is CP, and the art is knowing which is which before you start drawing boxes."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

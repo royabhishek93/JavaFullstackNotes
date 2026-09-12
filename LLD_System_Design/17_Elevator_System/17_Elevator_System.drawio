@@ -1,0 +1,596 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════ ENUMS ═══════════════════ -->
+        <mxCell id="enum_direction" value="&lt;&lt;enum&gt;&gt; Direction" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="40" width="160" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_dir_1" value="UP" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_direction">
+          <mxGeometry x="0" y="30" width="160" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_dir_2" value="DOWN" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_direction">
+          <mxGeometry x="0" y="52" width="160" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_dir_3" value="IDLE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_direction">
+          <mxGeometry x="0" y="74" width="160" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="enum_status" value="&lt;&lt;enum&gt;&gt; ElevatorStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1380" y="160" width="170" height="162" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_es_1" value="IDLE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_status">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_es_2" value="MOVING_UP" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_status">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_es_3" value="MOVING_DOWN" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_status">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_es_4" value="STOPPED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_status">
+          <mxGeometry x="0" y="96" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_es_5" value="MAINTENANCE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_status">
+          <mxGeometry x="0" y="118" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_es_6" value="EMERGENCY" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_status">
+          <mxGeometry x="0" y="140" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════ INTERFACES ═══════════════════ -->
+        <mxCell id="iface_scheduler" value="&lt;&lt;interface&gt;&gt; ElevatorScheduler" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="230" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_isch_1" value="+ selectElevator(elevators, floor, direction): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_scheduler">
+          <mxGeometry x="0" y="40" width="230" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_state" value="&lt;&lt;interface&gt;&gt; ElevatorState" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="270" y="40" width="220" height="152" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ist_1" value="+ moveUp(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_state">
+          <mxGeometry x="0" y="40" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ist_2" value="+ moveDown(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_state">
+          <mxGeometry x="0" y="62" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ist_3" value="+ openDoor(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_state">
+          <mxGeometry x="0" y="84" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ist_4" value="+ closeDoor(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_state">
+          <mxGeometry x="0" y="106" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ist_5" value="+ stop(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_state">
+          <mxGeometry x="0" y="128" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_strategy" value="&lt;&lt;interface&gt;&gt; SchedulingStrategy" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="510" y="40" width="220" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_istrat_1" value="+ selectElevator(elevators, requestFloor): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_strategy">
+          <mxGeometry x="0" y="40" width="220" height="34" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_door_ops" value="&lt;&lt;interface&gt;&gt; DoorOperations" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="750" y="40" width="200" height="108" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ido_1" value="+ openDoors()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_door_ops">
+          <mxGeometry x="0" y="40" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ido_2" value="+ closeDoors()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_door_ops">
+          <mxGeometry x="0" y="62" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ido_3" value="+ areDoorsOpen(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_door_ops">
+          <mxGeometry x="0" y="84" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_emergency_ops" value="&lt;&lt;interface&gt;&gt; EmergencyOperations" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="970" y="40" width="200" height="108" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ieo_1" value="+ emergencyStop()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_emergency_ops">
+          <mxGeometry x="0" y="40" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ieo_2" value="+ callFireService()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_emergency_ops">
+          <mxGeometry x="0" y="62" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ieo_3" value="+ enableEmergencyLighting()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_emergency_ops">
+          <mxGeometry x="0" y="84" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_multimedia" value="&lt;&lt;interface&gt;&gt; MultimediaElevator" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="40" width="200" height="108" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_imm_1" value="+ playMusic()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_multimedia">
+          <mxGeometry x="0" y="40" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_imm_2" value="+ displayAds()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_multimedia">
+          <mxGeometry x="0" y="62" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_imm_3" value="+ voiceAnnouncement(message)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_multimedia">
+          <mxGeometry x="0" y="84" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════ CORE CLASSES ═══════════════════ -->
+        <mxCell id="class_elevator" value="Elevator" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="300" width="240" height="294" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_1" value="- id: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_2" value="- currentFloor: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_3" value="- currentDirection: Direction" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_4" value="- status: ElevatorStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_5" value="- upQueue: TreeSet&lt;Integer&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_6" value="- downQueue: TreeSet&lt;Integer&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_7" value="- door: Door" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_8" value="+ run()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_9" value="+ addRequest(floor: int)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="206" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_10" value="+ calculateCost(floor, direction): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="228" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_11" value="+ moveUp() / moveDown() / stop()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="250" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_elv_12" value="+ displayStatus()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_elevator">
+          <mxGeometry x="0" y="272" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_controller" value="ElevatorController  (Singleton)" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="280" y="300" width="250" height="228" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_1" value="- instance: ElevatorController" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="30" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_2" value="- elevators: List&lt;Elevator&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="52" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_3" value="- elevatorThreads: List&lt;Thread&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="74" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_4" value="- scheduler: ElevatorScheduler" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="96" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_5" value="+ getInstance(numElevators): ElevatorController" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="118" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_6" value="+ requestElevator(floor, direction)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="140" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_7" value="+ selectFloor(elevatorId, destFloor)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="162" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_8" value="+ setScheduler(scheduler)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="184" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ec_9" value="+ shutdown()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_controller">
+          <mxGeometry x="0" y="206" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_request" value="Request" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="550" y="300" width="220" height="162" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_req_1" value="- sourceFloor: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_request">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_req_2" value="- destinationFloor: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_request">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_req_3" value="- direction: Direction" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_request">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_req_4" value="- timestamp: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_request">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_req_5" value="+ getSourceFloor(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_request">
+          <mxGeometry x="0" y="118" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_req_6" value="+ getDestinationFloor(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_request">
+          <mxGeometry x="0" y="140" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_door" value="Door" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="790" y="300" width="180" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_door_1" value="- isOpen: boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_door">
+          <mxGeometry x="0" y="30" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_door_2" value="- elevatorId: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_door">
+          <mxGeometry x="0" y="52" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_door_3" value="+ open()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_door">
+          <mxGeometry x="0" y="74" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_door_4" value="+ close()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_door">
+          <mxGeometry x="0" y="96" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_door_5" value="+ isOpen(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_door">
+          <mxGeometry x="0" y="118" width="180" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_emergency_mode" value="EmergencyMode" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="990" y="300" width="200" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_em_1" value="+ activate(elevator: Elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_emergency_mode">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_em_2" value="+ deactivate(elevator: Elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_emergency_mode">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_em_3" value="+ moveToNearestFloor(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_emergency_mode">
+          <mxGeometry x="0" y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_demo" value="ElevatorSystemDemo" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1210" y="300" width="200" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_demo_1" value="+ main(args: String[])" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_demo">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_demo_2" value="  (Simulation entry point)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_demo">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════ SCHEDULER IMPLEMENTATIONS ═══════════════════ -->
+        <mxCell id="class_nearest_car_sched" value="NearestCarScheduler" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="660" width="210" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ncs_1" value="+ selectElevator(elevators, floor, direction): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_nearest_car_sched">
+          <mxGeometry x="0" y="30" width="210" height="44" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_scan_sched" value="ScanScheduler" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="250" y="660" width="200" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_ss_1" value="+ selectElevator(elevators, floor, direction): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_scan_sched">
+          <mxGeometry x="0" y="30" width="200" height="44" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_lb_sched" value="LoadBalancedScheduler" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="470" y="660" width="210" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_lbs_1" value="+ selectElevator(elevators, floor, direction): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_lb_sched">
+          <mxGeometry x="0" y="30" width="210" height="44" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════ STRATEGY IMPLEMENTATIONS ═══════════════════ -->
+        <mxCell id="class_nearest_car_strat" value="NearestCarStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="700" y="660" width="200" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_nstrat_1" value="+ selectElevator(elevators, requestFloor): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_nearest_car_strat">
+          <mxGeometry x="0" y="30" width="200" height="44" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_scan_strat" value="SCANStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="920" y="660" width="185" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sstrat_1" value="+ selectElevator(elevators, requestFloor): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_scan_strat">
+          <mxGeometry x="0" y="30" width="185" height="44" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_look_strat" value="LOOKStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1125" y="660" width="185" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_lstrat_1" value="+ selectElevator(elevators, requestFloor): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_look_strat">
+          <mxGeometry x="0" y="30" width="185" height="44" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_lb_strat" value="LeastBusyStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="660" width="200" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_lbstrat_1" value="+ selectElevator(elevators, requestFloor): Elevator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_lb_strat">
+          <mxGeometry x="0" y="30" width="200" height="44" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════ STATE CLASSES ═══════════════════ -->
+        <mxCell id="state_idle" value="IdleState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="820" width="175" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_si_1" value="+ moveUp(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_idle">
+          <mxGeometry x="0" y="30" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_si_2" value="+ moveDown(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_idle">
+          <mxGeometry x="0" y="52" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_si_3" value="+ openDoor(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_idle">
+          <mxGeometry x="0" y="74" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_si_4" value="+ stop(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_idle">
+          <mxGeometry x="0" y="96" width="175" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="state_moving" value="MovingState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="215" y="820" width="175" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sm_1" value="+ moveUp(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_moving">
+          <mxGeometry x="0" y="30" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sm_2" value="+ moveDown(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_moving">
+          <mxGeometry x="0" y="52" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sm_3" value="+ openDoor(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_moving">
+          <mxGeometry x="0" y="74" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sm_4" value="+ stop(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_moving">
+          <mxGeometry x="0" y="96" width="175" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="state_stopped" value="StoppedState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="410" y="820" width="175" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sst_1" value="+ moveUp(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_stopped">
+          <mxGeometry x="0" y="30" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sst_2" value="+ moveDown(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_stopped">
+          <mxGeometry x="0" y="52" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sst_3" value="+ openDoor(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_stopped">
+          <mxGeometry x="0" y="74" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_sst_4" value="+ stop(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_stopped">
+          <mxGeometry x="0" y="96" width="175" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="state_emergency" value="EmergencyState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="605" y="820" width="175" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_se_1" value="+ moveUp(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_emergency">
+          <mxGeometry x="0" y="30" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_se_2" value="+ moveDown(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_emergency">
+          <mxGeometry x="0" y="52" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_se_3" value="+ openDoor(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_emergency">
+          <mxGeometry x="0" y="74" width="175" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_se_4" value="+ stop(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_emergency">
+          <mxGeometry x="0" y="96" width="175" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="state_maintenance" value="MaintenanceState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="800" y="820" width="185" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_smt_1" value="+ moveUp(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_maintenance">
+          <mxGeometry x="0" y="30" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_smt_2" value="+ moveDown(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_maintenance">
+          <mxGeometry x="0" y="52" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_smt_3" value="+ openDoor(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_maintenance">
+          <mxGeometry x="0" y="74" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="row_smt_4" value="+ stop(elevator)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="state_maintenance">
+          <mxGeometry x="0" y="96" width="185" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════ EDGES ═══════════════════ -->
+        <!-- Scheduler implementations → ElevatorScheduler interface -->
+        <mxCell id="edge_ncs_isch" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_nearest_car_sched" target="iface_scheduler" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_ss_isch" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_scan_sched" target="iface_scheduler" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_lbs_isch" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_lb_sched" target="iface_scheduler" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Strategy implementations → SchedulingStrategy interface -->
+        <mxCell id="edge_nstrat_istrat" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_nearest_car_strat" target="iface_strategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_sstrat_istrat" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_scan_strat" target="iface_strategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_lstrat_istrat" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_look_strat" target="iface_strategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_lbstrat_istrat" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_lb_strat" target="iface_strategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- State classes → ElevatorState interface -->
+        <mxCell id="edge_si_ist" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="state_idle" target="iface_state" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_sm_ist" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="state_moving" target="iface_state" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_sst_ist" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="state_stopped" target="iface_state" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_se_ist" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="state_emergency" target="iface_state" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_smt_ist" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="state_maintenance" target="iface_state" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ElevatorController uses ElevatorScheduler -->
+        <mxCell id="edge_ec_isch" value="uses" style="endArrow=open;" edge="1" source="class_controller" target="iface_scheduler" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- ElevatorController has-a Elevator -->
+        <mxCell id="edge_ec_elv" value="1..*" style="endArrow=open;" edge="1" source="class_controller" target="class_elevator" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Elevator has-a Door -->
+        <mxCell id="edge_elv_door" value="has" style="endArrow=open;" edge="1" source="class_elevator" target="class_door" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Elevator uses ElevatorState -->
+        <mxCell id="edge_elv_ist" value="state" style="endArrow=open;" edge="1" source="class_elevator" target="iface_state" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Elevator uses Direction -->
+        <mxCell id="edge_elv_dir" value="uses" style="endArrow=open;" edge="1" source="class_elevator" target="enum_direction" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Elevator uses ElevatorStatus -->
+        <mxCell id="edge_elv_status" value="uses" style="endArrow=open;" edge="1" source="class_elevator" target="enum_status" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Request uses Direction -->
+        <mxCell id="edge_req_dir" value="uses" style="endArrow=open;" edge="1" source="class_request" target="enum_direction" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- EmergencyMode uses Elevator -->
+        <mxCell id="edge_em_elv" value="uses" style="endArrow=open;" edge="1" source="class_emergency_mode" target="class_elevator" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- ElevatorSystemDemo uses ElevatorController -->
+        <mxCell id="edge_demo_ec" value="uses" style="endArrow=open;" edge="1" source="class_demo" target="class_controller" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- ElevatorController uses SchedulingStrategy -->
+        <mxCell id="edge_ec_istrat" value="uses" style="endArrow=open;" edge="1" source="class_controller" target="iface_strategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════ LIFELINES ═══════════════════ -->
+        <!-- Lifeline centers: User=130, Controller=330, Scheduler=530, Elevator=730, Door=930 -->
+        <mxCell id="life_user" value="User" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_controller" value="ElevatorController" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_scheduler" value="ElevatorScheduler" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_elevator" value="Elevator" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_door" value="Door" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════ MESSAGES ═══════════════════ -->
+        <!-- 1. User → ElevatorController: requestElevator(floor, direction) -->
+        <mxCell id="msg_1" value="requestElevator(floor, direction)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="160" as="sourcePoint"/>
+            <mxPoint x="330" y="160" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2. ElevatorController → ElevatorScheduler: selectElevator(elevators, floor, direction) -->
+        <mxCell id="msg_2" value="selectElevator(elevators, floor, direction)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="210" as="sourcePoint"/>
+            <mxPoint x="530" y="210" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3. ElevatorScheduler → ElevatorController: return bestElevator -->
+        <mxCell id="ret_1" value="return bestElevator" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="255" as="sourcePoint"/>
+            <mxPoint x="330" y="255" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4. ElevatorController → Elevator: addRequest(floor) -->
+        <mxCell id="msg_3" value="addRequest(floor)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="300" as="sourcePoint"/>
+            <mxPoint x="730" y="300" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5. Elevator → Elevator: processRequests() (self-call) -->
+        <mxCell id="msg_4" value="processRequests()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="345" as="sourcePoint"/>
+            <mxPoint x="800" y="345" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="800" y="345"/>
+              <mxPoint x="800" y="365"/>
+              <mxPoint x="730" y="365"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 6. Elevator moves up/down (note) -->
+        <mxCell id="msg_5" value="moveUp() / moveDown()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="395" as="sourcePoint"/>
+            <mxPoint x="800" y="395" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="800" y="395"/>
+              <mxPoint x="800" y="415"/>
+              <mxPoint x="730" y="415"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 7. Elevator → Door: open() -->
+        <mxCell id="msg_6" value="open()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="450" as="sourcePoint"/>
+            <mxPoint x="930" y="450" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 8. Door → Elevator: return -->
+        <mxCell id="ret_2" value="doors opened" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="490" as="sourcePoint"/>
+            <mxPoint x="730" y="490" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 9. Elevator → Door: close() -->
+        <mxCell id="msg_7" value="close()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="530" as="sourcePoint"/>
+            <mxPoint x="930" y="530" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 10. Door → Elevator: return -->
+        <mxCell id="ret_3" value="doors closed" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="570" as="sourcePoint"/>
+            <mxPoint x="730" y="570" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Sequence diagram title note -->
+        <mxCell id="seq_note" value="Main Flow: requestElevator() — Nearest Car Selection" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=14;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="10" width="600" height="30" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,6 +1,8 @@
 # 🛒 Shopping Cart Coupons - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -405,6 +407,44 @@ Different results! (800 vs 810)
 ## 9. Technology Choices
 
 **You**: "**Rules engine consideration**: For SIMPLE coupon logic (as shown), hand-coded Strategy + Chain of Responsibility is appropriate. For COMPLEX promotional campaigns with dozens of interacting business rules (common at scale - Amazon-style), consider a proper rules engine (Drools) to let business teams configure rules without code deployment."
+
+---
+
+## 🔥 Real-World Production Issue: The Coupon-Stacking Bug That Cost Six Figures in One Weekend
+
+*In plain English: changing the order that validation rules run in — even by accident — can let an invalid discount slip through.*
+
+**The war story:**
+
+"An e-commerce platform's coupon system used Strategy Pattern for discount TYPES (percentage-off, flat-amount-off, free-shipping) and Chain of Responsibility for validation rules — exactly this guide's recommended combination. The bug wasn't in either pattern's implementation; it was in the ORDER the Chain of Responsibility validators ran, which silently changed after a routine refactor."
+
+```
+ORIGINAL validation chain order (correct):
+  1. CheckExpiryValidator
+  2. CheckMinCartValueValidator
+  3. CheckStackabilityValidator   <- rejects a SECOND coupon if the
+                                     first one applied isn't "stackable"
+
+AFTER a refactor (validators re-registered via a config file, order
+now driven by alphabetical class name instead of an explicit list):
+  1. CheckExpiryValidator
+  2. CheckMinCartValueValidator
+  3. CheckStackabilityValidator moved AFTER a new "CheckUserTierValidator"
+     was inserted alphabetically before it -- and CheckUserTierValidator's
+     logic had an early-return bug that skipped the REST of the chain
+     for premium-tier users, meaning CheckStackabilityValidator NEVER RAN
+     for that user segment
+
+Result: premium-tier users could stack an unlimited number of
+"non-stackable" coupons for an entire holiday weekend before anyone
+noticed the discount amounts looked unusually large in finance reports
+```
+
+**Root cause:** Chain of Responsibility's correctness depends on the CHAIN ORDER being deliberate and stable — switching from an explicit, reviewed ordered list to an implicit "alphabetical by class name" ordering (done for a seemingly harmless config-simplification refactor) silently changed validator execution order, and a bug in one validator (early-return) that would have been relatively harmless in the ORIGINAL order became a costly one in the new order.
+
+**The fix:** reverted to an explicit, code-reviewed ordered list of validators (not implicit/alphabetical), added a unit test asserting the exact chain order matches an expected sequence (so any future reordering requires deliberately updating a test, not just silently happening), and fixed `CheckUserTierValidator`'s early-return bug to only skip validators explicitly marked as "tier-exempt", not the entire remaining chain.
+
+**Lesson for a new developer:** "When your Chain of Responsibility's ORDER matters for correctness (it almost always does for validation chains), never let that order be implicit/accidental (alphabetical, registration order, config-file iteration order) — make it explicit, code-reviewed, and covered by a test that would fail loudly if the order ever silently changes."
 
 ---
 

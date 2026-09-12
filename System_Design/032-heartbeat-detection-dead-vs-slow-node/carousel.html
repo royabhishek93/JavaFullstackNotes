@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Heartbeat Detection: Dead vs Slow Node — Carousel</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d0d1a;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #eaeaf2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+  }
+  .deck {
+    position: relative;
+    width: 540px;
+    height: 540px;
+  }
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    background: #1a1a2e;
+    border-radius: 14px;
+    padding: 34px 38px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  .tag {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: #ff6b6b;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  h1 {
+    font-size: 26px;
+    line-height: 1.25;
+    color: #ffffff;
+    margin-bottom: 14px;
+  }
+  h2 {
+    font-size: 20px;
+    color: #7de3ff;
+    margin-bottom: 10px;
+  }
+  p, li {
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: #cfcfe6;
+  }
+  .stat {
+    font-size: 44px;
+    font-weight: bold;
+    color: #ff6b6b;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .sub {
+    font-size: 13px;
+    color: #9a9ac0;
+    margin-top: 4px;
+  }
+  ul { padding-left: 18px; margin-top: 6px; }
+  li { margin-bottom: 6px; }
+  .diagram {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    margin: 10px 0;
+  }
+  .footer-num {
+    position: absolute;
+    bottom: 16px;
+    right: 22px;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    color: #55557a;
+  }
+
+  /* ---- Server / Node box ---- */
+  .node-box {
+    width: 92px;
+    height: 74px;
+    background: #24243e;
+    border: 2px solid #4a4a78;
+    border-radius: 6px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .node-box .line {
+    width: 68px;
+    height: 3px;
+    background: #4a4a78;
+    margin: 3px 0;
+    border-radius: 2px;
+  }
+  .node-box.dead { border-color: #ff6b6b; opacity: 0.55; }
+  .node-box.dead .line { background: #ff6b6b; }
+  .node-box.alive { border-color: #5ee6a0; }
+  .node-box.alive .line { background: #5ee6a0; }
+  .node-label {
+    position: absolute;
+    top: -22px;
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    color: #cfcfe6;
+    white-space: nowrap;
+  }
+  .node-label.small { font-size: 10px; }
+
+  /* ---- Heartbeat pulse arrow ---- */
+  .pulse-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .arrow-line {
+    width: 90px;
+    height: 2px;
+    background: #5ee6a0;
+    position: relative;
+  }
+  .arrow-line.dead { background: #3a3a55; }
+  .arrow-line::after {
+    content: '';
+    position: absolute;
+    right: -1px;
+    top: -4px;
+    border-left: 8px solid #5ee6a0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .arrow-line.dead::after { border-left-color: #3a3a55; }
+  .arrow-label {
+    position: absolute;
+    top: -18px;
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    color: #5ee6a0;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  /* ---- Redis icon ---- */
+  .redis-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: #d82c20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 24px;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    flex-shrink: 0;
+  }
+
+  /* ---- Cluster ring (gossip) ---- */
+  .ring-wrap {
+    position: relative;
+    width: 260px;
+    height: 260px;
+  }
+  .ring-node {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #24243e;
+    border: 2px solid #7de3ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    color: #7de3ff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .ring-node.lit { background: #7de3ff; color: #1a1a2e; }
+  .ring-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 46px; height: 46px;
+    transform: translate(-50%,-50%);
+    border-radius: 50%;
+    background: #ff6b6b;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: bold; color: #fff;
+    font-family: 'Courier New', monospace;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---- Table ---- */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11.5px;
+    font-family: 'Courier New', monospace;
+  }
+  th, td {
+    border: 1px solid #3a3a55;
+    padding: 6px 7px;
+    text-align: left;
+    color: #cfcfe6;
+  }
+  th {
+    background: #24243e;
+    color: #7de3ff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  tr:nth-child(even) td {
+    background: #20203a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---- Decision tree ---- */
+  .tree-box {
+    background: #24243e;
+    border: 1px solid #4a4a78;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    color: #cfcfe6;
+    margin: 4px 0;
+  }
+  .tree-arrow { text-align: center; color: #7de3ff; font-size: 14px; }
+  .quote-box {
+    margin-top: 10px;
+    background: #24243e;
+    border-left: 4px solid #ff6b6b;
+    padding: 12px 14px;
+    font-style: italic;
+    font-size: 13px;
+    color: #eaeaf2;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---- Nav ---- */
+  .nav {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-top: 16px;
+  }
+  .nav button {
+    background: #24243e;
+    border: 1px solid #4a4a78;
+    color: #eaeaf2;
+    padding: 8px 18px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-family: inherit;
+  }
+  .nav button:hover { background: #33335a; }
+  .counter {
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    color: #9a9ac0;
+  }
+
+  @media print {
+    body { background: #1a1a2e; min-height: auto; padding: 0; }
+    .nav { display: none; }
+    .deck { width: auto; height: auto; }
+    .slide {
+      display: flex !important;
+      page-break-after: always;
+      box-shadow: none;
+    }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <span class="tag">Episode 32 · Heartbeat Detection</span>
+    <h1>A 22-second pause made this cluster run with <span style="color:#ff6b6b">TWO primaries.</span></h1>
+    <div class="diagram">
+      <div style="text-align:center;">
+        <div class="stat">22s</div>
+        <div class="sub">Java GC pause on a loaded JVM</div>
+        <div style="margin-top:22px; display:flex; gap:24px; justify-content:center; align-items:center;">
+          <div style="text-align:center;">
+            <div class="node-box dead"><div class="node-label small">NODE A</div><div class="line"></div><div class="line"></div></div>
+            <div class="sub">frozen (GC)</div>
+          </div>
+          <div style="font-size:22px; color:#ff6b6b;">⚡</div>
+          <div style="text-align:center;">
+            <div class="node-box alive"><div class="node-label small">NODE B</div><div class="line"></div><div class="line"></div></div>
+            <div class="sub">"promoted" — wrongly</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p>Sentinel saw silence and assumed death. It wasn't. That's split brain.</p>
+    <div class="footer-num">1 / 10</div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <span class="tag">The Problem</span>
+    <h1>You can <u>never</u> know for certain if a peer is dead or just slow.</h1>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:10px;">
+        <div style="display:flex; gap:60px;">
+          <div class="node-box alive" style="position:relative;">
+            <div class="node-label small">NODE A</div>
+            <div class="line"></div><div class="line"></div>
+          </div>
+          <div class="node-box" style="position:relative;">
+            <div class="node-label small">NODE B</div>
+            <div class="line"></div><div class="line"></div>
+          </div>
+        </div>
+        <div class="pulse-row" style="margin-top:-30px;">
+          <div class="arrow-line"><span class="arrow-label">heartbeat, 1s</span></div>
+        </div>
+        <div style="margin-top:18px; font-size:30px; color:#ffb85c;">❓</div>
+        <p style="text-align:center; max-width:380px;">Silence could mean: crashed process, OOM kill, power loss — <b>or</b> just network congestion / GC pause delaying the message.</p>
+      </div>
+    </div>
+    <div class="footer-num">2 / 10</div>
+  </div>
+
+  <!-- SLIDE 3: BASIC HEARTBEAT MECHANISM / DEAD NODE TIMELINE -->
+  <div class="slide">
+    <span class="tag">Scenario A — Real Death</span>
+    <h2>Basic heartbeat timeline when Node A actually dies</h2>
+    <div class="diagram">
+      <div style="width:100%; font-family:'Courier New',monospace; font-size:12px; color:#cfcfe6;">
+        <div class="tree-box">t=0s &nbsp;→ Node A crashes (OOM / power loss)</div>
+        <div class="tree-arrow">↓</div>
+        <div class="tree-box">t=1–4s → Node B: no PING... missed heartbeat counter climbing</div>
+        <div class="tree-arrow">↓</div>
+        <div class="tree-box" style="border-color:#ffb85c;">t=5s &nbsp;→ 5 missed heartbeats → mark <b>SUSPECT</b></div>
+        <div class="tree-arrow">↓</div>
+        <div class="tree-box" style="border-color:#ff6b6b;">t=10s → still silent → declare <b>DEAD</b>, begin failover</div>
+        <div class="tree-arrow">↓</div>
+        <div class="tree-box" style="border-color:#5ee6a0;">t=15s → failover complete, Node B is new primary</div>
+      </div>
+    </div>
+    <p><b>Total undetected downtime: 10–15 seconds.</b> Detection is never instant.</p>
+    <div class="footer-num">3 / 10</div>
+  </div>
+
+  <!-- SLIDE 4: NETWORK SLOWNESS -> FALSE POSITIVE -->
+  <div class="slide">
+    <span class="tag">Scenario B — False Positive</span>
+    <h2>Alive, but the network is slow → wrongly declared dead</h2>
+    <div class="diagram">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:14px;">
+        <div style="display:flex; gap:50px; align-items:center;">
+          <div class="node-box alive"><div class="node-label small">NODE A (alive)</div><div class="line"></div><div class="line"></div></div>
+          <div class="arrow-line dead" style="width:60px;"><span class="arrow-label" style="color:#ffb85c;">delayed 6s</span></div>
+          <div class="node-box" style="border-color:#ffb85c;"><div class="node-label small">NODE B</div><div class="line"></div><div class="line"></div></div>
+        </div>
+        <p style="text-align:center; max-width:400px;">Timeout = 5s. Heartbeat delayed 6s by congestion. Node B marks A dead → promotes itself → <span style="color:#ff6b6b; font-weight:bold;">both think they're primary.</span></p>
+      </div>
+    </div>
+    <p>Timeout too low → jitter causes false failover. Timeout too high → real failures linger.</p>
+    <div class="footer-num">4 / 10</div>
+  </div>
+
+  <!-- SLIDE 5: GOSSIP PROTOCOL SCALE -->
+  <div class="slide">
+    <span class="tag">Scaling Heartbeats</span>
+    <h2>Naive heartbeat: O(N²). 100 nodes = ~9,900 msgs/sec.</h2>
+    <div class="diagram">
+      <div class="ring-wrap">
+        <div class="ring-center">A</div>
+        <div class="ring-node lit" style="top:6px; left:110px;">R1</div>
+        <div class="ring-node lit" style="top:70px; left:210px;">R1</div>
+        <div class="ring-node lit" style="top:70px; left:10px;">R1</div>
+        <div class="ring-node" style="top:170px; left:210px;">R2</div>
+        <div class="ring-node" style="top:170px; left:10px;">R2</div>
+        <div class="ring-node" style="top:214px; left:110px;">R2</div>
+      </div>
+    </div>
+    <p><b>Gossip protocol</b> (Cassandra, Consul, Redis Cluster): each node tells 3 random peers/sec. State spreads in <b>O(log N)</b> rounds — 100 nodes fully informed in ~5 rounds (3→9→27→81→100).</p>
+    <div class="footer-num">5 / 10</div>
+  </div>
+
+  <!-- SLIDE 6: GOSSIP PAYLOAD -->
+  <div class="slide">
+    <span class="tag">Under The Hood</span>
+    <h2>What gossip actually exchanges (Cassandra-style)</h2>
+    <div class="diagram" style="flex-direction:column; align-items:stretch;">
+      <div class="tree-box" style="font-size:11px;">
+10.0.0.1 → { status: UP,   generation: 42, version: 1001 }<br>
+10.0.0.3 → { status: DOWN, generation: 15, version: 200 &nbsp;}
+      </div>
+    </div>
+    <ul>
+      <li><b>version</b> — increments every heartbeat; stops climbing → node presumed DOWN</li>
+      <li><b>generation</b> — resets only on restart; distinguishes "just restarted" from "long silent"</li>
+      <li>Merge rule: whichever side has the <b>higher version</b> for a node wins — no coordinator needed</li>
+    </ul>
+    <div class="footer-num">6 / 10</div>
+  </div>
+
+  <!-- SLIDE 7: PHI ACCRUAL -->
+  <div class="slide">
+    <span class="tag">Beyond Binary</span>
+    <h2>Phi Accrual: a suspicion <i>score</i>, not alive/dead</h2>
+    <div class="diagram" style="flex-direction:column;">
+      <div style="display:flex; gap:20px; width:100%; justify-content:center;">
+        <div class="tree-box" style="border-color:#5ee6a0;">gap = 1.5s<br>Phi ≈ 2<br><span style="color:#5ee6a0;">probably just slow</span></div>
+        <div class="tree-box" style="border-color:#ff6b6b;">gap = 3.0s<br>Phi ≈ 10<br><span style="color:#ff6b6b;">almost certainly dead</span></div>
+      </div>
+    </div>
+    <p>Tracks the historical mean/stddev of heartbeat intervals and adapts automatically — avoids false positives from Java GC pauses (5–30s). Used by <b>Cassandra</b> and <b>Akka</b>.</p>
+    <div class="footer-num">7 / 10</div>
+  </div>
+
+  <!-- SLIDE 8: TRAPS -->
+  <div class="slide">
+    <span class="tag">Where Engineers Get It Wrong</span>
+    <h2>Three anti-patterns</h2>
+    <div class="diagram" style="flex-direction:column; align-items:stretch; gap:8px;">
+      <div class="tree-box"><b style="color:#ff6b6b;">Timeout too short</b> — GC pause / jitter → false failover → split brain. Fix: raise timeout or use Phi Accrual.</div>
+      <div class="tree-box"><b style="color:#ffb85c;">Timeout too high</b> — real crash undetected for too long → real downtime. Fix: lower it, but test vs. real GC/network jitter first.</div>
+      <div class="tree-box"><b style="color:#7de3ff;">Declaring dead on 1 missed beat</b> — causes "flapping." Fix: require 3 consecutive missed heartbeats.</div>
+    </div>
+    <div class="diagram" style="flex:0; margin-top:6px;">
+      <div class="redis-icon">R</div>
+      <p style="margin-left:12px;">Redis Sentinel default: <b>30s</b> down-after-milliseconds — often too slow to catch, yet borderline for GC pauses.</p>
+    </div>
+    <div class="footer-num">8 / 10</div>
+  </div>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <div class="slide">
+    <span class="tag">Comparison</span>
+    <h2>Heartbeat values in real production systems</h2>
+    <table>
+      <tr><th>System</th><th>Heartbeat</th><th>Timeout / Detection</th></tr>
+      <tr><td>Redis Sentinel</td><td>1s PING</td><td>down-after-ms: 30s default</td></tr>
+      <tr><td>Kubernetes liveness</td><td>10s period</td><td>3 failures → 30s total</td></tr>
+      <tr><td>etcd (Raft)</td><td>100ms</td><td>1000ms election timeout</td></tr>
+      <tr><td>ZooKeeper</td><td>tickTime 2000ms</td><td>4×tick = 8s (initLimit)</td></tr>
+      <tr><td>Cassandra (gossip)</td><td>1s round</td><td>Phi &gt; 8 → DOWN</td></tr>
+      <tr><td>MySQL Orchestrator</td><td>1s check</td><td>3 consecutive failures</td></tr>
+      <tr><td>Consul</td><td>1s</td><td>10s default</td></tr>
+      <tr><td>Kafka (broker)</td><td>3s</td><td>session.timeout.ms: 30s</td></tr>
+    </table>
+    <div class="footer-num">9 / 10</div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <div class="slide">
+    <span class="tag">Cheat Sheet</span>
+    <h2>Decision tree: tuning your timeout</h2>
+    <div class="diagram" style="flex-direction:column; align-items:stretch; gap:6px;">
+      <div class="tree-box">Stable network, GC tuned (G1GC/ZGC)? → timeout 3×–5× heartbeat interval</div>
+      <div class="tree-arrow">↓</div>
+      <div class="tree-box">Unpredictable jitter / long GC pauses? → use <b>Phi Accrual</b> instead of fixed timeout</div>
+      <div class="tree-arrow">↓</div>
+      <div class="tree-box">Always require ≥3 consecutive missed heartbeats before declaring dead</div>
+    </div>
+    <div class="quote-box">
+      "You can never know for certain if a remote node is dead or just slow. Heartbeat detection is a statistical bet: if I haven't heard in N seconds, it's more likely dead than slow. The timeout trades false positives (unnecessary failovers) against false negatives (slow failure detection)."
+    </div>
+    <div class="footer-num">10 / 10</div>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="go(-1)">← Prev</button>
+  <span class="counter"><span id="cur">1</span> / <span id="total">10</span></span>
+  <button id="nextBtn" onclick="go(1)">Next →</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var idx = 0;
+  document.getElementById('total').textContent = slides.length;
+
+  function render() {
+    slides.forEach(function(s, i) {
+      s.classList.toggle('active', i === idx);
+    });
+    document.getElementById('cur').textContent = idx + 1;
+  }
+
+  function go(delta) {
+    idx = Math.min(Math.max(idx + delta, 0), slides.length - 1);
+    render();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') go(1);
+    if (e.key === 'ArrowLeft') go(-1);
+  });
+
+  render();
+</script>
+
+</body>
+</html>

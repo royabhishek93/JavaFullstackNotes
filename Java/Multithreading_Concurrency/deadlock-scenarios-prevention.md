@@ -77,7 +77,21 @@ Mutual Exclusion (YES)
 
 ---
 
-## ❌ Classic Deadlock Pattern
+## ❌ Classic Deadlock Pattern (ASCII Lane Diagram)
+
+```
+Lanes:  T1 = Thread-1 | L1 = lock1 | L2 = lock2 | T2 = Thread-2
+
+1) T1 ───────────────> L1 : acquire lock1 (success)
+2)                          T2 ───────────────> L2 : acquire lock2 (success)
+3) T1 ────────────────────────────────────> L2 : try acquire lock2 (BLOCKED - held by T2)
+4)                          T2 ──────────────────> L1 : try acquire lock1 (BLOCKED - held by T1)
+
+Note (spanning T1..T2): Circular wait, DEADLOCK forever
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
+### Classic Deadlock Pattern (ASCII Timeline)
 
 ```
 Timeline:

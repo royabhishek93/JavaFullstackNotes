@@ -1,0 +1,449 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══ Location (record) ══════════════════════════════════ -->
+        <mxCell id="class_loc" value="&lt;&lt;record&gt;&gt; Location" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_loc_f1" value="latitude: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_loc">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_loc_f2" value="longitude: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_loc">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_loc_m1" value="distanceKm(Location): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_loc">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ Driver ══════════════════════════════════════════════ -->
+        <mxCell id="class_drv" value="Driver" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="210" width="270" height="360" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_f1" value="- driverId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_f2" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_f3" value="- vehicleType: VehicleType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_f4" value="- currentLocation: Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_f5" value="- status: DriverStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="118" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_f6" value="- rating: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="140" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_f7" value="- acceptanceRate: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="162" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_m1" value="+ transitionTo(DriverStatus): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="184" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_m2" value="+ updateLocation(Location): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="206" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_m3" value="+ getDriverId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="228" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_m4" value="+ getLocation(): Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="250" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_m5" value="+ getStatus(): DriverStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="272" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_m6" value="+ getRating(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="294" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_m7" value="+ getAcceptanceRate(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="316" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_drv_m8" value="+ getVehicleType(): VehicleType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_drv">
+          <mxGeometry x="0" y="338" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ Trip ════════════════════════════════════════════════ -->
+        <mxCell id="class_trp" value="Trip" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="360" y="210" width="270" height="404" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_f1" value="- tripId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_f2" value="- riderId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_f3" value="- pickupLocation: Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_f4" value="- destination: Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_f5" value="- assignedDriverId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="118" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_f6" value="- status: Status" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="140" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_f7" value="- surgeMultiplier: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="162" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_f8" value="- farePaid: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="184" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m1" value="+ Trip(riderId, pickup, dest, surge)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="206" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m2" value="+ assignDriver(driverId): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="228" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m3" value="+ startTrip(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="250" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m4" value="+ complete(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="272" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m5" value="- calculateFare(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="294" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m6" value="+ getTripId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="316" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m7" value="+ getPickup(): Location" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="338" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m8" value="+ getStatus(): Status" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="360" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trp_m9" value="+ getAssignedDriver(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trp">
+          <mxGeometry x="0" y="382" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ MatchingEngine ═══════════════════════════════════════ -->
+        <mxCell id="class_me" value="MatchingEngine" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="680" y="210" width="300" height="228" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_f1" value="- drivers: Map&lt;String, Driver&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="30" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_f2" value="- trips: Map&lt;String, Trip&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="52" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_f3" value="- surge: SurgeCalculator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="74" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_m1" value="+ registerDriver(Driver): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="96" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_m2" value="+ updateDriverLocation(id, Location): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="118" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_m3" value="+ requestRide(riderId, pickup, dest, type): Trip" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="140" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_m4" value="- dispatchToNextDriver(trip, type, n): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="162" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_m5" value="- findBestDriver(Location, VehicleType): Optional" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="184" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_me_m6" value="- score(Driver, Location): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_me">
+          <mxGeometry x="0" y="206" width="300" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ SurgeCalculator ══════════════════════════════════════ -->
+        <mxCell id="class_sc" value="SurgeCalculator" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1030" y="210" width="260" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sc_f1" value="- activeRequests: Map&lt;String, Integer&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sc">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sc_f2" value="- availableDrivers: Map&lt;String, Integer&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sc">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_sc_m1" value="+ calculate(Location): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_sc">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ DriverStatus enum ════════════════════════════════════ -->
+        <mxCell id="enum_ds" value="&lt;&lt;enum&gt;&gt; DriverStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="660" width="230" height="162" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ds_v1" value="OFFLINE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ds">
+          <mxGeometry x="0" y="30" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ds_v2" value="AVAILABLE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ds">
+          <mxGeometry x="0" y="52" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ds_v3" value="DISPATCHED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ds">
+          <mxGeometry x="0" y="74" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ds_v4" value="DRIVING_TO_PICKUP" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ds">
+          <mxGeometry x="0" y="96" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ds_v5" value="WAITING_FOR_RIDER" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ds">
+          <mxGeometry x="0" y="118" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ds_v6" value="IN_TRIP" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ds">
+          <mxGeometry x="0" y="140" width="230" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ VehicleType enum ══════════════════════════════════════ -->
+        <mxCell id="enum_vt" value="&lt;&lt;enum&gt;&gt; VehicleType" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="320" y="660" width="190" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_vt_v1" value="BIKE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_vt">
+          <mxGeometry x="0" y="30" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_vt_v2" value="AUTO" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_vt">
+          <mxGeometry x="0" y="52" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_vt_v3" value="MINI" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_vt">
+          <mxGeometry x="0" y="74" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_vt_v4" value="SEDAN" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_vt">
+          <mxGeometry x="0" y="96" width="190" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ Trip.Status enum ═════════════════════════════════════ -->
+        <mxCell id="enum_ts" value="&lt;&lt;enum&gt;&gt; Trip.Status" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="560" y="660" width="220" height="162" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ts_v1" value="REQUESTED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ts">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ts_v2" value="DRIVER_ASSIGNED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ts">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ts_v3" value="DRIVER_ARRIVED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ts">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ts_v4" value="IN_PROGRESS" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ts">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ts_v5" value="COMPLETED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ts">
+          <mxGeometry x="0" y="118" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ts_v6" value="CANCELLED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ts">
+          <mxGeometry x="0" y="140" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ Relationships ════════════════════════════════════════ -->
+        <!-- Driver -uses-> Location -->
+        <mxCell id="edge_drv_loc" value="uses" style="endArrow=open;" edge="1" source="class_drv" target="class_loc" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Driver -uses-> DriverStatus -->
+        <mxCell id="edge_drv_ds" value="uses" style="endArrow=open;" edge="1" source="class_drv" target="enum_ds" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Driver -uses-> VehicleType -->
+        <mxCell id="edge_drv_vt" value="uses" style="endArrow=open;" edge="1" source="class_drv" target="enum_vt" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Trip -uses-> Location -->
+        <mxCell id="edge_trp_loc" value="uses" style="endArrow=open;" edge="1" source="class_trp" target="class_loc" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- Trip -has-> Trip.Status -->
+        <mxCell id="edge_trp_ts" value="has" style="endArrow=open;" edge="1" source="class_trp" target="enum_ts" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- MatchingEngine -uses-> Driver -->
+        <mxCell id="edge_me_drv" value="manages" style="endArrow=open;" edge="1" source="class_me" target="class_drv" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- MatchingEngine -uses-> Trip -->
+        <mxCell id="edge_me_trp" value="manages" style="endArrow=open;" edge="1" source="class_me" target="class_trp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- MatchingEngine -uses-> SurgeCalculator -->
+        <mxCell id="edge_me_sc" value="uses" style="endArrow=open;" edge="1" source="class_me" target="class_sc" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- SurgeCalculator -uses-> Location -->
+        <mxCell id="edge_sc_loc" value="uses" style="endArrow=open;" edge="1" source="class_sc" target="class_loc" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══ Lifelines ════════════════════════════════════════════ -->
+        <!-- Rider: x=60 centre=130 -->
+        <mxCell id="life_rider" value="Rider" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <!-- MatchingEngine: x=270 centre=340 -->
+        <mxCell id="life_me" value="MatchingEngine" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="270" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <!-- SurgeCalculator: x=490 centre=560 -->
+        <mxCell id="life_sc" value="SurgeCalculator" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="490" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <!-- Trip: x=710 centre=780 -->
+        <mxCell id="life_trip" value="Trip" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="710" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+        <!-- Driver: x=930 centre=1000 -->
+        <mxCell id="life_drv" value="Driver" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="930" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ Messages ═════════════════════════════════════════════ -->
+
+        <!-- msg_1: Rider → MatchingEngine: requestRide(...) y=160 -->
+        <mxCell id="msg_1" value="requestRide(riderId, pickup, dest, vehicleType)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="160" as="sourcePoint"/>
+            <mxPoint x="340" y="160" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_2: MatchingEngine → SurgeCalculator: calculate(pickup) y=200 -->
+        <mxCell id="msg_2" value="calculate(pickup)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="200" as="sourcePoint"/>
+            <mxPoint x="560" y="200" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: SurgeCalculator → MatchingEngine: surgeMultiplier y=230 -->
+        <mxCell id="ret_1" value="surgeMultiplier (1.0 - 2.5x)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="560" y="230" as="sourcePoint"/>
+            <mxPoint x="340" y="230" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_3: MatchingEngine → Trip: new Trip(...) y=270 -->
+        <mxCell id="msg_3" value="new Trip(riderId, pickup, dest, surgeMultiplier)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="270" as="sourcePoint"/>
+            <mxPoint x="780" y="270" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: Trip → MatchingEngine: trip y=300 -->
+        <mxCell id="ret_2" value="trip (status=REQUESTED)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="300" as="sourcePoint"/>
+            <mxPoint x="340" y="300" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_4: MatchingEngine → Driver: transitionTo(DISPATCHED) y=340 -->
+        <mxCell id="msg_4" value="transitionTo(DISPATCHED)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="340" as="sourcePoint"/>
+            <mxPoint x="1000" y="340" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: Driver → MatchingEngine: true y=370 -->
+        <mxCell id="ret_3" value="true (state transition succeeded)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1000" y="370" as="sourcePoint"/>
+            <mxPoint x="340" y="370" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_5: MatchingEngine → Trip: assignDriver(driverId) y=405 -->
+        <mxCell id="msg_5" value="assignDriver(driverId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="405" as="sourcePoint"/>
+            <mxPoint x="780" y="405" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: MatchingEngine → Rider: return Trip y=440 -->
+        <mxCell id="ret_4" value="Trip (tripId, driverInfo, surgePrice)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="440" as="sourcePoint"/>
+            <mxPoint x="130" y="440" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_6: Driver → MatchingEngine: accept() y=480 -->
+        <mxCell id="msg_6" value="accept() [within 30-second timeout]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1000" y="480" as="sourcePoint"/>
+            <mxPoint x="340" y="480" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_7: MatchingEngine → Driver: transitionTo(DRIVING_TO_PICKUP) y=515 -->
+        <mxCell id="msg_7" value="transitionTo(DRIVING_TO_PICKUP)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="515" as="sourcePoint"/>
+            <mxPoint x="1000" y="515" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_8: Driver → MatchingEngine: arrivedAtPickup() y=555 -->
+        <mxCell id="msg_8" value="arrivedAtPickup()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1000" y="555" as="sourcePoint"/>
+            <mxPoint x="340" y="555" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_9: Driver → MatchingEngine: startTrip() y=590 -->
+        <mxCell id="msg_9" value="startTrip()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1000" y="590" as="sourcePoint"/>
+            <mxPoint x="340" y="590" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_10: MatchingEngine → Trip: startTrip() y=620 -->
+        <mxCell id="msg_10" value="startTrip()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="620" as="sourcePoint"/>
+            <mxPoint x="780" y="620" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_11: Driver → MatchingEngine: endTrip() y=655 -->
+        <mxCell id="msg_11" value="endTrip()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1000" y="655" as="sourcePoint"/>
+            <mxPoint x="340" y="655" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_12: MatchingEngine → Trip: complete() y=685 -->
+        <mxCell id="msg_12" value="complete()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="340" y="685" as="sourcePoint"/>
+            <mxPoint x="780" y="685" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_5: Trip → MatchingEngine: farePaid y=715 -->
+        <mxCell id="ret_5" value="farePaid (fare = base + dist + time) * surge" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="780" y="715" as="sourcePoint"/>
+            <mxPoint x="340" y="715" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

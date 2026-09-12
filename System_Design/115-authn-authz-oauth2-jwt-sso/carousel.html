@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Auth & Authorization: OAuth2, JWT, SSO, RBAC — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #16213e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --gold: #f6c90e;
+    --green: #2ecc71;
+    --blue: #3498db;
+    --purple: #9b59b6;
+    --text: #eaeaea;
+    --muted: #9aa0b4;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #0d0d1a;
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text);
+  }
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+  }
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    background: linear-gradient(160deg, var(--bg) 0%, #12122a 100%);
+    border-radius: 14px;
+    padding: 28px 30px;
+    position: relative;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    font-weight: 700;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  h1 {
+    font-size: 24px;
+    margin: 0 0 10px 0;
+    line-height: 1.25;
+  }
+  h2 {
+    font-size: 19px;
+    margin: 0 0 10px 0;
+    color: var(--gold);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  p, li { font-size: 13.5px; line-height: 1.5; color: var(--text); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .stage {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+  .big-number {
+    font-size: 54px;
+    font-weight: 800;
+    color: var(--accent);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .footer-tag {
+    position: absolute;
+    bottom: 14px;
+    right: 20px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ---- Server box ---- */
+  .server-box {
+    width: 90px; height: 60px;
+    background: var(--accent2);
+    border: 2px solid #3d5a99;
+    border-radius: 6px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 6px 8px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .server-box .line {
+    height: 3px;
+    background: #4d6fb3;
+    border-radius: 2px;
+    margin: 2px 0;
+  }
+  .server-box .label {
+    position: absolute;
+    bottom: -18px;
+    left: 0; right: 0;
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .server-box.hot {
+    background: #5a1020;
+    border-color: var(--accent);
+    box-shadow: 0 0 14px rgba(233,69,96,0.7);
+  }
+  .server-box.hot .line { background: #ff8fa3; }
+
+  /* ---- DB cylinder ---- */
+  .db-cyl {
+    width: 60px;
+    position: relative;
+    margin: 0 auto;
+  }
+  .db-cyl .top {
+    width: 60px; height: 16px;
+    background: var(--blue);
+    border-radius: 50%;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .db-cyl .body {
+    width: 60px; height: 40px;
+    background: #2b6ca3;
+    margin-top: -8px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .db-cyl .bottom {
+    width: 60px; height: 16px;
+    background: #235f8f;
+    border-radius: 50%;
+    margin-top: -8px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .db-cyl .label {
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ---- Redis icon ---- */
+  .redis-icon {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    background: #d82c20;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 20px; color: #fff;
+    margin: 0 auto;
+    box-shadow: 0 0 10px rgba(216,44,32,0.6);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---- JWT badge ---- */
+  .jwt-badge {
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: 10px;
+    font-weight: 700;
+    height: 34px;
+    width: 100%;
+    max-width: 420px;
+  }
+  .jwt-badge div {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    color: #0d0d1a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .jwt-header { background: var(--gold); }
+  .jwt-payload { background: var(--green); }
+  .jwt-sig { background: var(--purple); color: #fff !important; }
+
+  /* ---- Arrow ---- */
+  .arrow-row {
+    display: flex; align-items: center; justify-content: center;
+    gap: 6px;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .arrow {
+    flex: 1;
+    height: 2px;
+    background: var(--muted);
+    position: relative;
+    max-width: 60px;
+  }
+  .arrow::after {
+    content: "";
+    position: absolute;
+    right: 0; top: -4px;
+    border-left: 8px solid var(--muted);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .flow-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 4px;
+  }
+
+  /* ---- Labeled colored squares ---- */
+  .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .sq { width: 14px; height: 14px; border-radius: 3px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ---- Table ---- */
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+  }
+  table.cmp th, table.cmp td {
+    border: 1px solid #2a2a4a;
+    padding: 6px 5px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.cmp th {
+    background: var(--accent2);
+    color: var(--gold);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  table.cmp tr:nth-child(even) td { background: #191932; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+  /* ---- Doors / campus icon ---- */
+  .campus-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .door {
+    width: 34px; height: 44px;
+    background: #2b2b52;
+    border: 2px solid #46467d;
+    border-radius: 4px 4px 0 0;
+    position: relative;
+  }
+  .door::after {
+    content: "";
+    position: absolute;
+    right: 4px; top: 20px;
+    width: 4px; height: 4px;
+    background: var(--gold);
+    border-radius: 50%;
+  }
+  .desk {
+    width: 90px; height: 50px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff;
+    margin: 0 auto 10px auto;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ---- Timeline ---- */
+  .timeline { display: flex; flex-direction: column; gap: 8px; }
+  .tl-item {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: #181834; border-radius: 6px; padding: 8px 10px;
+    border-left: 3px solid var(--blue);
+  }
+  .tl-item.danger { border-left-color: var(--accent); background: #241621; }
+  .tl-time { font-weight: 800; color: var(--gold); font-size: 11px; min-width: 62px; }
+  .tl-text { font-size: 11.5px; color: var(--text); }
+
+  /* ---- Nav controls (screen only) ---- */
+  .controls {
+    width: 540px;
+    margin: 10px auto 40px auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .controls button {
+    background: var(--accent2);
+    color: var(--text);
+    border: 1px solid #3d5a99;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: var(--accent); }
+  .counter { font-size: 14px; color: var(--muted); }
+
+  /* ---- Decision tree ---- */
+  .dtree { display: flex; flex-direction: column; gap: 6px; font-size: 11.5px; }
+  .dtree .q { color: var(--gold); font-weight: 700; }
+  .dtree .branch { padding-left: 16px; color: var(--text); }
+  .quote-box {
+    margin-top: 10px;
+    background: #181834;
+    border-left: 4px solid var(--green);
+    padding: 10px 12px;
+    font-style: italic;
+    font-size: 11.5px;
+    border-radius: 4px;
+  }
+
+  @media print {
+    body { background: #0d0d1a; }
+    .controls { display: none; }
+    .deck { margin: 0; }
+    .slide {
+      display: none !important;
+      box-shadow: none;
+      border-radius: 0;
+    }
+    .slide.active { display: flex !important; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active" data-slide="1">
+    <div class="eyebrow">Auth & Authorization</div>
+    <h1>Your auth server isn't "highly available."<br>It's a single point of failure wearing a disguise.</h1>
+    <div class="stage">
+      <div class="campus-row">
+        <div class="server-box hot"><div class="line"></div><div class="line"></div><div class="label">Auth Server</div></div>
+      </div>
+      <div style="text-align:center; margin-top:26px;">
+        <div class="big-number">20</div>
+        <p class="muted">microservices, each calling ONE central auth server on every request.</p>
+      </div>
+      <p style="text-align:center;">One blip in that box, and checkout, login, admin panel, and mobile app <b>all go down at once.</b></p>
+    </div>
+    <div class="footer-tag">OAuth2 · JWT · SSO · RBAC</div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide" data-slide="2">
+    <div class="eyebrow">The Problem</div>
+    <h2>The office-campus bottleneck</h2>
+    <div class="stage">
+      <div class="desk">FRONT DESK (Auth)</div>
+      <div class="campus-row">
+        <div class="door"></div><div class="door"></div><div class="door"></div>
+        <div class="door"></div><div class="door"></div><div class="door"></div>
+      </div>
+      <p style="text-align:center; margin-top:10px;">Every door calls the front desk, on every entry, to check your clearance.</p>
+      <p style="text-align:center;">Fine for 1 door. Collapses at <b>1,000 employees × 50 doors/min.</b></p>
+      <p class="muted" style="text-align:center;">The front desk becomes the bottleneck — and the single point of failure for the entire campus.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: THE SOLUTION - JWT badge -->
+  <div class="slide" data-slide="3">
+    <div class="eyebrow">The Solution</div>
+    <h2>A badge that verifies itself</h2>
+    <div class="stage">
+      <p>The Identity Provider (Okta / Auth0 / your auth service) verifies you <b>once</b>, then hands you a signed badge — a <b>JWT</b>.</p>
+      <div class="jwt-badge" style="margin:10px auto;">
+        <div class="jwt-header">HEADER<br>alg, kid</div>
+        <div class="jwt-payload">PAYLOAD<br>sub, roles, exp</div>
+        <div class="jwt-sig">SIGNATURE</div>
+      </div>
+      <div class="arrow-row">
+        <span>Every service</span><div class="arrow"></div><span>verifies locally</span><div class="arrow"></div><span>0.1–0.3ms, no network call</span>
+      </div>
+      <p class="muted">Public key fetched once from a JWKS endpoint, cached — no round trip to the identity provider on the hot path.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: OAuth2 flow -->
+  <div class="slide" data-slide="4">
+    <div class="eyebrow">Scenario</div>
+    <h2>OAuth2: "Login with Google"</h2>
+    <div class="stage">
+      <div class="flow-row">
+        <div class="server-box" style="width:70px;height:50px;"><div class="line"></div><div class="label">User</div></div>
+        <div class="arrow"></div>
+        <div class="server-box" style="width:70px;height:50px;"><div class="line"></div><div class="label">Your App</div></div>
+        <div class="arrow"></div>
+        <div class="server-box" style="width:70px;height:50px;"><div class="line"></div><div class="label">Google Auth</div></div>
+      </div>
+      <div class="timeline" style="margin-top:22px;">
+        <div class="tl-item"><div class="tl-time">Step 1</div><div class="tl-text">User approves scopes on <b>Google's own</b> login page — never your app.</div></div>
+        <div class="tl-item"><div class="tl-time">Step 2</div><div class="tl-text">Google redirects back with a short-lived <b>authorization code</b>.</div></div>
+        <div class="tl-item"><div class="tl-time">Step 3</div><div class="tl-text">Server-to-server exchange: code → access_token. <b>client_secret & password never touch the browser.</b></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: Session cookie vs JWT -->
+  <div class="slide" data-slide="5">
+    <div class="eyebrow">Scenario</div>
+    <h2>Session cookie vs. stateless JWT</h2>
+    <div class="stage">
+      <div style="display:flex; justify-content:space-around; align-items:center;">
+        <div style="text-align:center;">
+          <div class="redis-icon">R</div>
+          <p class="muted" style="margin-top:6px;">Session:<br>0.5–2ms<br>network I/O</p>
+        </div>
+        <div style="font-size:20px; color:var(--muted);">vs</div>
+        <div style="text-align:center;">
+          <div class="jwt-badge" style="max-width:130px; height:28px;">
+            <div class="jwt-header" style="font-size:8px;">H</div>
+            <div class="jwt-payload" style="font-size:8px;">P</div>
+            <div class="jwt-sig" style="font-size:8px;">S</div>
+          </div>
+          <p class="muted" style="margin-top:6px;">JWT:<br>0.1–0.3ms<br>local, no I/O</p>
+        </div>
+      </div>
+      <p style="text-align:center; margin-top:14px;"><b>Revoke instantly?</b></p>
+      <p style="text-align:center;">Session → <span style="color:var(--green)">DELETE row, done.</span><br>JWT → <span style="color:var(--accent)">not possible without a denylist (defeats statelessness) or waiting out the TTL.</span></p>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: Refresh token rotation -->
+  <div class="slide" data-slide="6">
+    <div class="eyebrow">Deep Dive — Trap</div>
+    <h2>Refresh token rotation & reuse detection</h2>
+    <div class="stage">
+      <div class="timeline">
+        <div class="tl-item"><div class="tl-time">T+0min</div><div class="tl-text">Login → access_token (10min) + refresh_token (30 days, hashed in DB).</div></div>
+        <div class="tl-item"><div class="tl-time">T+9min</div><div class="tl-text">Silent refresh → NEW access + refresh token. OLD refresh token marked used.</div></div>
+        <div class="tl-item danger"><div class="tl-time">Reuse!</div><div class="tl-text">Old, already-rotated refresh token reappears → <b>theft signal.</b> Revoke the entire token family, not just that request.</div></div>
+      </div>
+      <div class="db-cyl" style="margin-top:14px;"><div class="top"></div><div class="body"></div><div class="bottom"></div><div class="label">refresh_token store</div></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: JWKS key rotation trap -->
+  <div class="slide" data-slide="7">
+    <div class="eyebrow">Deep Dive — Trap</div>
+    <h2>Key rotation without a grace period</h2>
+    <div class="stage">
+      <div class="jwt-badge" style="margin: 6px auto;">
+        <div class="jwt-header">kid: key-2024-08</div>
+        <div class="jwt-payload">kid: key-2024-05</div>
+      </div>
+      <p style="text-align:center;">JWKS endpoint must publish <b>both</b> old and new signing keys during rotation.</p>
+      <p style="text-align:center; color:var(--accent);">Delete the old key too early → tokens signed 2 minutes before rotation fail verification <b>everywhere, instantly.</b></p>
+      <p class="muted" style="text-align:center;">JWKS cache TTL on verifying services: commonly 10–60 min. Keep old keys published at least that long.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: RBAC vs ABAC -->
+  <div class="slide" data-slide="8">
+    <div class="eyebrow">Scenario</div>
+    <h2>RBAC vs. ABAC</h2>
+    <div class="stage">
+      <div class="legend-row" style="justify-content:center;">
+        <div class="legend-item"><div class="sq" style="background:var(--green);"></div>RBAC = role lookup</div>
+        <div class="legend-item"><div class="sq" style="background:var(--purple);"></div>ABAC = policy engine</div>
+      </div>
+      <p style="margin-top:10px;"><b style="color:var(--green);">RBAC:</b> user.roles.contains("admin") OR ("owner") → O(1) table lookup, embedded in the JWT.</p>
+      <p><b style="color:var(--purple);">ABAC:</b> department match AND business hours AND corporate IP → evaluated by a policy engine (e.g. Open Policy Agent).</p>
+      <p class="muted">ABAC is more flexible, but harder to audit — "why was this allowed" is no longer a simple lookup.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: Comparison table -->
+  <div class="slide" data-slide="9">
+    <div class="eyebrow">Decision Framework</div>
+    <h2>Which approach, when</h2>
+    <table class="cmp">
+      <tr><th>Approach</th><th>Verify Cost</th><th>Revoke Speed</th><th>Best For</th></tr>
+      <tr><td>Session + store</td><td>Network round trip</td><td>Instant</td><td>Small/medium, revocation-critical</td></tr>
+      <tr><td>Stateless JWT</td><td>Local, &lt;1ms</td><td>Bounded (5–15min)</td><td>Microservices, mobile</td></tr>
+      <tr><td>Opaque + introspect</td><td>1 network call</td><td>Instant</td><td>Need revocation + token agility</td></tr>
+      <tr><td>RBAC</td><td>O(1), in-token</td><td>N/A</td><td>Simple CRUD permission models</td></tr>
+      <tr><td>ABAC / OPA</td><td>Policy eval, cacheable</td><td>N/A</td><td>Complex, multi-tenant, compliance</td></tr>
+    </table>
+    <p class="muted" style="margin-top:8px;">Real numbers: access token TTL 5–15min · refresh TTL 7–30 days · JWKS cache 10–60min.</p>
+  </div>
+
+  <!-- SLIDE 10: Decision tree + interview quote -->
+  <div class="slide" data-slide="10">
+    <div class="eyebrow">Interview Answer</div>
+    <h2>The decision tree</h2>
+    <div class="dtree">
+      <div class="q">20 microservices — avoid hitting a central auth server every request?</div>
+      <div class="branch">→ Short-lived, RS256-signed JWT. Verify locally via cached JWKS public key.</div>
+      <div class="q">Need to revoke a compromised user fast?</div>
+      <div class="branch">→ Short access-token TTL (~10min) + refresh token checked server-side, with reuse detection → revoke the whole token family on theft signal.</div>
+      <div class="q">Need finer-grained, changing rules?</div>
+      <div class="branch">→ Keep roles in the JWT for RBAC. Push ABAC-style rules to a policy engine, not the token.</div>
+    </div>
+    <div class="quote-box">
+      "So the worst-case exposure window for a compromised access token is capped at its own short TTL, while the refresh flow gives me a real revocation point without making every request hit the database."
+    </div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button id="prevBtn" onclick="go(-1)">◀ Prev</button>
+  <div class="counter"><span id="cur">1</span> / <span id="total">10</span></div>
+  <button id="nextBtn" onclick="go(1)">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  function render() {
+    slides.forEach(function(s, i) {
+      s.classList.toggle('active', i === idx);
+    });
+    document.getElementById('cur').textContent = idx + 1;
+  }
+
+  function go(delta) {
+    idx = (idx + delta + total) % total;
+    render();
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') go(1);
+    if (e.key === 'ArrowLeft') go(-1);
+  });
+
+  render();
+</script>
+
+</body>
+</html>

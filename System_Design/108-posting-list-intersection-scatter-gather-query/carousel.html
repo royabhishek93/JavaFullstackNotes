@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Posting-List Intersection &amp; Scatter-Gather — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .server-box {
+    width: 48px; height: 42px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 4px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .server-box.ok { border-color: #2ecc71; }
+  .server-box.ok span { background: #2ecc71; }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 26px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Posting-List Intersection</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">15ms → 340ms</div>
+      <p>49 of 50 search shards respond fast. 1 is having a bad moment. Your ENTIRE query is now as slow as the slowest one.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Nested-Loop Intersection Is Slow</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p>"system" → [3,7,19,42,100]. "design" → [7,19,55,100,300]. Naive nested loop checking every pair: O(n×m) — brutal for million-entry lists.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Two-Pointer Sorted Merge</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <p>Walk both sorted lists once. Equal → match, advance both. Smaller → advance only that pointer. O(n+m), touches each element once.</p>
+      <p>Result for the example above: [7, 19, 100].</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Skip Pointers</h1>
+    <h2>Accelerating Long Lists</h2>
+    <div class="body">
+      <p>A common term like "the" might have billions of entries. Skip pointers every ~√n entries let you JUMP ahead instead of stepping one at a time.</p>
+      <p>10M entries: ~3,000 jumps instead of up to 10M sequential steps.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Scatter-Gather</h1>
+    <h2>Across Sharded Index</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box ok"><span></span></div>Shard 0</div>
+        <div class="col"><div class="server-box ok"><span></span></div>Shard 1</div>
+        <div class="col"><div class="server-box hot"><span></span></div>Shard 2</div>
+        <div class="col"><div class="server-box ok"><span></span></div>...</div>
+      </div>
+      <p style="text-align:center">Coordinator scatters query to all shards, each does local intersection + top-K, coordinator gathers + merges.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Tail Latency Diverges</h1>
+    <h2>The Trap</h2>
+    <div class="body">
+      <table>
+        <tr><th>Shards</th><th>p50</th><th>p99</th></tr>
+        <tr><td>1</td><td>12ms</td><td>25ms</td></tr>
+        <tr><td>50</td><td>15ms</td><td>340ms</td></tr>
+        <tr><td>100</td><td>16ms</td><td>600ms+</td></tr>
+      </table>
+      <p>Response time = MAX(all shards), not average.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Fix</h1>
+    <h2>Hedged Requests + Replicas</h2>
+    <div class="body">
+      <p>If a shard's primary exceeds its own p95 threshold, fire the same request to a replica concurrently — take whichever responds first.</p>
+      <p>Small duplicate work cost, large p99 latency reduction.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Approach Comparison</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Cost</th></tr>
+        <tr><td>Nested-loop intersection</td><td>O(n×m)</td></tr>
+        <tr><td>Two-pointer merge</td><td>O(n+m)</td></tr>
+        <tr><td>+ Skip pointers</td><td>O(√n) jumps</td></tr>
+        <tr><td>Scatter-gather + hedging</td><td>Bounded by faster of primary/replica</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Index fits on 1 node? → Skip scatter-gather entirely. Sharded at scale? → Add replica shards + hedged requests, non-negotiable.</p>
+      <div class="quote-box">
+        "My overall response time is bounded by the SLOWEST of those shards. The mitigation is hedged requests combined with replica shards — if a shard hasn't responded within its own p95 threshold, I fire the same request to a replica concurrently."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

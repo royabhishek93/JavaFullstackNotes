@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Optimistic vs Pessimistic Locking — Slide Deck</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #16213e;
+    --panel2: #0f3460;
+    --text: #e6e6f0;
+    --muted: #8892b0;
+    --accent: #e94560;
+    --accent2: #f9c74f;
+    --good: #43aa8b;
+    --good-text: #7ee8b6;
+    --bad: #e94560;
+    --neutral: #577380;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+    height: 100%;
+  }
+  .deck {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 0;
+  }
+  .slide {
+    display: none;
+    width: 940px;
+    max-width: 96vw;
+    min-height: 620px;
+    background: linear-gradient(160deg, var(--panel) 0%, var(--bg) 100%);
+    border: 1px solid #2b2f52;
+    border-radius: 14px;
+    padding: 32px 42px;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+  }
+  .slide.active { display: block; }
+  .kicker {
+    color: var(--accent2);
+    font-size: 13px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 26px;
+    margin: 0 0 14px 0;
+    color: #fff;
+    border-bottom: 2px solid var(--panel2);
+    padding-bottom: 10px;
+  }
+  h2 { font-size: 16px; color: var(--accent2); margin: 14px 0 8px 0; }
+  p { line-height: 1.5; color: var(--text); font-size: 14px; }
+  code, pre {
+    font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+  }
+  pre.code {
+    background: #0c1226;
+    border: 1px solid #2b2f52;
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    color: #c8d3f5;
+    overflow-x: auto;
+    line-height: 1.5;
+    margin: 8px 0;
+  }
+  .comment { color: #6b7aa8; }
+
+  /* ---------- Timeline / sequence diagram ---------- */
+  .timeline {
+    background: #0c1226;
+    border: 1px solid #2b2f52;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin: 10px 0;
+  }
+  .time-axis {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding-left: 78px;
+  }
+  .time-axis span {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+    border-left: 1px dashed #33396a;
+    padding-left: 4px;
+  }
+  .lane { display: flex; align-items: stretch; gap: 6px; margin-bottom: 6px; }
+  .lane-label {
+    width: 72px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    font-size: 12px;
+    color: #fff;
+  }
+  .lane-label.a { color: #7ee8b6; }
+  .lane-label.b { color: #ffb3c1; }
+  .lane-track { flex: 1; display: flex; gap: 6px; }
+  .ev {
+    flex: 1;
+    border-radius: 6px;
+    border: 2px solid;
+    padding: 6px 6px;
+    font-size: 10.5px;
+    text-align: center;
+    line-height: 1.35;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .ev.locked   { background: rgba(233,69,96,0.18);  border-color: var(--accent);  color: #ff9fb0; }
+  .ev.blocked  { background: rgba(249,199,79,0.16);  border-color: var(--accent2); color: var(--accent2); }
+  .ev.success  { background: rgba(67,170,139,0.18);  border-color: var(--good);   color: var(--good-text); }
+  .ev.fail     { background: rgba(87,115,128,0.25);  border-color: var(--neutral);color: #c3cfd9; }
+  .ev.idle     { background: transparent; border-color: transparent; }
+  .ev.warn     { background: rgba(233,69,96,0.28); border-color: var(--accent); color: #fff; font-weight: 700; }
+
+  /* ---------- DB row icon ---------- */
+  .db-row {
+    position: relative;
+    border: 2px solid #3d4a8a;
+    background: #10173a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    width: fit-content;
+    margin: 10px 0;
+  }
+  .db-row .db-title { font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 1px; }
+  .db-cells { display: flex; gap: 8px; }
+  .db-cell {
+    border: 1px solid #33396a;
+    background: #0c1226;
+    padding: 5px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #c8d3f5;
+  }
+  .padlock {
+    position: absolute;
+    top: -14px;
+    right: -16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .padlock .shackle {
+    width: 16px;
+    height: 12px;
+    border: 3px solid var(--accent2);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+  }
+  .padlock .body {
+    width: 34px;
+    height: 20px;
+    background: var(--accent);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: 0.5px;
+  }
+
+  /* ---------- Server / txn boxes + arrows ---------- */
+  .flow-row { display: flex; align-items: center; gap: 14px; margin: 12px 0; flex-wrap: wrap; }
+  .box {
+    border: 2px solid #3d4a8a;
+    background: #10173a;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    text-align: center;
+    min-width: 110px;
+  }
+  .box.txn-a { border-color: var(--good); color: var(--good-text); }
+  .box.txn-b { border-color: var(--accent); color: #ff9fb0; }
+  .box.neutral { color: var(--text); }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .arrow-down { font-size: 18px; color: var(--muted); text-align: center; margin: 4px 0; }
+
+  /* ---------- Grid layout helpers ---------- */
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  .card {
+    background: #10173a;
+    border: 1px solid #2b2f52;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .card h3 { margin: 0 0 6px 0; font-size: 13px; color: var(--accent2); }
+  .card.exclusive { border-left: 4px solid var(--accent); }
+  .card.shared { border-left: 4px solid var(--accent2); }
+  .card.tablelock { border-left: 4px solid var(--neutral); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .badge.good { background: rgba(67,170,139,0.25); color: var(--good-text); }
+  .badge.bad { background: rgba(233,69,96,0.25); color: #ff9fb0; }
+  .badge.warn { background: rgba(249,199,79,0.25); color: var(--accent2); }
+
+  /* ---------- Decision framework flowchart ---------- */
+  .flowchart { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 10px; }
+  .fnode {
+    border: 2px solid #3d4a8a;
+    background: #10173a;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 12px;
+    text-align: center;
+  }
+  .fnode.q { border-color: var(--accent2); color: var(--accent2); }
+  .fnode.yes { border-color: var(--good); color: var(--good-text); }
+  .fnode.no { border-color: var(--neutral); color: #c3cfd9; }
+  .fbranch { display: flex; gap: 60px; }
+  .fbranch-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .flabel { font-size: 10px; color: var(--muted); }
+
+  /* ---------- Table ---------- */
+  table.ref {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    font-size: 12px;
+  }
+  table.ref th, table.ref td {
+    border: 1px solid #2b2f52;
+    padding: 7px 10px;
+    text-align: left;
+  }
+  table.ref th {
+    background: var(--panel2);
+    color: #fff;
+    font-size: 11.5px;
+  }
+  table.ref td:first-child { color: var(--accent2); font-weight: 600; }
+  table.ref tr:nth-child(even) td { background: #10173a; }
+
+  /* ---------- Examples grid ---------- */
+  .ex-card {
+    background: #10173a;
+    border: 1px solid #2b2f52;
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .ex-card h3 { margin: 0 0 4px 0; font-size: 13px; color: #fff; }
+  .ex-card p { font-size: 11.5px; margin: 0; color: var(--muted); }
+  .quote {
+    margin-top: 16px;
+    border-left: 4px solid var(--accent2);
+    background: #10173a;
+    padding: 12px 16px;
+    font-style: italic;
+    font-size: 13px;
+    color: #e6e6f0;
+  }
+
+  /* ---------- Nav controls ---------- */
+  .nav {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: #10173acc;
+    border: 1px solid #2b2f52;
+    border-radius: 30px;
+    padding: 8px 18px;
+    z-index: 10;
+  }
+  .nav button {
+    background: var(--panel2);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .nav button:hover { background: var(--accent); }
+  .nav .counter { font-size: 13px; color: var(--muted); min-width: 50px; text-align: center; }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: var(--bg) !important; }
+    .nav { display: none !important; }
+    .deck { display: block; padding: 0; min-height: auto; }
+    .slide {
+      display: block !important;
+      page-break-after: always;
+      width: 540px;
+      height: 540px;
+      max-width: 540px;
+      min-height: 540px;
+      margin: 0;
+      border-radius: 0;
+      padding: 16px 20px;
+      overflow: hidden;
+      transform: scale(1);
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .slide * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    h1 { font-size: 17px; padding-bottom: 6px; margin-bottom: 8px; }
+    h2 { font-size: 11px; }
+    p { font-size: 9.5px; }
+    pre.code { font-size: 8px; padding: 6px 8px; }
+    .kicker { font-size: 9px; }
+    table.ref { font-size: 8px; }
+    .ev { font-size: 7.5px; padding: 4px 3px; }
+    .time-axis span { font-size: 7.5px; }
+    .lane-label { font-size: 8.5px; width: 46px; }
+    .box { font-size: 8.5px; padding: 6px 8px; min-width: 70px; }
+    .card h3 { font-size: 9.5px; }
+    .ex-card h3 { font-size: 9.5px; }
+    .ex-card p { font-size: 8px; }
+    .quote { font-size: 9px; padding: 8px 10px; margin-top: 8px; }
+    .fnode { font-size: 8.5px; padding: 5px 8px; }
+    .flabel { font-size: 7.5px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active">
+    <div class="kicker">Optimistic vs Pessimistic Locking · 1/9</div>
+    <h1>Two People, One Seat, One Millisecond</h1>
+    <p>User A and User B both see seat <strong>14A</strong> as available. Both click "Book" at nearly
+    the same instant. Both read <em>available</em>. Both write <em>booked by me</em>.</p>
+
+    <div class="flow-row" style="justify-content:center;">
+      <div class="box txn-a">User A<br><span class="badge good">reads: available</span></div>
+      <div class="arrow">→</div>
+      <div class="box neutral">seat 14A</div>
+      <div class="arrow">←</div>
+      <div class="box txn-b">User B<br><span class="badge good">reads: available</span></div>
+    </div>
+    <div class="arrow-down" style="text-align:center;">▼ &nbsp; both write &nbsp; ▼</div>
+    <div class="flow-row" style="justify-content:center;">
+      <div class="box txn-a">User A writes<br>status = booked</div>
+      <div class="box txn-b">User B writes<br>status = booked</div>
+    </div>
+    <div class="arrow-down">▼</div>
+    <div class="db-row" style="margin:0 auto;">
+      <div class="db-title">seats — row id=14 (naive, no coordination)</div>
+      <div class="db-cells">
+        <div class="db-cell">status: booked</div>
+        <div class="db-cell">user_id: ???</div>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:14px;"><span class="badge bad">BUG</span>
+    Both users get a confirmation email. Both show up at the gate. One person sits on the floor.</p>
+    <p style="text-align:center;">Locking is how you prevent two transactions from corrupting shared data —
+    <strong>pessimistic</strong> (lock first, assume the worst) vs <strong>optimistic</strong> (check at write time, assume the best).</p>
+  </section>
+
+  <!-- SLIDE 2: PESSIMISTIC LOCKING -->
+  <section class="slide">
+    <div class="kicker">Pessimistic Locking · 2/9</div>
+    <h1>SELECT ... FOR UPDATE — Lock First, Ask Questions Later</h1>
+    <pre class="code">BEGIN;
+SELECT * FROM seats WHERE id = 14 AND status = 'available' FOR UPDATE;
+<span class="comment">-- ↑ this LOCKS the row. User B cannot read-for-update or write this row.</span>
+
+UPDATE seats SET status = 'booked', user_id = 'userA' WHERE id = 14;
+COMMIT;
+<span class="comment">-- Lock released here.</span></pre>
+
+    <div class="db-row" style="margin:6px auto;">
+      <div class="padlock"><div class="shackle"></div><div class="body">LOCKED</div></div>
+      <div class="db-title">seats — row id=14 (held by User A's transaction)</div>
+      <div class="db-cells">
+        <div class="db-cell">id: 14</div>
+        <div class="db-cell">status: available</div>
+        <div class="db-cell">user_id: null</div>
+      </div>
+    </div>
+
+    <div class="timeline">
+      <div class="time-axis"><span>T=0ms</span><span>T=1ms</span><span>T=5ms</span><span>T=6ms</span><span>T=7ms</span></div>
+      <div class="lane">
+        <div class="lane-label a">User A</div>
+        <div class="lane-track">
+          <div class="ev locked">SELECT FOR UPDATE<br>lock acquired</div>
+          <div class="ev idle"></div>
+          <div class="ev success">UPDATE + COMMIT<br>lock released</div>
+          <div class="ev idle"></div>
+          <div class="ev idle"></div>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lane-label b">User B</div>
+        <div class="lane-track">
+          <div class="ev idle"></div>
+          <div class="ev blocked">SELECT FOR UPDATE<br>BLOCKED (waiting)</div>
+          <div class="ev blocked">lock granted<br>reads row</div>
+          <div class="ev fail">sees status='booked'<br>no seat → error</div>
+          <div class="ev success">✓ only one booking,<br>correct</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: LOCK TYPES -->
+  <section class="slide">
+    <div class="kicker">Lock Types (InnoDB / MySQL) · 3/9</div>
+    <h1>Exclusive vs Shared vs Table-Level Locks</h1>
+    <div class="cols-3">
+      <div class="card exclusive">
+        <h3>SELECT ... FOR UPDATE <span class="badge bad">Exclusive (X)</span></h3>
+        <p>Nobody else can read-for-update OR write this row. Full ownership until COMMIT.</p>
+        <div class="db-row" style="margin:8px auto 0;">
+          <div class="padlock"><div class="shackle"></div><div class="body">LOCKED</div></div>
+          <div class="db-title">row 14</div>
+          <div class="db-cells"><div class="db-cell">X-lock</div></div>
+        </div>
+      </div>
+      <div class="card shared">
+        <h3>SELECT ... FOR SHARE <span class="badge warn">Shared (S)</span></h3>
+        <p>Also: <code>LOCK IN SHARE MODE</code>. Others can also read-for-share, but nobody can write.</p>
+        <div class="flow-row" style="justify-content:center;gap:6px;margin:8px 0 0;">
+          <div class="box neutral" style="min-width:70px;padding:6px 8px;">reader 1</div>
+          <div class="box neutral" style="min-width:70px;padding:6px 8px;">reader 2</div>
+        </div>
+      </div>
+      <div class="card tablelock">
+        <h3>LOCK TABLES seats WRITE <span class="badge bad">Table-level</span></h3>
+        <p>Locks the <strong>entire table</strong>. Never use in OLTP — kills concurrency for every row, not just the contended one.</p>
+      </div>
+    </div>
+    <div class="quote" style="margin-top:20px;">
+      Rule of thumb: default to row-level <strong>FOR UPDATE</strong> when you intend to write;
+      use <strong>FOR SHARE</strong> only when you need to read-and-verify without blocking other readers.
+    </div>
+  </section>
+
+  <!-- SLIDE 4: DEADLOCK PROBLEM -->
+  <section class="slide">
+    <div class="kicker">Pessimistic Locking · 4/9</div>
+    <h1>The Deadlock Problem</h1>
+    <div class="flow-row" style="justify-content:center;">
+      <div class="box txn-a">Txn A<br>holds Row 1<br>wants Row 2</div>
+      <div class="arrow">⇄</div>
+      <div class="box txn-b">Txn B<br>holds Row 2<br>wants Row 1</div>
+    </div>
+    <div class="timeline">
+      <div class="time-axis"><span>T=0ms</span><span>T=1ms</span><span>T=2ms</span><span>T=3ms</span></div>
+      <div class="lane">
+        <div class="lane-label a">Txn A</div>
+        <div class="lane-track">
+          <div class="ev locked">locks Row 1<br>(seat 14A)</div>
+          <div class="ev blocked">wants Row 2<br>BLOCKED (B holds it)</div>
+          <div class="ev success">deadlock detector<br>fires → A proceeds</div>
+          <div class="ev idle"></div>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lane-label b">Txn B</div>
+        <div class="lane-track">
+          <div class="ev locked">locks Row 2<br>(seat 14B)</div>
+          <div class="ev blocked">wants Row 1<br>BLOCKED (A holds it)</div>
+          <div class="ev warn">MySQL kills Txn B<br>(rolls back)</div>
+          <div class="ev fail">ERROR 1213: Deadlock<br>found when trying to get lock</div>
+        </div>
+      </div>
+    </div>
+    <div class="quote">
+      Fix: always lock rows in the <strong>same order</strong> in every transaction.
+      Txn A: Row 1 → Row 2. Txn B: Row 1 → Row 2. Same order → deadlock impossible.
+    </div>
+  </section>
+
+  <!-- SLIDE 5: OPTIMISTIC LOCKING -->
+  <section class="slide">
+    <div class="kicker">Optimistic Locking · 5/9</div>
+    <h1>Version Column — Check at Write Time, Not Read Time</h1>
+    <pre class="code">CREATE TABLE seats (
+    id INT PRIMARY KEY, status VARCHAR(20), user_id INT,
+    version INT DEFAULT 0   <span class="comment">-- the version counter</span>
+);
+<span class="comment">-- User A writes (checks version hasn't changed):</span>
+UPDATE seats SET status='booked', user_id='userA', version=version+1
+WHERE id = 14 AND version = 5;  <span class="comment">-- the optimistic check</span></pre>
+
+    <div class="timeline">
+      <div class="time-axis"><span>T=0ms</span><span>T=5ms</span><span>T=6ms</span><span>T=7ms</span></div>
+      <div class="lane">
+        <div class="lane-label a">User A</div>
+        <div class="lane-track">
+          <div class="ev idle">reads version=5<br>(no lock)</div>
+          <div class="ev success">UPDATE WHERE version=5<br>SUCCESS · now version=6</div>
+          <div class="ev idle"></div>
+          <div class="ev idle"></div>
+        </div>
+      </div>
+      <div class="lane">
+        <div class="lane-label b">User B</div>
+        <div class="lane-track">
+          <div class="ev idle">reads version=5<br>(no lock)</div>
+          <div class="ev fail">UPDATE WHERE version=5<br>FAILS · 0 rows affected</div>
+          <div class="ev blocked">detects 0 rows updated<br>→ retry or error</div>
+          <div class="ev success">✓ only one booking,<br>correct</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cols-2" style="margin-top:10px;">
+      <pre class="code">@Entity
+public class Seat {
+    @Id private Long id;
+    private String status;
+    @Version              <span class="comment">// Hibernate manages version</span>
+    private Integer version;
+}</pre>
+      <pre class="code">try {
+    seat.setStatus("booked");
+    seatRepository.save(seat);
+} catch (OptimisticLockException e) {
+    return status(409).body("try again");
+}</pre>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: DEADLOCK PREVENTION RULES -->
+  <section class="slide">
+    <div class="kicker">Deadlock Prevention · 6/9</div>
+    <h1>Three Rules That Eliminate Deadlocks</h1>
+    <div class="cols-3">
+      <div class="card">
+        <h3>Rule 1 — Same lock order</h3>
+        <p><span class="badge bad">WRONG</span> A: lock 100→200. B: lock 200→100. → deadlock possible.</p>
+        <p><span class="badge good">RIGHT</span> Always ascending by id. A: 100→200. B: 100→200 (blocks on 100, then proceeds).</p>
+      </div>
+      <div class="card">
+        <h3>Rule 2 — Keep transactions short</h3>
+        <p><span class="badge bad">WRONG</span> BEGIN → FOR UPDATE → call external API (2s, lock held) → UPDATE → COMMIT.</p>
+        <p><span class="badge good">RIGHT</span> call external API first (no lock) → BEGIN → FOR UPDATE → UPDATE → COMMIT (lock held &lt;10ms).</p>
+      </div>
+      <div class="card">
+        <h3>Rule 3 — Never upgrade locks</h3>
+        <p><span class="badge bad">WRONG</span> A reads (shared), then UPDATE (wants exclusive) while B also holds shared → both wait forever.</p>
+        <p><span class="badge good">RIGHT</span> If you'll write, use <code>FOR UPDATE</code> from the start. Don't read-then-upgrade.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7: DECISION FRAMEWORK -->
+  <section class="slide">
+    <div class="kicker">Decision Framework · 7/9</div>
+    <h1>Which Lock Strategy Should You Use?</h1>
+    <div class="flowchart">
+      <div class="fnode q">Is the data highly contended?<br>(many users competing for the same row)</div>
+      <div class="fbranch">
+        <div class="fbranch-col">
+          <div class="flabel">YES</div>
+          <div class="fnode yes">Pessimistic Locking<br>(SELECT FOR UPDATE)</div>
+          <div class="flabel" style="max-width:220px;text-align:center;">seat booking · inventory deduction ·
+            flash-sale limited stock · bank account transfer</div>
+        </div>
+        <div class="fbranch-col">
+          <div class="flabel">NO</div>
+          <div class="fnode q">Conflict rate &lt; 10%?</div>
+          <div class="fbranch">
+            <div class="fbranch-col">
+              <div class="flabel">YES</div>
+              <div class="fnode yes">Optimistic Locking<br>(@Version)</div>
+              <div class="flabel" style="max-width:150px;text-align:center;">profile update · CMS editing · config updates</div>
+            </div>
+            <div class="fbranch-col">
+              <div class="flabel">NO</div>
+              <div class="fnode no">Rethink the data model:<br>queue (one writer) or<br>partition the data</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8: QUICK REFERENCE CARD -->
+  <section class="slide">
+    <div class="kicker">Quick Reference · 8/9</div>
+    <h1>Pessimistic vs Optimistic — Side by Side</h1>
+    <table class="ref">
+      <tr><th></th><th>Pessimistic Locking</th><th>Optimistic Locking</th></tr>
+      <tr><td>Mechanism</td><td>SELECT FOR UPDATE</td><td>WHERE version = N</td></tr>
+      <tr><td>Lock held?</td><td>Yes (until COMMIT)</td><td>No</td></tr>
+      <tr><td>Conflict detection</td><td>At read time</td><td>At write time</td></tr>
+      <tr><td>On conflict</td><td>Block / wait</td><td>Fail, retry</td></tr>
+      <tr><td>Throughput</td><td>Lower (blocking)</td><td>Higher (no blocking)</td></tr>
+      <tr><td>Deadlock risk</td><td>Yes (if not careful)</td><td>No (no locks held)</td></tr>
+      <tr><td>JPA / Hibernate</td><td>@Lock(PESSIMISTIC_WRITE)</td><td>@Version</td></tr>
+      <tr><td>Example use case</td><td>Seat booking, payment</td><td>Profile update, draft</td></tr>
+    </table>
+  </section>
+
+  <!-- SLIDE 9: REAL-WORLD EXAMPLES + QUOTE -->
+  <section class="slide">
+    <div class="kicker">Where This Shows Up · 9/9</div>
+    <h1>Real-World Examples From Your System Designs</h1>
+    <div class="cols-2">
+      <div class="ex-card">
+        <h3>Payment System <span class="badge bad">Pessimistic</span></h3>
+        <p>SELECT FOR UPDATE on the account row. Without it, two concurrent debits both read balance=1000,
+        both approve, account goes negative.</p>
+      </div>
+      <div class="ex-card">
+        <h3>Ticket Booking <span class="badge bad">Pessimistic</span></h3>
+        <p>SELECT FOR UPDATE on the seat row so exactly one of two simultaneous clicks wins;
+        the loser sees the committed "booked" state and fails gracefully.</p>
+      </div>
+      <div class="ex-card">
+        <h3>Hotel Booking <span class="badge good">Optimistic</span></h3>
+        <p>Lower contention than seats. @Version: read, attempt update, retry on version mismatch.
+        Better throughput, retry cost is acceptable.</p>
+      </div>
+      <div class="ex-card">
+        <h3>Stock Broker <span class="badge bad">Pessimistic</span></h3>
+        <p>Order matching locks both sides of a trade to calculate fill price atomically.
+        Consistent lock order (lower order_id first) avoids deadlocks between matching threads.</p>
+      </div>
+    </div>
+    <div class="quote">
+      "Use pessimistic locking when the cost of a conflict (double booking, negative balance) is higher than the
+      cost of waiting; use optimistic locking when conflicts are rare and retrying is cheap."
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">◀ Prev</button>
+  <span class="counter"><span id="cur">1</span> / <span id="total">9</span></span>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('total').textContent = total;
+
+  function show(i) {
+    idx = (i + total) % total;
+    slides.forEach(function (s, n) { s.classList.toggle('active', n === idx); });
+    document.getElementById('cur').textContent = idx + 1;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', function () { show(idx - 1); });
+  document.getElementById('nextBtn').addEventListener('click', function () { show(idx + 1); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') show(idx - 1);
+    if (e.key === 'ArrowRight') show(idx + 1);
+  });
+
+  show(0);
+</script>
+</body>
+</html>

@@ -87,6 +87,20 @@ public class CounterDemo {
 
 **Note on `join()`:** It ensures the main thread waits. Without it, output can be even smaller.
 
+### Lost Update, Visualized (ASCII Lane Diagram)
+
+```
+Lanes:  T1 = Thread-1 | Mem = count (shared, starts at 0) | T2 = Thread-2
+
+1) T1 ─────────────> Mem : read count = 0
+2)            T2 ─────────> Mem : read count = 0
+3) T1 ─────────────> Mem : write count = 1 (0+1)
+4)            T2 ─────────> Mem : write count = 1 (0+1)
+
+Note (over Mem): Expected 2, got 1, lost update
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ---
 
 ## Why It Happens (Simple English)

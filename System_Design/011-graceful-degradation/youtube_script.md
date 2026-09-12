@@ -1,0 +1,32 @@
+# Graceful Degradation — YouTube Script
+Duration: ~10 min | Target: Engineers 3–10 YOE | Episode: 12 of 20
+
+## HOOK (0:00–0:30)
+"Twenty microservices power your product page. If ANY one of them going down crashes the whole page, you don't have a system — you have twenty single points of failure stacked on top of each other. Today I'm showing you graceful degradation: the discipline of deciding, in advance, exactly which features are allowed to fail quietly, and which ones must never break at all."
+
+[Screen cue: A product page with 20 labeled service dependencies, one lighting up red, and the whole page crashing with a big red X.]
+
+## THE PROBLEM (0:30–2:00)
+"Think about it this way — picture a car. If the air conditioning stops working, the car still drives. If the radio dies, you still get to work. If the power steering fails, you can still steer, just with more effort. Only engine failure actually stops the car. Graceful degradation applies that exact same idea to software: separate your CRITICAL features — the ones where failure means the user's core task is broken — from your NON-CRITICAL features, where failure should just degrade the experience, not end it. For an e-commerce product page, Product Service and Inventory Service are critical — without them there's no page at all. Recommendations, reviews, dynamic pricing, ads, and wishlists are non-critical — if any of them fail, the page should still load, just without that one section."
+
+[Screen cue: Draw the car dashboard analogy fading into a labeled diagram — CRITICAL (Product, Inventory) in red boxes, NON-CRITICAL (Recommendations, Reviews, Pricing, Ads) in yellow boxes.]
+
+## THE SOLUTION (2:00–5:00)
+"Now watch what happens when each non-critical service fails, with the right fallback in place. Recommendation Service down? Show 'Bestsellers in this category' — a static list pre-computed and refreshed in Redis every five minutes, not the live personalized algorithm. Review Service down? Hide the reviews section entirely — never show '0 stars,' because that's misleading, it looks like real data when it isn't. Pricing Service down? Fall back to the base price with no discount, but never show 'no price' — that would block the sale. Ad Service down? Just show blank space — no revenue from that slot today, but zero impact on the rest of the page. The implementation pattern is parallel calls with per-call timeouts: fire off requests to Product, Recommendations, and Reviews simultaneously using CompletableFuture, give Product Service NO fallback because it's critical and should throw if it fails, but give Recommendations a one-second timeout with an `exceptionally()` fallback to the cached bestsellers list, and give Reviews a fallback of `null`, which simply means 'hide this section' rather than showing broken or fake data."
+
+[Screen cue: Draw three parallel timeline bars — Product (throws on failure), Recommendations (falls back to cache), Reviews (falls back to null/hidden) — all completing around the same time.]
+
+## DEEP DIVE — WHERE ENGINEERS GET IT WRONG (5:00–8:00)
+"Here's the trap: engineers build the fallback logic but never actually test what happens when the PRIMARY fallback ALSO fails. The right pattern is a fallback chain, not a single fallback: try the live recommendation service first with a tight timeout, on failure try Redis's pre-computed category bestsellers, if Redis is unreachable too, fall back further to global bestsellers which is always warm, and only as an absolute last resort return an empty list rather than an error. Second trap: showing stale data labeled as if it were live. If you're serving five-minute-old cached recommendations, label the section 'Trending' instead of 'Recommended For You' — never let a user believe personalized, live data is being shown when it's actually a stale fallback, because that erodes trust in a subtler way than an outright failure would. And the most operationally valuable trap to know about: feature flags for EMERGENCY degradation. During a live incident, you don't want to be waiting on a code deploy to turn off a broken feature — with a feature flag service like LaunchDarkly or GrowthBook, an on-call engineer can disable recommendations for all users, or even just a percentage of users, in under one second, no deploy required, buying the team time to actually fix the underlying service without customer impact continuing to compound."
+
+[Screen cue: Draw the fallback chain — Live service → Redis category cache → Global cache → Empty list — with a "labeled as Trending, not For You" caption; then a feature-flag toggle switching instantly from ON to OFF.]
+
+## REAL WORLD (8:00–9:30)
+"Think about a social platform like Instagram, hugely popular in India — if the recommendation algorithm powering suggested posts goes down, the fix is showing 'Most Popular Posts,' a cached static list refreshed every five minutes, while the core feed of posts from people you follow keeps loading completely normally, because that's on a totally separate code path. Think about Flipkart or Myntra — if the product review service goes down during a sale, the product page still shows price, description, and the add-to-cart button; only the reviews section disappears, and checkout keeps flowing, which is what actually matters for revenue. And think about Hotstar during a big cricket match — if the recommendation engine for 'what to watch next' fails under that traffic spike, the home screen falls back to a cached 'Top 10 Trending' list refreshed every ten minutes, so users land on content immediately and the recommendation outage is completely invisible to them."
+
+[Screen cue: Three logo-style cards — "Instagram-style: feed loads, recommendations degrade to popular posts", "Flipkart/Myntra: checkout flows even if reviews are down", "Hotstar: Top 10 Trending fallback during traffic spikes".]
+
+## OUTRO + NEXT EPISODE (9:30–10:00)
+"So remember: separate your critical path from your nice-to-haves before an incident happens, build a fallback CHAIN not just a single fallback, always label stale data honestly, and keep a feature flag ready so you can kill a broken feature in one second flat. Subscribe for Episode 13, where we cover idempotency keys — including the exact header that prevents a network retry from charging your customer's card twice."
+
+[Screen cue: "NEXT: Episode 13 — Idempotency Keys" title card with subscribe animation.]

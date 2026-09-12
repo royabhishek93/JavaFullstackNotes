@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Operational Transformation — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c; --alice: #4fc3f7; --bob: #ff7043;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+  /* Document icon — stack of text lines, like a page */
+  .doc-icon { width: 64px; height: 76px; background: #2b2b48; border: 1px solid var(--border); border-radius: 4px; padding: 8px 6px; position: relative; margin: 0 auto; }
+  .doc-icon span { display: block; height: 4px; background: var(--muted); border-radius: 2px; margin-bottom: 6px; }
+  .doc-icon span:nth-child(3) { width: 70%; }
+  .doc-icon.hi span { background: var(--accent); }
+
+  /* Blinking text cursor, colored per user */
+  .cursor-icon { width: 3px; height: 18px; display: inline-block; vertical-align: middle; border-radius: 1px; }
+  .cursor-alice { background: var(--alice); }
+  .cursor-bob { background: var(--bob); }
+  .user-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .chip-alice { background: rgba(79,195,247,0.18); color: var(--alice); }
+  .chip-bob { background: rgba(255,112,67,0.18); color: var(--bob); }
+
+  /* Operation badge — insert/delete op */
+  .op-badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; font-family: monospace; }
+  .op-insert { background: rgba(0,191,165,0.2); color: var(--green); }
+  .op-delete { background: rgba(231,76,60,0.2); color: #e74c3c; }
+
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+
+  .arrow { font-size: 26px; color: var(--muted); }
+  .arrow.transform { color: var(--accent); font-weight: 700; }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Operational Transformation</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">16ms</div>
+      <p>That's the entire time budget Google Docs gives itself to make your keystroke feel instant — <b>before the server has even seen it</b>. Two people type in the same sentence, at the same time. Here's how they don't corrupt each other's edit.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Index-Shift Problem</h1>
+    <h2>Two Cursors, One Sentence</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="doc-icon"><span></span><span></span><span></span><span></span></div>"Hello"<br><span class="cursor-icon cursor-alice"></span> <span class="user-chip chip-alice">Alice: insert @2</span></div>
+        <div class="col"><div class="doc-icon"><span></span><span></span><span></span><span></span></div>"Hello"<br><span class="cursor-icon cursor-bob"></span> <span class="user-chip chip-bob">Bob: delete @3</span></div>
+      </div>
+      <p>Both edits reference the <b>same starting document</b>. Apply Bob's delete blindly after Alice's insert lands, and position 3 no longer points at the character he meant — Alice's insert already shifted it right.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Operation Model</h1>
+    <h2>Every Edit Is a Tagged Operation</h2>
+    <div class="body">
+      <div class="row">
+        <span class="op-badge op-insert">insert(pos, text)</span>
+        <span class="op-badge op-delete">delete(pos, length)</span>
+      </div>
+      <p style="text-align:center">Not the whole document — a tiny delta, tens of bytes, tagged with the <b>revision number</b> the client last saw ("I made this against revision 10").</p>
+      <p style="text-align:center">This is the foundation server-authoritative OT builds on: one server, one revision log, clients apply locally &amp; optimistically first.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Transform &amp; Converge</h1>
+    <h2>xform(opA, opB) → opA'</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><span class="user-chip chip-alice">insert(2,"X")</span></div>
+        <div class="arrow transform">⇄</div>
+        <div class="col"><span class="user-chip chip-bob">delete(3,1)</span></div>
+      </div>
+      <p style="text-align:center">Server commits Alice's insert first → doc is "HeXllo". Bob's delete(3,1) is transformed to <b>delete(4,1)</b> because Alice's insert shifted the target character right one slot.</p>
+      <p style="text-align:center"><span class="check-mark">✓</span> Alice, Bob, and the server all converge on <b>"HeXlo"</b> — this convergence guarantee is the <b>TP2 property</b>.</p>
+      <p style="text-align:center">4 transform cases: Insert/Insert, Insert/Delete, Delete/Insert, Delete/Delete. <b>Delete/Delete overlap</b> is the genuinely hard case — you must compute the range intersection so you don't double-delete.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Server-Authoritative Pipeline</h1>
+    <h2>One Truth, Many Clients</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="doc-icon"><span></span><span></span></div>Client A</div>
+        <div class="col"><div class="doc-icon"><span></span><span></span></div>Client B</div>
+        <div class="col"><div class="doc-icon"><span></span><span></span></div>Client C</div>
+      </div>
+      <div class="row"><div class="arrow">↓ &nbsp; ↓ &nbsp; ↓</div></div>
+      <div class="row"><div class="server-box"><span></span><span></span><span></span></div></div>
+      <p style="text-align:center">Server transforms each incoming op against every committed op the client missed, applies it, bumps the revision, then broadcasts the <b>transformed</b> op — never the client's raw original.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Trap: Offline Reconnect</h1>
+    <h2>The Local-View "Jump" Bug</h2>
+    <div class="body">
+      <p>Alice's wifi drops 8 seconds mid-edit. She queues 3 local ops against her stale revision. On reconnect, if her client doesn't transform its OWN queued ops against what she missed, her screen visibly <b>jumps</b> when the correction arrives — a classic bug in early Etherpad/Google Wave clients.</p>
+      <p><b>Fix (Google Docs, ShareDB):</b> cap the client to ONE in-flight op; buffer further keystrokes into a single composed op until ACK.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Trap: Transform Cost Blowup</h1>
+    <h2>O(N) Missed Operations</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Normal sync<br>N = 1-5</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>10 min offline<br>N = hundreds</div>
+      </div>
+      <p style="text-align:center"><b>Fix:</b> production systems snapshot the document periodically — a badly-behind client re-fetches the snapshot + current revision instead of replaying the full op log.</p>
+      <p style="text-align:center">Cautionary tale: Google Wave's own transform bugs — a subtly wrong transform silently diverges documents, no crash, no warning — were a documented factor in the project's struggles.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>OT vs Alternatives</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Consistency</th><th>Central Server?</th></tr>
+        <tr><td>Pessimistic lock</td><td>Strong, no conflicts</td><td>Yes — but blocks others</td></tr>
+        <tr><td>Last-write-wins</td><td>Silently loses data</td><td>Yes</td></tr>
+        <tr><td><b>OT</b></td><td>Strong eventual (TP2)</td><td><b>Required</b></td></tr>
+        <tr><td>CRDTs</td><td>Strong eventual, math-guaranteed</td><td>Not needed — P2P/offline ok</td></tr>
+      </table>
+      <p><span class="check-mark">✓</span> OT: tight conflict control, small payloads &nbsp; <span class="x-mark">✕</span> CRDTs: better for offline-first / no server</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Need real-time collab with a server already in place? → <b>OT</b>. Need offline-first or peer-to-peer with no central authority? → <b>CRDTs</b>. Can't invest in exhaustively testing transform correctness? → reconsider OT.</p>
+      <div class="quote-box">
+        "I'd model every edit as a small operation — insert or delete — tagged with the revision the client last saw. The core insight is that two operations created concurrently reference stale positions once both are applied, so I need a transform function that rewrites one op so applying them in either order converges to the same document — that's the TP2 property, not just an empirical hope. I'd make this server-authoritative so one place enforces ordering, and I'd flag reconnect behavior up front: cap clients to one in-flight op, and snapshot the document periodically so a badly-behind client re-syncs instead of replaying the entire op log."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

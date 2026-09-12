@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Client-Side File Sync — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223c;
+    --accent: #4ecdc4;
+    --accent2: #ff6b6b;
+    --accent3: #ffd93d;
+    --accent4: #6c5ce7;
+    --text: #eaeaf2;
+    --muted: #9a9ac0;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0d0d18;
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--text);
+  }
+
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+  }
+
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 85% 8%, rgba(78,205,196,0.10), transparent 45%),
+                       radial-gradient(circle at 10% 95%, rgba(255,107,107,0.08), transparent 45%);
+    border-radius: 14px;
+    padding: 26px 30px;
+    position: relative;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .slide.active { display: block; }
+
+  .kicker {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-size: 24px;
+    margin: 0 0 10px 0;
+    line-height: 1.25;
+    color: #fff;
+  }
+
+  h2 {
+    font-size: 17px;
+    margin: 14px 0 8px 0;
+    color: var(--accent3);
+  }
+
+  p, li {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .muted { color: var(--muted); font-size: 12px; }
+
+  .big-number {
+    font-size: 46px;
+    font-weight: 800;
+    color: var(--accent2);
+    line-height: 1;
+  }
+
+  .badge {
+    display: inline-block;
+    background: rgba(78,205,196,0.15);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+
+  .badge.red { background: rgba(255,107,107,0.15); color: var(--accent2); border-color: var(--accent2); }
+  .badge.yellow { background: rgba(255,217,61,0.15); color: var(--accent3); border-color: var(--accent3); }
+  .badge.purple { background: rgba(108,92,231,0.18); color: #b3a4ff; border-color: var(--accent4); }
+
+  /* ---------- generic diagram building blocks ---------- */
+
+  .diagram {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 10px;
+  }
+
+  .row { display: flex; align-items: center; justify-content: space-between; }
+  .col { display: flex; flex-direction: column; align-items: center; }
+
+  /* box representing a machine / server / kernel */
+  .server-box {
+    width: 110px;
+    height: 74px;
+    background: #2b2b4a;
+    border: 2px solid var(--accent4);
+    border-radius: 6px;
+    position: relative;
+    padding: 6px 8px;
+  }
+  .server-box .line {
+    height: 4px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 2px;
+    margin-top: 6px;
+  }
+  .server-box .label {
+    position: absolute;
+    bottom: -20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+
+  /* device icons: laptop + phone drawn with CSS */
+  .laptop {
+    width: 86px;
+    height: 54px;
+    border: 2px solid var(--accent);
+    border-radius: 4px;
+    background: #26263f;
+    position: relative;
+  }
+  .laptop:after {
+    content: "";
+    position: absolute;
+    left: -8px; right: -8px; bottom: -8px;
+    height: 6px;
+    background: var(--accent);
+    border-radius: 3px;
+    opacity: 0.6;
+  }
+  .phone {
+    width: 34px;
+    height: 58px;
+    border: 2px solid var(--accent2);
+    border-radius: 8px;
+    background: #26263f;
+    position: relative;
+  }
+  .phone:before {
+    content: "";
+    position: absolute;
+    top: 5px; left: 50%;
+    width: 10px; height: 2px;
+    background: var(--accent2);
+    transform: translateX(-50%);
+    border-radius: 2px;
+  }
+
+  /* cylinder = database / object store icon, pure CSS */
+  .cylinder {
+    width: 92px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .cylinder .top {
+    width: 92px;
+    height: 20px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, #3d3d66, #2b2b4a);
+    border: 2px solid var(--accent4);
+  }
+  .cylinder .body {
+    width: 88px;
+    height: 46px;
+    margin: -10px auto 0 auto;
+    background: #2b2b4a;
+    border-left: 2px solid var(--accent4);
+    border-right: 2px solid var(--accent4);
+  }
+  .cylinder .bottom {
+    width: 92px;
+    height: 20px;
+    margin-top: -10px;
+    border-radius: 50%;
+    background: #262645;
+    border: 2px solid var(--accent4);
+  }
+  .cylinder .cap { font-size: 10.5px; color: var(--muted); margin-top: 6px; }
+
+  /* file bar split into chunks */
+  .chunk-row {
+    display: flex;
+    gap: 3px;
+    margin: 10px 0;
+  }
+  .chunk {
+    flex: 1;
+    height: 40px;
+    border-radius: 4px;
+    background: #33335c;
+    border: 1px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9.5px;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .chunk.changed {
+    background: var(--accent2);
+    color: #1a1a2e;
+    border-color: var(--accent2);
+  }
+  .chunk.same {
+    background: rgba(78,205,196,0.18);
+    color: var(--accent);
+    border-color: var(--accent);
+  }
+
+  /* arrows */
+  .arrow {
+    color: var(--accent);
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .arrow-down { text-align: center; font-size: 20px; color: var(--accent); margin: 4px 0; }
+
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+    margin-top: 8px;
+  }
+  table.cmp th {
+    background: rgba(108,92,231,0.25);
+    color: #fff;
+    padding: 5px 6px;
+    text-align: left;
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  table.cmp td {
+    padding: 5px 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--text);
+    vertical-align: top;
+  }
+  table.cmp tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  table.cmp td.fail { color: var(--accent2); font-weight: 700; }
+
+  .footer-tag {
+    position: absolute;
+    bottom: 14px;
+    left: 30px;
+    right: 30px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 10.5px;
+    color: var(--muted);
+  }
+
+  code {
+    background: rgba(255,255,255,0.08);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 11.5px;
+    color: var(--accent3);
+  }
+
+  .quote-box {
+    background: rgba(255,217,61,0.08);
+    border-left: 3px solid var(--accent3);
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-style: italic;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 10px;
+  }
+
+  /* ---------- controls (hidden on print) ---------- */
+  .controls {
+    width: 540px;
+    margin: 12px auto 60px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    font-family: inherit;
+  }
+  .controls button {
+    background: var(--accent4);
+    color: #fff;
+    border: none;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 700;
+  }
+  .controls button:hover { background: #7d6ff0; }
+  .counter { color: var(--muted); font-size: 13px; min-width: 60px; text-align: center; }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: #fff; }
+    .controls { display: none; }
+    .deck { margin: 0; }
+    .slide {
+      display: block !important;
+      page-break-after: always;
+      box-shadow: none;
+    }
+    .slide:not(.print-active) { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active" data-idx="1">
+    <div class="kicker">SYSTEM DESIGN · FILE SYNC</div>
+    <h1>You edit 4KB in a 2GB file.<br>Naive sync re-uploads all 2GB.</h1>
+    <div class="diagram">
+      <div class="row">
+        <div class="col">
+          <div class="big-number" style="color:#ff6b6b;">2.1 GB</div>
+          <p class="muted">naive whole-file re-upload</p>
+        </div>
+        <div class="arrow">→ vs →</div>
+        <div class="col">
+          <div class="big-number" style="color:#4ecdc4;">4.3 MB</div>
+          <p class="muted">Dropbox-style delta sync</p>
+        </div>
+      </div>
+      <div class="arrow-down">▼</div>
+      <p style="text-align:center;"><span class="badge">99.8% bandwidth saved</span> <span class="badge yellow">3.5s vs 28 min @ 10 Mbps</span></p>
+    </div>
+    <h2>Three problems, one episode:</h2>
+    <p>① Detect the change instantly &nbsp; ② Sync only what changed &nbsp; ③ Resolve edits made offline on two devices</p>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>1 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide" data-idx="2">
+    <div class="kicker">THE PROBLEM</div>
+    <h1>Polling is slow. Full re-upload is wasteful.</h1>
+    <div class="diagram">
+      <h2 style="margin-top:0;">Naive polling loop</h2>
+      <div class="row">
+        <div class="col"><div class="server-box"><div class="line"></div><div class="line"></div><div class="line" style="width:60%"></div></div></div>
+        <div class="col" style="font-size:11px;color:var(--muted);">"changed yet?"<br>"changed yet?"<br>"changed yet?"<br><span style="color:var(--accent2);">every 30s</span></div>
+        <div class="cylinder"><div class="top"></div><div class="body"></div><div class="bottom"></div><div class="cap">200,000 files</div></div>
+      </div>
+      <p class="muted">Latency = poll interval. Wastes CPU/IO re-checking mostly-unchanged files.</p>
+    </div>
+    <div class="diagram">
+      <h2 style="margin-top:0;">Naive full re-upload</h2>
+      <div class="chunk-row">
+        <div class="chunk changed">edit</div>
+        <div class="chunk changed">re-up</div>
+        <div class="chunk changed">re-up</div>
+        <div class="chunk changed">re-up</div>
+        <div class="chunk changed">re-up</div>
+      </div>
+      <p class="muted">One small edit → the ENTIRE file is treated as "changed" and re-sent.</p>
+    </div>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>2 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 3: OS WATCHERS -->
+  <div class="slide" data-idx="3">
+    <div class="kicker">SOLUTION · CHANGE DETECTION</div>
+    <h1>Let the kernel push, don't poll</h1>
+    <div class="diagram">
+      <div class="row">
+        <div class="col">
+          <div class="server-box"><div class="label">User writes file</div><div class="line"></div><div class="line" style="width:70%"></div></div>
+        </div>
+        <div class="col"><span class="arrow">⚡→</span><p class="muted" style="margin:2px 0;">&lt;10ms</p></div>
+        <div class="col">
+          <div class="server-box" style="border-color:var(--accent);"><div class="label">Sync client</div><div class="line"></div><div class="line" style="width:50%"></div></div>
+        </div>
+      </div>
+    </div>
+    <table class="cmp">
+      <tr><th>OS</th><th>API</th><th>Event example</th></tr>
+      <tr><td>Linux</td><td><code>inotify</code></td><td>IN_MODIFY, IN_CREATE, IN_DELETE, IN_Q_OVERFLOW</td></tr>
+      <tr><td>macOS</td><td><code>FSEvents</code></td><td>kFSEventStreamEventFlagItemModified</td></tr>
+      <tr><td>Windows</td><td><code>ReadDirectoryChangesW</code></td><td>FILE_ACTION_MODIFIED</td></tr>
+    </table>
+    <p style="margin-top:10px;"><span class="badge">Debounce 200–500ms</span> batches rapid writes from one "Save" into one sync pass.</p>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>3 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 4: FIXED-OFFSET CHUNKING BROKEN -->
+  <div class="slide" data-idx="4">
+    <div class="kicker">TRAP · FIXED-OFFSET CHUNKING</div>
+    <h1>Insert 1 byte → every chunk "changes"</h1>
+    <div class="diagram">
+      <h2 style="margin-top:0;">Before insert</h2>
+      <div class="chunk-row">
+        <div class="chunk same">AAAA</div><div class="chunk same">BBBB</div><div class="chunk same">CCCC</div><div class="chunk same">DDDD</div>
+      </div>
+      <h2>After inserting 1 byte "X" at the start</h2>
+      <div class="chunk-row">
+        <div class="chunk changed">XAAA</div><div class="chunk changed">ABBB</div><div class="chunk changed">BCCC</div><div class="chunk changed">CDDD</div>
+      </div>
+      <p class="muted">Fixed byte offsets → boundaries shift → ALL chunks look new → re-upload everything.</p>
+    </div>
+    <p><span class="badge red">Zero benefit</span> for insertions/deletions — i.e. the most common real edit: typing more text.</p>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>4 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 5: CONTENT-DEFINED CHUNKING -->
+  <div class="slide" data-idx="5">
+    <div class="kicker">SOLUTION · ROLLING HASH</div>
+    <h1>Content-defined chunking fixes it</h1>
+    <div class="diagram">
+      <h2 style="margin-top:0;">Boundary = local byte content, not position</h2>
+      <div class="chunk-row">
+        <div class="chunk same">…xyz</div><div class="chunk" style="background:var(--accent3);color:#1a1a2e;">BOUNDARY</div><div class="chunk same">def…</div>
+      </div>
+      <div class="chunk-row">
+        <div class="chunk changed">Xxyz</div><div class="chunk" style="background:var(--accent3);color:#1a1a2e;">BOUNDARY</div><div class="chunk same">def…</div>
+      </div>
+      <p class="muted">Rolling hash re-finds the SAME boundary pattern right after "xyz" — everything after re-aligns.</p>
+    </div>
+    <div class="diagram">
+      <p><strong>Rabin fingerprint rule:</strong> slide a <code>48-byte</code> window, boundary when<br><code>hash(window) &amp; bitmask == target</code></p>
+      <p class="muted">13-bit mask → 2<sup>13</sup> = <strong>~8KB</strong> average chunk size. Min-size guard: 2KB (avoids pathological tiny chunks).</p>
+      <p class="muted">Same trick as rsync's rolling checksum, restic, BorgBackup.</p>
+    </div>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>5 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 6: REAL CHUNK DIFF EXAMPLE -->
+  <div class="slide" data-idx="6">
+    <div class="kicker">WALKTHROUGH · report.pdf (2.1 GB)</div>
+    <h1>Only the touched chunk uploads</h1>
+    <div class="diagram">
+      <div class="chunk-row">
+        <div class="chunk same">chunk_001<br>a1f9…</div>
+        <div class="chunk same">chunk_002<br>88bc…</div>
+        <div class="chunk changed">chunk_003<br>9c44…</div>
+        <div class="chunk same">chunk_004<br>f001…</div>
+      </div>
+      <p class="muted" style="text-align:center;">~500 total chunks · only chunk_003 hash differs from last-known manifest</p>
+      <div class="arrow-down">▼ PUT chunk_003 only ▼</div>
+      <div class="row">
+        <div class="cylinder"><div class="top"></div><div class="body"></div><div class="bottom"></div><div class="cap">object store<br>(content-addressed)</div></div>
+        <div class="cylinder"><div class="top"></div><div class="body"></div><div class="bottom"></div><div class="cap">manifest DB<br>v47 → v48</div></div>
+      </div>
+    </div>
+    <p style="text-align:center;margin-top:8px;">
+      <span class="badge">4.3 MB uploaded</span> <span class="badge yellow">not 2.1 GB</span> <span class="badge red">99.8% saved</span>
+    </p>
+    <p class="muted" style="text-align:center;">3.5 sec @ 10 Mbps vs ~28 minutes for the full file</p>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>6 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 7: WATCHER TRAPS -->
+  <div class="slide" data-idx="7">
+    <div class="kicker">TRAPS · WATCHER RELIABILITY</div>
+    <h1>Watchers fail silently. Plan for it.</h1>
+    <div class="diagram">
+      <h2 style="margin-top:0;">Trap: watch-descriptor limit</h2>
+      <p><code>/proc/sys/fs/inotify/max_user_watches</code> default = <span class="badge red">8,192</span> directories. Sync clients with 100K+ files must raise it via sysctl or watches silently fail to register.</p>
+    </div>
+    <div class="diagram">
+      <h2 style="margin-top:0;">Trap: event queue OVERFLOW</h2>
+      <p>A <code>git checkout</code> touching 50,000 files in ~1 second overflows the kernel queue. Events are dropped — <strong>no error, no crash</strong>. Only fix: treat OVERFLOW as "trigger full rescan now."</p>
+    </div>
+    <div class="diagram">
+      <h2 style="margin-top:0;">Trap: watcher = only while process is alive</h2>
+      <p class="muted">Full reconciliation scan required at every startup:</p>
+      <p><span class="badge">100K files, mostly unchanged: 15–45s</span><br><span class="badge yellow">100K files, 5K changed: 3–8 min</span></p>
+    </div>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>7 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 8: CONFLICT RESOLUTION -->
+  <div class="slide" data-idx="8">
+    <div class="kicker">SOLUTION · VERSION VECTORS</div>
+    <h1>Two offline edits. No silent overwrite.</h1>
+    <div class="diagram">
+      <div class="row">
+        <div class="col"><div class="laptop"></div><p class="muted">laptop:4, phone:2</p></div>
+        <div class="col" style="font-size:22px;">⇄</div>
+        <div class="col"><div class="phone"></div><p class="muted">laptop:3, phone:3</p></div>
+      </div>
+      <p style="text-align:center;margin-top:6px;"><span class="badge red">Neither vector dominates → CONFLICT</span></p>
+    </div>
+    <div class="diagram">
+      <p><strong>Wrong fix:</strong> compare last-modified timestamps — clocks drift/lie, a clock 10 min fast always "wins."</p>
+      <p><strong>Right fix:</strong> keep BOTH files:</p>
+      <p><code>report.pdf</code><br><code>report (conflicted copy from Bob's laptop, 2024-06-01).pdf</code></p>
+      <p class="muted">Both fully synced to both devices. Human decides. Nobody silently loses work.</p>
+    </div>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>8 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <div class="slide" data-idx="9">
+    <div class="kicker">DECISION · STRATEGY COMPARISON</div>
+    <h1>Five approaches, side by side</h1>
+    <table class="cmp">
+      <tr><th>Approach</th><th>Latency</th><th>Complexity</th><th>When It Fails</th></tr>
+      <tr><td>OS watcher</td><td>&lt;10ms</td><td>Medium</td><td class="fail">Drops events on queue overflow / watch-limit exhaustion</td></tr>
+      <tr><td>Periodic polling</td><td>Sec–min (poll interval)</td><td>Low</td><td class="fail">Misses rapid changes; doesn't scale past ~100K+ files</td></tr>
+      <tr><td>Full-file re-upload</td><td>∝ file size</td><td>Low</td><td class="fail">Falls over on large files w/ frequent small edits</td></tr>
+      <tr><td>Fixed-offset chunking</td><td>Worse on insert/delete</td><td>Low-Med</td><td class="fail">~Zero benefit for typing/inserting text</td></tr>
+      <tr><td>Content-defined chunking</td><td>∝ changed bytes only</td><td>Med-High</td><td class="fail">Bad tuning → pathological chunk sizes on compressed data</td></tr>
+    </table>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>9 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <div class="slide" data-idx="10">
+    <div class="kicker">CHEAT SHEET · INTERVIEW ANSWER</div>
+    <h1>Watcher + rolling hash + version vectors</h1>
+    <div class="diagram">
+      <p><span class="badge">✓ Use full delta sync</span> when files are large, bandwidth is constrained, and you control a persistent desktop client.</p>
+      <p><span class="badge red">✗ Skip it</span> when files are small, it's a stateless web upload form, or files change completely on every edit anyway.</p>
+    </div>
+    <div class="quote-box">
+      "For detection, I use the OS's native file-watching API rather than polling... For efficient sync of large files, I use content-defined chunking with a rolling hash... fixed-offset chunking breaks catastrophically on insertions... The operational concern I'd flag is watcher reliability — I always run a full reconciliation scan once at client startup regardless of watcher health, and I monitor for the OVERFLOW event to trigger an immediate full-folder rescan."
+    </div>
+    <div class="footer-tag"><span>Client-Side File Sync</span><span>10 / 10</span></div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button id="prevBtn">◀ Prev</button>
+  <div class="counter" id="counter">1 / 10</div>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var total = slides.length;
+    var current = 0;
+
+    function render() {
+      slides.forEach(function (s, i) {
+        s.classList.toggle('active', i === current);
+        s.classList.toggle('print-active', i === current);
+      });
+      document.getElementById('counter').textContent = (current + 1) + ' / ' + total;
+    }
+
+    function go(delta) {
+      current = (current + delta + total) % total;
+      render();
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', function () { go(-1); });
+    document.getElementById('nextBtn').addEventListener('click', function () { go(1); });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') go(1);
+      if (e.key === 'ArrowLeft') go(-1);
+    });
+
+    render();
+  })();
+</script>
+
+</body>
+</html>

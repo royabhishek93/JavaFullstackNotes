@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Redis Bitmaps — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .bit { width: 22px; height: 22px; border-radius: 3px; display: inline-block; margin: 1px; text-align: center; line-height: 22px; font-size: 10px; font-weight: 700; }
+  .bit-on { background: var(--green); color: #fff; }
+  .bit-off { background: var(--border); color: var(--muted); }
+  .redis-icon {
+    width: 50px; height: 50px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; margin: 0 auto;
+  }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 30px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Redis Bitmaps</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">900KB → 1.25KB</div>
+      <p>10,000 stadium seats as separate Redis keys vs one bitmap. A ~700x memory difference for the same information.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Per-Entry Overhead Adds Up</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p>10,000 separate keys, each carrying ~90 bytes of key-name + object-header overhead — for 1 bit of actual data each.</p>
+      <p>A Bitmap stores raw bits directly in one String, with near-zero per-entry cost.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>SETBIT / GETBIT</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <div class="row">
+        <span class="bit bit-off">0</span><span class="bit bit-off">0</span><span class="bit bit-on">1</span><span class="bit bit-off">0</span><span class="bit bit-on">1</span><span class="bit bit-on">1</span><span class="bit bit-off">0</span><span class="bit bit-off">0</span>
+      </div>
+      <p><code>SETBIT seats:section-A 4821 1</code> books a seat — one bit flip, no new key.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Aggregate Operations</h1>
+    <h2>BITCOUNT &amp; BITPOS</h2>
+    <div class="body">
+      <p><code>BITCOUNT seats:section-A</code> → total booked seats, whole section, in microseconds.</p>
+      <p><code>BITPOS seats:section-A 0</code> → first available seat, instantly.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Combining Constraints</h1>
+    <h2>BITOP AND</h2>
+    <div class="body">
+      <p><code>BITOP AND result available wheelchair aisle</code></p>
+      <p>Finds seats matching ALL 3 conditions in one bitwise operation — no composite DB index needed.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Sparse ID Spaces Break Bitmaps</h1>
+    <h2>The Trap</h2>
+    <div class="body">
+      <p>Track 50M sparse user IDs as bit offsets → Redis allocates up to the HIGHEST bit set.</p>
+      <p><span class="x-mark">✕</span> 1 user with ID 49,999,999 forces a 6.25MB allocation for that key alone.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Atomic Check-Then-Book</h1>
+    <h2>Race Protection</h2>
+    <div class="body">
+      <p><code>if GETBIT(key,offset)==0 then SETBIT(key,offset,1); return 1 else return 0 end</code></p>
+      <p>Two users can't both win the same seat — one atomic Lua step, not two separate commands.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Structure Comparison</h1>
+    <h2>Comparison (10K items)</h2>
+    <div class="body">
+      <table>
+        <tr><th>Structure</th><th>Memory</th><th>Best For</th></tr>
+        <tr><td>Bitmap</td><td>~1.25 KB</td><td>Dense, bounded (seats)</td></tr>
+        <tr><td>Separate keys</td><td>~900 KB</td><td>Rarely justified</td></tr>
+        <tr><td>Bloom filter</td><td>Tunable, fixed</td><td>Sparse/unbounded IDs</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Dense, bounded, integer-indexable space? → Bitmap. Sparse/unbounded IDs? → Bloom filter. Cardinality estimate only? → HyperLogLog.</p>
+      <div class="quote-box">
+        "Content-addressable storage makes deduplication automatic — same logic here: same bytes produce the same bit position, so you store the state once with zero per-entry overhead, and reference it everywhere with BITOP."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

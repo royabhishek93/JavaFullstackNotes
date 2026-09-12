@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>MVCC: How PostgreSQL Reads Never Block Writes — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 54px; height: 60px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 54px; height: 15px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 54px; height: 32px; position: absolute; top: 11px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 54px; height: 15px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .server-box {
+    width: 54px; height: 46px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 30px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>MVCC</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">10,000 reads<br>1,000 writes/sec</div>
+      <p>Reads never wait for writes. Writes never wait for reads. Zero contention — here's how PostgreSQL does it.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Locking Nightmare</h1>
+    <h2>The Problem (Hypothetical, Not PostgreSQL)</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Reader holds<br>shared lock</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Writer<br>waits</div>
+      </div>
+      <p style="text-align:center">Queue builds → connection pool exhausts → service falls over. This is NOT how PostgreSQL works.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>xmin / xmax Row Versioning</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <p>Writes never edit in place — they create a NEW row version. Old version gets <code>xmax</code> stamped, stays visible to older snapshots.</p>
+      <p>Txn 150 (started before commit) reads "Alice". Txn 250 (started after) reads "Alicia". Neither blocked.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Snapshot Isolation</h1>
+    <h2>Same Row, Different Correct Views</h2>
+    <div class="body">
+      <p>Txn A's snapshot taken at t=0 doesn't include a write at t=1 → sees OLD value.</p>
+      <p>Txn B's snapshot taken at t=3 includes that write → sees NEW value. Same row, same moment, two consistent views.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>VACUUM &amp; Table Bloat</h1>
+    <h2>The Cost Isn't Free</h2>
+    <div class="body">
+      <p>Dead row versions pile up on disk — can double or triple table size. VACUUM marks them reusable but does NOT shrink the file.</p>
+      <p><code>VACUUM FULL</code> reclaims space but takes a full table lock — maintenance-window only.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>XID Wraparound</h1>
+    <h2>The Bug That Can Take Your DB Offline</h2>
+    <div class="body">
+      <p>32-bit XID counter wraps every ~49 days at 1,000 TPS. Wraparound risks silent, catastrophic data loss.</p>
+      <p><span class="check-mark">✓</span> Alert at age &gt; 150M &nbsp; <span class="x-mark">✕</span> At 2B, PostgreSQL forces read-only mode.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>AUTOVACUUM Tuning &amp; Index Bloat</h1>
+    <h2>Defaults Are Too Slow For Production</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Default<br>scale_factor 20%</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Tuned<br>scale_factor 1%</div>
+      </div>
+      <p>High-churn tables (sessions, events) need lower <code>autovacuum_vacuum_scale_factor</code>, more workers, less cost delay.</p>
+      <p>Dead entries also bloat B-tree indexes — fix online with <code>REINDEX INDEX CONCURRENTLY</code> (no table lock).</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Write Skew — The Doctor On-Call Bug</h1>
+    <h2>What MVCC Can't Catch</h2>
+    <div class="body">
+      <p>Doctor A checks "is B on-call?" → yes → goes off-call. Doctor B checks "is A on-call?" → yes → goes off-call. Zero doctors on-call. MVCC saw no conflict.</p>
+      <p><b>Fix:</b> SERIALIZABLE isolation — PostgreSQL's SSI detects the cycle and aborts one transaction.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Isolation Levels</h1>
+    <h2>What Each Prevents</h2>
+    <div class="body">
+      <table>
+        <tr><th>Level</th><th>Non-Repeatable Read</th><th>Write Skew</th></tr>
+        <tr><td>READ COMMITTED</td><td>Possible</td><td>Possible</td></tr>
+        <tr><td>REPEATABLE READ</td><td>Blocked</td><td>Possible</td></tr>
+        <tr><td>SERIALIZABLE</td><td>Blocked</td><td>Blocked</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Max throughput, slight stale reads OK? → READ COMMITTED. Financial invariant / no double-booking? → SERIALIZABLE.</p>
+      <div class="quote-box">
+        "PostgreSQL's MVCC means reads and writes never block each other — every read sees a consistent snapshot while writes create new row versions in parallel, which is why you can handle 10,000 concurrent users on a single PostgreSQL instance without the read queue grinding to a halt."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

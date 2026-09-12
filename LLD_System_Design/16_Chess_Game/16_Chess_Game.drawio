@@ -1,0 +1,646 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root><mxCell id="0"/><mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- INTERFACES ROW  (y=40)                                  -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- CastlingCapable -->
+        <mxCell id="iface_castling" value="&lt;&lt;interface&gt;&gt;&#xa;CastlingCapable" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="220" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_castling_m1" value="+ canCastle(board, kingTarget, rookPos): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_castling">
+          <mxGeometry x="0" y="40" width="220" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- PromotionCapable -->
+        <mxCell id="iface_promo" value="&lt;&lt;interface&gt;&gt;&#xa;PromotionCapable" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="280" y="40" width="220" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_promo_m1" value="+ promoteTo(newType: PieceType): Piece" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_promo">
+          <mxGeometry x="0" y="40" width="220" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- EnPassantCapable -->
+        <mxCell id="iface_enpassant" value="&lt;&lt;interface&gt;&gt;&#xa;EnPassantCapable" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="520" y="40" width="220" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_enpassant_m1" value="+ canEnPassant(board, targetPos): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_enpassant">
+          <mxGeometry x="0" y="40" width="220" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- MAIN CLASSES ROW  (y=250)                               -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- Piece (abstract) -->
+        <mxCell id="class_piece" value="&lt;&lt;abstract&gt;&gt;&#xa;Piece" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="250" width="240" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_piece_f1" value="# color: Color" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_piece">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_piece_f2" value="# position: Position" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_piece">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_piece_f3" value="# hasMoved: boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_piece">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_piece_m1" value="+ canMove(board, to): boolean  {abstract}" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_piece">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_piece_m2" value="+ getPossibleMoves(board): List  {abstract}" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_piece">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_piece_m3" value="+ getSymbol(): String  {abstract}" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_piece">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_piece_m4" value="# isPathClear(board, from, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_piece">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_piece_m5" value="+ setPosition(pos): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_piece">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Board -->
+        <mxCell id="class_board" value="Board" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="310" y="250" width="240" height="228" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_f1" value="- cells: Piece[8][8]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_m1" value="+ getPiece(pos): Piece" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_m2" value="+ setPiece(pos, piece): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_m3" value="+ movePiece(from, to): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_m4" value="+ getAllPieces(color): List&lt;Piece&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_m5" value="+ findKing(color): Position" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_m6" value="+ isEmpty(pos): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_m7" value="+ removePiece(pos): Piece" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_board_m8" value="+ initializeBoard(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_board">
+          <mxGeometry x="0" y="206" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Game (Facade) -->
+        <mxCell id="class_game" value="Game  [Facade]" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="580" y="250" width="240" height="272" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_f1" value="- board: Board" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_f2" value="- currentTurn: Color" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_f3" value="- status: GameStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_f4" value="- moveHistory: List&lt;Move&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_m1" value="+ makeMove(from, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_m2" value="+ isValidMove(from, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_m3" value="- isKingInCheck(color): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_m4" value="- hasValidMoves(color): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_m5" value="- updateGameStatus(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="206" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_m6" value="- simulateMove(from, to): Piece" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="228" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_game_m7" value="+ undo(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_game">
+          <mxGeometry x="0" y="250" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Move (Command) -->
+        <mxCell id="class_move" value="Move  [Command]" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="850" y="250" width="220" height="184" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_move_f1" value="- from: Position" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_move">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_move_f2" value="- to: Position" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_move">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_move_f3" value="- piece: Piece" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_move">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_move_f4" value="- capturedPiece: Piece" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_move">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_move_f5" value="- isCastling: boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_move">
+          <mxGeometry x="0" y="118" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_move_f6" value="- isEnPassant: boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_move">
+          <mxGeometry x="0" y="140" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_move_m1" value="+ toString(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_move">
+          <mxGeometry x="0" y="162" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Position (Value Object) -->
+        <mxCell id="class_position" value="Position  [Value Object]" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1100" y="250" width="230" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_position_f1" value="- row: int  [0-7]  {final}" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_position">
+          <mxGeometry x="0" y="30" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_position_f2" value="- col: int  [0-7]  {final}" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_position">
+          <mxGeometry x="0" y="52" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_position_m1" value="+ getRow(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_position">
+          <mxGeometry x="0" y="74" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_position_m2" value="+ getCol(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_position">
+          <mxGeometry x="0" y="96" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_position_m3" value="+ equals(obj): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_position">
+          <mxGeometry x="0" y="118" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_position_m4" value="+ hashCode(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_position">
+          <mxGeometry x="0" y="140" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_position_m5" value="+ fromChessNotation(s): Position" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_position">
+          <mxGeometry x="0" y="162" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_position_m6" value="+ toChessNotation(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_position">
+          <mxGeometry x="0" y="184" width="230" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Player -->
+        <mxCell id="class_player" value="Player" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="250" width="190" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_player_f1" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_player">
+          <mxGeometry x="0" y="30" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_player_f2" value="- color: Color" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_player">
+          <mxGeometry x="0" y="52" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_player_m1" value="+ getNextMove(board): Move" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_player">
+          <mxGeometry x="0" y="74" width="190" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- CONCRETE PIECES + ENUMS ROW  (y=570)                   -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- King -->
+        <mxCell id="class_king" value="King" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="570" width="170" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_king_m1" value="+ canMove(board, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_king">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_king_m2" value="+ getPossibleMoves(board): List" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_king">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_king_m3" value="+ getSymbol(): String  // K" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_king">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Queen -->
+        <mxCell id="class_queen" value="Queen" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="230" y="570" width="170" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_queen_m1" value="+ canMove(board, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_queen">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_queen_m2" value="+ getPossibleMoves(board): List" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_queen">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_queen_m3" value="+ getSymbol(): String  // Q" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_queen">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Rook -->
+        <mxCell id="class_rook" value="Rook" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="420" y="570" width="170" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_rook_m1" value="+ canMove(board, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_rook">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_rook_m2" value="+ getPossibleMoves(board): List" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_rook">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_rook_m3" value="+ getSymbol(): String  // R" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_rook">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Bishop -->
+        <mxCell id="class_bishop" value="Bishop" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="610" y="570" width="170" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bishop_m1" value="+ canMove(board, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bishop">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bishop_m2" value="+ getPossibleMoves(board): List" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bishop">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_bishop_m3" value="+ getSymbol(): String  // B" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_bishop">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Knight -->
+        <mxCell id="class_knight" value="Knight" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="800" y="570" width="170" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_knight_m1" value="+ canMove(board, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_knight">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_knight_m2" value="+ getPossibleMoves(board): List" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_knight">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_knight_m3" value="+ getSymbol(): String  // N" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_knight">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Pawn -->
+        <mxCell id="class_pawn" value="Pawn" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="990" y="570" width="170" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pawn_m1" value="+ canMove(board, to): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pawn">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pawn_m2" value="+ getPossibleMoves(board): List" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pawn">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_pawn_m3" value="+ getSymbol(): String  // P" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_pawn">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Color enum -->
+        <mxCell id="enum_color" value="&lt;&lt;enum&gt;&gt;&#xa;Color" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="570" width="150" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_color_v1" value="WHITE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_color">
+          <mxGeometry x="0" y="30" width="150" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_color_v2" value="BLACK" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_color">
+          <mxGeometry x="0" y="52" width="150" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- GameStatus enum -->
+        <mxCell id="enum_gamestatus" value="&lt;&lt;enum&gt;&gt;&#xa;GameStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1370" y="570" width="170" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_gs_v1" value="ACTIVE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_gamestatus">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_gs_v2" value="CHECK" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_gamestatus">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_gs_v3" value="CHECKMATE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_gamestatus">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_gs_v4" value="STALEMATE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_gamestatus">
+          <mxGeometry x="0" y="96" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_gs_v5" value="DRAW" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_gamestatus">
+          <mxGeometry x="0" y="118" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- RELATIONSHIPS / EDGES                                   -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- Extends: King/Queen/Rook/Bishop/Knight/Pawn → Piece -->
+        <mxCell id="edge_king_piece" value="" style="endArrow=block;endFill=0;" edge="1" source="class_king" target="class_piece" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_queen_piece" value="" style="endArrow=block;endFill=0;" edge="1" source="class_queen" target="class_piece" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_rook_piece" value="" style="endArrow=block;endFill=0;" edge="1" source="class_rook" target="class_piece" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_bishop_piece" value="" style="endArrow=block;endFill=0;" edge="1" source="class_bishop" target="class_piece" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_knight_piece" value="" style="endArrow=block;endFill=0;" edge="1" source="class_knight" target="class_piece" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_pawn_piece" value="" style="endArrow=block;endFill=0;" edge="1" source="class_pawn" target="class_piece" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Implements: King → CastlingCapable (dashed) -->
+        <mxCell id="edge_king_castling" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_king" target="iface_castling" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Implements: Pawn → PromotionCapable (dashed) -->
+        <mxCell id="edge_pawn_promo" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_pawn" target="iface_promo" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Implements: Pawn → EnPassantCapable (dashed) -->
+        <mxCell id="edge_pawn_enpassant" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_pawn" target="iface_enpassant" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Game → Board (1 uses 1) -->
+        <mxCell id="edge_game_board" value="1 uses 1" style="endArrow=open;" edge="1" source="class_game" target="class_board" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Game → Move (1 records *) -->
+        <mxCell id="edge_game_move" value="1 records *" style="endArrow=open;" edge="1" source="class_game" target="class_move" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Game → Player (has 2) -->
+        <mxCell id="edge_game_player" value="has 2" style="endArrow=open;" edge="1" source="class_game" target="class_player" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Game → GameStatus -->
+        <mxCell id="edge_game_gs" value="uses" style="endArrow=open;" edge="1" source="class_game" target="enum_gamestatus" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Board → Piece (contains 0..*) -->
+        <mxCell id="edge_board_piece" value="contains 0..*" style="endArrow=open;" edge="1" source="class_board" target="class_piece" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Move → Position (has 2) -->
+        <mxCell id="edge_move_pos" value="has 2" style="endArrow=open;" edge="1" source="class_move" target="class_position" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Piece → Position (has 1) -->
+        <mxCell id="edge_piece_pos" value="has 1" style="endArrow=open;" edge="1" source="class_piece" target="class_position" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Piece → Color -->
+        <mxCell id="edge_piece_color" value="uses" style="endArrow=open;" edge="1" source="class_piece" target="enum_color" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: Move → Piece -->
+        <mxCell id="edge_move_piece" value="ref" style="endArrow=open;" edge="1" source="class_move" target="class_piece" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- ISP: Valuable interface  (y=40)                         -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- Valuable -->
+        <mxCell id="iface_Valuable" value="&lt;&lt;interface&gt;&gt;&#xa;Valuable" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="760" y="40" width="220" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Valuable_m1" value="+ getValue(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Valuable">
+          <mxGeometry x="0" y="40" width="220" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- FOLLOW-UP: HumanPlayer + AIPlayer  (y=780)              -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- HumanPlayer -->
+        <mxCell id="class_HumanPlayer" value="HumanPlayer" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="780" width="190" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HumanPlayer_m1" value="+ getNextMove(board): Move" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HumanPlayer">
+          <mxGeometry x="0" y="30" width="190" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- AIPlayer -->
+        <mxCell id="class_AIPlayer" value="AIPlayer" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="780" width="220" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_AIPlayer_m1" value="+ getNextMove(board): Move" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_AIPlayer">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_AIPlayer_m2" value="- minimax(board, depth, isMaximizing): MoveScore" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_AIPlayer">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- NEW IMPLEMENTS EDGES                                     -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- Implements: HumanPlayer → Player (dashed) -->
+        <mxCell id="edge_humanplayer_player" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_HumanPlayer" target="class_player" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Implements: AIPlayer → Player (dashed) -->
+        <mxCell id="edge_aiplayer_player" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_AIPlayer" target="class_player" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Implements: Queen → Valuable (dashed) -->
+        <mxCell id="edge_queen_valuable" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_queen" target="iface_Valuable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root><mxCell id="0"/><mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- LIFELINES  (y=50, width=140, height=550, gap=200)       -->
+        <!-- Centres: Player=130  Game=330  Board=530  Piece=730  King=930 -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <mxCell id="life_player" value="Player" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_game" value="Game" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_board" value="Board" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_piece" value="Piece (Pawn)" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_king" value="King" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- MESSAGES                                                -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- 1. Player → Game: makeMove(from="e2", to="e4") -->
+        <mxCell id="msg_1" value="1. makeMove(from=e2, to=e4)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="140" as="sourcePoint"/>
+            <mxPoint x="330" y="140" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2. Game → Board: getPiece(from) -->
+        <mxCell id="msg_2" value="2. getPiece(e2)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="175" as="sourcePoint"/>
+            <mxPoint x="530" y="175" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: Board → Game: Pawn -->
+        <mxCell id="ret_2" value="Pawn" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="195" as="sourcePoint"/>
+            <mxPoint x="330" y="195" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3. Game → Piece: canMove(board, e4) -->
+        <mxCell id="msg_3" value="3. canMove(board, e4)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="225" as="sourcePoint"/>
+            <mxPoint x="730" y="225" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: Piece → Game: true -->
+        <mxCell id="ret_3" value="true" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="245" as="sourcePoint"/>
+            <mxPoint x="330" y="245" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4. Game → Board: getPiece(to) — check target square -->
+        <mxCell id="msg_4" value="4. getPiece(e4)  [check target]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="275" as="sourcePoint"/>
+            <mxPoint x="530" y="275" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: Board → Game: null (empty square) -->
+        <mxCell id="ret_4" value="null  (empty)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="295" as="sourcePoint"/>
+            <mxPoint x="330" y="295" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5. Game → Board: simulateMove(e2, e4) -->
+        <mxCell id="msg_5" value="5. simulateMove(e2, e4)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="325" as="sourcePoint"/>
+            <mxPoint x="530" y="325" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 6. Game → Board: getAllPieces(BLACK)  [isKingInCheck] -->
+        <mxCell id="msg_6" value="6. getAllPieces(BLACK)  [check detection]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="360" as="sourcePoint"/>
+            <mxPoint x="530" y="360" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_6: Board → Game: opponentPieces -->
+        <mxCell id="ret_6" value="opponentPieces" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="378" as="sourcePoint"/>
+            <mxPoint x="330" y="378" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 7. Game → King: canMove(board, kingPos)  [loop for each opponent piece] -->
+        <mxCell id="msg_7" value="7. [for each opponent] canMove(board, kingPos)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="405" as="sourcePoint"/>
+            <mxPoint x="930" y="405" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_7: King → Game: false (king not in check) -->
+        <mxCell id="ret_7" value="false  (king not threatened)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="425" as="sourcePoint"/>
+            <mxPoint x="330" y="425" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 8. Game → Board: undoSimulation -->
+        <mxCell id="msg_8" value="8. undoSimulation(e2, e4, piece, captured)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="455" as="sourcePoint"/>
+            <mxPoint x="530" y="455" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 9. Game → Board: movePiece(e2, e4)  [real move] -->
+        <mxCell id="msg_9" value="9. movePiece(e2, e4)  [execute real move]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="490" as="sourcePoint"/>
+            <mxPoint x="530" y="490" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 10. Game: record Move + updateGameStatus() -->
+        <mxCell id="msg_10" value="10. new Move(e2,e4,pawn,null)  +  updateGameStatus()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="525" as="sourcePoint"/>
+            <mxPoint x="330" y="525" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_final: Game → Player: true (move successful) -->
+        <mxCell id="ret_final" value="true  (move accepted, status=ACTIVE)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="555" as="sourcePoint"/>
+            <mxPoint x="130" y="555" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════════ -->
+        <!-- NOTES                                                   -->
+        <!-- ═══════════════════════════════════════════════════════ -->
+
+        <!-- Note: Strategy Pattern callout -->
+        <mxCell id="note_strategy" value="Strategy Pattern:&#xa;canMove() is polymorphic.&#xa;Game calls Piece.canMove()&#xa;without knowing the type." style="shape=note;whiteSpace=wrap;align=left;fontSize=10;fillColor=#ffffc0;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="200" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Note: Facade callout -->
+        <mxCell id="note_facade" value="Facade Pattern:&#xa;Game hides Board, Piece,&#xa;Move complexity behind&#xa;simple makeMove() API." style="shape=note;whiteSpace=wrap;align=left;fontSize=10;fillColor=#ffffc0;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="310" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Note: Command Pattern callout -->
+        <mxCell id="note_command" value="Command Pattern:&#xa;Move object stores full&#xa;context for undo/redo&#xa;and history replay." style="shape=note;whiteSpace=wrap;align=left;fontSize=10;fillColor=#ffffc0;strokeColor=#999999;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="420" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

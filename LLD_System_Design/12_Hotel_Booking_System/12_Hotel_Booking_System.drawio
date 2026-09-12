@@ -1,0 +1,654 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== INTERFACES ===== -->
+
+        <!-- PricingStrategy -->
+        <mxCell id="iface_PS" value="&lt;&lt;interface&gt;&gt;&#xa;PricingStrategy" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="50" y="40" width="240" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_PS_m1" value="+ calculatePrice(room, checkIn, checkOut): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_PS">
+          <mxGeometry y="40" width="240" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- BookingOperations -->
+        <mxCell id="iface_BO" value="&lt;&lt;interface&gt;&gt;&#xa;BookingOperations" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="330" y="40" width="260" height="115" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BO_m1" value="+ createBooking(user, room, dates): Booking" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BO">
+          <mxGeometry y="40" width="260" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BO_m2" value="+ cancelBooking(bookingId: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BO">
+          <mxGeometry y="65" width="260" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BO_m3" value="+ getBooking(bookingId: String): Booking" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BO">
+          <mxGeometry y="90" width="260" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CORE CLASSES ===== -->
+
+        <!-- HotelBookingSystem (Singleton + Facade) -->
+        <mxCell id="class_HBS" value="HotelBookingSystem&#xa;&lt;&lt;Singleton, Facade&gt;&gt;" style="swimlane;startSize=40;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="50" y="210" width="280" height="282" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_f1" value="- instance: HotelBookingSystem" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="40" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_f2" value="- hotels: Map&lt;String, Hotel&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="62" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_f3" value="- bookings: Map&lt;String, Booking&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="84" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_f4" value="- userBookings: Map&lt;String, List&lt;Booking&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="106" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_f5" value="- pricingStrategy: PricingStrategy" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="128" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_m1" value="+ getInstance(): HotelBookingSystem" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="162" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_m2" value="+ addHotel(hotel: Hotel): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="184" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_m3" value="+ searchRooms(location, type, dates): List&lt;Room&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="206" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_m4" value="+ bookRoom(hotelId, roomNo, guest, dates): Booking" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="228" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_m5" value="+ cancelBooking(bookingId: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="250" width="280" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HBS_m6" value="+ getUserBookings(userId): List&lt;Booking&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HBS">
+          <mxGeometry y="272" width="280" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Hotel -->
+        <mxCell id="class_H" value="Hotel" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="380" y="210" width="250" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_H_f1" value="- hotelId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_H">
+          <mxGeometry y="30" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_H_f2" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_H">
+          <mxGeometry y="52" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_H_f3" value="- location: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_H">
+          <mxGeometry y="74" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_H_f4" value="- rooms: List&lt;Room&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_H">
+          <mxGeometry y="96" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_H_m1" value="+ addRoom(room: Room): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_H">
+          <mxGeometry y="130" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_H_m2" value="+ searchAvailableRooms(type, dates): List&lt;Room&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_H">
+          <mxGeometry y="152" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_H_m3" value="+ getAllAvailableRooms(dates): List&lt;Room&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_H">
+          <mxGeometry y="174" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_H_m4" value="+ getRoomByNumber(roomNumber): Room" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_H">
+          <mxGeometry y="196" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Room -->
+        <mxCell id="class_R" value="Room" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="680" y="210" width="260" height="252" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_f1" value="- roomNumber: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_f2" value="- type: RoomType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_f3" value="- pricePerNight: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_f4" value="- bookings: List&lt;Booking&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="96" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_f5" value="- lock: ReentrantLock" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="118" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_m1" value="+ isAvailable(checkIn, checkOut): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="152" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_m2" value="+ addBooking(booking: Booking): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="174" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_m3" value="+ cancelBooking(bookingId: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="196" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_R_m4" value="+ getBookings(): List&lt;Booking&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_R">
+          <mxGeometry y="218" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Booking -->
+        <mxCell id="class_BK" value="Booking" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="990" y="210" width="270" height="318" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_f1" value="- bookingId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_f2" value="- room: Room" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_f3" value="- guest: User" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_f4" value="- checkInDate: LocalDate" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_f5" value="- checkOutDate: LocalDate" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="118" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_f6" value="- totalPrice: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="140" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_f7" value="- status: BookingStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="162" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_f8" value="- bookingDate: LocalDate" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="184" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_m1" value="+ overlapsWith(checkIn, checkOut): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="218" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_m2" value="- calculateTotalPrice(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="240" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_m3" value="+ confirm(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="262" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BK_m4" value="+ cancel(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BK">
+          <mxGeometry y="284" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- User -->
+        <mxCell id="class_U" value="User" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="210" width="220" height="164" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_U_f1" value="- userId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_U">
+          <mxGeometry y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_U_f2" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_U">
+          <mxGeometry y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_U_f3" value="- email: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_U">
+          <mxGeometry y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_U_f4" value="- phone: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_U">
+          <mxGeometry y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_U_m1" value="+ getUserId(), getName(), getEmail()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_U">
+          <mxGeometry y="130" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ENUMS ===== -->
+
+        <!-- RoomType -->
+        <mxCell id="enum_RT" value="&lt;&lt;enum&gt;&gt;&#xa;RoomType" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="680" y="530" width="220" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_RT_v1" value="SINGLE  (basePrice=100)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_RT">
+          <mxGeometry y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_RT_v2" value="DOUBLE  (basePrice=150)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_RT">
+          <mxGeometry y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_RT_v3" value="DELUXE  (basePrice=250)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_RT">
+          <mxGeometry y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_RT_v4" value="SUITE   (basePrice=400)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_RT">
+          <mxGeometry y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- BookingStatus -->
+        <mxCell id="enum_BS" value="&lt;&lt;enum&gt;&gt;&#xa;BookingStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="950" y="530" width="200" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_BS_v1" value="PENDING" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_BS">
+          <mxGeometry y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_BS_v2" value="CONFIRMED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_BS">
+          <mxGeometry y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_BS_v3" value="CANCELLED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_BS">
+          <mxGeometry y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_BS_v4" value="COMPLETED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_BS">
+          <mxGeometry y="96" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== PRICING STRATEGY IMPLEMENTATIONS ===== -->
+
+        <!-- StandardPricing -->
+        <mxCell id="class_SP" value="StandardPricing" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="50" y="560" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_SP_m1" value="+ calculatePrice(room, dates): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_SP">
+          <mxGeometry y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- WeekendPricing -->
+        <mxCell id="class_WP" value="WeekendPricing" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="300" y="560" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_WP_m1" value="+ calculatePrice(room, dates): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_WP">
+          <mxGeometry y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- DynamicPricingStrategy -->
+        <mxCell id="class_DP" value="DynamicPricingStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="50" y="660" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DP_m1" value="+ calculatePrice(room, dates): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DP">
+          <mxGeometry y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- LoyaltyPricing -->
+        <mxCell id="class_LP" value="LoyaltyPricing" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="300" y="660" width="220" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LP_m1" value="+ calculatePrice(room, dates): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LP">
+          <mxGeometry y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- OverbookingStrategy -->
+        <mxCell id="class_OS" value="OverbookingStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="550" y="660" width="250" height="82" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_OS_f1" value="- overbookingPercentage: double = 0.1" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_OS">
+          <mxGeometry y="30" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_OS_m1" value="+ allowBooking(room, checkIn, checkOut): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_OS">
+          <mxGeometry y="52" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== RELATIONSHIPS (EDGES) ===== -->
+
+        <!-- HotelBookingSystem --> uses --> PricingStrategy (dependency) -->
+        <mxCell id="edge_HBS_PS" value="uses" style="endArrow=open;" edge="1" source="class_HBS" target="iface_PS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- HotelBookingSystem --> implements --> BookingOperations -->
+        <mxCell id="edge_HBS_BO" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_HBS" target="iface_BO" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- HotelBookingSystem 1..* Hotel -->
+        <mxCell id="edge_HBS_H" value="1..*" style="endArrow=open;" edge="1" source="class_HBS" target="class_H" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Hotel 1..* Room -->
+        <mxCell id="edge_H_R" value="1..*" style="endArrow=open;" edge="1" source="class_H" target="class_R" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Room 0..* Booking -->
+        <mxCell id="edge_R_BK" value="0..*" style="endArrow=open;" edge="1" source="class_R" target="class_BK" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Booking uses User -->
+        <mxCell id="edge_BK_U" value="guest" style="endArrow=open;" edge="1" source="class_BK" target="class_U" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Room uses RoomType -->
+        <mxCell id="edge_R_RT" value="" style="endArrow=open;" edge="1" source="class_R" target="enum_RT" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Booking uses BookingStatus -->
+        <mxCell id="edge_BK_BS" value="" style="endArrow=open;" edge="1" source="class_BK" target="enum_BS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- StandardPricing implements PricingStrategy -->
+        <mxCell id="edge_SP_PS" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_SP" target="iface_PS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WeekendPricing implements PricingStrategy -->
+        <mxCell id="edge_WP_PS" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_WP" target="iface_PS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- DynamicPricing implements PricingStrategy -->
+        <mxCell id="edge_DP_PS" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_DP" target="iface_PS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LoyaltyPricing implements PricingStrategy -->
+        <mxCell id="edge_LP_PS" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_LP" target="iface_PS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ISP INTERFACES ===== -->
+
+        <!-- ModifiableBooking (ISP: modify booking dates) -->
+        <mxCell id="iface_Modifiable" value="&lt;&lt;interface&gt;&gt;&#xa;ModifiableBooking" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="50" y="820" width="290" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Modifiable_m1" value="+ modifyCheckInDate(bookingId, newCheckIn): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Modifiable">
+          <mxGeometry y="40" width="290" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Modifiable_m2" value="+ modifyCheckOutDate(bookingId, newCheckOut): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Modifiable">
+          <mxGeometry y="65" width="290" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- RefundableBooking (ISP: cancel/refund booking) -->
+        <mxCell id="iface_Refundable" value="&lt;&lt;interface&gt;&gt;&#xa;RefundableBooking" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="380" y="820" width="290" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Refundable_m1" value="+ calculateRefund(bookingId: String): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Refundable">
+          <mxGeometry y="40" width="290" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Refundable_m2" value="+ processRefund(bookingId: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Refundable">
+          <mxGeometry y="65" width="290" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- InsurableBooking (ISP: add insurance) -->
+        <mxCell id="iface_Insurable" value="&lt;&lt;interface&gt;&gt;&#xa;InsurableBooking" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="710" y="820" width="290" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Insurable_m1" value="+ addInsurance(bookingId, type: InsuranceType): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Insurable">
+          <mxGeometry y="40" width="290" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Insurable_m2" value="+ removeInsurance(bookingId: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Insurable">
+          <mxGeometry y="65" width="290" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CONCRETE BOOKING CLASSES (ISP) ===== -->
+
+        <!-- BasicHotelBooking (implements BookingOperations only) -->
+        <mxCell id="class_BasicBooking" value="BasicHotelBooking" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="50" y="960" width="290" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BasicBooking_r1" value="implements BookingOperations" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BasicBooking">
+          <mxGeometry y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- StandardHotelBooking (implements ModifiableBooking + RefundableBooking) -->
+        <mxCell id="class_StdBooking" value="StandardHotelBooking" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="380" y="960" width="290" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_StdBooking_r1" value="implements ModifiableBooking, RefundableBooking" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_StdBooking">
+          <mxGeometry y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- PremiumHotelBooking (implements all 3 ISP interfaces) -->
+        <mxCell id="class_PremBooking" value="PremiumHotelBooking" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="710" y="960" width="290" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PremBooking_r1" value="implements Modifiable + Refundable + Insurable" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PremBooking">
+          <mxGeometry y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- NotificationService (SRP: single responsibility for notifications) -->
+        <mxCell id="class_NotifSvc" value="NotificationService" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="820" width="270" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_NotifSvc_m1" value="+ sendConfirmation(booking: Booking): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_NotifSvc">
+          <mxGeometry y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ISP IMPLEMENTS EDGES ===== -->
+
+        <!-- BasicHotelBooking implements BookingOperations -->
+        <mxCell id="edge_BasicBK_BO" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_BasicBooking" target="iface_BO" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- StandardHotelBooking implements ModifiableBooking -->
+        <mxCell id="edge_StdBK_Mod" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_StdBooking" target="iface_Modifiable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- StandardHotelBooking implements RefundableBooking -->
+        <mxCell id="edge_StdBK_Ref" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_StdBooking" target="iface_Refundable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- PremiumHotelBooking implements ModifiableBooking -->
+        <mxCell id="edge_PremBK_Mod" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_PremBooking" target="iface_Modifiable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- PremiumHotelBooking implements RefundableBooking -->
+        <mxCell id="edge_PremBK_Ref" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_PremBooking" target="iface_Refundable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- PremiumHotelBooking implements InsurableBooking -->
+        <mxCell id="edge_PremBK_Ins" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_PremBooking" target="iface_Insurable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== LIFELINES ===== -->
+
+        <mxCell id="life_C" value="Client" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_HBS" value="HotelBookingSystem&#xa;&lt;&lt;Singleton&gt;&gt;" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="280" y="50" width="160" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_H" value="Hotel" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="520" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_R" value="Room" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="740" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_BK" value="Booking" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="960" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== SECTION: SEARCH FLOW ===== -->
+
+        <mxCell id="lbl_search" value="[1] SEARCH FLOW" style="text;fontStyle=1;align=left;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="20" y="150" width="150" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- msg1: Client -> HBS: searchRooms -->
+        <mxCell id="msg1" value="searchRooms(location, type, checkIn, checkOut)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="180" as="sourcePoint"/>
+            <mxPoint x="360" y="180" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg2: HBS -> Hotel: searchAvailableRooms -->
+        <mxCell id="msg2" value="searchAvailableRooms(type, checkIn, checkOut)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="215" as="sourcePoint"/>
+            <mxPoint x="590" y="215" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg3: Hotel -> Room: isAvailable (loop) -->
+        <mxCell id="msg3" value="[loop each room] isAvailable(checkIn, checkOut)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="590" y="255" as="sourcePoint"/>
+            <mxPoint x="810" y="255" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Room checks bookings: overlap detection note -->
+        <mxCell id="note_overlap" value="overlap check:&#xa;start &lt; existEnd AND end &gt; existStart" style="shape=note;whiteSpace=wrap;fillColor=#fffacd;strokeColor=#d6b656;align=left;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="900" y="240" width="210" height="45" as="geometry"/>
+        </mxCell>
+
+        <!-- ret1: Room -> Hotel: boolean -->
+        <mxCell id="ret1" value="boolean (no overlap found)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="810" y="290" as="sourcePoint"/>
+            <mxPoint x="590" y="290" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret2: Hotel -> HBS: List<Room> -->
+        <mxCell id="ret2" value="List&lt;Room&gt; (available rooms)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="590" y="325" as="sourcePoint"/>
+            <mxPoint x="360" y="325" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret3: HBS -> Client -->
+        <mxCell id="ret3" value="List&lt;Room&gt;" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="355" as="sourcePoint"/>
+            <mxPoint x="130" y="355" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== SECTION: BOOKING FLOW ===== -->
+
+        <mxCell id="lbl_book" value="[2] BOOKING FLOW" style="text;fontStyle=1;align=left;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="20" y="388" width="155" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- msg7: Client -> HBS: bookRoom -->
+        <mxCell id="msg7" value="bookRoom(hotelId, roomNo, guest, checkIn, checkOut)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="420" as="sourcePoint"/>
+            <mxPoint x="360" y="420" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg8: HBS self-loop: validate -->
+        <mxCell id="msg8" value="validate(hotel, room, dates)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="455" as="sourcePoint"/>
+            <mxPoint x="430" y="455" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="430" y="470"/>
+              <mxPoint x="360" y="470"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg9: HBS -> Booking: new Booking(...) -->
+        <mxCell id="msg9" value="new Booking(room, guest, checkIn, checkOut)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="500" as="sourcePoint"/>
+            <mxPoint x="1030" y="500" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg10: HBS -> Room: addBooking(booking) -->
+        <mxCell id="msg10" value="addBooking(booking)  [synchronized]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="535" as="sourcePoint"/>
+            <mxPoint x="810" y="535" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg11: Room self-loop: double-check -->
+        <mxCell id="msg11" value="isAvailable() [double-check + lock]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="810" y="565" as="sourcePoint"/>
+            <mxPoint x="885" y="565" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="885" y="582"/>
+              <mxPoint x="810" y="582"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg12: HBS -> Booking: confirm() -->
+        <mxCell id="msg12" value="confirm()  [status = CONFIRMED]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="612" as="sourcePoint"/>
+            <mxPoint x="1030" y="612" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret4: Room -> HBS: true -->
+        <mxCell id="ret4" value="true (added successfully)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="810" y="645" as="sourcePoint"/>
+            <mxPoint x="360" y="645" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret5: HBS -> Client: Booking confirmed -->
+        <mxCell id="ret5" value="Booking (CONFIRMED)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="678" as="sourcePoint"/>
+            <mxPoint x="130" y="678" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== SECTION: CANCEL FLOW ===== -->
+
+        <mxCell id="lbl_cancel" value="[3] CANCEL FLOW" style="text;fontStyle=1;align=left;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="20" y="710" width="150" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- msg13: Client -> HBS: cancelBooking -->
+        <mxCell id="msg13" value="cancelBooking(bookingId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="742" as="sourcePoint"/>
+            <mxPoint x="360" y="742" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg14: HBS -> Room: cancelBooking -->
+        <mxCell id="msg14" value="cancelBooking(bookingId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="775" as="sourcePoint"/>
+            <mxPoint x="810" y="775" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg15: Room -> Booking: cancel() -->
+        <mxCell id="msg15" value="cancel()  [status = CANCELLED]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="810" y="808" as="sourcePoint"/>
+            <mxPoint x="1030" y="808" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret6: HBS -> Client: true -->
+        <mxCell id="ret6" value="true (cancelled, record kept)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="360" y="840" as="sourcePoint"/>
+            <mxPoint x="130" y="840" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Design notes box -->
+        <mxCell id="note_design" value="KEY DESIGN POINTS&#xa;- Singleton: HotelBookingSystem.getInstance()&#xa;- Thread-safety: ReentrantLock in Room.addBooking()&#xa;- Overlap formula: start1 &lt; end2 AND end1 &gt; start2&#xa;- Cancel: mark CANCELLED, never delete (audit trail)&#xa;- Strategy: inject PricingStrategy for flexible pricing" style="shape=note;whiteSpace=wrap;fillColor=#fffacd;strokeColor=#d6b656;align=left;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="150" width="440" height="120" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

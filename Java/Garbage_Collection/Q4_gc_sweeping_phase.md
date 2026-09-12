@@ -28,6 +28,29 @@ Different GC algorithms use different strategies!
 
 ## 📊 Visual Understanding
 
+### All Three Strategies Side-by-Side (ASCII)
+
+```
++-----------------------------------------------------------------------+
+| 1. Mark-Sweep -- fast, fragments memory                               |
+|                                                                       |
+|   (A live) ~~~ [dead: freed] ~~~ (C live) ~~~ [dead: freed]           |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+| 2. Mark-Sweep-Compact -- slower, no fragmentation                     |
+|                                                                       |
+|   (A) --> (C) --> (F) --> [contiguous free space]                    |
++-----------------------------------------------------------------------+
+
++-----------------------------------------------------------------------+
+| 3. Copy -- fastest, needs 2x space                                    |
+|                                                                       |
+|   [From-space: A,B,C,D,E,F,G] --(copy live objects only)--> [To-space: A,C,F] |
++-----------------------------------------------------------------------+
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ### Strategy 1: Mark-Sweep (CMS, Serial Old)
 
 **After Marking:**

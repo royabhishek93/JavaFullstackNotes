@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Two-Phase Commit (2PC) — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); text-align: center; }
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .lock-badge {
+    position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%;
+    background: #e74c3c; color: #fff; font-size: 12px; display: flex; align-items: center; justify-content: center; font-weight: 700;
+  }
+  .coord-box {
+    width: 78px; height: 58px; border: 2px solid var(--accent); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 11px; color: var(--accent); margin: 0 auto;
+  }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .arrow.small { font-size: 18px; }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .stat.small { font-size: 26px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-yes { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-no { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .timeline { font-size: 12.5px; line-height: 1.7; }
+  .timeline .t { color: var(--accent); font-weight: 700; margin-right: 6px; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Two-Phase Commit (2PC)</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">5 minutes</div>
+      <p>That's how long two databases sat holding locks after their coordinator crashed <b>seven milliseconds</b> after receiving both YES votes — right before it could send COMMIT.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Problem</h1>
+    <h2>Two DBs, one atomic outcome</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Accounts DB<br>debit $100</div>
+        <div class="arrow">+</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Orders DB<br>create order</div>
+      </div>
+      <p style="text-align:center">Debit succeeds, order-create fails → money gone, no order. Order succeeds, debit fails → free stuff. Single-DB BEGIN/COMMIT can't span two databases — you need a coordinating protocol.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Phase 1 — PREPARE</h1>
+    <h2>The vote phase</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="coord-box">Coordinator</div>Order Service</div>
+        <div class="arrow small">→</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Accounts DB<br><span class="badge badge-yes">YES</span></div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Orders DB<br><span class="badge badge-yes">YES</span></div>
+      </div>
+      <p style="text-align:center">"Can you commit?" — each participant validates, writes to its WAL, locks the row, and votes. Both are now PREPARED but not yet permanent.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Phase 2 — COMMIT / ABORT</h1>
+    <h2>The decision phase</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="coord-box">Coordinator</div>all YES →</div>
+        <div class="arrow small">→</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Accounts DB<br>COMMIT ✓</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Orders DB<br>COMMIT ✓</div>
+      </div>
+      <p><span class="check-mark">✓</span> All YES → coordinator sends COMMIT to all, locks released. &nbsp; <span class="x-mark">✕</span> Any NO → coordinator sends ABORT to all, clean rollback.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Blocking Problem</h1>
+    <h2>Coordinator crashes mid-decision</h2>
+    <div class="body timeline">
+      <div><span class="t">t=0ms</span>Coordinator sends PREPARE to both DBs</div>
+      <div><span class="t">t=5ms</span>Accounts DB votes YES (locked, WAL written)</div>
+      <div><span class="t">t=6ms</span>Orders DB votes YES (locked, WAL written)</div>
+      <div><span class="t">t=7ms</span><b style="color:#e74c3c">COORDINATOR CRASHES</b> — about to send COMMIT</div>
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue" style="position:relative"><div class="lock-badge">🔒</div><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Locked, waiting</div>
+        <div class="col"><div class="db-icon db-yellow" style="position:relative"><div class="lock-badge">🔒</div><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Locked, waiting</div>
+      </div>
+      <p style="margin-top:2px">5 minutes later, coordinator restarts, reads its WAL, sends COMMIT. Worst case: coordinator's own WAL is lost → manual intervention to decide commit or rollback.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>XA Transactions &amp; The Latency Tax</h1>
+    <h2>How 2PC ships in production</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="stat small">2ms</div>single-DB<br>transaction</div>
+        <div class="arrow">vs</div>
+        <div class="col"><div class="stat small" style="color:#e74c3c">10-50ms</div>XA 2PC<br>transaction</div>
+      </div>
+      <p style="text-align:center">Spring @Transactional + Atomikos/Bitronix runs real XA 2PC underneath. Fine at 1,000 TPS. A bottleneck at 100,000 TPS. Used in banking cores &amp; enterprise ERP (SAP, Oracle) — not high-throughput web systems.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Failure Mode Matrix</h1>
+    <h2>What an interviewer will probe</h2>
+    <div class="body">
+      <table>
+        <tr><th>Failure</th><th>Result</th></tr>
+        <tr><td>Participant fails before voting</td><td>Clean abort</td></tr>
+        <tr><td>Participant fails after YES, before decision</td><td>Blocked, holds locks</td></tr>
+        <tr><td>Coordinator fails before PREPARE</td><td>Clean abort</td></tr>
+        <tr><td>Coordinator fails after all YES, before COMMIT</td><td><b style="color:#e74c3c">Blocking problem</b></td></tr>
+        <tr><td>Coordinator fails mid-COMMIT (A done, B not)</td><td><b style="color:#e74c3c">Partial commit</b></td></tr>
+        <tr><td>Network partition, any time</td><td>Same as coordinator fail</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Saga Alternative</h1>
+    <h2>What the architect actually recommends</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Order DB +<br>outbox table</div>
+        <div class="arrow small">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Debezium<br>(CDC)</div>
+        <div class="arrow small">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Kafka →<br>Wallet Svc</div>
+      </div>
+      <p style="text-align:center">One local single-DB transaction writes the order + an outbox event. No distributed lock, no coordinator crash risk. If the debit fails, a compensating <code>WalletDebitFailed</code> event cancels the order.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>2PC vs The Alternatives</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Blocking?</th><th>Best for</th></tr>
+        <tr><td>2PC (XA)</td><td>Yes — coordinator crash freezes locks</td><td>2-3 DBs, banking/ERP, latency OK</td></tr>
+        <tr><td>3PC</td><td>Reduced, not eliminated</td><td>Rarely used in practice</td></tr>
+        <tr><td>Paxos/Raft coordinator</td><td>No — replicated coordinator state</td><td>Coordinator HA, still complex</td></tr>
+        <tr><td>Saga (Outbox + events)</td><td>No — eventual consistency</td><td>Microservices, high throughput</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>2-3 DBs, coordinator highly available, latency acceptable (banking/ERP)? → 2PC/XA is fine. Microservices, &gt;10K TPS, or DBs without XA support (DynamoDB, Cassandra)? → Saga with compensating transactions.</p>
+      <div class="quote-box">
+        "2PC guarantees atomicity across multiple databases but has a blocking failure mode: if the coordinator crashes between PREPARE and COMMIT, all participants hold locks indefinitely. For microservices, I use Saga with compensating transactions instead — eventual consistency, but no distributed locks."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

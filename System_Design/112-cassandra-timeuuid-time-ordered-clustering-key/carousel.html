@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>TIMEUUID: Time-Ordered Clustering Keys in Cassandra — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent: #00d4ff;
+    --accent2: #ff6b6b;
+    --accent3: #ffd166;
+    --accent4: #6bff8f;
+    --text: #eaeaf2;
+    --muted: #9a9ac0;
+    --node: #4a4a7a;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0d0d1a;
+    color: var(--text);
+    font-family: "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .deck {
+    width: 100%;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .slide {
+    width: 540px;
+    height: 540px;
+    background: linear-gradient(160deg, var(--bg) 0%, #14142a 100%);
+    border-radius: 14px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    padding: 34px 38px;
+    display: none;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .slide.active { display: flex; }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-size: 26px;
+    margin: 0 0 12px 0;
+    line-height: 1.25;
+    color: var(--text);
+  }
+
+  h2 {
+    font-size: 20px;
+    margin: 0 0 10px 0;
+    color: var(--accent);
+  }
+
+  p, li {
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .muted { color: var(--muted); }
+
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .tag {
+    display: inline-block;
+    background: rgba(0,212,255,0.12);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    width: fit-content;
+  }
+
+  .big-number {
+    font-size: 64px;
+    font-weight: 800;
+    color: var(--accent2);
+    line-height: 1;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  ul.bullets { margin: 8px 0; padding-left: 18px; }
+  ul.bullets li { margin-bottom: 7px; }
+  ul.bullets li::marker { color: var(--accent); }
+
+  /* ---------- Database cylinder (CSS-drawn) ---------- */
+  .cylinder {
+    width: 90px;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .cyl-top {
+    width: 90px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--node);
+    border: 2px solid #8888c8;
+  }
+  .cyl-body {
+    width: 90px;
+    height: 60px;
+    background: var(--node);
+    border-left: 2px solid #8888c8;
+    border-right: 2px solid #8888c8;
+    margin-top: -11px;
+  }
+  .cyl-bottom {
+    width: 90px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--node);
+    border: 2px solid #8888c8;
+    margin-top: -11px;
+  }
+  .cyl-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+  .cyl.mysql .cyl-top, .cyl.mysql .cyl-body, .cyl.mysql .cyl-bottom { background: #2b6e4f; border-color: #4fd68c; }
+  .cyl.cassandra .cyl-top, .cyl.cassandra .cyl-body, .cyl.cassandra .cyl-bottom { background: #5a2b6e; border-color: #c07fe0; }
+
+  /* ---------- Server box (CSS-drawn) ---------- */
+  .server-box {
+    width: 84px;
+    height: 68px;
+    background: #26264a;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    padding: 6px 8px;
+    text-align: center;
+  }
+  .server-box .line { height: 4px; background: rgba(255,255,255,0.18); border-radius: 2px; margin-bottom: 5px; }
+  .server-box .label { font-size: 11px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .server-box .sub { font-size: 9.5px; color: var(--muted); }
+  .server-box.drift { border-color: var(--accent2); }
+  .server-box.drift .label { color: var(--accent2); }
+
+  .row-flex {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-end;
+    gap: 10px;
+  }
+
+  .arrow-down::after {
+    content: "";
+    display: block;
+    width: 0; height: 0;
+    margin: 4px auto;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 9px solid var(--muted);
+  }
+
+  .arrow-right {
+    font-size: 20px;
+    color: var(--accent);
+    align-self: center;
+  }
+
+  /* ---------- comment row (partition layout) ---------- */
+  .partition-box {
+    border: 1px dashed var(--accent);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: rgba(0,212,255,0.05);
+  }
+  .comment-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #22223f;
+    border-radius: 5px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+    font-size: 11.5px;
+  }
+  .comment-row .uuid-chip {
+    background: var(--accent4);
+    color: #0d0d1a;
+    font-weight: 700;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 10px;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .comment-row.bad .uuid-chip { background: var(--accent2); color: #fff; }
+  .comment-row .body { color: var(--muted); }
+
+  /* ---------- UUID bit anatomy ---------- */
+  .bit-block {
+    display: flex;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #444;
+  }
+  .bit-seg {
+    padding: 10px 4px;
+    text-align: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: #0d0d1a;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .seg-time { background: var(--accent3); flex: 5; }
+  .seg-ver  { background: var(--accent2); flex: 1; color: #fff; }
+  .seg-clk  { background: var(--accent4); flex: 2; }
+  .seg-node { background: var(--accent); flex: 3; }
+
+  /* ---------- comparison table ---------- */
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+  }
+  table.cmp th, table.cmp td {
+    border: 1px solid #33335a;
+    padding: 6px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.cmp th {
+    background: #26264a;
+    color: var(--accent);
+    font-size: 10.5px;
+  }
+  table.cmp td.swatch-cell { display: flex; align-items: center; gap: 6px; }
+  .swatch {
+    width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .sw-timeuuid { background: var(--accent4); }
+  .sw-uuid4 { background: var(--accent2); }
+  .sw-snowflake { background: var(--accent3); }
+  .sw-autoinc { background: var(--muted); }
+  .sw-ulid { background: var(--accent); }
+
+  /* ---------- company cards ---------- */
+  .card-row { display: flex; gap: 10px; }
+  .company-card {
+    flex: 1;
+    background: #22223f;
+    border: 1px solid #35355e;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+  .company-card .name { font-weight: 800; font-size: 13px; color: var(--accent); }
+  .company-card .metric { font-size: 20px; font-weight: 800; color: var(--accent4); margin: 6px 0; }
+  .company-card .desc { font-size: 10.5px; color: var(--muted); }
+  .company-card.reject .metric { color: var(--accent2); }
+  .company-card.reject { border-color: var(--accent2); }
+
+  /* ---------- decision tree ---------- */
+  .tree-node {
+    background: #22223f;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    text-align: center;
+    margin: 0 auto;
+  }
+  .tree-branch { text-align: center; color: var(--muted); font-size: 16px; margin: 2px 0; }
+  .tree-leaf {
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    text-align: center;
+    font-weight: 700;
+  }
+  .leaf-yes { background: rgba(107,255,143,0.15); border: 1px solid var(--accent4); color: var(--accent4); }
+  .leaf-no { background: rgba(255,107,107,0.15); border: 1px solid var(--accent2); color: var(--accent2); }
+
+  .quote-box {
+    background: #22223f;
+    border-left: 4px solid var(--accent);
+    padding: 10px 14px;
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--text);
+    margin-top: 10px;
+  }
+
+  /* ---------- footer / nav ---------- */
+  .slide-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 8px;
+    border-top: 1px solid #2c2c4a;
+    padding-top: 8px;
+  }
+
+  .controls {
+    margin-top: 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .controls button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: var(--accent); color: #0d0d1a; }
+  .counter { font-size: 13px; color: var(--muted); }
+
+  @media print {
+    body { background: #fff; }
+    .controls { display: none; }
+    .deck { height: auto; display: block; }
+    .slide {
+      display: flex !important;
+      page-break-after: always;
+      box-shadow: none;
+      margin: 0 auto;
+    }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+  <div class="stack">
+
+    <!-- SLIDE 1: HOOK -->
+    <div class="slide active" data-index="1">
+      <div class="eyebrow">Cassandra · Data Modeling</div>
+      <h1>Your comments feature just rendered in random order.</h1>
+      <div class="content">
+        <div class="big-number">300µs</div>
+        <p class="muted">That's the amount of clock drift between two app servers that scrambled a comment thread on a 6-node, 3-datacenter Cassandra cluster — "First!" rendered <b>after</b> its own reply.</p>
+        <p>The bug wasn't Cassandra. It was the wrong kind of UUID.</p>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">1 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 2: THE PROBLEM -->
+    <div class="slide" data-index="2">
+      <div class="tag">THE PROBLEM</div>
+      <h2>Auto-increment needs one coordinator. Cassandra has none.</h2>
+      <div class="content">
+        <div class="row-flex">
+          <div>
+            <div class="cylinder cyl mysql">
+              <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+            </div>
+            <div class="cyl-label">MySQL<br>1 coordinator<br>id: 1,2,3,4...</div>
+          </div>
+          <div class="arrow-right">vs</div>
+          <div style="display:flex; gap:6px;">
+            <div class="cylinder cyl cassandra"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div><div class="cyl-label">Node A</div></div>
+            <div class="cylinder cyl cassandra"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div><div class="cyl-label">Node B</div></div>
+            <div class="cylinder cyl cassandra"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div><div class="cyl-label">Node C</div></div>
+          </div>
+        </div>
+        <p style="margin-top:14px;">6 nodes, 3 datacenters, <b>masterless</b>. Any node accepts any write, at any moment — no round trip to ask "what's next?" Forcing one coordinator would kill the entire point of going distributed.</p>
+        <p>Fallback: generate the ID on the client with a random UUID. Uniqueness: solved. Ordering: <span style="color:var(--accent2); font-weight:700;">broken</span>.</p>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">2 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 3: RANDOM UUID V4 TRAP -->
+    <div class="slide" data-index="3">
+      <div class="tag" style="border-color: var(--accent2); color: var(--accent2); background: rgba(255,107,107,0.12);">TRAP #1</div>
+      <h2>Random UUID v4 as a clustering key = garbage order</h2>
+      <div class="content">
+        <div class="partition-box">
+          <div class="comment-row bad"><span class="uuid-chip">8a41...</span><span>3rd written</span><span class="body">→ sorts 1st (WRONG)</span></div>
+          <div class="comment-row bad"><span class="uuid-chip">1b6f...</span><span>1st written</span><span class="body">→ sorts 2nd</span></div>
+          <div class="comment-row bad"><span class="uuid-chip">f2c9...</span><span>2nd written</span><span class="body">→ sorts 3rd</span></div>
+        </div>
+        <p style="margin-top:12px;">128 bits of pure randomness. Zero relationship between value and creation time.</p>
+        <ul class="bullets">
+          <li>App needs <code>ORDER BY created_at</code> + an extra column</li>
+          <li>Ordering by a non-clustering column needs a secondary index or <code>ALLOW FILTERING</code></li>
+          <li>Both are anti-patterns in a wide-partition workload at scale</li>
+        </ul>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">3 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 4: TIMEUUID ANATOMY -->
+    <div class="slide" data-index="4">
+      <div class="tag">THE FIX</div>
+      <h2>TIMEUUID (v1): 128 bits, chronological by design</h2>
+      <div class="content">
+        <div class="bit-block">
+          <div class="bit-seg seg-time">time_low + time_mid + time_hi<br>(60-bit timestamp)</div>
+          <div class="bit-seg seg-ver">ver=1</div>
+          <div class="bit-seg seg-clk">clock_seq<br>(14-bit)</div>
+          <div class="bit-seg seg-node">node id<br>(48-bit MAC)</div>
+        </div>
+        <p style="margin-top:12px;"><b>1b6f4d20-7e2a-11ef-9c1a-3c8d20a1f001</b></p>
+        <ul class="bullets">
+          <li>60-bit timestamp = 100-nanosecond ticks since 1582-10-15 — sub-microsecond precision, effectively never wraps</li>
+          <li>Cassandra compares the reassembled <b>timestamp</b> first — not raw byte order</li>
+          <li>Two comments 1ms apart sort in that same order, natively, no extra logic</li>
+        </ul>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">4 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 5: PARTITION + CLUSTERING LAYOUT -->
+    <div class="slide" data-index="5">
+      <div class="tag">THE SOLUTION</div>
+      <h2>Rows land on disk pre-sorted — for free</h2>
+      <div class="content">
+        <p class="muted" style="margin:0 0 4px 0;"><code>PRIMARY KEY (post_id, comment_id)</code> · partition = post_id · clustering = TIMEUUID</p>
+        <div class="partition-box">
+          <div class="comment-row"><span class="uuid-chip">1b6f...f001</span><span>"First!"</span><span class="body">user-42</span></div>
+          <div class="comment-row"><span class="uuid-chip">2a7c...f002</span><span>"nice post"</span><span class="body">user-88</span></div>
+          <div class="comment-row"><span class="uuid-chip">3f9d...f003</span><span>"agreed"</span><span class="body">user-17</span></div>
+          <div class="comment-row"><span class="uuid-chip">5e2a...f004</span><span>"source?"</span><span class="body">user-42</span></div>
+        </div>
+        <p style="margin-top:12px;">Rows physically stored in ascending TIMEUUID order = ascending creation-time order. No <code>ORDER BY</code>, no sort/merge step.</p>
+        <div class="big-number" style="font-size:38px; color:var(--accent4);">~2–5ms p99</div>
+        <p class="muted">single partition read, local SSD, already time-ordered</p>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">5 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 6: CLOCK SKEW EDGE CASE -->
+    <div class="slide" data-index="6">
+      <div class="tag" style="border-color: var(--accent2); color: var(--accent2); background: rgba(255,107,107,0.12);">TRAP #2</div>
+      <h2>Clock skew reorders writes across app servers</h2>
+      <div class="content">
+        <div class="row-flex">
+          <div class="server-box">
+            <div class="line" style="width:70%"></div><div class="line" style="width:90%"></div>
+            <div class="label">Server A</div>
+            <div class="sub">14:00:00.001200<br>NTP-synced</div>
+          </div>
+          <div class="server-box drift">
+            <div class="line" style="width:70%"></div><div class="line" style="width:90%"></div>
+            <div class="label">Server B</div>
+            <div class="sub">14:00:00.000900<br>−300µs drift</div>
+          </div>
+          <div class="server-box">
+            <div class="line" style="width:70%"></div><div class="line" style="width:90%"></div>
+            <div class="label">Server C</div>
+            <div class="sub">14:00:00.001500<br>NTP-synced</div>
+          </div>
+        </div>
+        <p style="margin-top:12px;">Real arrival order at load balancer: <b>X (A) → Y (B) → Z (C)</b>.<br>Stored order by TIMEUUID timestamp: <b style="color:var(--accent2);">Y → X → Z</b> — because B's clock lags.</p>
+        <ul class="bullets">
+          <li>Comment thread: imperceptible, NTP keeps servers within 1–10ms anyway</li>
+          <li>Financial ledger: <b>not acceptable</b> — use a Snowflake ID or single-writer sequence</li>
+          <li>Mitigation: tight NTP/chronyd sync, or generate TIMEUUID server-side, never client-side</li>
+        </ul>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">6 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 7: COLLISION AVOIDANCE + THROUGHPUT -->
+    <div class="slide" data-index="7">
+      <div class="tag">INTERNALS</div>
+      <h2>Same-tick collisions &amp; real throughput</h2>
+      <div class="content">
+        <p>Billions of CPU instructions/sec means two TIMEUUIDs can land in the <b>same 100ns tick</b>. RFC 4122's fix: the 14-bit <code>clock_seq</code> field.</p>
+        <div class="big-number" style="font-size:44px;">16,384</div>
+        <p class="muted">possible clock_seq values (2<sup>14</sup>) — bumped when the clock hasn't ticked forward, used as a tiebreaker</p>
+        <ul class="bullets">
+          <li><code>Uuids.timeBased()</code> keeps an atomic counter so same-JVM calls microseconds apart still get strictly increasing values</li>
+          <li>1M+ TIMEUUIDs/sec generated per JVM — generation is never the bottleneck</li>
+          <li>Real limit: Cassandra write throughput, ~10K–50K writes/sec per node (hardware + replication factor dependent)</li>
+        </ul>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">7 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 8: REAL WORLD -->
+    <div class="slide" data-index="8">
+      <div class="tag">REAL WORLD</div>
+      <h2>Same pattern, three very different call decisions</h2>
+      <div class="content">
+        <div class="card-row">
+          <div class="company-card">
+            <div class="name">Swiggy-style<br>order timeline</div>
+            <div class="metric">200+ /sec</div>
+            <div class="desc">event writes per hot restaurant partition · TIMEUUID · ~3ms p99 read</div>
+          </div>
+          <div class="company-card">
+            <div class="name">Flipkart-style<br>review feed</div>
+            <div class="metric">500+ /min</div>
+            <div class="desc">comments on a viral listing, 2 DCs · TIMEUUID handles multi-writer fine</div>
+          </div>
+          <div class="company-card reject">
+            <div class="name">PhonePe-style<br>txn ledger</div>
+            <div class="metric">REJECTED</div>
+            <div class="desc">clock-skew reordering unacceptable → Snowflake ID / single writer instead</div>
+          </div>
+        </div>
+        <p style="margin-top:16px;">Same 128-bit trick. Wildly different risk tolerance for a few hundred microseconds of skew.</p>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">8 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 9: COMPARISON TABLE -->
+    <div class="slide" data-index="9">
+      <div class="tag">COMPARISON</div>
+      <h2>Time-ordered ID approaches, side by side</h2>
+      <div class="content">
+        <table class="cmp">
+          <tr><th>Approach</th><th>Tradeoff</th><th>Fails when</th></tr>
+          <tr><td class="swatch-cell"><span class="swatch sw-timeuuid"></span>TIMEUUID</td><td>Trusts generating clock; 16-byte overhead</td><td>Cross-server clock skew</td></tr>
+          <tr><td class="swatch-cell"><span class="swatch sw-uuid4"></span>UUID v4 + created_at</td><td>Needs secondary index / ALLOW FILTERING</td><td>Scale — full scan / slow sort</td></tr>
+          <tr><td class="swatch-cell"><span class="swatch sw-snowflake"></span>Snowflake ID</td><td>Needs worker-ID coordination (e.g. ZooKeeper)</td><td>Worker-ID misconfiguration</td></tr>
+          <tr><td class="swatch-cell"><span class="swatch sw-autoinc"></span>DB auto-increment</td><td>Single coordinator serializes all writers</td><td>Masterless multi-writer topology</td></tr>
+          <tr><td class="swatch-cell"><span class="swatch sw-ulid"></span>ULID</td><td>Millisecond precision only, random suffix</td><td>Same-ms writes without a real clock_seq</td></tr>
+        </table>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">9 / 10</span></div>
+    </div>
+
+    <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+    <div class="slide" data-index="10">
+      <div class="tag">CHEAT SHEET</div>
+      <h2>Decision tree &amp; the interview line</h2>
+      <div class="content">
+        <div class="tree-node">Need a sort key on a masterless store?</div>
+        <div class="tree-branch">↙ yes &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; no ↘</div>
+        <div class="row-flex" style="align-items:flex-start;">
+          <div style="flex:1;">
+            <div class="tree-node" style="margin-bottom:4px;">Strict causal / financial order?</div>
+            <div class="tree-branch">↙ yes &nbsp;&nbsp; no ↘</div>
+            <div class="row-flex">
+              <div class="tree-leaf leaf-no">Snowflake ID /<br>single-writer</div>
+              <div class="tree-leaf leaf-yes">TIMEUUID</div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <div class="tree-leaf leaf-yes">Random UUID v4<br>is fine (see #041)</div>
+          </div>
+        </div>
+        <div class="quote-box">
+          "Sort key needed? → TIMEUUID (or Snowflake ID for strict order). Just a unique ID needed? → random UUID v4 is fine. Financial/causal order? → Snowflake ID / single-writer sequence, not TIMEUUID."
+        </div>
+      </div>
+      <div class="slide-footer"><span>TIMEUUID: Time-Ordered Clustering Keys</span><span class="counter-label">10 / 10</span></div>
+    </div>
+
+  </div>
+
+  <div class="controls">
+    <button id="prevBtn">&larr; Prev</button>
+    <span class="counter"><span id="counterCurrent">1</span> / <span id="counterTotal">10</span></span>
+    <button id="nextBtn">Next &rarr;</button>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+    var total = slides.length;
+    var current = 0;
+
+    document.getElementById('counterTotal').textContent = total;
+
+    function render() {
+      slides.forEach(function (s, i) {
+        s.classList.toggle('active', i === current);
+      });
+      document.getElementById('counterCurrent').textContent = current + 1;
+    }
+
+    function next() {
+      current = (current + 1) % total;
+      render();
+    }
+
+    function prev() {
+      current = (current - 1 + total) % total;
+      render();
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', next);
+    document.getElementById('prevBtn').addEventListener('click', prev);
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowRight') next();
+      if (e.key === 'ArrowLeft') prev();
+    });
+
+    render();
+  })();
+</script>
+
+</body>
+</html>

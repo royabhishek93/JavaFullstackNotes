@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Paxos, Clock Synchronization & TrueTime — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent: #e94560;
+    --accent2: #4ecdc4;
+    --accent3: #ffd166;
+    --text: #f1f1f6;
+    --muted: #9a9ab0;
+    --line: #3a3a5c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0e0e18;
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--text);
+  }
+
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 24px auto;
+    position: relative;
+    background: var(--bg);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  }
+
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    padding: 34px 32px 30px 32px;
+    background: var(--bg);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    flex-direction: column;
+  }
+
+  .slide.active { display: flex; }
+
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent2);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-size: 24px;
+    line-height: 1.25;
+    margin: 0 0 10px 0;
+    color: var(--text);
+  }
+
+  h2 {
+    font-size: 19px;
+    margin: 0 0 10px 0;
+    color: var(--text);
+  }
+
+  p, li {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .stat {
+    font-size: 44px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .statlabel {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* ===== Clock icon (CSS drawn) ===== */
+  .clock {
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 4px solid var(--accent2);
+    position: relative;
+    background: var(--panel);
+    flex-shrink: 0;
+  }
+  .clock::before {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 3px; height: 30px;
+    background: var(--text);
+    transform-origin: bottom center;
+    transform: translate(-50%, -100%) rotate(35deg);
+  }
+  .clock::after {
+    content: "";
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 3px; height: 22px;
+    background: var(--accent3);
+    transform-origin: bottom center;
+    transform: translate(-50%, -100%) rotate(140deg);
+  }
+  .clock.small { width: 54px; height: 54px; border-width: 3px; }
+  .clock.small::before { height: 16px; }
+  .clock.small::after { height: 12px; }
+  .clock.drift::before { transform: translate(-50%, -100%) rotate(70deg); }
+
+  .clock-row {
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    align-items: flex-end;
+  }
+  .clock-box {
+    text-align: center;
+  }
+  .clock-box .cap {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 600;
+  }
+  .clock-box .sub {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  /* ===== Server / node box ===== */
+  .node {
+    width: 100px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 6px;
+    text-align: center;
+  }
+  .node .bar {
+    height: 5px;
+    background: var(--line);
+    border-radius: 2px;
+    margin: 5px 0;
+  }
+  .node .bar.on { background: var(--accent2); }
+  .node .label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ===== arrows (CSS text, not emoji) ===== */
+  .arrow {
+    font-size: 20px;
+    color: var(--accent3);
+    font-weight: 700;
+  }
+  .arrow-down {
+    font-size: 18px;
+    color: var(--accent3);
+    text-align: center;
+  }
+
+  /* ===== Proposer / Acceptor boxes ===== */
+  .pax-wrap { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .pax-row { display: flex; gap: 10px; justify-content: center; }
+  .box {
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    border: 1px solid var(--line);
+  }
+  .box.proposer { background: rgba(233,69,96,0.18); color: var(--accent); border-color: var(--accent); }
+  .box.acceptor { background: rgba(78,205,196,0.15); color: var(--accent2); border-color: var(--accent2); width: 78px; }
+  .box.acceptor.down { opacity: 0.35; border-style: dashed; }
+  .msg {
+    font-size: 10.5px;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  /* ===== interval bar ===== */
+  .interval-wrap { margin: 10px 0; }
+  .interval-track {
+    position: relative;
+    height: 10px;
+    background: var(--line);
+    border-radius: 5px;
+    margin: 30px 10px 10px 10px;
+  }
+  .interval-bar {
+    position: absolute;
+    top: -6px;
+    height: 22px;
+    background: rgba(78,205,196,0.35);
+    border: 2px solid var(--accent2);
+    border-radius: 6px;
+  }
+  .interval-tag {
+    position: absolute;
+    top: -26px;
+    font-size: 10.5px;
+    color: var(--accent2);
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .interval-tag.right { text-align: right; }
+
+  /* ===== comparison table ===== */
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.3px;
+  }
+  table.cmp th, table.cmp td {
+    border: 1px solid var(--line);
+    padding: 5px 6px;
+    text-align: left;
+    color: var(--muted);
+  }
+  table.cmp th {
+    background: rgba(78,205,196,0.15);
+    color: var(--accent2);
+    font-size: 10.3px;
+  }
+  table.cmp td.name { color: var(--text); font-weight: 700; }
+
+  /* ===== HLC tuple ===== */
+  .tuple {
+    display: inline-flex;
+    gap: 4px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: "SFMono-Regular", Menlo, Consolas, monospace;
+    font-size: 12px;
+  }
+  .tuple .p { color: var(--accent3); }
+  .tuple .l { color: var(--accent2); }
+
+  /* ===== decision tree ===== */
+  .tree { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .tree .q {
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .tree .branch { display: flex; gap: 30px; }
+  .tree .leaf {
+    background: rgba(78,205,196,0.15);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    border-radius: 6px;
+    padding: 5px 8px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  blockquote {
+    margin: 8px 0 0 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--accent);
+    background: var(--panel);
+    font-size: 11.5px;
+    color: var(--text);
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 10px;
+  }
+  .badge {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+  .taglist span {
+    display: inline-block;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--accent2);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    margin-right: 5px;
+  }
+
+  /* ===== nav controls (screen only) ===== */
+  .controls {
+    width: 540px;
+    margin: 0 auto 40px auto;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 18px;
+  }
+  .controls button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .controls button:hover { border-color: var(--accent2); color: var(--accent2); }
+  .counter {
+    font-size: 13px;
+    color: var(--muted);
+    min-width: 50px;
+    text-align: center;
+  }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: #fff; }
+    .controls { display: none; }
+    .deck { margin: 0; box-shadow: none; border-radius: 0; }
+    .slide {
+      display: none !important;
+      page-break-after: always;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .slide.print-show { display: flex !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active" data-index="1">
+    <div class="eyebrow">System Design · Consensus & Time</div>
+    <h1>Google puts atomic clocks in every data center — just to know what time it is.</h1>
+    <div class="content">
+      <div class="clock-row">
+        <div class="clock-box">
+          <div class="clock"></div>
+          <div class="cap">GPS receiver</div>
+        </div>
+        <div class="clock-box">
+          <div class="clock small"></div>
+          <div class="cap">Atomic clock</div>
+        </div>
+      </div>
+      <p style="text-align:center; margin-top:14px;">Without them: a transaction that happens <b style="color:var(--accent)">LATER</b> can get a <b style="color:var(--accent)">SMALLER</b> timestamp than one that happened earlier — purely from clock drift.</p>
+    </div>
+    <div class="footer-row"><span class="badge">01 · THE HOOK</span><span class="badge">Paxos + TrueTime</span></div>
+  </section>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <section class="slide" data-index="2">
+    <div class="eyebrow">The Problem</div>
+    <h2>No two clocks are ever perfectly in sync</h2>
+    <div class="content">
+      <div class="row">
+        <div class="node">
+          <div class="label">Server: Europe</div>
+          <div class="bar on"></div>
+          <div class="bar"></div>
+          <div class="sub">commits txn A</div>
+        </div>
+        <div class="node">
+          <div class="label">Server: US</div>
+          <div class="bar on"></div>
+          <div class="bar"></div>
+          <div class="sub">commits txn B (later!)</div>
+        </div>
+      </div>
+      <div class="clock-row" style="margin-top:14px;">
+        <div class="clock-box"><div class="clock small"></div><div class="sub">clock runs true</div></div>
+        <div class="clock-box"><div class="clock small drift"></div><div class="sub">clock drifts fast</div></div>
+      </div>
+      <p style="text-align:center;">If B's server clock is slightly fast or A's is slightly slow, B (which happened after) can get a <b style="color:var(--accent)">smaller timestamp</b> than A. History appears to run backwards.</p>
+    </div>
+    <div class="footer-row"><span class="badge">02 · THE PROBLEM</span><span class="badge">Clock drift</span></div>
+  </section>
+
+  <!-- SLIDE 3: PAXOS TWO-PHASE PROTOCOL -->
+  <section class="slide" data-index="3">
+    <div class="eyebrow">Scenario 1</div>
+    <h2>Paxos: two-phase proposal</h2>
+    <div class="content">
+      <div class="pax-wrap">
+        <div class="box proposer">Proposer</div>
+        <div class="msg">Phase 1 — "Promise on proposal #7?"</div>
+        <div class="arrow-down">↓ ↓ ↓</div>
+        <div class="pax-row">
+          <div class="box acceptor">Acceptor 1<br><span style="color:var(--accent2)">Promise</span></div>
+          <div class="box acceptor">Acceptor 2<br><span style="color:var(--accent2)">Promise</span></div>
+          <div class="box acceptor down">Acceptor 3<br>(down)</div>
+        </div>
+        <div class="msg">Majority (2/3) promised → Phase 2 — "Accept value=X, #7"</div>
+        <div class="pax-row">
+          <div class="box acceptor">Accepted</div>
+          <div class="box acceptor">Accepted</div>
+          <div class="box acceptor down">—</div>
+        </div>
+        <div class="msg" style="color:var(--accent3); font-weight:700;">Value X is CHOSEN — durable even if proposer crashes now</div>
+      </div>
+    </div>
+    <div class="footer-row"><span class="badge">03 · PAXOS BASICS</span><span class="badge">Prepare/Promise → Accept</span></div>
+  </section>
+
+  <!-- SLIDE 4: DUELING PROPOSERS TRAP -->
+  <section class="slide" data-index="4">
+    <div class="eyebrow">Trap</div>
+    <h2>Dueling proposers can livelock Paxos</h2>
+    <div class="content">
+      <div class="row">
+        <div class="box proposer">Proposer A<br>#7</div>
+        <span class="arrow">⇄</span>
+        <div class="box proposer">Proposer B<br>#8</div>
+      </div>
+      <p style="text-align:center;">Acceptors must always obey the <b style="color:var(--accent)">higher-numbered</b> promise. A's Phase 2 can fail right after its Phase 1 succeeded, because B's higher proposal snuck in between.</p>
+      <p style="text-align:center;">A retries with #9, B retries with #10 ... with no elected leader, this can repeat <b>forever</b> — nothing is ever fully agreed.</p>
+      <p style="text-align:center; color:var(--accent2);">Fix used in practice: layer leader election on top → <b>Multi-Paxos</b>, which converges toward Raft's model.</p>
+    </div>
+    <div class="footer-row"><span class="badge">04 · ANTI-PATTERN</span><span class="badge">No leader = livelock risk</span></div>
+  </section>
+
+  <!-- SLIDE 5: RAFT vs PAXOS vs ZAB -->
+  <section class="slide" data-index="5">
+    <div class="eyebrow">Scenario 2</div>
+    <h2>Raft vs Paxos vs ZAB</h2>
+    <div class="content">
+      <div class="row">
+        <div class="node" style="width:150px;">
+          <div class="label">Raft</div>
+          <div class="sub">1 leader / term</div>
+          <div class="bar on"></div>
+          <div class="sub">leader → followers only</div>
+        </div>
+        <div class="node" style="width:150px;">
+          <div class="label">Paxos</div>
+          <div class="sub">no leader required</div>
+          <div class="bar"></div>
+          <div class="sub">any node proposes</div>
+        </div>
+      </div>
+      <div class="node" style="width:150px; margin: 10px auto 0 auto;">
+        <div class="label">ZAB (ZooKeeper)</div>
+        <div class="sub">leader-based broadcast</div>
+        <div class="bar on"></div>
+        <div class="sub">predates Raft's paper</div>
+      </div>
+      <p style="text-align:center; margin-top:10px;">Same safety guarantees — Raft trades Paxos's generality for a single-leader rule that's <b style="color:var(--accent2)">dramatically easier</b> to implement & review. That's why it won: etcd, Consul.</p>
+    </div>
+    <div class="footer-row"><span class="badge">05 · CONSENSUS FAMILY</span><span class="badge">Provably equivalent guarantees</span></div>
+  </section>
+
+  <!-- SLIDE 6: TRUETIME UNCERTAINTY INTERVAL -->
+  <section class="slide" data-index="6">
+    <div class="eyebrow">Scenario 3</div>
+    <h2>TrueTime returns an interval, not a point</h2>
+    <div class="content">
+      <div class="interval-wrap">
+        <div class="interval-track">
+          <div class="interval-bar" style="left:20%; width:35%;"></div>
+          <div class="interval-tag" style="left:20%;">earliest = 100.001s</div>
+          <div class="interval-tag right" style="left:47%;">latest = 100.006s</div>
+        </div>
+      </div>
+      <p style="text-align:center;">TT.now() = [earliest, latest] — roughly a <b style="color:var(--accent2)">5ms window</b>, kept tight via GPS + atomic clock references in every data center.</p>
+      <div class="stat" style="text-align:center;">1–7ms</div>
+      <div class="statlabel" style="text-align:center;">typical TrueTime uncertainty in Google data centers</div>
+    </div>
+    <div class="footer-row"><span class="badge">06 · TRUETIME</span><span class="badge">Honest uncertainty</span></div>
+  </section>
+
+  <!-- SLIDE 7: COMMIT-WAIT TIMELINE -->
+  <section class="slide" data-index="7">
+    <div class="eyebrow">Scenario 4</div>
+    <h2>Commit-wait: buy certainty with latency</h2>
+    <div class="content">
+      <div class="row" style="gap:6px;">
+        <div class="box acceptor" style="width:auto;">1. Pick s = TT.now().latest</div>
+        <span class="arrow">→</span>
+        <div class="box acceptor" style="width:auto; border-color:var(--accent3); color:var(--accent3);">2. WAIT until earliest &gt; s</div>
+        <span class="arrow">→</span>
+        <div class="box acceptor" style="width:auto;">3. Release locks, ACK</div>
+      </div>
+      <p style="text-align:center; margin-top:14px;">Result: any transaction that starts after this commit is <b>ACKNOWLEDGED</b> anywhere is guaranteed a larger timestamp — <b style="color:var(--accent2)">external consistency</b>, globally, with no shared clock.</p>
+      <p style="text-align:center; color:var(--muted);">Cost: added latency ≈ the uncertainty window, paid on every write transaction.</p>
+    </div>
+    <div class="footer-row"><span class="badge">07 · COMMIT-WAIT</span><span class="badge">Spanner's core trick</span></div>
+  </section>
+
+  <!-- SLIDE 8: HYBRID LOGICAL CLOCK -->
+  <section class="slide" data-index="8">
+    <div class="eyebrow">Scenario 5</div>
+    <h2>Hybrid Logical Clock: no GPS required</h2>
+    <div class="content">
+      <div class="row">
+        <div class="tuple"><span class="p">1719850000123</span>,<span class="l">0</span></div>
+        <span class="arrow">→</span>
+        <div class="tuple"><span class="p">1719850000123</span>,<span class="l">1</span></div>
+      </div>
+      <p style="text-align:center;">HLC = (physical_time, logical_counter). On receive: physical = max(own, received); logical resets to 0, or +1 if physical time didn't advance — breaks ties within the same millisecond.</p>
+      <p style="text-align:center; color:var(--accent2);">O(1) comparison cost, no GPS/atomic clocks — looser guarantee than TrueTime, used by CockroachDB & YugabyteDB.</p>
+    </div>
+    <div class="footer-row"><span class="badge">08 · HLC</span><span class="badge">Physical + logical time</span></div>
+  </section>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <section class="slide" data-index="9">
+    <div class="eyebrow">Decision Framework</div>
+    <h2>Which mechanism, and why</h2>
+    <div class="content">
+      <table class="cmp">
+        <tr><th>Mechanism</th><th>Guarantee</th><th>Hardware</th><th>Used By</th></tr>
+        <tr><td class="name">Raft</td><td>Leader-based, linearizable</td><td>None</td><td>etcd, Consul</td></tr>
+        <tr><td class="name">Paxos / Multi-Paxos</td><td>No leader required</td><td>None</td><td>Chubby, Spanner replication</td></tr>
+        <tr><td class="name">ZAB</td><td>Leader-based broadcast</td><td>None</td><td>ZooKeeper</td></tr>
+        <tr><td class="name">TrueTime + commit-wait</td><td>External consistency</td><td>GPS + atomic clocks</td><td>Google Spanner</td></tr>
+        <tr><td class="name">Hybrid Logical Clock</td><td>Causal, ~real-time</td><td>None</td><td>CockroachDB, YugabyteDB</td></tr>
+        <tr><td class="name">Plain NTP timestamps</td><td>No ordering guarantee</td><td>None</td><td>Avoid for cross-node order</td></tr>
+      </table>
+    </div>
+    <div class="footer-row"><span class="badge">09 · COMPARISON</span><span class="badge">Pick by guarantee, not hype</span></div>
+  </section>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <section class="slide" data-index="10">
+    <div class="eyebrow">Interview Cheat Sheet</div>
+    <h2>Decision tree + the answer to say out loud</h2>
+    <div class="content">
+      <div class="tree">
+        <div class="q">Need global write ordering across regions?</div>
+        <div class="branch">
+          <div class="leaf">No leader ok, need simplicity → Raft (etcd/Consul)</div>
+          <div class="leaf">Have GPS/atomic clocks → TrueTime + commit-wait</div>
+        </div>
+        <div class="leaf" style="margin-top:4px;">No special hardware → Hybrid Logical Clock (CockroachDB)</div>
+      </div>
+      <blockquote>"TrueTime returns an interval bounded to a few ms using GPS/atomic clocks. Commit-wait pauses until the earliest bound passes the commit timestamp — so any later transaction is guaranteed a larger one. Without that hardware, I'd use a Hybrid Logical Clock instead — cheaper, looser causal ordering."</blockquote>
+    </div>
+    <div class="footer-row">
+      <span class="badge">10 · CHEAT SHEET</span>
+      <div class="taglist"><span>#SystemDesign</span></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="controls">
+  <button id="prevBtn" onclick="goTo(current-1)">◀ Prev</button>
+  <div class="counter" id="counter">1 / 10</div>
+  <button id="nextBtn" onclick="goTo(current+1)">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 1;
+
+  function goTo(n) {
+    if (n < 1) n = 1;
+    if (n > total) n = total;
+    current = n;
+    slides.forEach(function (s, i) {
+      s.classList.toggle('active', (i + 1) === current);
+    });
+    document.getElementById('counter').textContent = current + ' / ' + total;
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') goTo(current + 1);
+    if (e.key === 'ArrowLeft') goTo(current - 1);
+  });
+
+  goTo(1);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,34 @@
+<mxfile host="app.diagrams.net" modified="2026-08-31T00:00:00.000Z" agent="draft" version="24.7.5" type="device">
+  <diagram name="Zero Trust Micro-Segmentation" id="zero-trust">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="700" pageHeight="430" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="frontend" value="frontend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="checkout" value="checkout-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="150" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="recommendation" value="recommendation-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="payment" value="payment-service&lt;br&gt;(default-deny, allow-list only)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="420" y="150" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="eAllow" value="ALLOWED&lt;br&gt;(explicit intention /&lt;br&gt;AuthorizationPolicy)" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeColor=#82b366;fontColor=#82b366;fontStyle=1;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="checkout" target="payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eDeny1" value="DENIED (default)" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#b85450;fontColor=#b85450;fontSize=10;" edge="1" parent="1" source="frontend" target="payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="eDeny2" value="DENIED (default)" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;strokeColor=#b85450;fontColor=#b85450;fontSize=10;" edge="1" parent="1" source="recommendation" target="payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="useCase" value="💡 Use Case: Shrinking PCI/compliance scope by restricting who can call payment-service, instead of one big cluster-wide firewall." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=2;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="370" width="620" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,6 +1,8 @@
 # ⭕ Tic-Tac-Toe - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -284,6 +286,34 @@ My O(1) win-check design handles both extensions trivially - just change the win
 ## 9. Technology Choices
 
 **You**: "For a simple game like this, the tech choice matters less than the algorithm. But if building multiplayer: **WebSocket for real-time moves**, **Redis for game state** (fast, ephemeral), **PostgreSQL for match history/leaderboards** (persistent)."
+
+---
+
+## 🔥 Real-World Production Issue: The Draw-Detection Bug That Froze the Leaderboard
+
+*In plain English: optimizing one code path (win-check) but leaving a sibling path (draw-check) un-optimized just moves the performance bottleneck, it doesn't remove it.*
+
+**The war story:**
+
+"A multiplayer Tic-Tac-Toe/Connect-K clone I worked on shipped a win-check that was O(1) per move (exactly the optimization this guide emphasizes) — but the DRAW detection was a leftover O(N²) full-board rescan bolted on separately, run on EVERY move 'just to be safe'."
+
+```
+Board size grew from 3x3 (interview toy problem) to a configurable N x N
+(product wanted 5x5 and 7x7 boards for a "pro mode")
+
+  3x3 draw check:  9 cells   -> negligible
+  7x7 draw check: 49 cells   -> still fine
+  BUT: draw check was called on EVERY move, for EVERY active game,
+  and the matchmaking service ran ~50,000 concurrent games at peak
+  -> 50,000 x 49-cell rescans PER SECOND -> CPU spiked to 95%,
+     move-latency p99 went from 40ms to 900ms
+```
+
+**Root cause:** the win-check was properly optimized (this guide's whole point), but the team didn't apply the SAME discipline to draw detection — an easy blind spot because "draw is just the absence of a win", so it felt like it didn't need its own optimization pass.
+
+**The fix:** tracked a simple `movesPlayed` counter incremented on each move; a draw is trivially `movesPlayed == boardSize*boardSize && !hasWinner` — O(1), no rescan needed at all.
+
+**Lesson for a new developer:** "When you optimize ONE code path (win detection) but leave a sibling path (draw detection) unoptimized 'because it seemed simpler', you've just moved the bottleneck, not removed it. Always ask: does every state-check in this feature get the same complexity analysis, not just the obviously interesting one?"
 
 ---
 

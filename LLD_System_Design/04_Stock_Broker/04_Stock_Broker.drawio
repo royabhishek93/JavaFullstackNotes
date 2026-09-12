@@ -1,0 +1,497 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== ENUMS (y=30) ===== -->
+
+        <!-- OrderType -->
+        <mxCell id="enum_ordertype" value="&lt;&lt;enum&gt;&gt; OrderType" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="30" y="30" width="170" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ordertype_r1" value="MARKET" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ordertype">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ordertype_r2" value="LIMIT" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ordertype">
+          <mxGeometry x="0" y="52" width="170" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ordertype_r3" value="STOP" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ordertype">
+          <mxGeometry x="0" y="74" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- OrderSide -->
+        <mxCell id="enum_orderside" value="&lt;&lt;enum&gt;&gt; OrderSide" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="220" y="30" width="150" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderside_r1" value="BUY" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderside">
+          <mxGeometry x="0" y="30" width="150" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderside_r2" value="SELL" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderside">
+          <mxGeometry x="0" y="52" width="150" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- OrderStatus -->
+        <mxCell id="enum_orderstatus" value="&lt;&lt;enum&gt;&gt; OrderStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="390" y="30" width="210" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_r1" value="PENDING" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_r2" value="PARTIALLY_FILLED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_r3" value="FILLED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="74" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_orderstatus_r4" value="CANCELLED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_orderstatus">
+          <mxGeometry x="0" y="96" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CLASSES (y=190) ===== -->
+
+        <!-- Order -->
+        <mxCell id="class_order" value="Order" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="30" y="190" width="265" height="558" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f1" value="- orderId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="30" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f2" value="- traderId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="52" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f3" value="- symbol: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="74" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f4" value="- type: OrderType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="96" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f5" value="- side: OrderSide" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="118" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f6" value="- limitPrice: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="140" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f7" value="- quantity: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="162" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f8" value="- filledQuantity: volatile int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="184" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f9" value="- status: volatile OrderStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="206" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_f10" value="- submittedAt: Instant" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="228" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m1" value="+ fill(fillQty: int)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="250" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m2" value="+ cancel()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="272" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m3" value="+ getRemainingQuantity(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="294" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m4" value="+ isFilled(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="316" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m5" value="+ isCancelled(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="338" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m6" value="+ isActive(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="360" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m7" value="+ getOrderId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="382" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m8" value="+ getTraderId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="404" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m9" value="+ getSymbol(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="426" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m10" value="+ getType(): OrderType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="448" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m11" value="+ getSide(): OrderSide" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="470" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m12" value="+ getLimitPrice(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="492" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m13" value="+ getQuantity(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="514" width="265" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_order_m14" value="+ getSubmittedAt(): Instant" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_order">
+          <mxGeometry x="0" y="536" width="265" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Trade (record) -->
+        <mxCell id="class_trade" value="&lt;&lt;record&gt;&gt; Trade" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="315" y="190" width="240" height="184" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trade_f1" value="tradeId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trade">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trade_f2" value="symbol: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trade">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trade_f3" value="buyOrderId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trade">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trade_f4" value="sellOrderId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trade">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trade_f5" value="price: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trade">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trade_f6" value="quantity: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trade">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_trade_f7" value="executedAt: Instant" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_trade">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- OrderBook -->
+        <mxCell id="class_orderbook" value="OrderBook" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="575" y="190" width="300" height="382" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_f1" value="- symbol: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="30" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_f2" value="- bids: TreeMap&lt;Double, Queue&lt;Order&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="52" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_f3" value="- asks: TreeMap&lt;Double, Queue&lt;Order&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="74" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_f4" value="- orderIndex: ConcurrentHashMap&lt;String, Order&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="96" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_f5" value="- bookLock: ReentrantLock" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="118" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_f6" value="- tradeHistory: List&lt;Trade&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="140" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m1" value="+ addOrder(order: Order): List&lt;Trade&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="162" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m2" value="+ cancelOrder(orderId: String): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="184" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m3" value="+ getBestBid(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="206" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m4" value="+ getBestAsk(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="228" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m5" value="+ getSymbol(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="250" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m6" value="+ getRecentTrades(n: int): List&lt;Trade&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="272" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m7" value="- match(order: Order): List&lt;Trade&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="294" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m8" value="- executeTrade(buy, sell, price): Trade" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="316" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m9" value="- addToBook(order: Order)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="338" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_orderbook_m10" value="- removeFromBook(order: Order)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_orderbook">
+          <mxGeometry x="0" y="360" width="300" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- TradingEngine -->
+        <mxCell id="class_tradingengine" value="TradingEngine" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="895" y="190" width="340" height="162" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_tradingengine_f1" value="- orderBooks: Map&lt;String, OrderBook&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_tradingengine">
+          <mxGeometry x="0" y="30" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_tradingengine_f2" value="- portfolios: Map&lt;String, Portfolio&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_tradingengine">
+          <mxGeometry x="0" y="52" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_tradingengine_f3" value="- allOrders: Map&lt;String, Order&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_tradingengine">
+          <mxGeometry x="0" y="74" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_tradingengine_m1" value="+ submitOrder(order: Order): List&lt;Trade&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_tradingengine">
+          <mxGeometry x="0" y="96" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_tradingengine_m2" value="+ cancelOrder(symbol, orderId): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_tradingengine">
+          <mxGeometry x="0" y="118" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_tradingengine_m3" value="- updatePortfolios(trade: Trade, symbol: String)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_tradingengine">
+          <mxGeometry x="0" y="140" width="340" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Portfolio -->
+        <mxCell id="class_portfolio" value="Portfolio" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="190" width="260" height="162" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_portfolio_m1" value="+ getCash(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_portfolio">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_portfolio_m2" value="+ getShares(symbol: String): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_portfolio">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_portfolio_m3" value="+ deductCash(amount: double)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_portfolio">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_portfolio_m4" value="+ addShares(symbol: String, qty: int)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_portfolio">
+          <mxGeometry x="0" y="96" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_portfolio_m5" value="+ addCash(amount: double)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_portfolio">
+          <mxGeometry x="0" y="118" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_portfolio_m6" value="+ deductShares(symbol: String, qty: int)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_portfolio">
+          <mxGeometry x="0" y="140" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== EXCEPTIONS ===== -->
+
+        <!-- InsufficientFundsException -->
+        <mxCell id="class_exc_funds" value="InsufficientFundsException" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="895" y="400" width="280" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_exc_funds_r1" value="extends RuntimeException" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_exc_funds">
+          <mxGeometry x="0" y="30" width="280" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- InsufficientSharesException -->
+        <mxCell id="class_exc_shares" value="InsufficientSharesException" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1195" y="400" width="290" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_exc_shares_r1" value="extends RuntimeException" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_exc_shares">
+          <mxGeometry x="0" y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== EDGES ===== -->
+
+        <!-- Order uses OrderType -->
+        <mxCell id="edge_1" value="type" style="endArrow=open;" edge="1" source="class_order" target="enum_ordertype" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Order uses OrderSide -->
+        <mxCell id="edge_2" value="side" style="endArrow=open;" edge="1" source="class_order" target="enum_orderside" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Order uses OrderStatus -->
+        <mxCell id="edge_3" value="status" style="endArrow=open;" edge="1" source="class_order" target="enum_orderstatus" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- OrderBook uses Order -->
+        <mxCell id="edge_4" value="uses" style="endArrow=open;" edge="1" source="class_orderbook" target="class_order" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- OrderBook creates Trade -->
+        <mxCell id="edge_5" value="creates" style="endArrow=open;" edge="1" source="class_orderbook" target="class_trade" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- TradingEngine has-a OrderBook -->
+        <mxCell id="edge_6" value="has-a" style="endArrow=open;" edge="1" source="class_tradingengine" target="class_orderbook" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- TradingEngine has-a Portfolio -->
+        <mxCell id="edge_7" value="has-a" style="endArrow=open;" edge="1" source="class_tradingengine" target="class_portfolio" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- TradingEngine throws InsufficientFundsException -->
+        <mxCell id="edge_8" value="throws" style="endArrow=open;dashed=1;" edge="1" source="class_tradingengine" target="class_exc_funds" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- TradingEngine throws InsufficientSharesException -->
+        <mxCell id="edge_9" value="throws" style="endArrow=open;dashed=1;" edge="1" source="class_tradingengine" target="class_exc_shares" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== LIFELINES (y=50, h=800) ===== -->
+
+        <mxCell id="life_trader" value="Trader" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="800" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_engine" value="TradingEngine" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="280" y="50" width="140" height="800" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_portfolio" value="Portfolio" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="500" y="50" width="140" height="800" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_orderbook" value="OrderBook" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="720" y="50" width="140" height="800" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== SECTION LABEL: submitOrder flow ===== -->
+        <mxCell id="label_submit" value="submitOrder flow" style="text;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="180" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- msg_1: Trader → TradingEngine: submitOrder(order) -->
+        <mxCell id="msg_1" value="1: submitOrder(order)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="165" as="sourcePoint"/>
+            <mxPoint x="350" y="165" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_2: TradingEngine → Portfolio: validate funds/shares -->
+        <mxCell id="msg_2" value="2: getCash() / getShares(symbol)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="210" as="sourcePoint"/>
+            <mxPoint x="570" y="210" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: Portfolio → TradingEngine: return balance / shares -->
+        <mxCell id="ret_1" value="return balance / shares" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="570" y="240" as="sourcePoint"/>
+            <mxPoint x="350" y="240" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- [validation guard note] -->
+        <mxCell id="label_guard" value="[Insufficient cash/shares → throw exception]" style="text;fontStyle=2;fontSize=10;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="280" y="253" width="330" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- msg_3: TradingEngine → OrderBook: addOrder(order) [acquires bookLock] -->
+        <mxCell id="msg_3" value="3: addOrder(order)  [acquires bookLock]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="300" as="sourcePoint"/>
+            <mxPoint x="790" y="300" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_4: OrderBook self-call: match(order) — price-time priority -->
+        <mxCell id="msg_4" value="4: match(order)  [price-time priority]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="340" as="sourcePoint"/>
+            <mxPoint x="790" y="380" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="870" y="340"/>
+              <mxPoint x="870" y="380"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_5: OrderBook self-call: executeTrade(buy, sell, tradePrice) -->
+        <mxCell id="msg_5" value="5: executeTrade(buy, sell, tradePrice)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="410" as="sourcePoint"/>
+            <mxPoint x="790" y="450" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="870" y="410"/>
+              <mxPoint x="870" y="450"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- [loop note] -->
+        <mxCell id="label_loop" value="[loop while order.isActive() &amp;&amp; opposite side not empty]" style="text;fontStyle=2;fontSize=10;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="720" y="460" width="390" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- ret_2: OrderBook → TradingEngine: return List<Trade> [releases bookLock] -->
+        <mxCell id="ret_2" value="return List&lt;Trade&gt;  [releases bookLock]" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="495" as="sourcePoint"/>
+            <mxPoint x="350" y="495" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_6: TradingEngine → Portfolio: update portfolios for each trade -->
+        <mxCell id="msg_6" value="6: deductCash(cost) / addShares(symbol, qty)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="530" as="sourcePoint"/>
+            <mxPoint x="570" y="530" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: TradingEngine → Trader: return List<Trade> -->
+        <mxCell id="ret_3" value="return List&lt;Trade&gt;" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="565" as="sourcePoint"/>
+            <mxPoint x="130" y="565" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ===== SECTION LABEL: cancelOrder flow ===== -->
+        <mxCell id="label_cancel" value="cancelOrder flow" style="text;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="60" y="610" width="180" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- msg_7: Trader → TradingEngine: cancelOrder(symbol, orderId) -->
+        <mxCell id="msg_7" value="7: cancelOrder(symbol, orderId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="655" as="sourcePoint"/>
+            <mxPoint x="350" y="655" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_8: TradingEngine → OrderBook: cancelOrder(orderId) [acquires bookLock] -->
+        <mxCell id="msg_8" value="8: cancelOrder(orderId)  [acquires bookLock]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="690" as="sourcePoint"/>
+            <mxPoint x="790" y="690" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_9: OrderBook self-call: order.cancel() + removeFromBook(order) -->
+        <mxCell id="msg_9" value="9: order.cancel() + removeFromBook(order)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="720" as="sourcePoint"/>
+            <mxPoint x="790" y="755" as="targetPoint"/>
+            <Array as="points">
+              <mxPoint x="870" y="720"/>
+              <mxPoint x="870" y="755"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: OrderBook → TradingEngine: return true/false -->
+        <mxCell id="ret_4" value="return true / false" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="790" y="780" as="sourcePoint"/>
+            <mxPoint x="350" y="780" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_5: TradingEngine → Trader: return boolean -->
+        <mxCell id="ret_5" value="return boolean" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="350" y="810" as="sourcePoint"/>
+            <mxPoint x="130" y="810" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

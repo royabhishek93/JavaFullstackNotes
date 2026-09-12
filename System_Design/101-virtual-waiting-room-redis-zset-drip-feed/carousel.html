@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Virtual Waiting Room — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .redis-icon {
+    width: 50px; height: 50px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; margin: 0 auto;
+  }
+  .server-box {
+    width: 56px; height: 48px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 30px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Virtual Waiting Room</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">500K → 2,000</div>
+      <p>500,000 people click "Buy" at once. Your DB pool handles 2,000 concurrent writers. Here's how to say yes to everyone anyway.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Rate Limiting Is Unfair</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p>500 pass, 499,500 get 429 instantly. No memory of who tried — rejected users retry immediately, worsening the storm.</p>
+      <p><span class="x-mark">✕</span> No guarantee the same person ever gets in.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Join the Queue</h1>
+    <h2>The Solution — ZADD</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon">R</div>ZADD waiting_room<br>arrivalTime queueId</div>
+      </div>
+      <p style="text-align:center">O(log N) — 500K joins in the same second is trivial for Redis, would flatten a relational DB.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Check Your Position</h1>
+    <h2>ZRANK</h2>
+    <div class="body">
+      <p><code>ZRANK waiting_room queueId</code> → 428,391</p>
+      <p>Client polls every few seconds, sees position tick down — same UX as a phone hold queue.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Admission Worker</h1>
+    <h2>Drip-Feed Every 2s</h2>
+    <div class="body">
+      <p>Atomic (Lua) <code>ZRANGE 0 N-1</code> + <code>ZREM</code> pops the oldest N arrivals, admits them with a short-lived token.</p>
+      <p>Caps concurrency inside the expensive part of the system, no matter how many are waiting.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Abandoned Slot Trap</h1>
+    <h2>Where Throughput Silently Degrades</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Idle slot<br>(user walked away)</div>
+      </div>
+      <p style="text-align:center">Sits wasted for the full TTL while thousands behind them wait. Fix: keyspace-notification reclaim or a 30s sweep job.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Rate Limit vs Waiting Room</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>Rate Limit</th><th>Waiting Room</th></tr>
+        <tr><td>Fairness</td><td>None</td><td>Strict FIFO</td></tr>
+        <tr><td>500K burst</td><td>429s + retry storm</td><td>All succeed at ZADD</td></tr>
+        <tr><td>Guarantee</td><td>None</td><td>Everyone gets in eventually</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Scheduled predictable burst (ticket drop, flash sale)? → Waiting room. Organic steady traffic? → Simple rate limiter + autoscaling.</p>
+      <div class="quote-box">
+        "Rate limiting and a waiting room solve different problems. What I want is admission control with fairness: everyone gets in eventually, in the order they arrived, but the number simultaneously inside the expensive part of the system is capped."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

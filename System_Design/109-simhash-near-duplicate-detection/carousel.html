@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SimHash: Near-Duplicate Detection at Web Scale — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#232342;
+    --accent:#e94560;
+    --accent2:#0f9b8e;
+    --accent3:#f5a623;
+    --accent4:#4d7cfe;
+    --text:#eaeaf5;
+    --muted:#9a9ac0;
+    --line:#3a3a5c;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;background:#0d0d18;color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .deck{
+    display:flex;flex-direction:column;align-items:center;
+    justify-content:center;min-height:100vh;padding:20px;
+  }
+  .slide{
+    width:540px;height:540px;background:var(--bg);
+    border-radius:14px;border:1px solid var(--line);
+    padding:28px 30px;position:relative;overflow:hidden;
+    display:none;flex-direction:column;
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .slide.active{display:flex;}
+  .kicker{
+    font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--accent3);font-weight:700;margin-bottom:6px;
+  }
+  h1{font-size:22px;margin:0 0 10px 0;line-height:1.25;color:var(--text);}
+  h2{font-size:16px;margin:0 0 8px 0;color:var(--accent2);}
+  p{font-size:13px;line-height:1.5;color:var(--muted);margin:4px 0;}
+  .stat{font-size:44px;font-weight:800;color:var(--accent);line-height:1;}
+  .stat-label{font-size:12px;color:var(--muted);margin-top:4px;}
+  .row{display:flex;gap:14px;align-items:center;}
+  .col{display:flex;flex-direction:column;gap:8px;}
+  .body{flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px;}
+  .footer-tag{position:absolute;bottom:14px;left:30px;font-size:10px;color:var(--muted);letter-spacing:1px;}
+
+  /* ---- Document icon (CSS-drawn, represents a text document) ---- */
+  .doc{
+    width:90px;height:110px;background:#2c2c50;border:2px solid var(--line);
+    border-radius:4px;padding:10px 8px;display:flex;flex-direction:column;gap:6px;
+    position:relative;flex-shrink:0;
+  }
+  .doc::before{
+    content:"";position:absolute;top:0;right:0;
+    border-width:0 14px 14px 0;border-style:solid;
+    border-color:transparent var(--bg) transparent transparent;
+  }
+  .doc .ln{height:4px;border-radius:2px;background:var(--muted);opacity:.5;}
+  .doc .ln.hot{background:var(--accent);opacity:1;}
+  .doc .ln.w60{width:60%;}
+  .doc .ln.w80{width:80%;}
+  .doc .ln.w40{width:40%;}
+  .doc .ln.w90{width:90%;}
+
+  /* ---- Hash function box ---- */
+  .fn-box{
+    background:var(--accent4);color:#fff;font-weight:700;font-size:12px;
+    padding:10px 14px;border-radius:8px;text-align:center;min-width:70px;
+  }
+  .fn-box.hash{background:var(--accent2);}
+  .fn-box.danger{background:var(--accent);}
+
+  /* ---- Arrows ---- */
+  .arrow-right{font-size:20px;color:var(--muted);padding:0 4px;}
+  .arrow-down{font-size:20px;color:var(--muted);text-align:center;}
+
+  /* ---- Bit grid (fingerprint visualization) ---- */
+  .bitrow{display:flex;gap:3px;}
+  .bit{
+    width:22px;height:22px;border-radius:3px;display:flex;
+    align-items:center;justify-content:center;font-size:11px;font-weight:700;
+    background:#2c2c50;border:1px solid var(--line);color:var(--muted);
+  }
+  .bit.one{background:var(--accent2);color:#fff;border-color:var(--accent2);}
+  .bit.zero{background:#2c2c50;color:var(--muted);}
+  .bit.diff{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .bit.match{background:#164a3d;color:var(--accent2);border-color:var(--accent2);}
+
+  /* ---- Blocks for table-splitting ---- */
+  .blockrow{display:flex;gap:2px;}
+  .blk{
+    height:26px;flex:1;border-radius:3px;display:flex;align-items:center;
+    justify-content:center;font-size:9px;font-weight:700;color:#0d0d18;
+  }
+  .blk.b1{background:#f5a623;} .blk.b2{background:#4d7cfe;color:#fff;}
+  .blk.b3{background:#0f9b8e;color:#fff;} .blk.b4{background:#e94560;color:#fff;}
+  .blk.b5{background:#8a6dd6;color:#fff;} .blk.b6{background:#4caf50;}
+  .blk.same{outline:2px solid #fff;}
+
+  /* ---- Server / table icon (sorted table of fingerprints) ---- */
+  .table-icon{
+    width:64px;background:#2c2c50;border:2px solid var(--line);border-radius:4px;
+    padding:5px;display:flex;flex-direction:column;gap:3px;
+  }
+  .table-icon .trow{height:5px;border-radius:2px;background:var(--accent3);opacity:.7;}
+  .table-icon .label{font-size:8px;text-align:center;color:var(--muted);margin-top:2px;}
+
+  /* ---- Comparison table ---- */
+  table.cmp{width:100%;border-collapse:collapse;font-size:9.5px;}
+  table.cmp th,table.cmp td{border:1px solid var(--line);padding:5px 5px;text-align:left;color:var(--text);}
+  table.cmp th{background:#2c2c50;color:var(--accent3);font-size:9px;}
+  table.cmp tr:nth-child(even) td{background:#20203c;}
+  .pill{
+    display:inline-block;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:700;
+  }
+  .pill.good{background:#164a3d;color:#4caf50;}
+  .pill.bad{background:#4a1620;color:var(--accent);}
+  .pill.mid{background:#4a3c16;color:var(--accent3);}
+
+  /* ---- Danger-zone number line ---- */
+  .numline{position:relative;height:40px;background:#2c2c50;border-radius:6px;margin:10px 0;}
+  .numline .zone{position:absolute;top:0;bottom:0;background:rgba(233,69,96,0.35);border-left:2px dashed var(--accent);border-right:2px dashed var(--accent);}
+  .numline .tick{position:absolute;bottom:-18px;font-size:9px;color:var(--muted);}
+  .numline .marker{position:absolute;top:-10px;font-size:16px;}
+
+  /* ---- Quote box ---- */
+  .quote{
+    background:#20203c;border-left:4px solid var(--accent3);border-radius:6px;
+    padding:12px 14px;font-size:12px;font-style:italic;color:var(--text);line-height:1.5;
+  }
+
+  .badge{
+    display:inline-block;background:var(--accent);color:#fff;font-size:10px;
+    font-weight:700;padding:3px 8px;border-radius:4px;margin-right:6px;
+  }
+
+  /* ---- Nav controls (screen only) ---- */
+  .nav{margin-top:16px;display:flex;gap:14px;align-items:center;}
+  .nav button{
+    background:var(--panel);color:var(--text);border:1px solid var(--line);
+    padding:8px 18px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;
+  }
+  .nav button:hover{background:var(--line);}
+  .counter{font-size:13px;color:var(--muted);min-width:50px;text-align:center;}
+
+  @media print{
+    body{background:#fff;}
+    .deck{padding:0;min-height:0;}
+    .nav{display:none;}
+    .slide{display:none !important;box-shadow:none;border:none;margin:0;}
+    .slide.active{display:flex !important;}
+    @page{size:540px 540px;margin:0;}
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1 : HOOK -->
+  <div class="slide active" data-index="1">
+    <div class="kicker">System Design — SimHash</div>
+    <h1>8 Billion Web Pages. One Changed Character. Zero Similarity Signal.</h1>
+    <div class="body">
+      <div class="row" style="justify-content:center;gap:22px;">
+        <div class="doc">
+          <div class="ln w60 hot"></div>
+          <div class="ln w80"></div>
+          <div class="ln w40"></div>
+          <div class="ln w90"></div>
+          <div class="ln w60"></div>
+        </div>
+        <div class="arrow-right">→</div>
+        <div class="fn-box danger">SHA-256</div>
+        <div class="arrow-right">→</div>
+        <div class="col">
+          <div class="bitrow"><div class="bit one">1</div><div class="bit zero">0</div><div class="bit one">1</div><div class="bit one">1</div></div>
+          <div class="bitrow" style="margin-top:4px;"><div class="bit zero">0</div><div class="bit one">1</div><div class="bit zero">0</div><div class="bit zero">0</div></div>
+        </div>
+      </div>
+      <p style="text-align:center;">Flip <b>one character</b> in the document above → SHA-256 output shares <b>zero relationship</b> with the original hash. The avalanche effect that makes crypto hashes secure makes them useless for finding near-duplicates.</p>
+      <div style="text-align:center;"><span class="stat">0%</span><div class="stat-label">correlation between near-identical inputs and their SHA-256 outputs</div></div>
+    </div>
+    <div class="footer-tag">SimHash · Slide 1</div>
+  </div>
+
+  <!-- SLIDE 2 : THE PROBLEM -->
+  <div class="slide" data-index="2">
+    <div class="kicker">The Problem</div>
+    <h1>Exact Hashing Can't Answer "How Close Are These Two?"</h1>
+    <div class="body">
+      <p>Cryptographic hashes (MD5 / SHA-256) are built for the <b>avalanche effect</b>: 1 input bit flips → ~50% of output bits flip. Great for integrity checks. Fatal for similarity.</p>
+      <div class="row" style="justify-content:space-around;">
+        <div class="col" style="align-items:center;">
+          <div class="fn-box hash">Crypto Hash</div>
+          <p style="text-align:center;margin:6px 0 0;">similar in →<br><b style="color:var(--accent)">totally different</b> out</p>
+        </div>
+        <div class="col" style="align-items:center;">
+          <div class="fn-box">Locality-Sensitive Hash</div>
+          <p style="text-align:center;margin:6px 0 0;">similar in →<br><b style="color:var(--accent2)">similar</b> out</p>
+        </div>
+      </div>
+      <div class="numline">
+        <div class="zone" style="left:0%;width:8%;"></div>
+        <div class="tick" style="left:0%;">0%</div>
+        <div class="tick" style="left:46%;">50%</div>
+        <div class="tick" style="left:90%;">100%</div>
+      </div>
+      <p style="text-align:center;">What we need: a fixed-size fingerprint where <b>bit-distance ≈ content-distance</b>. That's Locality-Sensitive Hashing (LSH) — SimHash is Google's famous implementation, by Moses Charikar.</p>
+    </div>
+    <div class="footer-tag">SimHash · Slide 2</div>
+  </div>
+
+  <!-- SLIDE 3 : FEATURE EXTRACTION / SHINGLING -->
+  <div class="slide" data-index="3">
+    <div class="kicker">Scenario 1 — Feature Extraction</div>
+    <h1>Don't Hash the Document. Hash Its Shingles.</h1>
+    <div class="body">
+      <div class="doc" style="width:100%;height:auto;padding:12px;">
+        <p style="margin:0;color:var(--text);font-size:12px;">"the cat sat on the mat"</p>
+      </div>
+      <div class="arrow-down">↓ split into overlapping word shingles (n=3), weight = frequency</div>
+      <div class="row" style="flex-wrap:wrap;gap:6px;justify-content:center;">
+        <div class="fn-box" style="background:#4d7cfe;">"the cat sat"</div>
+        <div class="fn-box" style="background:#0f9b8e;">"cat sat on"</div>
+        <div class="fn-box" style="background:#f5a623;color:#0d0d18;">"sat on the"</div>
+        <div class="fn-box" style="background:#e94560;">"on the mat"</div>
+      </div>
+      <p style="text-align:center;">Each shingle → its own 64-bit MurmurHash3 value. This is what makes SimHash <b>order-aware</b> when unigrams alone would not be.</p>
+    </div>
+    <div class="footer-tag">SimHash · Slide 3</div>
+  </div>
+
+  <!-- SLIDE 4 : WEIGHTED BIT VOTING -->
+  <div class="slide" data-index="4">
+    <div class="kicker">Scenario 2 — Weighted Bit Voting</div>
+    <h1>Sum the Votes Per Bit Position. Sign Becomes Bit.</h1>
+    <div class="body">
+      <p>For every bit position, each feature votes <b>+weight</b> if its hash bit is 1, <b>−weight</b> if it's 0. Sum across all features → sign decides the output bit.</p>
+      <div class="col" style="gap:4px;">
+        <div class="row"><span style="width:70px;font-size:10px;color:var(--muted);">"the" x2</span><div class="bitrow"><div class="bit zero">-2</div><div class="bit one">+2</div><div class="bit zero">-2</div><div class="bit zero">-2</div></div></div>
+        <div class="row"><span style="width:70px;font-size:10px;color:var(--muted);">"cat" x1</span><div class="bitrow"><div class="bit zero">-1</div><div class="bit one">-1</div><div class="bit zero">+1</div><div class="bit zero">+1</div></div></div>
+        <div class="row"><span style="width:70px;font-size:10px;color:var(--muted);">"on" x1</span><div class="bitrow"><div class="bit zero">+1</div><div class="bit one">+1</div><div class="bit zero">-1</div><div class="bit zero">+1</div></div></div>
+        <div class="row" style="border-top:1px solid var(--line);padding-top:4px;"><span style="width:70px;font-size:10px;color:var(--accent3);font-weight:700;">SUM</span><div class="bitrow"><div class="bit match">-4</div><div class="bit match">+4</div><div class="bit match">-4</div><div class="bit match">-2</div></div></div>
+        <div class="row"><span style="width:70px;font-size:10px;color:var(--accent2);font-weight:700;">BIT</span><div class="bitrow"><div class="bit zero">0</div><div class="bit one">1</div><div class="bit zero">0</div><div class="bit zero">0</div></div></div>
+      </div>
+      <p style="text-align:center;">Result: one <b>64-bit fingerprint</b> represents the entire document. The original text is gone — only the vote outcome survives.</p>
+    </div>
+    <div class="footer-tag">SimHash · Slide 4</div>
+  </div>
+
+  <!-- SLIDE 5 : HAMMING DISTANCE WORKED EXAMPLE -->
+  <div class="slide" data-index="5">
+    <div class="kicker">Scenario 3 — Hamming Distance</div>
+    <h1>Small Bit-Distance = Probably the Same Content</h1>
+    <div class="body">
+      <p><b>Doc A:</b> "the cat sat on the mat" &nbsp; vs &nbsp; <b>Doc B:</b> "the cat sat on the rug" (1 word changed of 6)</p>
+      <div class="row"><span style="width:36px;font-size:11px;color:var(--muted);">A</span><div class="bitrow"><div class="bit one">0</div><div class="bit one">1</div><div class="bit one">0</div><div class="bit one">0</div><div class="bit one">0</div><div class="bit one">0</div><div class="bit one">0</div><div class="bit one">0</div></div></div>
+      <div class="row"><span style="width:36px;font-size:11px;color:var(--muted);">B</span><div class="bitrow"><div class="bit one">0</div><div class="bit one">1</div><div class="bit one">0</div><div class="bit one">0</div><div class="bit diff">1</div><div class="bit one">0</div><div class="bit one">0</div><div class="bit one">0</div></div></div>
+      <p style="text-align:center;color:var(--accent2);font-weight:700;">Hamming distance A↔B = 1 bit (12.5%) → near-duplicate</p>
+      <p><b>Doc C</b> (unrelated topic — quantum physics): Hamming distance A↔C = <b style="color:var(--accent)">4 bits (50%)</b> → pure random chance, unrelated</p>
+      <div style="text-align:center;margin-top:6px;">
+        <span class="stat" style="font-size:30px;">0–3</span><span class="stat-label"> bits (of 64) = near-dup &nbsp;|&nbsp; ~32 bits = unrelated</span>
+      </div>
+    </div>
+    <div class="footer-tag">SimHash · Slide 5</div>
+  </div>
+
+  <!-- SLIDE 6 : SCALING — TABLE SPLITTING -->
+  <div class="slide" data-index="6">
+    <div class="kicker">Scenario 4 — Scaling to 8 Billion</div>
+    <h1>Pigeonhole Principle Turns O(n) Into a Binary Search</h1>
+    <div class="body">
+      <p>Split the 64-bit fingerprint into 6 blocks. If two fingerprints differ by ≤3 bits total, <b>at least 3 of 6 blocks must be identical</b> — 3 bits can't poison more than 3 blocks.</p>
+      <div class="blockrow">
+        <div class="blk b1 same">B1</div><div class="blk b2 same">B2</div><div class="blk b3">B3</div>
+        <div class="blk b4 same">B4</div><div class="blk b5">B5</div><div class="blk b6">B6</div>
+      </div>
+      <p style="text-align:center;font-size:11px;">↑ 3 of 6 blocks match exactly (outlined) between candidate fingerprints</p>
+      <div class="row" style="justify-content:center;gap:10px;margin-top:6px;">
+        <div class="table-icon"><div class="trow"></div><div class="trow"></div><div class="trow"></div><div class="label">Table 1</div></div>
+        <div class="table-icon"><div class="trow"></div><div class="trow"></div><div class="trow"></div><div class="label">Table 2</div></div>
+        <div class="table-icon"><div class="trow"></div><div class="trow"></div><div class="trow"></div><div class="label">...~20</div></div>
+      </div>
+      <p style="text-align:center;">~20–24 sorted permutation tables → binary search leading block → union candidates (~tens–hundreds) → exact Hamming check only on those.</p>
+      <div style="text-align:center;"><span class="stat" style="font-size:26px;">8B → ms</span></div>
+    </div>
+    <div class="footer-tag">SimHash · Slide 6</div>
+  </div>
+
+  <!-- SLIDE 7 : TRAP 1 — BAG OF WORDS BLINDNESS -->
+  <div class="slide" data-index="7">
+    <div class="kicker">Trap #1 — Bag-of-Words Blindness</div>
+    <h1>"Dog Bites Man" ≠ "Man Bites Dog" — But Unigrams Say They Do</h1>
+    <div class="body">
+      <div class="row" style="justify-content:space-around;">
+        <div class="col" style="align-items:center;">
+          <div class="doc" style="height:60px;width:150px;"><p style="margin:0;font-size:11px;color:var(--text);">"dog bites man"</p></div>
+          <p style="font-size:10px;text-align:center;">features (unigram): {dog, bites, man}</p>
+        </div>
+        <div class="col" style="align-items:center;">
+          <div class="doc" style="height:60px;width:150px;"><p style="margin:0;font-size:11px;color:var(--text);">"man bites dog"</p></div>
+          <p style="font-size:10px;text-align:center;">features (unigram): {dog, bites, man}</p>
+        </div>
+      </div>
+      <p style="text-align:center;"><span class="pill bad">IDENTICAL FEATURE SET</span></p>
+      <p style="text-align:center;">Hamming distance = <b style="color:var(--accent)">0</b> → SimHash reports "certain duplicate," meaning is inverted.</p>
+      <div class="quote">Fix: use word-level <b>shingles (n≥3)</b> instead of single words. "dog bites man" and "man bites dog" then produce entirely different features — fingerprints diverge sharply.</div>
+    </div>
+    <div class="footer-tag">SimHash · Slide 7</div>
+  </div>
+
+  <!-- SLIDE 8 : TRAP 2 — THRESHOLD AMBIGUITY -->
+  <div class="slide" data-index="8">
+    <div class="kicker">Trap #2 — Threshold Ambiguity</div>
+    <h1>Right at the Cutoff, SimHash Guesses Wrong Both Ways</h1>
+    <div class="body">
+      <div class="numline" style="height:60px;">
+        <div class="zone" style="left:35%;width:16%;"></div>
+        <div class="marker" style="left:20%;">📰</div>
+        <div class="marker" style="left:60%;">📰</div>
+        <div class="tick" style="left:0%;">0</div>
+        <div class="tick" style="left:44%;">3 (threshold)</div>
+        <div class="tick" style="left:92%;">64</div>
+      </div>
+      <p><b>False positive:</b> two <i>different</i> articles both quoting the same 200-word press release → land at distance 2–3 → wrongly merged.</p>
+      <p><b>False negative:</b> two <i>near-identical</i> articles, one with 200 extra words of nav/ad boilerplate → land at distance 6–8 → wrongly kept distinct.</p>
+      <div class="quote">Mitigation: strip boilerplate before feature extraction. Never auto-merge on SimHash alone — treat it as a <b>candidate generator</b>, verify top candidates with exact Jaccard similarity on shingle sets before acting.</div>
+    </div>
+    <div class="footer-tag">SimHash · Slide 8</div>
+  </div>
+
+  <!-- SLIDE 9 : TECHNOLOGY COMPARISON -->
+  <div class="slide" data-index="9">
+    <div class="kicker">Technology Comparison</div>
+    <h1>SimHash vs. The Alternatives</h1>
+    <div class="body">
+      <table class="cmp">
+        <tr><th>Approach</th><th>Detects</th><th>Latency</th><th>Fails When</th></tr>
+        <tr><td>MD5/SHA-256</td><td>Exact only</td><td><span class="pill good">O(1)</span></td><td>Any single-char change</td></tr>
+        <tr><td><b>SimHash</b></td><td>Near-dup (lexical)</td><td><span class="pill good">~ms indexed</span></td><td>Unigrams; near threshold</td></tr>
+        <tr><td>MinHash + LSH banding</td><td>Set/Jaccard overlap</td><td><span class="pill mid">~ms indexed</span></td><td>Band/row tuning is fiddly</td></tr>
+        <tr><td>Cosine / TF-IDF / embeddings</td><td>Semantic similarity</td><td><span class="pill mid">ms–10s ms (ANN)</span></td><td>Needs ANN infra, costly per-doc</td></tr>
+        <tr><td>Levenshtein / edit distance</td><td>Exact edit ops</td><td><span class="pill bad">O(n·m)/pair</span></td><td>Can't be indexed at scale</td></tr>
+      </table>
+      <p style="text-align:center;margin-top:10px;">SimHash's niche: <b>lexical near-duplicates, at billions-of-docs scale, with a fixed 64-bit footprint per doc.</b></p>
+    </div>
+    <div class="footer-tag">SimHash · Slide 9</div>
+  </div>
+
+  <!-- SLIDE 10 : DECISION TREE + INTERVIEW QUOTE -->
+  <div class="slide" data-index="10">
+    <div class="kicker">Cheat Sheet</div>
+    <h1>Decision Tree + The Exact Interview Line</h1>
+    <div class="body">
+      <p><span class="badge">USE</span> billions of docs · lexical near-dupes · fixed-size fingerprint needed · crawler dedup, plagiarism, spam clustering, log dedup</p>
+      <p><span class="badge" style="background:var(--muted);color:#0d0d18;">SKIP</span> need semantic similarity (→ embeddings+ANN) · corpus is small (→ direct Jaccard/edit-distance) · need exact-match guarantees (→ SHA-256)</p>
+      <div class="quote">
+        "SimHash is a candidate generator, not a verdict... never auto-reject on SimHash alone — any submission whose fingerprint lands within the threshold gets flagged and passed through a cheaper-than-full-text-diff but more precise second check, like Jaccard similarity over the actual shingle sets... before it's surfaced to a moderator or auto-blocked."
+      </div>
+      <p style="text-align:center;font-size:11px;color:var(--muted);">— Interview answer, 50M posts / 100K submissions per day scenario</p>
+    </div>
+    <div class="footer-tag">SimHash · Slide 10 / 10</div>
+  </div>
+
+  <div class="nav">
+    <button id="prevBtn">← Prev</button>
+    <div class="counter"><span id="cur">1</span> / <span id="total">10</span></div>
+    <button id="nextBtn">Next →</button>
+  </div>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let idx = 0;
+  const curEl = document.getElementById('cur');
+  const totalEl = document.getElementById('total');
+  totalEl.textContent = slides.length;
+
+  function show(i){
+    idx = (i + slides.length) % slides.length;
+    slides.forEach((s, n) => s.classList.toggle('active', n === idx));
+    curEl.textContent = idx + 1;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => show(idx - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => show(idx + 1));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(idx + 1);
+    if (e.key === 'ArrowLeft') show(idx - 1);
+  });
+
+  show(0);
+</script>
+</body>
+</html>

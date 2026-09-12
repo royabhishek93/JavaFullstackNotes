@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Two-Phase Inventory Locking — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .redis-icon {
+    width: 50px; height: 50px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; margin: 0 auto;
+  }
+  .db-icon { width: 50px; height: 56px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 50px; height: 14px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 50px; height: 30px; position: absolute; top: 10px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 50px; height: 14px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .server-box {
+    width: 56px; height: 48px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 32px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Two-Phase Inventory Locking</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">3 min hold →<br>2-8ms DB lock</div>
+      <p>A user browsing checkout for 3 minutes shouldn't hold a database row lock for 3 minutes.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Pessimistic Lock = Pool Exhaustion</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>seat F12<br>FOR UPDATE</div>
+      </div>
+      <p style="text-align:center"><code>SELECT ... FOR UPDATE</code> held for the ENTIRE checkout (30-180s). 500 concurrent buyers on 1 seat = instant connection pool exhaustion.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Phase 1 — Soft Hold</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon">R</div>SET NX EX 600</div>
+      </div>
+      <p style="text-align:center">One atomic Redis command. No DB touched. Self-expires in 10 min if user abandons checkout — zero cleanup code.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Phase 2 — Confirm</h1>
+    <h2>Only on Payment Success</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>INSERT + COMMIT<br>2-8ms</div>
+      </div>
+      <p style="text-align:center">The ONLY moment a real DB lock exists — single-digit milliseconds, not minutes.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Two Users Race for the Same Seat</h1>
+    <h2>NX Resolves It Instantly</h2>
+    <div class="body">
+      <p>Alice's SET arrives first → succeeds. Bob's SET 3ms later → key already exists → NX fails → Bob gets <b>409</b> instantly.</p>
+      <p>No distributed lock manager needed — NX is atomic by Redis's single-threaded design.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Dangerous Race</h1>
+    <h2>Confirm Arrives as TTL Expires</h2>
+    <div class="body">
+      <p>T+598s: Alice's payment responds. T+600s: TTL fires, seat freed. T+600.4s: Carol grabs it. T+601s: Alice's stale confirm arrives.</p>
+      <p><span class="x-mark">✕</span> Naive GET+DEL destroys Carol's legitimate hold.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Atomic Fix</h1>
+    <h2>Lua Check-and-Confirm</h2>
+    <div class="body">
+      <p><code>if GET(key) == myToken then DEL(key); return 1 else return 0 end</code></p>
+      <p>Runs as ONE atomic step — mismatch means reject Alice, Carol's hold stays untouched.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Locking Strategy Comparison</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Lock Duration</th><th>Complexity</th></tr>
+        <tr><td>Soft-hold + TTL</td><td>0.3-1ms (Redis)</td><td>Medium</td></tr>
+        <tr><td>Pessimistic DB lock</td><td>Full checkout (min)</td><td>Low</td></tr>
+        <tr><td>Optimistic (version col)</td><td>~5ms/attempt</td><td>Low-Medium</td></tr>
+        <tr><td>Redlock (multi-node)</td><td>2-5ms</td><td>High</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Multi-minute user decision flow? → Soft-hold + TTL. Single synchronous "buy now"? → Simple pessimistic lock is fine.</p>
+      <div class="quote-box">
+        "I'd split this into two distinct phases. Phase one is the soft hold — SET seat:{id} NX EX 600. Phase two is the actual commit, which only happens once, when the payment gateway confirms success — a real DB transaction held for single-digit milliseconds."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

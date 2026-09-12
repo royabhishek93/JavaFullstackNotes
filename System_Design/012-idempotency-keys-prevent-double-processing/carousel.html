@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Idempotency Keys — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 56px; height: 62px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 56px; height: 16px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 56px; height: 34px; position: absolute; top: 12px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 56px; height: 16px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .server-box {
+    width: 60px; height: 52px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Idempotency Keys</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">$100 × 2</div>
+      <p>Network drops mid-payment. Client retries. Without protection: charged <b>twice</b> for one purchase.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Without an Idempotency Key</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Attempt 1<br>Order #1001</div>
+        <div class="arrow x-mark">✕</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Attempt 2<br>Order #1002</div>
+      </div>
+      <p style="text-align:center">Same $100 charge, TWO orders. POST is not idempotent by default.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>With an Idempotency Key</h1>
+    <h2>The Fix</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Attempt 1<br>processes, caches</div>
+        <div class="arrow check-mark">✓</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Attempt 2<br>cache HIT</div>
+      </div>
+      <p style="text-align:center">Same key on both. Second attempt returns the cached order #1001 — no reprocessing.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Server-Side Table</h1>
+    <h2>Implementation</h2>
+    <div class="body">
+      <p><code>idempotency_keys(key_value PK, user_id, response, status_code, expires_at)</code></p>
+      <p>Lookup key → found? Return cached response. Not found? Process, then store result with 24h TTL.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Race Condition Trap</h1>
+    <h2>Two Retries, Same Instant</h2>
+    <div class="body">
+      <p>Both check "key exists?" → both see NO → both process → <b>2 orders anyway.</b></p>
+      <p><span class="check-mark">✓</span> Fix: <code>INSERT ... ON DUPLICATE KEY</code> as a lock — only 1 request "wins" the insert.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cache Failures Too</h1>
+    <h2>The Subtle Trap</h2>
+    <div class="body">
+      <p>First attempt fails "insufficient funds" — if you only cache successes, the retry re-runs the balance check.</p>
+      <p>If balance changed since, retry might now silently SUCCEED — a different outcome for what the user believes was 1 operation.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Scope Keys to the User</h1>
+    <h2>Security Trap</h2>
+    <div class="body">
+      <p>Key alone as the lookup = one user could reuse/guess another user's key.</p>
+      <p><span class="check-mark">✓</span> Always scope: <code>(key_value + user_id)</code> together.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Naturally Idempotent vs Not</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Operation</th><th>Idempotent?</th><th>Needs Key?</th></tr>
+        <tr><td>GET, HEAD</td><td>Yes (no side effects)</td><td>No</td></tr>
+        <tr><td>PUT, DELETE</td><td>Yes (by HTTP spec)</td><td>No</td></tr>
+        <tr><td>POST /payments</td><td>No</td><td>Yes</td></tr>
+        <tr><td>POST /orders</td><td>No</td><td>Yes</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Is the endpoint POST and state-changing? → Add idempotency key. GET/PUT/DELETE? → Already safe to retry.</p>
+      <div class="quote-box">
+        "The client generates a UUID once, before the first attempt, and sends it on every retry — the server caches the result by that UUID so retries are free and double-processing is impossible."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

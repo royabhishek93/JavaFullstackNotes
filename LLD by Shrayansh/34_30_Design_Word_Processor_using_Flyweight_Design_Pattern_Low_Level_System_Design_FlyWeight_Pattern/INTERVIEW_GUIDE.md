@@ -1,6 +1,8 @@
 # 📄 Word Processor - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -317,6 +319,43 @@ Since styles are cached by the factory, if 500 characters were bold-Arial-12, th
 ## 9. Technology Choices
 
 **You**: "For collaborative editing (Google Docs style) on top of this: **Operational Transformation (OT)** or **CRDTs** for conflict-free concurrent edits, **WebSocket** for real-time sync. The Flyweight pattern for styling remains valid regardless of the collaboration layer."
+
+---
+
+## 🔥 Real-World Production Issue: The Mutable Flyweight That Corrupted Every Document Sharing a Style
+
+*In plain English: adding even one setter to a supposedly shared, immutable object lets one edit accidentally corrupt many unrelated documents.*
+
+**The war story:**
+
+"A rich-text editor's Flyweight-based character styling (this guide's canonical example) had ONE style object shared across thousands of characters/documents for memory efficiency — exactly as designed. A 'quick fix' for a formatting bug accidentally introduced a MUTATION on a shared Flyweight instance instead of creating a new one."
+
+```java
+// The bug: "just tweak the existing style object in place, it's faster"
+CharacterStyle sharedBoldStyle = styleFactory.get("bold", 14, "black");
+charA.setStyle(sharedBoldStyle);
+charB.setStyle(sharedBoldStyle);   // SAME shared instance, by design (Flyweight)
+
+// Later, a "change color of this one character" feature:
+charA.getStyle().setColor("red");  🔥 OOPS! Both charA AND charB turn red!
+                                       // because they share the SAME object
+```
+
+```
+Since this style object was cached and reused across potentially
+THOUSANDS of documents (any document using 14pt bold black text),
+changing one character's color in ONE document silently corrupted
+the visual formatting of unrelated characters in OTHER documents
+sharing the same cached Flyweight instance in memory
+-> support tickets from confused users seeing random color changes
+   appear in documents they hadn't touched in weeks
+```
+
+**Root cause:** this is the single most critical, guide-stated invariant for Flyweight — "Immutability is mandatory: shared objects must never be mutated" — violated by a developer who didn't realize `getStyle()` returned a SHARED reference, not a private copy, and "fixed" a bug by mutating in place instead of requesting a NEW flyweight instance for the changed attributes.
+
+**The fix:** made `CharacterStyle` genuinely immutable (all fields `final`, no setters at all — not just "please don't call setters", but structurally impossible to mutate), forcing any "change one character's color" operation to go through `styleFactory.get(newBold, newSize, "red")` to get a DIFFERENT (possibly newly-created, possibly already-cached) flyweight instance, exactly as the pattern requires.
+
+**Lesson for a new developer:** "Flyweight's memory savings come ENTIRELY from safe sharing, which depends ENTIRELY on immutability. If your Flyweight class has even ONE setter, it's a ticking time bomb — someone eventually WILL call it on a shared instance, corrupting every other object referencing that same instance. Enforce immutability structurally (final fields, no setters), not just by convention or comment."
 
 ---
 

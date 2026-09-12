@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bulkhead Pattern — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .server-box {
+    width: 60px; height: 52px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .server-box.ok { border-color: #2ecc71; }
+  .server-box.ok span { background: #2ecc71; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Bulkhead Pattern</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <p>Recommendation Service slows down. 10 seconds later, <b>checkout</b> is broken.</p>
+      <div class="stat">Payment: 100% healthy.</div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>One Shared Pool, One Point of Failure</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Payment call</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Inventory call</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Notification call</div>
+      </div>
+      <p style="text-align:center">All 3 share 200 threads. Payment slows to 60s → ALL 200 threads blocked in 3 minutes. Nothing works.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Isolated Pools</h1>
+    <h2>The Fix</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Payment<br>50 (blocked)</div>
+        <div class="col"><div class="server-box ok"><span></span><span></span></div>Inventory<br>50 (fine)</div>
+        <div class="col"><div class="server-box ok"><span></span><span></span></div>Notify<br>50 (fine)</div>
+      </div>
+      <p style="text-align:center">Payment's pool floods. Inventory and Notification keep working perfectly — like watertight ship compartments.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Thread Pool Isolation</h1>
+    <h2>Type 1 — Most Common</h2>
+    <div class="body">
+      <p>Each service gets a dedicated thread pool. Full pool → new requests <b>rejected immediately</b>, not queued.</p>
+      <p><b>Best for:</b> blocking I/O (HTTP calls, DB queries)</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Semaphore Isolation</h1>
+    <h2>Type 2 — Lightweight</h2>
+    <div class="body">
+      <p>A counting semaphore limits concurrent calls — no separate threads spun up.</p>
+      <p><b>Best for:</b> async/reactive code (WebFlux). <span class="x-mark">✕</span> Weaker protection against thread exhaustion.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Sizing Formula</h1>
+    <h2>Don't Guess</h2>
+    <div class="body">
+      <p><code>pool_size = (req/sec × avg_latency_sec) × 1.2</code></p>
+      <p>Payment: 500 req/s × 0.2s × 1.2 = <b>120 threads</b></p>
+      <p>Recommendations: 200 req/s × 0.1s × 1.2 = <b>24 threads</b> (small on purpose — degrade fast)</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Keep Queues Small</h1>
+    <h2>The Trap</h2>
+    <div class="body">
+      <p><span class="x-mark">✕</span> Large queue "to be safe" just delays failure and hides the real problem.</p>
+      <p><span class="check-mark">✓</span> Queue capacity 5-10 or zero — reject fast, return a fallback immediately.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Without vs With Bulkhead</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>Shared Pool</th><th>Bulkhead</th></tr>
+        <tr><td>1 slow dependency</td><td>Kills everything</td><td>Contained to its own pool</td></tr>
+        <tr><td>Failure surfaces</td><td>Slowly, silently</td><td>Fast, explicit rejection</td></tr>
+        <tr><td>Pair with</td><td>—</td><td>Circuit breaker + timeout</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Blocking I/O call? → Thread pool bulkhead. Async/reactive? → Semaphore bulkhead. Either way → pair with circuit breaker + timeout.</p>
+      <div class="quote-box">
+        "Bulkhead means Payment's 50 threads being fully blocked on a slow fraud API cannot starve the 50 threads handling checkout — failures are physically contained, not just logically isolated."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

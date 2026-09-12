@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>API Gateway & Service Mesh — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#232342;
+    --panel2:#2b2b52;
+    --text:#eaeaf5;
+    --muted:#9a9ac0;
+    --accent:#ff6b6b;
+    --accent2:#4ecdc4;
+    --gold:#ffd166;
+    --envoy:#6c5ce7;
+    --mesh-line:#4ecdc4;
+    --gw-line:#ff6b6b;
+    --danger:#e63946;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;background:#0f0f1e;color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  .deck{
+    width:540px;height:540px;margin:24px auto;position:relative;
+    background:var(--bg);border-radius:14px;overflow:hidden;
+    box-shadow:0 10px 40px rgba(0,0,0,.5);
+  }
+  .slide{
+    display:none;position:absolute;inset:0;padding:26px 28px 20px 28px;
+    flex-direction:column;
+  }
+  .slide.active{display:flex;}
+  .kicker{
+    font-size:11px;letter-spacing:2px;color:var(--accent2);text-transform:uppercase;
+    font-weight:700;margin-bottom:6px;
+  }
+  h1{font-size:22px;margin:0 0 8px 0;line-height:1.25;color:var(--text);}
+  h2{font-size:17px;margin:0 0 6px 0;color:var(--gold);}
+  p{font-size:12.5px;line-height:1.5;color:var(--muted);margin:4px 0;}
+  .big-stat{font-size:40px;font-weight:800;color:var(--accent);margin:4px 0;}
+  .stack{flex:1;display:flex;flex-direction:column;justify-content:center;gap:8px;}
+  .row{display:flex;align-items:center;justify-content:center;gap:10px;}
+
+  /* ---- server / service box ---- */
+  .server{
+    width:82px;height:58px;background:var(--panel);border:2px solid #3d3d6b;
+    border-radius:6px;position:relative;padding:6px 8px;
+  }
+  .server .line{height:4px;background:#454578;border-radius:2px;margin:4px 0;}
+  .server .label{position:absolute;bottom:-18px;left:0;right:0;text-align:center;font-size:9.5px;color:var(--muted);font-weight:600;}
+
+  /* ---- sidecar attached square ---- */
+  .with-sidecar{position:relative;}
+  .sidecar{
+    position:absolute;top:-10px;right:-10px;width:22px;height:22px;
+    background:var(--envoy);border:2px solid #a29bfe;border-radius:4px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:9px;font-weight:800;color:#fff;
+  }
+
+  /* ---- gateway box ---- */
+  .gateway{
+    width:220px;height:64px;background:linear-gradient(135deg,#ff6b6b,#c0392b);
+    border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:#fff;font-weight:800;font-size:13px;letter-spacing:1px;
+    box-shadow:0 4px 14px rgba(255,107,107,.3);
+  }
+  .gateway small{font-weight:500;font-size:9px;opacity:.9;letter-spacing:0;}
+
+  /* ---- control plane cloud ---- */
+  .cloud{
+    width:170px;padding:10px;background:var(--panel2);border:2px dashed var(--gold);
+    border-radius:16px;text-align:center;font-size:10.5px;color:var(--gold);font-weight:700;
+  }
+
+  /* ---- arrows ---- */
+  .arrow-down{width:2px;height:20px;background:var(--muted);margin:0 auto;position:relative;}
+  .arrow-down::after{content:'';position:absolute;bottom:-1px;left:-4px;
+    border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid var(--muted);}
+  .arrow-dashed-down{width:0;height:26px;border-left:2px dashed var(--gold);margin:0 auto;}
+  .arrow-h{font-size:16px;color:var(--mesh-line);font-weight:700;}
+  .mtls-link{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+  }
+  .mtls-link .lock{
+    width:16px;height:12px;background:var(--gold);border-radius:2px;position:relative;margin-top:6px;
+  }
+  .mtls-link .lock::before{
+    content:'';position:absolute;top:-8px;left:2px;width:10px;height:10px;
+    border:2px solid var(--gold);border-bottom:none;border-radius:6px 6px 0 0;
+  }
+  .mtls-label{font-size:8px;color:var(--gold);font-weight:700;letter-spacing:.5px;}
+
+  /* ---- badge / chip ---- */
+  .chip{
+    display:inline-block;padding:3px 9px;border-radius:20px;font-size:9.5px;font-weight:700;
+    margin:2px;
+  }
+  .chip.red{background:rgba(255,107,107,.18);color:var(--accent);border:1px solid var(--accent);}
+  .chip.teal{background:rgba(78,205,196,.18);color:var(--accent2);border:1px solid var(--accent2);}
+  .chip.purple{background:rgba(108,92,231,.18);color:#a29bfe;border:1px solid var(--envoy);}
+  .chip.gold{background:rgba(255,209,102,.18);color:var(--gold);border:1px solid var(--gold);}
+
+  ul.traps{list-style:none;margin:0;padding:0;}
+  ul.traps li{
+    font-size:11.5px;color:var(--text);background:var(--panel);border-left:3px solid var(--accent);
+    padding:6px 10px;margin:5px 0;border-radius:4px;
+  }
+  ul.traps li b{color:var(--accent);}
+
+  table.cmp{width:100%;border-collapse:collapse;font-size:9.5px;}
+  table.cmp th{background:var(--panel2);color:var(--gold);padding:5px 6px;text-align:left;border-bottom:1px solid #3d3d6b;}
+  table.cmp td{padding:5px 6px;border-bottom:1px solid #2b2b45;color:var(--muted);vertical-align:top;}
+  table.cmp td.h{color:var(--text);font-weight:700;}
+
+  .quote-box{
+    background:var(--panel);border:1px solid var(--envoy);border-radius:10px;padding:12px 14px;
+    font-size:11px;color:var(--text);font-style:italic;line-height:1.5;
+  }
+  .quote-box .attr{margin-top:6px;font-style:normal;font-size:9.5px;color:var(--gold);font-weight:700;}
+
+  .tree-node{
+    background:var(--panel2);border:1px solid #4d4d80;border-radius:6px;padding:6px 10px;
+    font-size:10.5px;text-align:center;font-weight:700;color:var(--text);
+  }
+  .tree-node.yes{border-color:var(--accent2);}
+  .tree-node.no{border-color:var(--accent);}
+
+  /* ---- footer / nav ---- */
+  .counter{
+    position:absolute;top:10px;right:16px;font-size:10.5px;color:var(--muted);font-weight:700;
+  }
+  .navbar{
+    width:540px;margin:0 auto 30px auto;display:flex;justify-content:center;gap:14px;
+  }
+  .navbar button{
+    background:var(--panel2);color:var(--text);border:1px solid #4d4d80;padding:8px 18px;
+    border-radius:20px;font-size:13px;cursor:pointer;font-weight:700;
+  }
+  .navbar button:hover{background:var(--envoy);border-color:#a29bfe;}
+  .navbar button:disabled{opacity:.4;cursor:default;}
+
+  @media print{
+    @page{ size:540px 540px; margin:0; }
+    body{background:#fff;}
+    .navbar{display:none;}
+    .deck{margin:0;box-shadow:none;border-radius:0;}
+    .slide{
+      display:flex !important;position:relative;page-break-after:always;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    }
+    .counter{display:none;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <div class="kicker">System Design · 116</div>
+    <h1>5 teams. 5 retry implementations.<br>1 payment outage.</h1>
+    <div class="stack">
+      <div class="row">
+        <div class="with-sidecar server">
+          <div class="line" style="width:60%"></div><div class="line" style="width:80%"></div><div class="line" style="width:40%"></div>
+          <div class="label">payment-svc</div>
+          <div class="sidecar">E</div>
+        </div>
+      </div>
+      <p style="text-align:center;">One team retried <b style="color:var(--accent)">10x, zero backoff</b> during a 10-second blip → turned it into a <span class="big-stat" style="font-size:22px;">20-min outage</span></p>
+      <p style="text-align:center;">Nobody wrote bad code. They just never agreed on <b>ONE</b> way to do retries.</p>
+    </div>
+    <div class="counter">1 / 10</div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="kicker">The Problem</div>
+    <h1>Two totally different traffic problems, one campus.</h1>
+    <div class="stack">
+      <div class="row">
+        <div style="text-align:center;">
+          <div class="chip red">OUTSIDE</div>
+          <p style="margin-top:2px;">mobile app / partner<br>= <b>north-south</b></p>
+        </div>
+        <div class="arrow-h">→</div>
+        <div class="server with-sidecar" style="width:70px;">
+          <div class="line" style="width:60%"></div><div class="line" style="width:80%"></div>
+          <div class="label">reception</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:16px;">
+        <div class="server with-sidecar">
+          <div class="line" style="width:70%"></div><div class="line" style="width:40%"></div>
+          <div class="label">Bldg A</div>
+          <div class="sidecar">E</div>
+        </div>
+        <div class="arrow-h" style="color:var(--danger);">⇝?⇜</div>
+        <div class="server with-sidecar">
+          <div class="line" style="width:50%"></div><div class="line" style="width:90%"></div>
+          <div class="label">Bldg C (slow)</div>
+          <div class="sidecar">E</div>
+        </div>
+      </div>
+      <p style="text-align:center;margin-top:10px;">Every team hand-rolling retry/circuit-breaker/mTLS = <b style="color:var(--accent)">20 inconsistent implementations</b> of the same pattern.</p>
+    </div>
+    <div class="counter">2 / 10</div>
+  </div>
+
+  <!-- SLIDE 3: API GATEWAY (north-south) -->
+  <div class="slide">
+    <div class="kicker">The Solution — Part 1</div>
+    <h1>API Gateway = north-south, ONE front door.</h1>
+    <div class="stack">
+      <div class="row"><div class="chip red">mobile client</div></div>
+      <div class="arrow-down"></div>
+      <div class="row"><div class="gateway">API GATEWAY<small>JWT · rate limit · route</small></div></div>
+      <div class="arrow-down"></div>
+      <div class="row">
+        <div class="server"><div class="line" style="width:60%"></div><div class="line" style="width:40%"></div><div class="label">order-svc</div></div>
+        <div class="server"><div class="line" style="width:70%"></div><div class="line" style="width:50%"></div><div class="label">payment-svc</div></div>
+        <div class="server"><div class="line" style="width:50%"></div><div class="line" style="width:80%"></div><div class="label">shipping-svc</div></div>
+      </div>
+      <p style="text-align:center;margin-top:14px;">Gateway fans out to 3 calls, <b>merges</b> into 1 response — client makes 1 network call, not 3. (API composition)</p>
+    </div>
+    <div class="counter">3 / 10</div>
+  </div>
+
+  <!-- SLIDE 4: SERVICE MESH (east-west) -->
+  <div class="slide">
+    <div class="kicker">The Solution — Part 2</div>
+    <h1>Service Mesh = east-west, sidecar per pod.</h1>
+    <div class="stack">
+      <div class="row">
+        <div class="with-sidecar server"><div class="line" style="width:60%"></div><div class="line" style="width:40%"></div><div class="label">order-svc</div><div class="sidecar">E</div></div>
+        <div class="mtls-link"><span class="arrow-h">↔</span><div class="lock"></div><div class="mtls-label">mTLS</div></div>
+        <div class="with-sidecar server"><div class="line" style="width:70%"></div><div class="line" style="width:50%"></div><div class="label">payment-svc</div><div class="sidecar">E</div></div>
+      </div>
+      <p style="text-align:center;">App code has <b>zero idea</b> a sidecar exists — outbound calls transparently intercepted via iptables.</p>
+      <div class="row" style="margin-top:6px;">
+        <span class="chip purple">retry 3x backoff</span>
+        <span class="chip purple">circuit break @5x 5xx</span>
+        <span class="chip purple">LB across 3 pods</span>
+      </div>
+    </div>
+    <div class="counter">4 / 10</div>
+  </div>
+
+  <!-- SLIDE 5: SIDECAR INTERCEPTION -->
+  <div class="slide">
+    <div class="kicker">Mechanism</div>
+    <h1>How traffic gets rerouted, transparently.</h1>
+    <div class="stack">
+      <p style="text-align:center;">restTemplate.getForObject("http://payment-service/charge")</p>
+      <div class="arrow-down"></div>
+      <div class="row"><div class="chip teal">iptables intercepts, same pod, localhost</div></div>
+      <div class="arrow-down"></div>
+      <div class="row">
+        <div class="with-sidecar server" style="width:150px;height:70px;">
+          <div class="line" style="width:80%"></div><div class="line" style="width:60%"></div><div class="line" style="width:70%"></div>
+          <div class="label">Envoy sidecar</div>
+          <div class="sidecar">E</div>
+        </div>
+      </div>
+      <p style="text-align:center;font-size:10.5px;">→ looks up service registry (cached) → applies retry policy → applies circuit breaker → wraps in mTLS → load balances</p>
+      <div class="arrow-down"></div>
+      <div class="row"><div class="chip gold">payment-svc sidecar decrypts, hands to local app</div></div>
+    </div>
+    <div class="counter">5 / 10</div>
+  </div>
+
+  <!-- SLIDE 6: CONTROL PLANE VS DATA PLANE -->
+  <div class="slide">
+    <div class="kicker">Architecture</div>
+    <h1>Control Plane vs Data Plane</h1>
+    <div class="stack">
+      <div class="row"><div class="cloud">CONTROL PLANE<br>(istiod)<br>watches K8s · compiles YAML → Envoy config · pushes via xDS (gRPC)</div></div>
+      <div class="row" style="gap:26px;">
+        <div class="arrow-dashed-down"></div><div class="arrow-dashed-down"></div><div class="arrow-dashed-down"></div>
+      </div>
+      <div class="row">
+        <div class="with-sidecar server"><div class="line" style="width:60%"></div><div class="label">order</div><div class="sidecar">E</div></div>
+        <div class="with-sidecar server"><div class="line" style="width:50%"></div><div class="label">payment</div><div class="sidecar">E</div></div>
+        <div class="with-sidecar server"><div class="line" style="width:70%"></div><div class="label">inventory</div><div class="sidecar">E</div></div>
+      </div>
+      <p style="text-align:center;margin-top:16px;"><b>Data plane</b> = thousands of Envoy sidecars, touching every byte in real time.<br>Control plane down? Sidecars keep serving on <b>last-known config</b> — not on the hot path.</p>
+    </div>
+    <div class="counter">6 / 10</div>
+  </div>
+
+  <!-- SLIDE 7: REAL NUMBERS -->
+  <div class="slide">
+    <div class="kicker">Real Numbers</div>
+    <h1>The mesh is not free.</h1>
+    <div class="stack">
+      <div class="row" style="justify-content:space-between;padding:0 6px;">
+        <div style="text-align:center;"><div class="big-stat" style="font-size:26px;">1–3ms</div><p>latency per sidecar hop</p></div>
+        <div style="text-align:center;"><div class="big-stat" style="font-size:26px;color:var(--envoy);">40–100MB</div><p>memory per pod</p></div>
+      </div>
+      <div class="row" style="justify-content:space-between;padding:0 6px;">
+        <div style="text-align:center;"><div class="big-stat" style="font-size:26px;color:var(--gold);">1–10s</div><p>control-plane rule propagation</p></div>
+        <div style="text-align:center;"><div class="big-stat" style="font-size:26px;color:var(--accent2);">≈0</div><p>mTLS handshake cost (amortized via reuse)</p></div>
+      </div>
+      <p style="text-align:center;margin-top:10px;">A 5-hop internal call chain = up to <b style="color:var(--accent)">15ms</b> added just from sidecars. Real infra line item, not a rounding error.</p>
+    </div>
+    <div class="counter">7 / 10</div>
+  </div>
+
+  <!-- SLIDE 8: TRAPS -->
+  <div class="slide">
+    <div class="kicker">Deep Dive</div>
+    <h1>Where engineers get it wrong</h1>
+    <ul class="traps">
+      <li><b>Trap 1:</b> Hand-rolling retry/circuit-breaker per service → 20 inconsistent, under-tested implementations.</li>
+      <li><b>Trap 2:</b> Assuming control-plane outage = mesh outage. Sidecars keep serving on last-known config.</li>
+      <li><b>Trap 3:</b> Treating the mesh as "free" — ignoring the 1-3ms/hop + 40-100MB/pod cost.</li>
+      <li><b>Trap 4:</b> Adopting Istio at 3-4 services, low fan-out — ops complexity not yet justified.</li>
+      <li><b>Trap 5:</b> Treating gateway & mesh as substitutes — gateway ≠ internal retries; mesh ≠ external rate limiting.</li>
+      <li><b>Trap 6:</b> In-memory rate limits (not Redis-backed) → inconsistent limits once you scale to 2+ gateway replicas.</li>
+    </ul>
+    <div class="counter">8 / 10</div>
+  </div>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <div class="slide">
+    <div class="kicker">Decision Framework</div>
+    <h1>API Gateway vs Service Mesh</h1>
+    <table class="cmp">
+      <tr><th>Concern</th><th>API Gateway</th><th>Service Mesh</th></tr>
+      <tr><td class="h">Direction</td><td>North-south</td><td>East-west</td></tr>
+      <tr><td class="h">Primary job</td><td>AuthN, rate limit, routing, composition</td><td>mTLS, retries, circuit break, LB</td></tr>
+      <tr><td class="h">Where it lives</td><td>One/few edge instances</td><td>Sidecar per instance</td></tr>
+      <tr><td class="h">If it's down</td><td>External traffic blocked</td><td>Sidecars keep last-known config</td></tr>
+      <tr><td class="h">Added latency</td><td>1 hop, at edge only</td><td>1-3ms × every internal hop</td></tr>
+      <tr><td class="h">Adopt when</td><td>Any external clients</td><td>Heavy east-west + want consistency</td></tr>
+      <tr><td class="h">Skip when</td><td>Monolith, no external API</td><td>3-4 services, low fan-out</td></tr>
+    </table>
+    <div class="counter">9 / 10</div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <div class="slide">
+    <div class="kicker">Interview Answer</div>
+    <h1>Decision tree + the exact line to say</h1>
+    <div class="stack" style="gap:6px;">
+      <div class="row"><div class="tree-node">Any external clients?</div></div>
+      <div class="row"><div class="tree-node yes">YES → API Gateway at the edge</div></div>
+      <div class="row"><div class="tree-node">Heavy service-to-service traffic?</div></div>
+      <div class="row"><div class="tree-node yes">YES (≥5-6 svcs, fan-out) → add Service Mesh</div></div>
+      <div class="row"><div class="tree-node no">NO (3-4 svcs) → shared resilience library instead</div></div>
+      <div class="quote-box" style="margin-top:8px;">
+        "API Gateway governs traffic entering the system from outside (north-south); Service Mesh governs traffic between services on the inside (east-west) — and a mature microservices architecture at real scale typically runs BOTH simultaneously."
+        <div class="attr">— the one-sentence answer that nails this question</div>
+      </div>
+    </div>
+    <div class="counter">10 / 10</div>
+  </div>
+
+</div>
+
+<div class="navbar">
+  <button id="prevBtn">← Prev</button>
+  <button id="nextBtn">Next →</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let current = 0;
+  const total = slides.length;
+
+  function show(idx){
+    slides[current].classList.remove('active');
+    current = (idx + total) % total;
+    slides[current].classList.add('active');
+    document.getElementById('prevBtn').disabled = current === 0;
+    document.getElementById('nextBtn').disabled = current === total - 1;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => show(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => show(current + 1));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+
+  show(0);
+</script>
+
+</body>
+</html>

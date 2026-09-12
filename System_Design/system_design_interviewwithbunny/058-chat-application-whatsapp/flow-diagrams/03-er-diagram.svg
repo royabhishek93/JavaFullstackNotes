@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <rect x="10" y="10" width="1180" height="780" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+  <text x="600" y="42" text-anchor="middle" font-size="20" font-weight="bold" fill="#2d2d2d">WhatsApp-Style Chat System — Entity-Relationship Diagram</text>
+  <line x1="330" y1="54" x2="870" y2="54" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <text x="30" y="76" font-size="12" font-weight="bold" fill="#1a4a7a">PostgreSQL entities</text>
+  <text x="770" y="76" font-size="12" font-weight="bold" fill="#7a0000">Cassandra entities</text>
+
+  <rect x="30" y="90" width="220" height="130" rx="4" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="140" y="108" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">USER</text>
+  <line x1="30" y1="114" x2="250" y2="114" stroke="#4a90d9"/>
+  <text x="40" y="130" font-size="9" fill="#333">user_id (PK)</text>
+  <text x="40" y="144" font-size="9" fill="#333">phone_number (UNIQUE)</text>
+  <text x="40" y="158" font-size="9" fill="#333">username</text>
+  <text x="40" y="172" font-size="9" fill="#333">status</text>
+  <text x="40" y="186" font-size="9" fill="#333">last_seen</text>
+  <text x="40" y="200" font-size="9" fill="#333">avatar_url</text>
+  <text x="40" y="214" font-size="9" fill="#333">created_at</text>
+
+  <rect x="290" y="90" width="220" height="90" rx="4" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="400" y="108" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">CONVERSATION</text>
+  <line x1="290" y1="114" x2="510" y2="114" stroke="#4a90d9"/>
+  <text x="300" y="130" font-size="9" fill="#333">conv_id (PK)</text>
+  <text x="300" y="144" font-size="9" fill="#333">type (1:1 | GROUP)</text>
+  <text x="300" y="158" font-size="9" fill="#333">created_at</text>
+  <text x="300" y="172" font-size="9" fill="#333">last_message_at</text>
+
+  <rect x="290" y="200" width="220" height="90" rx="4" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="400" y="218" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">CONVERSATION_MEMBERS</text>
+  <line x1="290" y1="224" x2="510" y2="224" stroke="#4a90d9"/>
+  <text x="300" y="240" font-size="9" fill="#333">conv_id (FK)</text>
+  <text x="300" y="254" font-size="9" fill="#333">user_id (FK)</text>
+  <text x="300" y="268" font-size="9" fill="#333">joined_at</text>
+  <text x="300" y="282" font-size="9" fill="#333">role (ADMIN|MEMBER)</text>
+
+  <line x1="250" y1="130" x2="290" y2="130" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="255" y="125" font-size="9" fill="#4a90d9">1</text>
+  <line x1="250" y1="245" x2="290" y2="245" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="255" y="240" font-size="9" fill="#4a90d9">N</text>
+  <line x1="400" y1="180" x2="400" y2="200" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="405" y="195" font-size="9" fill="#4a90d9">1:N</text>
+
+  <rect x="30" y="240" width="220" height="90" rx="4" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="140" y="258" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">GROUPS</text>
+  <line x1="30" y1="264" x2="250" y2="264" stroke="#4a90d9"/>
+  <text x="40" y="280" font-size="9" fill="#333">group_id (PK)</text>
+  <text x="40" y="294" font-size="9" fill="#333">group_name, description</text>
+  <text x="40" y="308" font-size="9" fill="#333">created_by (FK &#8594; USER)</text>
+  <text x="40" y="322" font-size="9" fill="#333">thumbnail_url</text>
+
+  <rect x="30" y="360" width="220" height="110" rx="4" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="140" y="378" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">GROUP_MEMBERS</text>
+  <line x1="30" y1="384" x2="250" y2="384" stroke="#4a90d9"/>
+  <text x="40" y="400" font-size="9" fill="#333">id (PK, surrogate key)</text>
+  <text x="40" y="414" font-size="9" fill="#333">group_id (FK)</text>
+  <text x="40" y="428" font-size="9" fill="#333">user_id (FK)</text>
+  <text x="40" y="442" font-size="9" fill="#333">role (ADMIN|MEMBER)</text>
+  <text x="40" y="456" font-size="9" fill="#333">joined_at</text>
+
+  <line x1="140" y1="330" x2="140" y2="360" stroke="#4a90d9" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="150" y="348" font-size="9" fill="#4a90d9">1:N</text>
+
+  <rect x="30" y="500" width="480" height="80" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="45" y="520" font-size="10" font-weight="bold" fill="#2d2d2d">Why a join table, not a member_ids[] array column?</text>
+  <text x="45" y="538" font-size="9" fill="#333">Adding a member = INSERT one row (no row-lock contention on an array).</text>
+  <text x="45" y="552" font-size="9" fill="#333">"Which groups is user X in?" becomes an indexed scan, not a full table scan.</text>
+  <text x="45" y="566" font-size="9" fill="#333">Per-member metadata (role, joined_at, removed_at) is a natural column here.</text>
+
+  <rect x="620" y="90" width="280" height="200" rx="4" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="760" y="108" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a0000">MESSAGE</text>
+  <line x1="620" y1="114" x2="900" y2="114" stroke="#e74c3c"/>
+  <text x="630" y="132" font-size="9" fill="#333">chat_id — PARTITION KEY</text>
+  <text x="630" y="146" font-size="9" fill="#333">timestamp DESC — CLUSTERING KEY</text>
+  <text x="630" y="160" font-size="9" fill="#333">message_id (UUID) — tie-breaker</text>
+  <text x="630" y="178" font-size="9" fill="#333">sender_id, receiver_id</text>
+  <text x="630" y="192" font-size="9" fill="#333">content (text or media URL)</text>
+  <text x="630" y="206" font-size="9" fill="#333">type (TEXT|IMAGE|VIDEO|VOICE)</text>
+  <text x="630" y="220" font-size="9" fill="#333">delivery_status (PENDING|DELIVERED|READ)</text>
+  <text x="630" y="240" font-size="9" fill="#7a0000" font-style="italic">PRIMARY KEY ((chat_id), timestamp, message_id)</text>
+  <text x="630" y="256" font-size="9" fill="#7a0000" font-style="italic">chat_id groups all messages of one conversation</text>
+  <text x="630" y="270" font-size="9" fill="#7a0000" font-style="italic">on the same node for fast range reads.</text>
+
+  <rect x="620" y="330" width="280" height="150" rx="4" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="760" y="348" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a0000">GROUP_MESSAGE_DELIVERY</text>
+  <line x1="620" y1="354" x2="900" y2="354" stroke="#e74c3c"/>
+  <text x="630" y="372" font-size="9" fill="#333">message_id — PARTITION KEY</text>
+  <text x="630" y="386" font-size="9" fill="#333">user_id — CLUSTERING KEY</text>
+  <text x="630" y="400" font-size="9" fill="#333">group_id</text>
+  <text x="630" y="414" font-size="9" fill="#333">status (PENDING|DELIVERED|READ)</text>
+  <text x="630" y="428" font-size="9" fill="#333">delivered_at, read_at</text>
+  <text x="630" y="446" font-size="9" fill="#7a0000" font-style="italic">Tracks per-member delivery separately —</text>
+  <text x="630" y="460" font-size="9" fill="#7a0000" font-style="italic">"Delivered to 245/256, Read by 189/256"</text>
+  <text x="630" y="474" font-size="9" fill="#7a0000" font-style="italic">granularity a broadcast channel cannot give.</text>
+
+  <line x1="760" y1="290" x2="760" y2="330" stroke="#e74c3c" stroke-width="1.5" marker-end="url(#arrRed)"/>
+  <text x="770" y="315" font-size="9" fill="#e74c3c">1:N per group message</text>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#4a90d9"/>
+    </marker>
+    <marker id="arrRed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#e74c3c"/>
+    </marker>
+  </defs>
+
+  <text x="600" y="770" text-anchor="middle" font-size="10" fill="#aaa">Chat System Design — Entity-Relationship Diagram</text>
+</svg>

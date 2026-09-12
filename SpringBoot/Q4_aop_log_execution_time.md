@@ -89,6 +89,11 @@ You control:
  └──────────────────────────────────────────────────────────────────┘
 
  RUNTIME — one HTTP request to placeOrder():
+
+### Interceptor Chain (ASCII)
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
  ┌──────────────────────────────────────────────────────────────────┐
  │                                                                  │
  │  [HTTP Request]                                                  │

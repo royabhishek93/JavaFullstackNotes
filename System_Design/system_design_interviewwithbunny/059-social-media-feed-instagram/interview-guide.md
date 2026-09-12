@@ -1,6 +1,128 @@
 Social Media Platform — Interview Guide (Facebook / Instagram)
 
+> **📄 Two versions available:**
+> - **This file** (`interview-guide.md`): Both Mermaid + ASCII diagrams for maximum compatibility
+> - **Print version** (`interview-guide-print.md`): Only Mermaid diagrams for clean PDF rendering
+
 > One-liner to open with: "Graph database for social connections → Fanout on write for feed generation → CDN for media delivery → Redis cache for hot data"
+
+---
+
+## 🎯 EXECUTIVE SUMMARY (Read this first!)
+
+**What we're building:** Instagram/Facebook-style social media feed system for 500M daily users
+
+**Core challenge:** When someone posts, how do we instantly show it to millions of followers without the database exploding?
+
+**The answer in 3 parts:**
+1. **Normal users** (<5K followers): When you post, we immediately copy your post to all your followers' feeds (fanout on write). Their feeds are pre-built and instant.
+2. **Celebrities** (>5K followers): When they post, we do nothing. When YOU open your feed, we fetch their posts on-demand (fanout on read). Saves billions of writes.
+3. **Speed tricks**: Redis cache for feeds (10ms reads), Cassandra for posts (horizontal scaling), CDN for images (95% cache hit), Kafka for async processing.
+
+**Key numbers:**
+- 100M posts/day (1,200 posts/sec)
+- 10B feed loads/day (115,000 reads/sec)
+- Feed loads in <500ms
+- 10TB media uploaded daily
+
+**Tech stack at a glance:**
+- PostgreSQL: User profiles, followers, comments (needs relational integrity)
+- Cassandra: Posts, likes (high write volume, time-series data)
+- Redis: Feed cache, counters (sub-10ms reads)
+- Kafka: Async fanout, notifications (decouples write from propagation)
+- S3 + CDN: Media storage and global delivery
+
+**If you read nothing else, remember:**
+The entire system hinges on the **hybrid fanout model** — push for normal users, pull for celebrities. That's what makes Instagram scale from 1 user to 2 billion.
+
+---
+
+## 📖 HOW TO READ THIS DOCUMENT
+
+**For interview prep (30 min):**
+1. Read Executive Summary above
+2. Skim Step 1-4 (requirements, entities, API, high-level design)
+3. Deep dive Step 5 (feed generation — this is what interviewers ask about)
+4. Review Step 9 (common interview questions)
+
+**For implementation understanding (60 min):**
+Read everything in order. The "KEY PATTERNS EXPLAINED" section at the end breaks down every technical concept in plain English.
+
+**For blind/screen reader users:**
+- All ASCII diagrams have text descriptions immediately after
+- Code examples are labeled with their purpose
+- Each section has a numbered summary at the end
+
+**Document structure:**
+- 🎯 Emoji headers help you navigate sections quickly
+- 💡 Summaries at end of each section recap key points
+- 📚 Glossary at end defines all technical terms
+- ✅ Self-check questions test your understanding
+
+---
+
+## 🖨️ PDF CONVERSION GUIDE
+
+**Best tools for converting this document to PDF:**
+
+1. **Typora** (Recommended ⭐)
+   - Beautiful rendering of Mermaid diagrams
+   - Preserves ASCII diagrams with monospace font
+   - Export → PDF → works perfectly
+   - Download: https://typora.io
+
+2. **Markdown PDF (VS Code Extension)**
+   - Install: "Markdown PDF" by yzane
+   - Right-click file → "Markdown PDF: Export (pdf)"
+   - Renders Mermaid diagrams automatically
+   - Settings to adjust: Use Consolas/Courier New for code blocks
+
+3. **Pandoc + LaTeX** (Advanced)
+   ```bash
+   pandoc interview-guide.md -o interview-guide.pdf \
+     --pdf-engine=xelatex \
+     -V geometry:margin=0.75in \
+     -V monofont="Courier New"
+   ```
+
+4. **Online: Dillinger.io**
+   - Paste markdown → Preview → Export to PDF
+   - Renders Mermaid diagrams
+   - Free, no installation
+
+**Important PDF settings:**
+- ✅ **Use monospace font** for code/ASCII diagrams (Courier New, Consolas, or Fira Code)
+- ✅ **Enable Mermaid rendering** (Typora and Markdown PDF do this automatically)
+- ✅ **Set margins to 0.75in** (more content per page)
+- ✅ **Page size: Letter or A4**
+- ⚠️ **Avoid Google Docs** (breaks ASCII diagrams and doesn't render Mermaid)
+
+**Why we have both Mermaid AND ASCII diagrams:**
+- **Mermaid** = Beautiful in PDF, web viewers, and GitHub
+- **ASCII** = Works everywhere (screen readers, plain text terminals, email)
+
+**Print-ready checklist:**
+- [ ] Mermaid diagrams render correctly
+- [ ] ASCII diagrams use monospace font and align properly
+- [ ] Page breaks don't split diagrams
+- [ ] All emojis render (or remove with Find/Replace if needed)
+- [ ] Table of contents generated (optional but helpful)
+
+---
+
+## ♿ ACCESSIBILITY IMPROVEMENTS
+
+This document has been optimized for single-read comprehension and accessibility:
+
+✅ **Executive Summary** upfront — understand the entire system in 3 minutes  
+✅ **Text descriptions** after every ASCII diagram for screen readers  
+✅ **Section summaries** (💡) recap key points at the end of each section  
+✅ **TL;DR boxes** before each pattern explanation for quick scanning  
+✅ **Glossary** at the end with plain-English definitions of all technical terms  
+✅ **Self-check questions** to verify understanding  
+✅ **Real-world analogies** (newspaper delivery, restaurant kitchen) instead of jargon  
+✅ **Numbered flows** for step-by-step processes  
+✅ **No external dependencies** — all concepts explained inline, no need to click away  
 
 ---
 
@@ -25,6 +147,9 @@ Social Media Platform — Interview Guide (Facebook / Instagram)
 - **Latency**: Feed load <500ms, Likes/Comments <200ms, Post creation <300ms
 - **Media**: 10TB uploaded daily, petabytes total
 
+**💡 Section Summary (Requirements):**
+We're building a read-heavy system (100:1 read/write ratio) prioritizing availability over consistency. Key constraints: 500M daily users, 1.2K posts/sec, 115K feed reads/sec, sub-500ms feed loads. Media is the largest challenge at 10TB/day.
+
 ---
 
 ## Step 2: Core Entities (1 min)
@@ -37,6 +162,9 @@ Like          post_id + user_id (composite PK), reaction_type
 Comment       comment_id, post_id, parent_comment_id (NULL = top-level), likes_count
 Feed          feed:{user_id} → Redis LIST of post_ids (latest 1000)
 ```
+
+**💡 Section Summary (Core Entities):**
+6 main entities: User (profiles), Post (content), Followers (social graph), Like (engagement), Comment (nested threads), Feed (cached timeline). Followers creates many-to-many relationships. Feed is denormalized in Redis for speed. Like uses composite key (post_id + user_id) to prevent duplicates.
 
 ---
 
@@ -102,9 +230,70 @@ PUT    /api/v1/notifications/read-all                                   (mark al
 > **WHY NOTIFICATION READ/UNREAD ENDPOINTS?**
 > The notification flow is fully described in the LLD (Kafka → Notification Svc → WebSocket/FCM), but without API endpoints there is no way for a client to fetch the inbox on app launch or mark items read. `GET /notifications` loads stored rows from the Notification DB (PostgreSQL, 30-day TTL) for users who missed the real-time WebSocket push — e.g., after a cold start or offline period. The two `PUT` variants cover the two UX actions: tapping a single notification vs the "Mark all read" button. Using `PUT` (not `POST`) is correct here because the operation is idempotent — calling it twice leaves the resource in the same state.
 
+**💡 Section Summary (API Design):**
+We have 6 API groups: User (register/login/profile), Post (CRUD + feed), Interactions (like/comment/follow), Social Graph (followers/following lists), Search (users/posts/hashtags), and Notifications (inbox). All use cursor-based pagination for infinite scroll. POST operations return 202 Accepted for async processing. All endpoints use JWT authentication and are rate-limited to 1K requests/minute per user.
+
 ---
 
 ## Step 4: High Level Design
+
+### Mermaid Version (for PDF/visual rendering)
+
+```mermaid
+graph TB
+    Client[Mobile/Web Clients]
+    Gateway[API Gateway + Load Balancer<br/>Auth, Rate Limiting, Routing]
+    
+    UserSvc[User Service]
+    ContentSvc[Content Service]
+    FeedSvc[Feed Service]
+    FollowerSvc[Follower Service]
+    EngagementSvc[Engagement Service]
+    
+    UserDB[(User DB<br/>PostgreSQL + Replicas)]
+    PostDB[(Post DB<br/>Cassandra)]
+    FeedCache[(Feed Cache<br/>Redis)]
+    FollowerDB[(Follower DB<br/>PostgreSQL)]
+    CommentDB[(Comment DB<br/>PostgreSQL)]
+    LikeDB[(Like DB<br/>Cassandra)]
+    
+    S3[S3 Storage]
+    CDN[CDN<br/>CloudFront]
+    
+    Client --> Gateway
+    Gateway --> UserSvc
+    Gateway --> ContentSvc
+    Gateway --> FeedSvc
+    Gateway --> FollowerSvc
+    Gateway --> EngagementSvc
+    
+    UserSvc --> UserDB
+    ContentSvc --> PostDB
+    ContentSvc --> S3
+    S3 --> CDN
+    FeedSvc --> FeedCache
+    FollowerSvc --> FollowerDB
+    EngagementSvc --> CommentDB
+    EngagementSvc --> LikeDB
+    
+    style Client fill:#e1f5ff
+    style Gateway fill:#fff4e1
+    style UserSvc fill:#f0f0f0
+    style ContentSvc fill:#f0f0f0
+    style FeedSvc fill:#f0f0f0
+    style FollowerSvc fill:#f0f0f0
+    style EngagementSvc fill:#f0f0f0
+    style UserDB fill:#e8f5e9
+    style PostDB fill:#e8f5e9
+    style FeedCache fill:#ffebee
+    style FollowerDB fill:#e8f5e9
+    style CommentDB fill:#e8f5e9
+    style LikeDB fill:#e8f5e9
+    style S3 fill:#fff3e0
+    style CDN fill:#fff3e0
+```
+
+### ASCII Version (for screen readers/text terminals)
 
 ```
                          ┌──────────────┐
@@ -162,6 +351,9 @@ PUT    /api/v1/notifications/read-all                                   (mark al
 > Think of a restaurant: the kitchen (Content/Post Service) cooks and stores food; the waiter (Feed Service) decides what to put on your plate and delivers it. You don't want the waiter running into the kitchen to cook every time a customer orders.
 > Content Service owns creating, validating, and storing individual posts. Feed Service owns the personalized timeline — who sees what, assembled in what order, from Redis cache.
 > They scale completely differently: Content Service handles 1.2K post writes/sec; Feed Service handles 115K read requests/sec. Bundling them together means you have to scale both even when only one is under pressure — expensive and fragile.
+
+**💡 Section Summary (High Level Design):**
+6 microservices: User (auth/profiles), Content (posts), Feed (timelines), Follower (social graph), Engagement (likes/comments), Search (Elasticsearch). Each service owns its database. API Gateway handles auth, rate limiting, and routing. CDN serves 95% of media. Services scale independently based on their workload.
 
 ---
 
@@ -338,108 +530,627 @@ Kafka topics consumed: 'post.liked', 'post.commented', 'user.followed'
     → Store in Notification DB (PostgreSQL) for inbox, clean after 30 days
 ```
 
----
-
-## Step 6: Database Schema
-
-### Users (PostgreSQL)
-```sql
-user_id          UUID PRIMARY KEY
-username         VARCHAR(50) UNIQUE INDEXED
-email            VARCHAR(255) UNIQUE INDEXED
-password_hash    VARCHAR(255)          -- bcrypt cost=12
-bio              TEXT                  -- max 500 chars
-profile_pic_url  VARCHAR(500)
-followers_count  BIGINT DEFAULT 0      -- DENORMALIZED
-following_count  BIGINT DEFAULT 0      -- DENORMALIZED
-posts_count      BIGINT DEFAULT 0      -- DENORMALIZED
-created_at       TIMESTAMP
-```
-
-### Posts (Cassandra)
-```
-PRIMARY KEY: (user_id, created_at DESC, post_id)
-             ^^^^^^^^ partition    ^^^^^^^^^^^^^^^^ clustering (newest first)
-
-post_id       uuid
-content       text               -- max 5000 chars
-media_urls    list<text>         -- S3 URLs
-visibility    text               -- public / friends / private
-likes_count   bigint             -- DENORMALIZED, updated by background job
-comments_count bigint
-hashtags      set<text>
-is_deleted    boolean            -- soft delete
-```
-
-### Followers (PostgreSQL)
-```sql
-follower_id   UUID
-followee_id   UUID
-status        ENUM('pending','accepted')
-created_at    TIMESTAMP
-PRIMARY KEY (follower_id, followee_id)
-INDEX ON followee_id                   -- reverse lookup: find all followers
-```
-
-> **WHY NOT A GRAPH DATABASE FOR FOLLOWERS? (Beginner Explanation)**
-> A social graph is all about relationships: "friends of friends", "people you both follow", "second-degree connections". A graph database (like Neo4j) stores these as nodes and edges natively — traversing three hops is a single graph walk instead of three nested JOINs.
-> For simple follower lookups (who follows user X?), PostgreSQL with an index on `followee_id` is fast enough and much simpler to operate. Graph DBs earn their place only when you need multi-hop traversals at scale — like Facebook's "people you may know" recommendations.
-> This system uses PostgreSQL for followers. If the interviewer asks about friend-of-friend suggestions, that's when you bring up Neo4j or a dedicated graph layer.
-
-### Likes (Cassandra — high write volume)
-```
-PRIMARY KEY: (post_id, user_id)         -- enforces uniqueness
-reaction_type text                      -- like/love/haha/wow/sad/angry
-created_at    timestamp
-```
-
-### Comments (PostgreSQL — nested threads)
-```sql
-comment_id          UUID PRIMARY KEY
-post_id             UUID INDEXED
-user_id             UUID
-parent_comment_id   UUID NULL           -- NULL = top-level; UUID = reply
-content             TEXT               -- max 2000 chars
-likes_count         BIGINT DEFAULT 0
-reply_count         BIGINT DEFAULT 0   -- DENORMALIZED for "Show N replies"
-created_at          TIMESTAMP INDEXED
-is_deleted          BOOLEAN
-INDEX ON (post_id, parent_comment_id, created_at)
-```
-
-### Redis Key Patterns
-```
-feed:{user_id}                LIST     → post_ids (LPUSH, LTRIM 1000)
-likes_count:{post_id}         STRING   → INCR/DECR
-comments_count:{post_id}      STRING   → INCR/DECR
-like:{user_id}:{post_id}      STRING   → exists = liked (idempotency, TTL=24h)
-followers_count:{user_id}     STRING   → synced to PostgreSQL hourly
-author_latest_post:{user_id}  STRING   → cache for celebrities
-```
+**💡 Section Summary (Low Level Design):**
+The heart of the system is hybrid fanout: push (write to followers' caches) for normal users, pull (fetch on-demand) for celebrities. Posts return 202 immediately, fanout happens async via Kafka. Feed loads in 110ms by reading post_ids from Redis, batch-fetching content from PostDB and UserDB. Likes use Redis INCR for instant feedback, background job syncs to DB every 5 min (eventual consistency). Notifications are aggregated and delivered via WebSocket for active users.
 
 ---
 
-## Step 7: Key Numbers
+## Step 6: Entity Relationship Diagram
 
-| Metric | Value |
-|--------|-------|
-| DAU | 500M |
-| Posts/day | 100M = 1.2K/sec |
-| Feed loads/day | 10B = 115K req/sec |
-| Read/Write ratio | 100:1 |
-| Feed load latency (p95) | <500ms |
-| Like/Comment latency (p95) | <200ms |
-| Feed cache TTL | 10 min |
-| Feed size per user | 1000 posts ≈ 1MB |
-| Push model threshold | <5K followers |
-| Pull model threshold | >5K followers |
-| CDN cache hit rate | 95% |
-| Redis DB load reduction | 90% |
-| Like count sync interval | 5 min |
+### Mermaid Version (for PDF/visual rendering)
+
+```mermaid
+erDiagram
+    USER ||--o{ POST : creates
+    USER ||--o{ LIKE : makes
+    USER ||--o{ COMMENT : writes
+    USER ||--o{ FOLLOWERS : "follows/followed by"
+    POST ||--o{ LIKE : receives
+    POST ||--o{ COMMENT : has
+    COMMENT ||--o{ COMMENT : "replies to"
+
+    USER {
+        uuid user_id PK
+        varchar username UK
+        varchar email UK
+        varchar password_hash
+        text bio
+        varchar profile_pic_url
+        bigint followers_count "denormalized"
+        bigint following_count "denormalized"
+        bigint posts_count "denormalized"
+        timestamp created_at
+    }
+
+    POST {
+        uuid post_id PK
+        uuid user_id FK
+        text content
+        text[] media_urls
+        varchar visibility
+        bigint likes_count "denormalized"
+        bigint comments_count "denormalized"
+        text[] hashtags
+        boolean is_deleted
+        timestamp created_at
+    }
+
+    FOLLOWERS {
+        uuid follower_id FK
+        uuid followee_id FK
+        varchar status
+        timestamp created_at
+    }
+
+    LIKE {
+        uuid post_id FK
+        uuid user_id FK
+        varchar reaction_type
+        timestamp created_at
+    }
+
+    COMMENT {
+        uuid comment_id PK
+        uuid post_id FK
+        uuid user_id FK
+        uuid parent_comment_id FK "NULL for top-level"
+        text content
+        bigint likes_count "denormalized"
+        bigint reply_count "denormalized"
+        boolean is_deleted
+        timestamp created_at
+    }
+```
+
+**Redis Cache Patterns:**
+- `feed:{user_id}` → LIST of post_ids (1000 latest)
+- `likes_count:{post_id}` → STRING counter
+- `comments_count:{post_id}` → STRING counter
+- `like:{user_id}:{post_id}` → STRING flag (idempotency)
+- `followers_count:{user_id}` → STRING counter
+- `author_latest_post:{user_id}` → STRING cached celebrity posts
+
+### ASCII Version (for screen readers/text terminals)
+
+```
+┌─────────────────┐         ┌──────────────────┐         ┌─────────────────┐
+│      USER       │         │       POST       │         │    FOLLOWERS    │
+├─────────────────┤         ├──────────────────┤         ├─────────────────┤
+│ user_id (PK)    │────┐    │ post_id (PK)     │         │ follower_id (FK)│
+│ username        │    │    │ user_id (FK)     │◄────────│ followee_id (FK)│
+│ email           │    └───►│ content          │         │ status          │
+│ password_hash   │         │ media_urls[]     │         │ created_at      │
+│ bio             │         │ visibility       │         └─────────────────┘
+│ profile_pic_url │         │ likes_count      │                │
+│ followers_count │         │ comments_count   │                │ (many-to-many
+│ following_count │         │ hashtags[]       │                │  self-referential)
+│ posts_count     │         │ is_deleted       │                │
+│ created_at      │         │ created_at       │                │
+└─────────────────┘         └──────────────────┘                │
+        │                            │                           │
+        │                            │                           │
+        │                   ┌────────┴────────┐                 │
+        │                   │                 │                 │
+        │            ┌──────▼──────┐   ┌──────▼──────┐         │
+        │            │    LIKE     │   │   COMMENT   │         │
+        │            ├─────────────┤   ├─────────────┤         │
+        └───────────►│ post_id (FK)│   │ comment_id  │         │
+                     │ user_id (FK)│   │ post_id (FK)│         │
+                     │ reaction    │   │ user_id (FK)│◄────────┘
+                     │ created_at  │   │ parent_id   │
+                     └─────────────┘   │ content     │
+                                       │ likes_count │
+                                       │ reply_count │
+                                       │ created_at  │
+                                       │ is_deleted  │
+                                       └─────────────┘
+
+┌────────────────────────────────────────────────────────────────────┐
+│ REDIS CACHE PATTERNS                                               │
+├────────────────────────────────────────────────────────────────────┤
+│ feed:{user_id}              → LIST of post_ids (1000 latest)       │
+│ likes_count:{post_id}       → STRING counter                       │
+│ comments_count:{post_id}    → STRING counter                       │
+│ like:{user_id}:{post_id}    → STRING flag (idempotency check)      │
+│ followers_count:{user_id}   → STRING counter                       │
+│ author_latest_post:{user_id}→ STRING cached celebrity posts        │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+**📝 Text Description of ER Diagram (for screen readers):**
+
+This diagram shows 5 main database tables and their connections:
+
+1. **USER table** stores user profiles with fields: user_id (primary key), username, email, password_hash, bio, profile picture URL, and denormalized counters for followers, following, and posts.
+
+2. **POST table** stores posts with fields: post_id (primary key), user_id (foreign key linking to USER), content text, media URLs array, visibility setting, denormalized like and comment counts, hashtags, soft delete flag, and timestamp.
+
+3. **FOLLOWERS table** creates the many-to-many relationship between users: follower_id and followee_id (both foreign keys to USER), status (pending/accepted), and timestamp. This is a self-referential relationship where users can follow other users.
+
+4. **LIKE table** connects users to posts they liked: post_id and user_id together form the primary key (preventing duplicate likes), reaction type (like/love/haha/wow/sad/angry), and timestamp.
+
+5. **COMMENT table** stores both top-level comments and replies: comment_id (primary key), post_id (foreign key), user_id (foreign key), parent_comment_id (NULL for top-level, points to another comment for replies), content, denormalized counters for likes and replies, soft delete flag, and timestamp.
+
+**Redis cache patterns** shown at bottom store temporary data:
+- feed:{user_id} → LIST of 1000 most recent post IDs for that user's timeline
+- likes_count:{post_id} → Counter updated in real-time
+- comments_count:{post_id} → Counter updated in real-time
+- like:{user_id}:{post_id} → Flag to prevent duplicate likes (idempotency)
+- followers_count:{user_id} → Cached follower count
+- author_latest_post:{user_id} → Cached recent posts from celebrities
+
+**Key Relationships:**
+- User → Post: One-to-Many (a user creates many posts)
+- User → Like: One-to-Many (a user likes many posts)
+- Post → Like: One-to-Many (a post has many likes)
+- User → Comment: One-to-Many (a user writes many comments)
+- Post → Comment: One-to-Many (a post has many comments)
+- Comment → Comment: One-to-Many (nested replies, self-referential via parent_id)
+- User → Followers: Many-to-Many (a user follows many users and is followed by many)
+
+**💡 Section Summary:**
+The database uses PostgreSQL for structured data (users, followers, comments) and Cassandra for high-volume data (posts, likes). Redis caches feed timelines and counters. The Followers table creates the social graph, allowing users to follow each other in a many-to-many relationship.
 
 ---
 
-## Step 8: Common Interview Questions
+## Step 7: API Flow Diagram
+
+### Post Creation Flow (Mermaid - renders beautifully in PDF)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as API Gateway
+    participant CS as Content Service
+    participant S3 as S3 Storage
+    participant DB as PostDB
+    participant K as Kafka
+    participant FS as Fanout Service
+    participant R as Redis
+
+    C->>G: POST /posts {content, media}
+    G->>CS: Validate JWT
+    CS->>S3: Generate presigned URL
+    S3-->>CS: Presigned URL (15 min TTL)
+    CS-->>C: Return presigned URL
+    C->>S3: PUT media (direct upload)
+    C->>G: POST /complete
+    G->>CS: Finalize post
+    CS->>DB: Save post metadata
+    CS->>K: Publish 'post.created' event
+    CS-->>C: 202 Accepted
+    Note over CS,C: Async fanout happens below
+    K->>FS: Consume 'post.created'
+    FS->>DB: Fetch followers
+    loop For each follower
+        FS->>R: LPUSH feed:{follower_id}
+    end
+```
+
+### Feed Load Flow (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as API Gateway
+    participant FS as Feed Service
+    participant R as Redis
+    participant PDB as PostDB
+    participant UDB as UserDB
+
+    C->>G: GET /feed?cursor=X
+    G->>FS: Validate JWT
+    FS->>R: LRANGE feed:{user_id} 0 19
+    R-->>FS: 20 post_ids
+    FS->>PDB: SELECT * WHERE post_id IN (...)
+    PDB-->>FS: Post content
+    FS->>UDB: SELECT * WHERE user_id IN (...)
+    UDB-->>FS: Author profiles
+    FS->>R: MGET likes_count:{post_id} x20
+    R-->>FS: Counters
+    FS-->>C: 200 OK {posts[]}
+    Note over FS,C: Total: ~110ms
+```
+
+### Like Interaction Flow (Mermaid)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant G as API Gateway
+    participant ES as Engagement Service
+    participant R as Redis
+    participant DB as LikeDB
+    participant K as Kafka
+    participant NS as Notification Service
+
+    C->>G: POST /posts/{id}/like
+    G->>ES: Validate JWT
+    ES->>R: SETNX like:{user}:{post}
+    R-->>ES: OK (new like)
+    ES->>DB: INSERT (post_id, user_id)
+    ES->>R: INCR likes_count:{post_id}
+    ES->>K: Publish 'post.liked'
+    ES-->>C: 200 OK
+    K->>NS: Consume event
+    NS->>NS: Create notification
+    Note over ES: Background job every 5 min
+    ES->>DB: COUNT(*) likes
+    ES->>DB: Sync to PostDB
+```
+
+### ASCII Versions (for screen readers/text terminals)
+
+### Post Creation Flow
+```
+Client                API Gateway           Content Svc           S3/Media         PostDB         Kafka           Fanout Svc
+  │                        │                     │                  │                │              │                │
+  │──POST /posts──────────►│                     │                  │                │              │                │
+  │  {content, media}      │                     │                  │                │              │                │
+  │                        │──validate JWT──────►│                  │                │              │                │
+  │                        │                     │──presigned URL──►│                │              │                │
+  │                        │◄────presigned URL───│                  │                │              │                │
+  │◄───presigned URL───────│                     │                  │                │              │                │
+  │                        │                     │                  │                │              │                │
+  │──PUT media────────────────────────────────────────────────────►│                │              │                │
+  │                        │                     │  (direct upload) │                │              │                │
+  │                        │                     │                  │                │              │                │
+  │──POST /complete────────►│                     │                  │                │              │                │
+  │                        │──save post─────────►│──────────────────────────────────►│              │                │
+  │                        │                     │                  │                │              │                │
+  │                        │                     │──publish 'post.created'──────────────────────────►│                │
+  │                        │                     │                  │                │              │                │
+  │◄───202 Accepted────────│◄────202 Accepted───│                  │                │              │                │
+  │                        │                     │                  │                │              │                │
+  │                        │                     │                  │                │              │──get followers─►│
+  │                        │                     │                  │                │              │  (FollowerDB)  │
+  │                        │                     │                  │                │              │                │
+  │                        │                     │                  │                │              │──LPUSH feed:*──►│
+  │                        │                     │                  │                │              │  (Redis)       │
+```
+
+### Feed Load Flow
+```
+Client          API Gateway       Feed Svc         Redis           PostDB          UserDB
+  │                  │                │               │               │               │
+  │──GET /feed──────►│                │               │               │               │
+  │  ?cursor=X       │                │               │               │               │
+  │                  │──validate JWT─►│               │               │               │
+  │                  │                │──LRANGE───────►│               │               │
+  │                  │                │  feed:{uid}    │               │               │
+  │                  │                │◄─post_ids[20]─│               │               │
+  │                  │                │                │               │               │
+  │                  │                │──get posts IN(post_ids)───────►│               │
+  │                  │                │◄─────post content──────────────│               │
+  │                  │                │                │               │               │
+  │                  │                │──get authors IN(user_ids)─────────────────────►│
+  │                  │                │◄──────author profiles──────────────────────────│
+  │                  │                │                │               │               │
+  │                  │                │──MGET likes_count:{post_id}───►│               │
+  │                  │                │◄─────counters─────────────────│               │
+  │                  │                │                │               │               │
+  │                  │◄───feed JSON───│                │               │               │
+  │◄───200 OK────────│                │               │               │               │
+  │  {posts[]}       │                │               │               │               │
+```
+
+### Like Interaction Flow
+```
+Client          API Gateway     Engagement Svc      Redis           LikeDB          Kafka           Notification Svc
+  │                  │                │               │               │               │                    │
+  │──POST /like─────►│                │               │               │               │                    │
+  │  post_id         │                │               │               │               │                    │
+  │                  │──validate JWT─►│               │               │               │                    │
+  │                  │                │──SETNX────────►│               │               │                    │
+  │                  │                │  like:uid:pid  │               │               │                    │
+  │                  │                │◄──OK (new)────│               │               │                    │
+  │                  │                │                │               │               │                    │
+  │                  │                │──INSERT (post_id, user_id)────►│               │                    │
+  │                  │                │                │               │               │                    │
+  │                  │                │──INCR likes_count:post_id─────►│               │                    │
+  │                  │                │                │               │               │                    │
+  │                  │                │──publish 'post.liked'─────────────────────────►│                    │
+  │                  │                │                │               │               │──create notif─────►│
+  │                  │◄───200 OK──────│                │               │               │                    │
+  │◄───200 OK────────│                │               │               │               │                    │
+  │                  │                │               │               │               │                    │
+  │                  │                │  [Background Job - every 5 min]               │                    │
+  │                  │                │◄──COUNT(*) likes──────────────│               │                    │
+  │                  │                │──sync to PostDB───────────────────────────────►│                    │
+```
+
+**📝 Text Description of API Flow Diagrams (for screen readers):**
+
+> **Note:** Each flow has two versions:
+> - **Mermaid diagrams** render beautifully in PDF converters (Typora, Markdown PDF, GitHub)
+> - **ASCII diagrams** work in plain text, screen readers, and terminals
+> Both show the same information — use whichever renders better in your tool!
+
+**Post Creation Flow:**
+1. Client sends POST request to create a post with content and media files
+2. API Gateway validates JWT authentication token
+3. Content Service generates a presigned S3 URL (valid for 15 minutes) and returns it to client
+4. Client uploads media files directly to S3 (not through our servers)
+5. Client calls POST /complete to finalize the post
+6. Content Service saves post metadata to Cassandra PostDB
+7. Content Service publishes 'post.created' event to Kafka
+8. Returns 202 Accepted to client immediately (fanout happens asynchronously)
+9. Fanout Service consumes Kafka event, fetches author's followers from FollowerDB
+10. Fanout Service pushes post_id to each follower's feed in Redis using LPUSH
+
+**Feed Load Flow:**
+1. Client requests GET /feed with cursor parameter for pagination
+2. API Gateway validates JWT
+3. Feed Service runs LRANGE on Redis to get 20 post IDs from feed:{user_id}
+4. Feed Service batch-fetches post content from PostDB using WHERE post_id IN (...)
+5. Feed Service batch-fetches author profiles from UserDB using WHERE user_id IN (...)
+6. Feed Service runs MGET on Redis to get like/comment counters for all 20 posts
+7. Feed Service assembles JSON response and returns it
+8. Total time: ~110ms (10ms Redis + 50ms PostDB + 30ms UserDB + 20ms counters)
+
+**Like Interaction Flow:**
+1. Client sends POST /posts/{post_id}/like
+2. API Gateway validates JWT
+3. Engagement Service checks Redis with SETNX like:{user_id}:{post_id} (idempotency)
+4. If key didn't exist (new like), insert row into LikeDB with composite PK (post_id, user_id)
+5. Increment likes_count:{post_id} counter in Redis (instant feedback)
+6. Publish 'post.liked' event to Kafka
+7. Return 200 OK to client immediately
+8. Notification Service consumes Kafka event and creates notification
+9. Background job runs every 5 minutes: COUNT(*) all likes from LikeDB and sync to PostDB
+
+**💡 Section Summary:**
+All APIs follow async patterns: POST operations return 202 Accepted immediately, background workers handle heavy lifting. Read operations use Redis cache first, then batch-fetch from DB. Like interactions use Redis for instant feedback, then eventual consistency with background sync.
+
+---
+
+## Step 8: Detailed Architecture with Data Flow
+
+### Mermaid Version (for PDF/visual rendering)
+
+```mermaid
+graph TB
+    subgraph ClientLayer["CLIENT LAYER"]
+        Client[Mobile App / Web Browser / PWA]
+    end
+    
+    subgraph GatewayLayer["API GATEWAY + LOAD BALANCER"]
+        Gateway[API Gateway<br/>- JWT Auth<br/>- Rate Limiting 1K/min<br/>- Routing<br/>- SSL Termination]
+    end
+    
+    subgraph ServiceLayer["SERVICE LAYER"]
+        UserSvc[User Service<br/>Register, Login, Profile]
+        ContentSvc[Content Service<br/>Validate, S3 URL, Kafka publish]
+        FeedSvc[Feed Service<br/>Assemble timeline<br/>Merge push/pull]
+        EngagementSvc[Engagement Service<br/>Like/Comment]
+        SearchSvc[Search Service<br/>Elasticsearch]
+    end
+    
+    subgraph DataLayer["DATA LAYER"]
+        UserDB[(User DB<br/>PostgreSQL<br/>Primary + 5 Replicas)]
+        PostDB[(Post DB<br/>Cassandra<br/>Sharded by user_id)]
+        FeedCache[(Feed Cache<br/>Redis LIST<br/>TTL=10min)]
+        FollowerDB[(Follower DB<br/>PostgreSQL)]
+        LikeDB[(Like DB<br/>Cassandra)]
+        CommentDB[(Comment DB<br/>PostgreSQL)]
+        NotifDB[(Notification DB<br/>PostgreSQL<br/>TTL=30d)]
+        S3[S3 + CDN<br/>95% cache hit]
+    end
+    
+    subgraph QueueLayer["MESSAGE QUEUE LAYER"]
+        Kafka[Kafka Cluster<br/>Topics: post.created, post.liked<br/>12 partitions each]
+    end
+    
+    subgraph WorkerLayer["WORKER SERVICES"]
+        FanoutSvc[Fanout Service<br/>Push to feeds]
+        NotifSvc[Notification Service<br/>WebSocket/FCM/APNS]
+    end
+    
+    subgraph MonitorLayer["MONITORING"]
+        Monitor[Prometheus<br/>Grafana<br/>ELK<br/>Jaeger]
+    end
+    
+    Client -->|HTTPS/WebSocket| Gateway
+    Gateway --> UserSvc
+    Gateway --> ContentSvc
+    Gateway --> FeedSvc
+    Gateway --> EngagementSvc
+    Gateway --> SearchSvc
+    
+    UserSvc --> UserDB
+    ContentSvc --> PostDB
+    ContentSvc --> S3
+    ContentSvc --> Kafka
+    FeedSvc --> FeedCache
+    EngagementSvc --> LikeDB
+    EngagementSvc --> CommentDB
+    
+    Kafka --> FanoutSvc
+    Kafka --> NotifSvc
+    
+    FanoutSvc --> FollowerDB
+    FanoutSvc --> FeedCache
+    NotifSvc --> NotifDB
+    
+    Monitor -.->|monitors| ServiceLayer
+    Monitor -.->|monitors| DataLayer
+    
+    style Client fill:#e1f5ff
+    style Gateway fill:#fff4e1
+    style UserSvc fill:#f0f0f0
+    style ContentSvc fill:#f0f0f0
+    style FeedSvc fill:#f0f0f0
+    style EngagementSvc fill:#f0f0f0
+    style SearchSvc fill:#f0f0f0
+    style Kafka fill:#ffe0b2
+    style FanoutSvc fill:#f0f0f0
+    style NotifSvc fill:#f0f0f0
+    style UserDB fill:#e8f5e9
+    style PostDB fill:#e8f5e9
+    style FeedCache fill:#ffebee
+    style FollowerDB fill:#e8f5e9
+    style LikeDB fill:#e8f5e9
+    style CommentDB fill:#e8f5e9
+    style NotifDB fill:#e8f5e9
+    style S3 fill:#fff3e0
+    style Monitor fill:#f3e5f5
+```
+
+### ASCII Version (for screen readers/text terminals)
+
+```
+                            ┌────────────────────────────────────────────┐
+                            │         CLIENT LAYER                        │
+                            │  Mobile App / Web Browser / PWA             │
+                            └────────────┬───────────────────────────────┘
+                                         │ HTTPS/WebSocket
+                                         ▼
+                            ┌────────────────────────────────────────────┐
+                            │       API GATEWAY + LOAD BALANCER          │
+                            │  - JWT Authentication                      │
+                            │  - Rate Limiting (1K req/min per user)     │
+                            │  - Request Routing                         │
+                            │  - SSL Termination                         │
+                            └────┬──────┬──────┬──────┬──────┬──────────┘
+                                 │      │      │      │      │
+        ┌────────────────────────┴──┬───┴──┬───┴──┬───┴──┬───┴────────────────────┐
+        │                           │      │      │      │                        │
+        ▼                           ▼      ▼      ▼      ▼                        ▼
+┌───────────────┐          ┌──────────────────────────────────┐       ┌────────────────┐
+│   User Svc    │          │        Content Svc               │       │  Feed Svc      │
+│               │          │  - Validate post                 │       │  - Assemble    │
+│  - Register   │          │  - Generate S3 URL               │       │    timeline    │
+│  - Login      │          │  - Create post record            │       │  - Merge push  │
+│  - Profile    │          │  - Publish to Kafka              │       │    & pull      │
+│  - Search     │          └──────────┬───────────────────────┘       │  - Cache mgmt  │
+└───────┬───────┘                     │                               └────────┬───────┘
+        │                             │                                        │
+        ▼                             ▼                                        ▼
+┌───────────────┐          ┌─────────────────┐                    ┌─────────────────────┐
+│   User DB     │          │   Post DB       │                    │   Feed Cache        │
+│ (PostgreSQL)  │          │  (Cassandra)    │                    │   (Redis)           │
+│  - Primary    │          │  - Sharded by   │                    │  LIST per user      │
+│  - 5 Replicas │          │    user_id      │                    │  feed:{user_id}     │
+└───────────────┘          │  - Time-series  │                    │  LPUSH/LRANGE       │
+                           │    clustering   │                    │  TTL = 10 min       │
+                           └─────────────────┘                    └─────────────────────┘
+                                     │
+                                     ▼
+                           ┌─────────────────┐
+                           │   S3 + CDN      │
+                           │  - Original     │
+                           │  - Thumbnails   │
+                           │  - HLS videos   │
+                           │  95% cache hit  │
+                           └─────────────────┘
+
+        ┌────────────────────────────────────────────────────────────────────┐
+        │                    MESSAGE QUEUE LAYER                             │
+        │  ┌────────────────────────────────────────────────────────────┐    │
+        │  │                  KAFKA CLUSTER                             │    │
+        │  │  Topics: post.created, post.liked, post.commented,         │    │
+        │  │          user.followed, notification.send                  │    │
+        │  │  Partitions: 12 per topic (keyed by user_id/post_id)      │    │
+        │  └──────┬─────────────────────────────────────┬───────────────┘    │
+        └─────────┼─────────────────────────────────────┼────────────────────┘
+                  │                                     │
+                  ▼                                     ▼
+        ┌──────────────────┐                 ┌──────────────────┐
+        │   Fanout Svc     │                 │ Notification Svc │
+        │  - Read event    │                 │  - Aggregate     │
+        │  - Get followers │                 │  - WebSocket     │
+        │  - Push to feeds │                 │  - FCM/APNS      │
+        │  - Handle hybrid │                 │  - Store inbox   │
+        └────────┬─────────┘                 └────────┬─────────┘
+                 │                                    │
+                 ▼                                    ▼
+        ┌──────────────────┐                 ┌──────────────────┐
+        │  Follower DB     │                 │ Notification DB  │
+        │  (PostgreSQL)    │                 │  (PostgreSQL)    │
+        │  - Indexed edges │                 │  TTL = 30 days   │
+        └──────────────────┘                 └──────────────────┘
+
+        ┌────────────────────────────────────────────────────────────────────┐
+        │                    ENGAGEMENT LAYER                                │
+        │  ┌──────────────────┐          ┌──────────────────┐               │
+        │  │ Engagement Svc   │          │  Search Svc      │               │
+        │  │  - Like/Unlike   │          │  - Elasticsearch │               │
+        │  │  - Comment       │          │  - Autocomplete  │               │
+        │  │  - Reply         │          │  - Hashtag index │               │
+        │  └────────┬─────────┘          └──────────────────┘               │
+        │           │                                                        │
+        │    ┌──────┴──────┐                                                │
+        │    ▼             ▼                                                │
+        │ ┌─────────┐  ┌──────────┐                                        │
+        │ │ Like DB │  │Comment DB│                                        │
+        │ │(Cassand)│  │(Postgres)│                                        │
+        │ └─────────┘  └──────────┘                                        │
+        └────────────────────────────────────────────────────────────────────┘
+
+                    ┌────────────────────────────────────┐
+                    │   MONITORING & OBSERVABILITY       │
+                    │  - Prometheus (metrics)            │
+                    │  - Grafana (dashboards)            │
+                    │  - ELK Stack (logs)                │
+                    │  - Jaeger (distributed tracing)    │
+                    └────────────────────────────────────┘
+```
+
+**📝 Text Description of Detailed Architecture (for screen readers):**
+
+> **Note:** Like other sections, this diagram has both:
+> - **Mermaid version** (graph diagram with subgraphs) renders cleanly in PDF/GitHub
+> - **ASCII version** (multi-layer box diagram) works in terminals and screen readers
+> Both convey the same 7-layer architecture — choose based on your viewing tool!
+
+This is a multi-layer architecture diagram showing 6 main layers:
+
+**Layer 1 - Client Layer:**
+Mobile apps, web browsers, and progressive web apps connect via HTTPS and WebSocket.
+
+**Layer 2 - API Gateway + Load Balancer:**
+Handles JWT authentication, rate limiting (1,000 requests per minute per user), request routing to services, and SSL termination.
+
+**Layer 3 - Service Layer:**
+- **User Service**: Handles registration, login, profile management, and user search. Connects to PostgreSQL User DB with 1 primary and 5 read replicas.
+- **Content Service**: Validates posts, generates S3 presigned URLs, creates post records, and publishes to Kafka. Connects to Cassandra Post DB (sharded by user_id with time-series clustering) and S3+CDN for media storage.
+- **Feed Service**: Assembles personalized timelines, merges push and pull feeds, and manages cache. Connects to Redis Feed Cache (LIST data structure per user, 10-minute TTL).
+- **Follower Service**: Not shown in detail but manages follower relationships.
+- **Engagement Service**: Manages likes and comments.
+- **Search Service**: Powered by Elasticsearch for autocomplete and hashtag indexing.
+
+**Layer 4 - Message Queue Layer:**
+Kafka cluster with topics: post.created, post.liked, post.commented, user.followed, notification.send. Each topic has 12 partitions keyed by user_id or post_id for ordered processing.
+
+**Layer 5 - Worker Services:**
+- **Fanout Service**: Consumes post.created events, fetches followers from FollowerDB (PostgreSQL with indexed edges), and pushes post IDs to Redis feeds. Implements hybrid fanout (push for <5K followers, pull for celebrities).
+- **Notification Service**: Aggregates events, delivers via WebSocket for active users or FCM/APNS for mobile, and stores in Notification DB (PostgreSQL with 30-day TTL).
+
+**Layer 6 - Data Layer:**
+- User DB: PostgreSQL primary + 5 replicas
+- Post DB: Cassandra sharded by user_id
+- Follower DB: PostgreSQL with indexed edges for bidirectional lookups
+- Like DB: Cassandra for high write volume
+- Comment DB: PostgreSQL for nested thread support
+- Feed Cache: Redis with LRU/LFU eviction
+- Notification DB: PostgreSQL with 30-day TTL
+- S3 + CDN: Original media, thumbnails, HLS videos with 95% cache hit rate
+
+**Layer 7 - Monitoring & Observability:**
+Prometheus (metrics), Grafana (dashboards), ELK Stack (logs), Jaeger (distributed tracing).
+
+**Data Flow Highlights:**
+1. **Post Creation**: Client → API GW → Content Svc → Kafka → Fanout Svc → Redis feeds
+2. **Feed Load**: Client → API GW → Feed Svc → Redis (post_ids) → PostDB (content) → UserDB (profiles)
+3. **Like Action**: Client → API GW → Engagement Svc → Redis (counter) → LikeDB → Kafka → Notification
+4. **Follow**: Client → API GW → Follower Svc → FollowerDB → Backfill feed cache
+
+**💡 Section Summary:**
+The architecture separates concerns into specialized services. Heavy write operations (posts, likes) go to Cassandra. Relational data (users, followers, comments) goes to PostgreSQL. All feeds are cached in Redis. Kafka decouples write operations from fanout propagation. CDN serves 95% of media requests without touching our servers.
+
+---
+
+## Step 9: Common Interview Questions
 
 **Q: Why fanout on write for normal users?**
 100:1 read/write ratio. Pre-generating feeds means 1 slow write enables 100 fast reads. LRANGE from Redis = <10ms. For celebrities with 10M followers, 1 post = 10M writes → impractical, so switch to pull.
@@ -477,9 +1188,12 @@ WebSocket + Redis pub/sub: Client opens WS on app launch (JWT auth). Server subs
 **Q: How to scale at 500M DAU?**
 DB sharding by user_id (1000 shards). 5 PostgreSQL read replicas (99% reads). Redis caching cuts DB load 90%. CDN 95% cache hit for media. Kafka decouples write from fanout. Denormalization avoids COUNT(*) queries. Connection pooling (100 connections/server × 50 servers = 5K total).
 
+**💡 Section Summary (Common Interview Questions):**
+Interviewers focus on: hybrid fanout (why/when push vs pull), celebrity hotspot (how to avoid write explosion), consistency (eventual for counters, strong for critical data), idempotency (Redis SETNX + composite PKs), Redis benefits (speed, scale, ephemeral data), nested comments (parent_id + lazy load), real-time notifications (WebSocket + Redis pub/sub), privacy (visibility checks + cache), scaling (sharding, replicas, CDN, Kafka, denormalization).
+
 ---
 
-## Step 9: Scaling Techniques
+## Step 10: Scaling Techniques
 
 | Technique | Impact |
 |-----------|--------|
@@ -493,6 +1207,9 @@ DB sharding by user_id (1000 shards). 5 PostgreSQL read replicas (99% reads). Re
 | Elasticsearch for search | 10K searches/sec, <100ms autocomplete |
 | Rate limiting (1K req/min) | Prevents abuse |
 | Lazy loading (20 posts/scroll) | Page load 5s → 500ms |
+
+**💡 Section Summary (Scaling Techniques):**
+10 key techniques enable 500M DAU: Cassandra shards posts by user_id for horizontal scaling. PostgreSQL read replicas handle 99% of reads. Redis cuts DB queries 90%. CDN serves 95% of media (saving origin bandwidth). Kafka decouples writes from fanout. Denormalization trades storage for query speed. Background jobs batch writes (like count sync). Elasticsearch handles 10K searches/sec. Rate limiting prevents abuse. Cursor pagination with lazy loading keeps feeds fast at any scroll depth.
 
 ---
 
@@ -521,57 +1238,448 @@ DB sharding by user_id (1000 shards). 5 PostgreSQL read replicas (99% reads). Re
 
 ---
 
-## KEY PATTERNS REFERENCED IN THIS DESIGN
+## KEY PATTERNS EXPLAINED (Easy English)
 
-> **For the 2-year developer:** These are the hidden concepts that make this design work. Each one has a dedicated deep-dive file. When asked "why did you choose X?" in your interview — these are the reasons.
+> **For developers preparing for interviews:** These are the core concepts that make this design work at scale. Understanding these will help you answer "why" questions confidently.
 
-### Fan-Out on Write vs Fan-Out on Read
-**Why it matters here:** This is the core feed architecture decision for the entire system. Regular users (<10K followers): fan-out on write — push post_id to all follower Redis feeds on post creation. Celebrities (millions of followers): fan-out on read — pull their posts at feed read time. The hybrid model is the production answer and the interviewers' expected conclusion.
-**Deep dive:** `../../Fan_Out_Write_vs_Fan_Out_Read.md`
+### 1. Fan-Out on Write vs Fan-Out on Read
 
-### N+1 Query Problem
-**Why it matters here:** Feed loads 20 posts → ORM lazily fetches each post's author profile → 21 queries instead of 1. At 1M users loading feeds simultaneously, that's 21M DB queries/second instead of 1M. This is the most common backend scaling mistake and interviewers probe it directly in feed system designs. Fix: JOIN FETCH or @EntityGraph.
-**Deep dive:** `../../N_Plus_1_Query_Problem.md`
+**💡 TL;DR:** Push (fanout on write) pre-builds feeds instantly but breaks for celebrities. Pull (fanout on read) avoids write explosion but is slower. Production uses both: push for <5K followers, pull for celebrities.
 
-### Index Types
-**Why it matters here:** Composite B-tree index on (user_id, created_at DESC) for the user timeline query. The left-prefix rule means this single index serves both "all posts by user X" and "posts by user X after date Y" — avoiding redundant indexes and keeping the timeline query at O(log N + K) instead of a full table scan.
-**Deep dive:** `../../Index_Types_BTree_Hash_Composite_Covering.md`
+**What it is:** Two different ways to build a user's feed.
 
-### Cursor Pagination
-**Why it matters here:** Infinite scroll feed. OFFSET 9980 LIMIT 20 forces the DB to scan and discard 9,980 rows on every scroll. Cursor on (created_at, post_id) is a direct index seek — always scans exactly 20 rows regardless of how deep in the feed the user has scrolled. At 1M concurrent users, this is the difference between O(N) and O(1) per scroll event.
-**Deep dive:** `../../Cursor_Pagination_vs_Offset_Pagination.md`
+**Fan-Out on Write (Push Model):**
+- When someone posts, immediately copy that post_id to all their followers' feeds
+- Think of it like a newspaper delivery: print once, deliver to every doorstep overnight
+- When you open Instagram, your feed is already waiting for you
+- **Perfect for**: Regular users with <5K followers
+- **Problem**: If someone has 10M followers, that's 10M writes for one post!
 
-### Graceful Degradation
-**Why it matters here:** When the recommendation service is down, the feed should fall back to showing popular posts from a cached static list rather than returning a 503. The user sees content and the recommendation failure is invisible. This is the difference between a partial outage and a full user-facing outage.
-**Deep dive:** `../../Graceful_Degradation.md`
+**Fan-Out on Read (Pull Model):**
+- Don't copy anything when someone posts
+- When YOU open your feed, fetch posts from everyone you follow on-demand
+- Like going to each person's house to pick up their newspaper yourself
+- **Perfect for**: Celebrities with millions of followers
+- **Problem**: Slower because work happens at read time
 
-### CAP Theorem
-**Why it matters here:** Social media feed is AP — during a partition, your feed may be 30 seconds stale or show slightly out-of-order posts. That is completely acceptable. Users must be able to scroll their feed even during partial failures. Availability far outweighs consistency for a feed; no one needs millisecond-perfect ordering of cat photos.
-**Deep dive:** `../../CAP_Theorem_Applied_What_Actually_Breaks.md`
+**Hybrid (Production Reality):**
+- Below 5K followers → use push (instant feeds)
+- Above 5K followers → use pull (avoid write explosion)
+- Instagram, Twitter, Facebook all use this hybrid approach
 
-### [Database Sharding](../../Database_Sharding_Range_Hash_Consistent_Hashing.md)
-**Why this system uses it:** Users table sharded by `user_id` (consistent hashing). Posts table sharded by `user_id` (same shard key keeps user's posts co-located — fan-out query hits one shard). Avoid sharding by `created_at` — all new posts would go to the "current" shard, creating a permanent hot shard. Redis Cluster for feed cache uses consistent hashing with 16,384 slots across shards.
+---
 
-### [Read Replica Lag & Read-Your-Own-Writes](../../Read_Replica_Lag_Read_Your_Own_Writes.md)
-**Why this system uses it:** User posts to Instagram → immediately views their own profile → post isn't there. This is read replica lag. Fix: for 5 seconds after a write, route that user's reads to the primary. The session token carries a `last_write_timestamp`; the API gateway routes to primary if `current_time - last_write < 5s`. After 5s, back to replica. All other users can tolerate the replica lag (they don't know you just posted).
+### 2. N+1 Query Problem
 
-### [Cache-Aside vs Write-Through vs Write-Behind](../../Cache_Aside_vs_Write_Through_vs_Write_Behind.md)
-**Why this system uses it:** Feed cache (Redis sorted set) uses write-through on fan-out — when a post is created, the fan-out worker writes to both DB and all followers' feed caches simultaneously. User profile cache uses cache-aside — lazy populate on first read, invalidate on profile update. TTL = 5 minutes with random jitter (±30s) to prevent synchronized expiry stampede on popular profiles.
+**💡 TL;DR:** Loading 20 posts with 20 separate author queries = 41 total DB queries = death at scale. Fix: batch-fetch with IN clause = 3 queries total. Use JOIN FETCH or eager loading in your ORM.
 
-### [Cache Stampede / Thundering Herd](../../Cache_Stampede_Thundering_Herd.md)
-**Why this system uses it:** Trending topics cache expires every 5 minutes. At expiry, all dashboard users hit the trending computation simultaneously. Solution: stale-while-revalidate — serve the stale trending list immediately from cache and trigger a background refresh. Users see trends that are at most 5 minutes old while the refresh runs. The async refresh updates the cache without any user request waiting for it.
+**The Problem:**
+Imagine loading 20 posts in your feed. Your code does:
+```
+1. Get 20 post IDs from cache
+2. For each post:
+   - Query database: "Get post details" (20 queries)
+   - Query database: "Get author profile" (20 more queries)
+```
+Total: 1 + 20 + 20 = **41 database queries** just to show 20 posts!
 
-### [Bloom Filter + HyperLogLog](../../Bloom_Filter_HyperLogLog_Approximate_Data_Structures.md)
-**Why this system uses it:** Feed deduplication — "has user X already seen post Y?" With 1B users × 1000 posts each, an exact set is impossibly large. Per-user Bloom filter for "seen post IDs" enables O(1) deduplication before adding a post to the feed. HyperLogLog for "unique daily active users" — 100M DAU counter with 0.81% error using 12KB, instead of a 800MB exact set.
+With 1 million users loading feeds, that's **41 million queries per second** — your database dies instantly.
 
-### [Kafka Partition Key & Consumer Groups](../../Kafka_Partition_Key_Consumer_Groups_Rebalancing.md)
-**Why this system uses it:** Feed generation events keyed by `author_id` — all posts from one author go to the same partition, ensuring ordered fan-out (post 2 never fans out before post 1). Consumer group = fan-out workers: 12 partitions, 12 worker instances = 1 partition per worker. Hot partition risk: celebrity with 500M followers generates massive fan-out events from one partition. Mitigation: cap fan-out at 1000 followers per event; break into 500K batches.
+**The Solution:**
+Use batch queries (SQL IN clause or JOIN):
+```
+1. Get 20 post IDs from cache
+2. Query database ONCE: "Get all 20 posts WHERE post_id IN (...)"
+3. Query database ONCE: "Get all authors WHERE user_id IN (...)"
+```
+Total: **3 queries** instead of 41. That's why frameworks have "JOIN FETCH" or "eager loading".
 
-### [Hot Partition Problem](../../Hot_Partition_Problem_And_Solutions.md)
-**Why this system uses it:** Celebrity users (Cristiano Ronaldo, 500M followers) produce vastly more events than average users. Kafka partition key = `author_id` → all celebrity events on one partition → that consumer drowns while others are idle. Solution: for verified celebrity accounts, use a dedicated high-capacity partition; for normal users, hash partition as usual. Alternatively: key fan-out events by `batch_id` (celebrity_id + batch_sequence) to spread across partitions.
+---
 
-### [Cache Eviction — LRU, LFU, TTL](../../Cache_Eviction_LRU_LFU_TTL_Redis_Policies.md)
-**Why this system uses it:** Feed cache in Redis uses `allkeys-lfu` — celebrity profiles and trending posts are accessed thousands of times per hour (high LFU frequency counter) and must stay in cache. A one-time visitor's profile accessed once gets a low frequency counter and is evicted first when memory is full. This is the opposite of LRU behavior, which would incorrectly evict a celebrity profile that was accessed 5 minutes ago in favor of a one-time profile accessed 30 seconds ago.
+### 3. Database Indexes (Simple Explanation)
 
-### [Negative Caching](../../Negative_Caching_Cache_Miss_Storm.md)
-**Why this system uses it:** Username availability checks ("is @batman taken?") and profile lookups for non-existent users (typos, deleted accounts) hammer the user DB if not cached. Cache "user not found" for 30 seconds. Deleted/suspended account lookups: cache the "not found" result immediately on deletion to prevent stale positive cache entries from serving profile data after deletion. TTL kept short (30s) so newly-created usernames become available quickly after creation.
+**💡 TL;DR:** Index = book's table of contents. Without it, database reads every row (slow). B-Tree for ranges/sorting, Hash for exact matches, Composite for multi-column queries. Left-prefix rule: Index (A,B,C) works for A, (A,B), (A,B,C) but NOT just B or C.
+
+**Without Index:**
+Database has to scan every single row to find what you want. Like finding a word in a book by reading every page from start to finish.
+
+**With Index:**
+Database maintains a sorted lookup table (like a book's index). Find entries instantly.
+
+**B-Tree Index:** Standard index. Good for: `WHERE user_id = X`, `WHERE created_at > Y`, sorting
+**Hash Index:** Lightning fast for exact matches only: `WHERE email = 'john@example.com'`
+**Composite Index on (user_id, created_at):** One index serves both queries:
+- "All posts by user X"
+- "Posts by user X after date Y"
+
+**Left-Prefix Rule:** Index (A, B, C) can be used for queries on A, (A,B), or (A,B,C) — but NOT just B or C alone.
+
+---
+
+### 4. Cursor Pagination vs Offset Pagination
+
+**💡 TL;DR:** OFFSET 9980 LIMIT 20 = scan and skip 9,980 rows (slow, breaks with new posts). Cursor = WHERE created_at < last_timestamp LIMIT 20 (direct index seek, stable). Always use cursor for infinite scroll feeds.
+
+**Offset Pagination (BAD for feeds):**
+```
+Page 1: OFFSET 0 LIMIT 20   → rows 1-20
+Page 2: OFFSET 20 LIMIT 20  → rows 21-40
+```
+**Problems:**
+- New posts arrive while you scroll → you see duplicates or miss posts
+- Database must scan and skip the first 9,980 rows to show row 10,000 (very slow)
+
+**Cursor Pagination (GOOD for feeds):**
+```
+Page 1: WHERE created_at < now() LIMIT 20
+Page 2: WHERE created_at < last_post_timestamp LIMIT 20
+```
+**Benefits:**
+- Always shows next 20 posts after your last one (no duplicates, no skips)
+- Direct index lookup — always fast, even at post #10,000
+- This is how Instagram, Twitter infinite scroll works
+
+---
+
+### 5. Graceful Degradation
+
+**💡 TL;DR:** When a service breaks, show reduced functionality instead of error page. Recommendation down? Show popular posts. Redis down? Query DB directly. Users barely notice = good design.
+
+**The Concept:** When something breaks, the app should still work (maybe with reduced features) instead of showing an error page.
+
+**Example in this system:**
+- Recommendation service is down → show popular/recent posts instead
+- Redis cache is down → query database directly (slower but works)
+- Search service is down → hide search bar, show recent posts
+- Like count service is down → show "💖" without a number
+
+**Bad Design:** Any service failure → entire app shows "500 Internal Server Error"
+
+**Good Design:** Services fail gracefully → users barely notice, maybe a feature is slower
+
+---
+
+### 6. CAP Theorem (Simple Version)
+
+**💡 TL;DR:** In distributed systems, pick 2 of 3: Consistency (same data everywhere), Availability (always responds), Partition tolerance (works during network splits). Social media = AP (always available, eventual consistency OK). Banking = CP (correct balance, can go offline during issues).
+
+In a distributed system, you can only have 2 out of 3:
+- **C**onsistency: Everyone sees the same data at the same time
+- **A**vailability: The system always responds (no downtime)
+- **P**artition tolerance: System works even when servers can't talk to each other
+
+**Social Media is AP (Availability + Partition Tolerance):**
+- Users MUST be able to scroll their feed even during server failures
+- It's okay if your feed shows posts that are 30 seconds out of order
+- It's okay if a like count is off by ±5 for a few seconds
+- No one cares if cat photos appear in slightly wrong order
+
+**Banking would be CP (Consistency + Partition):**
+- Your account balance MUST be correct every time
+- During network issues, ATM can go offline temporarily
+- Never show wrong balance just to stay "available"
+
+---
+
+### 7. Database Sharding
+
+**💡 TL;DR:** Split data across multiple DB servers. Hash user_id to pick shard. Keeps related data together (user + posts on same shard). Avoid sharding by time (all new data hits one shard = hotspot).
+
+**The Problem:** One database can't handle 2 billion users.
+
+**Sharding = Split data across multiple database servers:**
+
+**Shard by user_id:**
+- User IDs 0-99M → Database Server 1
+- User IDs 100M-199M → Database Server 2
+- User IDs 200M-299M → Database Server 3
+- ...etc
+
+**How to choose which shard:** Hash the user_id: `shard_number = user_id % 20`
+
+**Benefits:**
+- Each database handles 1/20th of the data
+- Queries only hit one shard (fast!)
+
+**Important:** Keep related data together. User's posts should be on the same shard as their profile (both keyed by user_id).
+
+**Avoid:** Sharding by `created_at` — all new posts go to the "current time" shard, creating a permanent bottleneck.
+
+---
+
+### 8. Read Replica Lag & Read-Your-Own-Writes
+
+**💡 TL;DR:** Writes → primary, reads → replicas (1-5 sec lag). After YOU write, route YOUR reads to primary for 5 sec (see your own post). Everyone else reads from replicas (don't know you posted).
+
+**The Problem:**
+- You post a photo on Instagram
+- Immediately view your profile
+- Your post isn't there!
+- (Appears 2 seconds later)
+
+**Why it happens:**
+- Writes go to Primary database
+- Reads come from Replica databases (copies)
+- Replicas lag 1-5 seconds behind primary
+
+**The Fix:**
+After YOU write something, route YOUR reads to the primary for the next 5 seconds. Everyone else can read from replicas (they don't know you just posted).
+
+**Implementation:**
+Session token stores `last_write_timestamp`. API Gateway routes to primary if `now() - last_write < 5 seconds`.
+
+---
+
+### 9. Cache Strategies (Redis)
+
+**💡 TL;DR:** Cache-aside = lazy load on miss. Write-through = update cache + DB together. Write-behind = update cache first, DB later (risky). This system uses write-through for feeds, cache-aside for profiles.
+
+**Cache-Aside (Lazy Loading):**
+1. Try to read from cache
+2. If miss → query database → save to cache → return to user
+3. Next person gets cached version (fast!)
+
+**Write-Through:**
+1. User writes data
+2. Update database AND cache simultaneously
+3. Cache is always fresh, no lag
+
+**Write-Behind:**
+1. Update cache immediately (fast response)
+2. Update database later in background (async)
+3. Risky: if cache crashes before DB write, data is lost
+
+**This system uses:**
+- Feed cache → write-through (fanout writes to Redis + DB together)
+- Profile cache → cache-aside (load on first read, invalidate on update)
+
+---
+
+### 10. Cache Stampede / Thundering Herd
+
+**💡 TL;DR:** Cache expires → 10K requests hit DB simultaneously → DB dies. Fix: serve stale cache while ONE background job refreshes. Alternative: add random jitter to TTL so not all caches expire at once.
+
+**The Problem:**
+- Trending topics cache expires every 5 minutes
+- All 10,000 online users request trending topics at the same instant
+- Cache is empty → all 10,000 requests hit the database simultaneously
+- Database overloads and crashes
+
+**The Solution (Stale-While-Revalidate):**
+1. When cache expires, keep serving the old (stale) version
+2. ONE background job refreshes the cache
+3. Users see 5-minute-old trends (nobody notices)
+4. Database sees 1 query instead of 10,000
+
+**Alternative:** Add random jitter to TTL (5 min ± 30 seconds) so caches don't all expire at once.
+
+---
+
+### 11. Bloom Filter (Space-Efficient Set)
+
+**💡 TL;DR:** Track "seen post?" for 1 trillion combinations with 1/100th memory. Says "definitely NOT seen" (100% accurate) or "probably seen" (99.9% accurate, 0.1% wrong). For feeds, showing 1 duplicate per 1000 scrolls is acceptable.
+
+**The Problem:** Track "has user X seen post Y?" for 1 billion users × 1000 posts each = 1 trillion combinations. Can't store exact set (too much memory).
+
+**Bloom Filter = Probabilistic data structure:**
+- Uses 1/100th the memory of an exact set
+- Can answer: "Definitely NOT in set" OR "Probably in set (99.9% sure)"
+- **Never has false negatives** (if it says NO, it's definitely NO)
+- **May have false positives** (if it says YES, it's 99.9% YES, 0.1% wrong)
+
+**Trade-off:** Occasionally shows a post you've already seen (1 in 1000 times). For a social feed, that's completely acceptable.
+
+**HyperLogLog:** Similar concept for counting unique visitors. Counts 100 million users with only 12 KB memory (99.2% accurate).
+
+---
+
+### 12. Kafka Partitions & Consumer Groups
+
+**💡 TL;DR:** Partition key (user_id) ensures order — all events from one user go to same partition. Consumer group = 12 partitions, 12 workers, 1:1 mapping. Hot partition = celebrity drowns one worker. Fix: use batch_id key for celebrities.
+
+**Kafka Partition Key:**
+When publishing a message, choose a key (e.g., user_id). All messages with the same key go to the same partition. This guarantees order — post 2 never processes before post 1.
+
+**Consumer Group:**
+- Topic has 12 partitions
+- You deploy 12 worker instances
+- Each worker consumes from 1 partition
+- Automatic load balancing
+
+**Hot Partition Problem:**
+Celebrity with 500M followers → all their events go to one partition → that worker drowns while others are idle.
+
+**Solution:** For celebrities, use `batch_id` as key to spread across partitions. For normal users, use `user_id`.
+
+---
+
+### 13. Cache Eviction Policies
+
+**💡 TL;DR:** LRU = evict least recently used (bad for social media — evicts popular content accessed 5 min ago). LFU = evict least frequently used (good — keeps trending content). TTL = expires after X seconds. Use allkeys-lfu for feeds.
+
+When cache is full, which item gets removed?
+
+**LRU (Least Recently Used):**
+Removes item that hasn't been accessed in the longest time. Problem: Celebrity profile accessed 5 min ago gets evicted before a one-time profile accessed 30 seconds ago.
+
+**LFU (Least Frequently Used):**
+Tracks how many times each item is accessed. Celebrity profile (accessed 1000x/hour) stays. One-time profile (accessed 1x) gets evicted first. **Better for social media.**
+
+**TTL (Time To Live):**
+Each item expires after X seconds regardless of usage. Combines with LRU/LFU.
+
+**This system:** Redis uses `allkeys-lfu` — trending content stays, one-time lookups get evicted.
+
+---
+
+### 14. Negative Caching
+
+**💡 TL;DR:** Cache "user not found" results for 30 sec to stop retry spam. Works for typos, deleted accounts, invalid IDs. TTL kept short so new usernames become available quickly.
+
+**The Problem:**
+- User types "@batmaan" (typo, user doesn't exist)
+- Database query: user not found
+- User retries 10 times → 10 database queries for a user that doesn't exist
+- Multiply by 1000 users making typos → database overload
+
+**The Solution:**
+Cache "user not found" results for 30 seconds.
+
+**Why 30 seconds?**
+Long enough to stop retry spam, short enough that newly-created usernames become available quickly.
+
+**Also used for:**
+- Deleted accounts (cache "account deleted" to stop stale positive caches)
+- Suspended accounts
+- Invalid post IDs
+
+---
+
+### 15. Write Hotspot Problem (Like Counters)
+
+**💡 TL;DR:** Viral post = 50K concurrent likes = row lock = database death. Fix: Redis INCR (lock-free, 100K ops/sec). Trade-off: Redis count may be ±7 off from DB. Background job syncs every 5 min. Acceptable for likes, not for money.
+
+**The Problem:****
+Viral post gets 50,000 likes in 1 minute. Traditional database:
+1. Read current count (lock the row)
+2. Add 1
+3. Write back (unlock)
+
+With 50,000 concurrent requests, everyone waits for the lock → database slows down, requests pile up, system crashes.
+
+**The Solution:**
+Use Redis INCR (atomic, lock-free operation). Handles 100K increments/second on a single key.
+
+**Trade-off:** Redis count may be slightly off from true database count. Background job syncs every 5 minutes.
+
+- Show "10,234 likes" when true count is 10,241 → acceptable for social media
+- Would be catastrophic for a bank account balance
+
+---
+
+**These 15 patterns are the foundation of every large-scale social media platform. Master these, and you can design Instagram, Twitter, Facebook, TikTok, LinkedIn feeds with confidence.**
+
+---
+
+## 📚 GLOSSARY (Quick Reference)
+
+**API Gateway**: Entry point for all client requests. Handles authentication, rate limiting, and routing to backend services.
+
+**Cassandra**: NoSQL database optimized for high write volume and time-series data. Used for posts and likes.
+
+**CDN (Content Delivery Network)**: Global network of cache servers. Stores media files close to users geographically (95% cache hit rate = 95% of requests served from nearby cache).
+
+**Composite Primary Key**: Database key made of multiple columns. Example: (post_id, user_id) prevents duplicate likes.
+
+**Cursor Pagination**: Pagination using a bookmark (last seen timestamp/ID) instead of page numbers. Avoids duplicates and skips during scrolling.
+
+**Denormalization**: Storing computed values (like follower_count) directly in the database instead of counting every time. Trade-off: faster reads, but must keep in sync.
+
+**Eventual Consistency**: Data becomes consistent after a short delay (seconds). Acceptable for like counts, not for bank balances.
+
+**Fanout on Write (Push)**: When someone posts, immediately copy post_id to all followers' feeds. Instant reads, slow writes.
+
+**Fanout on Read (Pull)**: When someone posts, do nothing. When YOU open feed, fetch posts from people you follow. Slow reads, instant writes.
+
+**Idempotency**: Calling the same operation twice has the same result as calling it once. Prevents duplicate likes if user taps twice.
+
+**Kafka**: Distributed message queue. Decouples write operations from fanout propagation (post creation returns immediately, fanout happens in background).
+
+**Partition (Kafka)**: Ordered log of messages. Keying by user_id ensures all events from one user go to same partition (preserves order).
+
+**PostgreSQL**: Relational SQL database. Used for users, followers, comments (needs JOINs and foreign keys).
+
+**Presigned URL**: Time-limited URL (valid 15 minutes) that lets clients upload directly to S3 without our servers handling the data.
+
+**Read Replica**: Copy of database used only for reads. Writes go to primary, reads come from 5 replicas. Reduces load but creates 1-5 second lag.
+
+**Redis**: In-memory cache. Stores feeds as LISTs, counters as STRINGs. Sub-10ms reads, 100K ops/sec per server.
+
+**Sharding**: Splitting database across multiple servers. user_id 0-99M → Server 1, 100M-199M → Server 2, etc.
+
+**WebSocket**: Persistent connection for real-time updates (notifications). Unlike HTTP which closes after each request.
+
+**202 Accepted**: HTTP status code meaning "I received your request and will process it later." Used for async operations like post creation.
+
+---
+
+## ✅ SELF-CHECK: Can You Answer These?
+
+After reading this document once, you should be able to explain:
+
+**Basic Architecture:**
+- [ ] Why do we use Redis for feeds instead of PostgreSQL?
+- [ ] Why do we use Cassandra for posts instead of PostgreSQL?
+- [ ] What does the API Gateway do?
+- [ ] Why does post creation return 202 instead of 200?
+
+**Feed Generation (Most Important):**
+- [ ] What is fanout on write and when do we use it?
+- [ ] What is fanout on read and when do we use it?
+- [ ] Why can't we fanout on write for celebrities?
+- [ ] What happens when you follow someone? (feed backfill)
+
+**Scaling:**
+- [ ] How does Redis reduce database load?
+- [ ] Why use CDN for images instead of serving from S3?
+- [ ] What happens when like count in Redis doesn't match database?
+- [ ] How do we prevent duplicate likes when user taps button twice?
+
+**Data Flow:**
+- [ ] Trace the path of a post from creation to appearing in followers' feeds
+- [ ] Trace the path of a like from button tap to notification
+- [ ] How does feed load fetch 20 posts in 110ms?
+
+**Trade-offs:**
+- [ ] Push vs Pull: Speed vs Write volume
+- [ ] Redis vs Database: Speed vs Durability
+- [ ] Eventual consistency vs Strong consistency
+- [ ] CDN cost vs Origin bandwidth cost
+
+If you can confidently answer 12+ of these questions, you're ready for the interview! 🎉
+
+---
+
+## 🎓 FINAL NOTES FOR IMPLEMENTATION
+
+**This document is interview-focused, not production-complete.** Real Instagram also has:
+- ML-based feed ranking (engagement prediction, personalization)
+- Stories/Reels (separate feed system, ephemeral content)
+- Direct messaging (different consistency requirements)
+- Content moderation (ML + human review)
+- Analytics pipeline (Hadoop/Spark for metrics)
+- A/B testing framework
+- Privacy controls (blocked users, private accounts, close friends)
+- Spam/bot detection
+- GDPR compliance (data export, deletion)
+
+**After this interview guide, next steps:**
+1. Build a prototype: 1000 users, fanout on write, Redis feed cache
+2. Add load testing: Simulate 10K concurrent users
+3. Implement hybrid fanout: Detect celebrity threshold dynamically
+4. Add monitoring: Prometheus + Grafana dashboards
+5. Read Instagram Engineering Blog: Real-world stories from their team
+
+**Remember:** System design interviews test your **thinking process**, not perfect solutions. Explaining trade-offs clearly is more valuable than knowing every optimization.
+
+Good luck! 🚀

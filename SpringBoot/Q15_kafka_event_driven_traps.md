@@ -37,6 +37,28 @@ No other messages in that partition are processed.
 Orders pile up → customers don't get confirmations → revenue impact.
 ```
 
+### Poison Pill → DLT Flow (ASCII)
+
+```
+[Order msg (bad data)]
+       |
+       v
+[@KafkaListener handleOrder]
+       |
+   NullPointerException
+       v
+Retry count < max?
+     |                              |
+    Yes, backoff 1s/2s/4s           No, exhausted
+     |                              |
+     '---> [@KafkaListener handleOrder] (loop back)
+                                    v
+                        [Publish to orders-dlt topic]
+                                    v
+                [DLT consumer: alert on-call + store for manual review]
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ### Wrong Setup (Default Retry = Poison Pill Factory)
 ```java
 @KafkaListener(topics = "orders", groupId = "order-service")

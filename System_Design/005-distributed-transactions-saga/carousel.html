@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Distributed Transactions &amp; Saga Pattern — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 56px; height: 62px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 56px; height: 16px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 56px; height: 34px; position: absolute; top: 12px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 56px; height: 16px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .server-box {
+    width: 62px; height: 54px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Distributed Transactions &amp; Saga</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">STUCK</div>
+      <p>The coordinator crashes exactly between Phase 1 and Phase 2 of a two-phase commit. Two services now hold locks <b>forever</b>, waiting for a COMMIT that will never arrive.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>@Transactional Can't Cross Services</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Order DB</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Inventory DB</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Payment DB</div>
+      </div>
+      <p style="text-align:center">3 separate databases. No annotation atomically commits or rolls back across all three.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>2-Phase Commit — Blocking &amp; Fragile</h1>
+    <h2>The Old Approach</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Order<br>READY ✓</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Inventory<br>READY ✓</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Payment<br>CRASH 💥</div>
+      </div>
+      <p style="text-align:center">Coordinator crashes between Phase 1 (prepare) and Phase 2 (commit). Order and Inventory hold locks <b>forever</b>. Not viable for microservices.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Saga = Local Transactions + Compensation</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <p>Each step is a local transaction with its own <b>compensating transaction</b> to undo it.</p>
+      <p><span class="check-mark">✓</span> No cross-service locks, no coordinator bottleneck</p>
+      <p><span class="x-mark">✕</span> Not ACID — intermediate states ARE visible to other operations</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Choreography — Event-Driven</h1>
+    <h2>Saga Style 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>Order</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Inventory</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Payment</div>
+      </div>
+      <p><span class="check-mark">✓</span> Loose coupling, no single point of failure &nbsp; <span class="x-mark">✕</span> Hard to trace 10+ step flows across services</p>
+      <p><b>Use for:</b> simple 2-3 step flows</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Orchestration — Central Coordinator</h1>
+    <h2>Saga Style 2</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Saga<br>Orchestrator</div>
+      </div>
+      <p style="text-align:center">Explicitly commands each service and reacts to each event — full flow visible in ONE place.</p>
+      <p><span class="check-mark">✓</span> Easy debugging, easy retries &nbsp; <span class="x-mark">✕</span> Coordinator is a coupling point</p>
+      <p><b>Use for:</b> complex multi-step flows (payments, fulfilment)</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Transactional Outbox</h1>
+    <h2>DB Write + Kafka Event, Atomically</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Order +<br>Outbox row<br>(1 TX)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Relay<br>(poll 100ms)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span></div>Kafka</div>
+      </div>
+      <p style="text-align:center">DB write and Kafka publish are NEVER atomic on their own — the outbox row makes them atomic together.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Lost Update &amp; Unrecoverable Compensation</h1>
+    <h2>Two Traps</h2>
+    <div class="body">
+      <p><b>Lost update:</b> Saga A reserves 5 iPhones, Saga B reserves the remaining 5. Saga A's payment fails, "releases" 5 back — but Saga B already shipped its 5. Available=5, physical stock=0. Fix: semantic locking (flag "processing").</p>
+      <p><b>Unrecoverable compensation:</b> can't un-ship a package already in transit. Fix: order irreversible steps (shipment, email) LAST.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>2PC vs Saga</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>2PC</th><th>Saga</th></tr>
+        <tr><td>Coordination</td><td>Blocking, locks all</td><td>Local TX + compensation</td></tr>
+        <tr><td>Coordinator crash</td><td>Deadlock forever</td><td>Compensate &amp; recover</td></tr>
+        <tr><td>Isolation</td><td>Full ACID</td><td>None — dirty reads possible</td></tr>
+        <tr><td>Microservices fit</td><td>Poor</td><td>Good</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Simple 2-3 step flow? → Choreography. Complex, needs visibility? → Orchestration. Publishing events from a DB write? → Always use an outbox.</p>
+      <div class="quote-box">
+        "I never use 2PC for microservices — a coordinator crash leaves all participants holding locks forever. For distributed flows I use Saga: choreography for simple flows, orchestration for complex ones. The transactional outbox is critical — a DB write and a Kafka publish are never atomic on their own. Saga isolation is the hardest trap — fix with semantic locking or by ordering irreversible actions last."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

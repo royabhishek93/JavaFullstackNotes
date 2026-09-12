@@ -1,0 +1,676 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- INTERFACES (y=40)                                   -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- UrlRepository interface -->
+        <mxCell id="iface_1" value="&lt;&lt;interface&gt;&gt;&#xa;UrlRepository"
+          style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="270" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_1_m1" value="+ findByShortCode(code: String): Optional&lt;ShortUrl&gt;"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_1">
+          <mxGeometry x="0" y="40" width="270" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_1_m2" value="+ findByLongUrlAndUser(url: String, userId: String): Optional&lt;String&gt;"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_1">
+          <mxGeometry x="0" y="65" width="270" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_1_m3" value="+ existsByShortCode(code: String): boolean"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_1">
+          <mxGeometry x="0" y="90" width="270" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_1_m4" value="+ save(shortUrl: ShortUrl): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_1">
+          <mxGeometry x="0" y="115" width="270" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- CacheService interface -->
+        <mxCell id="iface_2" value="&lt;&lt;interface&gt;&gt;&#xa;CacheService"
+          style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="360" y="40" width="250" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_2_m1" value="+ get(key: String): String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_2">
+          <mxGeometry x="0" y="40" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_2_m2" value="+ set(key: String, value: String, ttl: int): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_2">
+          <mxGeometry x="0" y="65" width="250" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- EventPublisher interface -->
+        <mxCell id="iface_3" value="&lt;&lt;interface&gt;&gt;&#xa;EventPublisher"
+          style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="660" y="40" width="260" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_3_m1" value="+ publish(topic: String, event: Object): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_3">
+          <mxGeometry x="0" y="40" width="260" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- MAIN CLASSES (y=240)                                -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- UrlShortenerService -->
+        <mxCell id="class_1" value="UrlShortenerService"
+          style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="310" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f1" value="- idGenerator: SnowflakeIdGenerator"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="30" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f2" value="- encoder: Base62Encoder"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="52" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f3" value="- urlRepository: UrlRepository"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="74" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f4" value="- cache: CacheService"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="96" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f5" value="- analyticsPublisher: EventPublisher"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="118" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f6" value="- rateLimiter: Map&lt;String, AtomicInteger&gt;"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="140" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_sep" value=""
+          style="line;strokeColor=#d6b656;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="162" width="310" height="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_m1" value="+ shorten(longUrl, userId, customAlias, expiresAt): String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="163" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_m2" value="+ resolve(shortCode, ip, userAgent): String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="185" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_m3" value="- publishClickEvent(code, ip, ua): void [async]"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="207" width="310" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_m4" value="- validateUrl(url: String): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_1">
+          <mxGeometry x="0" y="229" width="310" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ShortUrl entity -->
+        <mxCell id="class_2" value="ShortUrl"
+          style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;"
+          vertex="1" parent="1">
+          <mxGeometry x="400" y="240" width="240" height="228" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f1" value="- shortCode: String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f2" value="- longUrl: String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f3" value="- userId: String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f4" value="- createdAt: LocalDateTime"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f5" value="- expiresAt: LocalDateTime"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f6" value="- clickCount: long"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_sep" value=""
+          style="line;strokeColor=#d6b656;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="162" width="240" height="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_m1" value="+ isExpired(): boolean"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="163" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_m2" value="+ getShortCode(): String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="185" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_m3" value="+ getLongUrl(): String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_2">
+          <mxGeometry x="0" y="207" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ClickEvent -->
+        <mxCell id="class_3" value="ClickEvent"
+          style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;"
+          vertex="1" parent="1">
+          <mxGeometry x="690" y="240" width="210" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f1" value="- shortCode: String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_3">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f2" value="- ipAddress: String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_3">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f3" value="- userAgent: String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_3">
+          <mxGeometry x="0" y="74" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f4" value="- timestamp: Instant"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_3">
+          <mxGeometry x="0" y="96" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- UTILITY / GENERATOR CLASSES (y=530)                -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- Base62Encoder -->
+        <mxCell id="util_1" value="Base62Encoder"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="550" width="240" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_1_f1" value="- CHARS: String  // 0-9a-zA-Z (62 chars)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_1">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_1_f2" value="- BASE: int = 62"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_1">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_1_sep" value=""
+          style="line;strokeColor=#82b366;"
+          vertex="1" parent="util_1">
+          <mxGeometry x="0" y="74" width="240" height="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_1_m1" value="+ encode(id: long): String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_1">
+          <mxGeometry x="0" y="75" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_1_m2" value="+ decode(code: String): long"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_1">
+          <mxGeometry x="0" y="97" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- SnowflakeIdGenerator -->
+        <mxCell id="util_2" value="SnowflakeIdGenerator"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="330" y="550" width="290" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_f1" value="- EPOCH: long = 1700000000000L"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_f2" value="- MACHINE_BITS: int = 10"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="52" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_f3" value="- SEQUENCE_BITS: int = 12"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="74" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_f4" value="- machineId: long"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="96" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_f5" value="- lastTimestamp: long = -1"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="118" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_f6" value="- sequence: long = 0"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="140" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_sep" value=""
+          style="line;strokeColor=#82b366;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="162" width="290" height="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_m1" value="+ SnowflakeIdGenerator(machineId: long)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="163" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="util_2_m2" value="+ nextId(): long  [synchronized]"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="util_2">
+          <mxGeometry x="0" y="185" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- EDGES / RELATIONSHIPS                               -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- UrlShortenerService --uses--> UrlRepository -->
+        <mxCell id="edge_1" value="uses"
+          style="endArrow=open;endFill=0;"
+          edge="1" source="class_1" target="iface_1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- UrlShortenerService --uses--> CacheService -->
+        <mxCell id="edge_2" value="uses"
+          style="endArrow=open;endFill=0;"
+          edge="1" source="class_1" target="iface_2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- UrlShortenerService --uses--> EventPublisher -->
+        <mxCell id="edge_3" value="uses"
+          style="endArrow=open;endFill=0;"
+          edge="1" source="class_1" target="iface_3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- UrlShortenerService --uses--> Base62Encoder -->
+        <mxCell id="edge_4" value="uses"
+          style="endArrow=open;endFill=0;"
+          edge="1" source="class_1" target="util_1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- UrlShortenerService --uses--> SnowflakeIdGenerator -->
+        <mxCell id="edge_5" value="uses"
+          style="endArrow=open;endFill=0;"
+          edge="1" source="class_1" target="util_2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- UrlShortenerService --creates--> ShortUrl -->
+        <mxCell id="edge_6" value="creates"
+          style="endArrow=open;endFill=0;"
+          edge="1" source="class_1" target="class_2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- EventPublisher --publishes--> ClickEvent -->
+        <mxCell id="edge_7" value="publishes"
+          style="endArrow=open;endFill=0;"
+          edge="1" source="iface_3" target="class_3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- EXCEPTION CLASSES (y=960)                           -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- ConflictException -->
+        <mxCell id="class_ConflictEx" value="ConflictException"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="960" width="200" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ConflictEx_r1" value="extends RuntimeException"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_ConflictEx">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- UrlExpiredException -->
+        <mxCell id="class_UrlExpiredEx" value="UrlExpiredException"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="270" y="960" width="200" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_UrlExpiredEx_r1" value="extends RuntimeException"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_UrlExpiredEx">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- NotFoundException -->
+        <mxCell id="class_NotFoundEx" value="NotFoundException"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="500" y="960" width="200" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_NotFoundEx_r1" value="extends RuntimeException"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_NotFoundEx">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- throws edges from UrlShortenerService to each exception -->
+        <mxCell id="edge_throws_1" value="throws"
+          style="endArrow=open;dashed=1;"
+          edge="1" source="class_1" target="class_ConflictEx" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_throws_2" value="throws"
+          style="endArrow=open;dashed=1;"
+          edge="1" source="class_1" target="class_UrlExpiredEx" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_throws_3" value="throws"
+          style="endArrow=open;dashed=1;"
+          edge="1" source="class_1" target="class_NotFoundEx" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- LIFELINES                                           -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <mxCell id="life_1" value="Client"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_2" value="UrlShortenerService"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_3" value="SnowflakeIdGenerator"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_4" value="Base62Encoder"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_5" value="UrlRepository"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_6" value="CacheService (Redis)"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="1060" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_7" value="EventPublisher (Kafka)"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="1260" y="50" width="140" height="700" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- SECTION BANNER: SHORTEN URL FLOW                   -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <mxCell id="banner_shorten" value="SHORTEN URL FLOW  (POST /shorten)"
+          style="text;fontStyle=1;fontSize=11;fillColor=#ffe6cc;strokeColor=#d6b656;align=left;spacingLeft=6;"
+          vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="270" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- msg_1: Client -> UrlShortenerService : shorten() -->
+        <mxCell id="msg_1" value="1: shorten(longUrl, userId, alias, expiresAt)"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="140" as="sourcePoint"/>
+            <mxPoint x="330" y="140" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_2: UrlShortenerService -> UrlRepository : findByLongUrlAndUser() -->
+        <mxCell id="msg_2" value="2: findByLongUrlAndUser(longUrl, userId)"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="175" as="sourcePoint"/>
+            <mxPoint x="930" y="175" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: UrlRepository -> UrlShortenerService : Optional.empty() -->
+        <mxCell id="ret_1" value="Optional.empty()  [no existing short code]"
+          style="endArrow=open;dashed=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="205" as="sourcePoint"/>
+            <mxPoint x="330" y="205" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_3: UrlShortenerService -> SnowflakeIdGenerator : nextId() -->
+        <mxCell id="msg_3" value="3: nextId()"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="235" as="sourcePoint"/>
+            <mxPoint x="530" y="235" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: SnowflakeIdGenerator -> UrlShortenerService : unique long id -->
+        <mxCell id="ret_2" value="unique long id  [timestamp|machineId|seq]"
+          style="endArrow=open;dashed=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="265" as="sourcePoint"/>
+            <mxPoint x="330" y="265" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_4: UrlShortenerService -> Base62Encoder : encode(id) -->
+        <mxCell id="msg_4" value="4: encode(id)"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="295" as="sourcePoint"/>
+            <mxPoint x="730" y="295" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: Base62Encoder -> UrlShortenerService : shortCode (7 chars) -->
+        <mxCell id="ret_3" value="shortCode (7 chars, Base62)  e.g. &quot;dnh75AB&quot;"
+          style="endArrow=open;dashed=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="325" as="sourcePoint"/>
+            <mxPoint x="330" y="325" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_5: UrlShortenerService -> UrlRepository : save(shortUrl) -->
+        <mxCell id="msg_5" value="5: save(new ShortUrl(shortCode, longUrl, userId, expiresAt))"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="355" as="sourcePoint"/>
+            <mxPoint x="930" y="355" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_6: UrlShortenerService -> CacheService : set() warm cache -->
+        <mxCell id="msg_6" value="6: set(&quot;url:&quot;+shortCode, longUrl, 86400)  [warm cache 24h TTL]"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="385" as="sourcePoint"/>
+            <mxPoint x="1130" y="385" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: UrlShortenerService -> Client : shortCode -->
+        <mxCell id="ret_4" value="shortCode  [e.g. dnh75AB]"
+          style="endArrow=open;dashed=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="415" as="sourcePoint"/>
+            <mxPoint x="130" y="415" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- SECTION BANNER: RESOLVE / REDIRECT FLOW            -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <mxCell id="banner_resolve" value="RESOLVE / REDIRECT FLOW  (GET /{shortCode})"
+          style="text;fontStyle=1;fontSize=11;fillColor=#ffe6cc;strokeColor=#d6b656;align=left;spacingLeft=6;"
+          vertex="1" parent="1">
+          <mxGeometry x="60" y="450" width="310" height="26" as="geometry"/>
+        </mxCell>
+
+        <!-- msg_7: Client -> UrlShortenerService : resolve() -->
+        <mxCell id="msg_7" value="7: resolve(shortCode, ipAddress, userAgent)"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="490" as="sourcePoint"/>
+            <mxPoint x="330" y="490" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_8: UrlShortenerService -> CacheService : get() -->
+        <mxCell id="msg_8" value="8: get(&quot;url:&quot;+shortCode)  [hot path check]"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="525" as="sourcePoint"/>
+            <mxPoint x="1130" y="525" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_5: CacheService -> UrlShortenerService : null (cache miss) -->
+        <mxCell id="ret_5" value="null  [cache miss — first request]"
+          style="endArrow=open;dashed=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="555" as="sourcePoint"/>
+            <mxPoint x="330" y="555" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_9: UrlShortenerService -> UrlRepository : findByShortCode() -->
+        <mxCell id="msg_9" value="9: findByShortCode(shortCode)"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="585" as="sourcePoint"/>
+            <mxPoint x="930" y="585" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_6: UrlRepository -> UrlShortenerService : ShortUrl -->
+        <mxCell id="ret_6" value="ShortUrl  [isExpired() == false]"
+          style="endArrow=open;dashed=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="615" as="sourcePoint"/>
+            <mxPoint x="330" y="615" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_10: UrlShortenerService -> CacheService : set() warm cache -->
+        <mxCell id="msg_10" value="10: set(&quot;url:&quot;+shortCode, longUrl, 86400)  [populate cache for next hit]"
+          style="endArrow=block;endFill=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="645" as="sourcePoint"/>
+            <mxPoint x="1130" y="645" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_11: UrlShortenerService -> EventPublisher : publish [async fire-and-forget] -->
+        <mxCell id="msg_11" value="11: publish(&quot;clicks&quot;, ClickEvent)  [async — CompletableFuture]"
+          style="endArrow=block;endFill=1;dashed=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="675" as="sourcePoint"/>
+            <mxPoint x="1330" y="675" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_7: UrlShortenerService -> Client : longUrl (302 redirect) -->
+        <mxCell id="ret_7" value="longUrl  [HTTP 302 redirect — keeps analytics]"
+          style="endArrow=open;dashed=1;"
+          edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="705" as="sourcePoint"/>
+            <mxPoint x="130" y="705" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

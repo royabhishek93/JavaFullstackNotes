@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cache Eviction — LRU, LFU, TTL &amp; Redis Policies — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 26px; margin: 0 auto;
+  }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  /* Cache-slot icon: a key-value box representing one cached key */
+  .cache-slot {
+    width: 58px; height: 48px; border: 2px solid var(--blue); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; margin: 0 auto;
+    font-size: 10px; font-weight: 700; color: var(--text); background: rgba(51,103,145,0.15);
+  }
+  .cache-slot.evict { border-color: #e74c3c; background: rgba(231,76,60,0.15); color: #e74c3c; opacity: 0.6; }
+  .cache-slot.keep { border-color: var(--green); background: rgba(0,191,165,0.15); color: var(--green); }
+  /* LRU queue node with connecting arrow, head = most recent */
+  .queue-node {
+    width: 46px; height: 40px; border: 2px solid var(--yellow); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;
+    color: var(--yellow); margin: 0 auto;
+  }
+  /* LFU frequency meter: filled bar out of 255 */
+  .meter { width: 70px; height: 10px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; margin: 0 auto; background: rgba(0,0,0,0.25); }
+  .meter-fill { height: 100%; background: var(--green); }
+  .meter-fill.low { background: #e74c3c; width: 6%; }
+  .meter-fill.high { background: var(--green); width: 96%; }
+  /* TTL countdown bar */
+  .ttl-bar { width: 70px; height: 10px; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; margin: 0 auto; background: rgba(0,0,0,0.25); }
+  .ttl-fill { height: 100%; background: var(--accent); }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Cache Eviction — LRU, LFU, TTL &amp; Redis</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">80% full</div>
+      <p>Redis memory is at 80%, evictions are spiking every peak hour, and your hit rate just fell off a cliff — because Redis has <b>8 eviction policies</b> and you're on the wrong one.</p>
+      <div class="row"><div class="redis-icon">R</div></div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Four Eviction Philosophies</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="queue-node">LRU</div>Recency</div>
+        <div class="col"><div class="meter"><div class="meter-fill high"></div></div>LFU<br>Frequency</div>
+        <div class="col"><div class="ttl-bar"><div class="ttl-fill" style="width:35%"></div></div>TTL<br>Freshness</div>
+        <div class="col"><div class="cache-slot">?</div>Random</div>
+      </div>
+      <p style="text-align:center">Desk holds 10 folders, cabinet holds 100. Which folder leaves when an 11th arrives? The answer depends on YOUR access pattern.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>LRU Mechanics</h1>
+    <h2>Concept 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="queue-node">D</div><div class="arrow">←</div>
+        <div class="queue-node">C</div><div class="arrow">←</div>
+        <div class="queue-node">B</div><div class="arrow">←</div>
+        <div class="queue-node" style="border-color:#e74c3c;color:#e74c3c">A</div>
+      </div>
+      <p style="text-align:center">Head = most recent, tail = evict target. Doubly-linked list + hash map → O(1) get/put/evict.</p>
+      <p><span class="check-mark">✓</span> Redis approximates: samples 5 random keys, evicts the oldest of those &nbsp; <span class="x-mark">✕</span> Not exact LRU — a cheap tradeoff</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>LFU Mechanics</h1>
+    <h2>Concept 2</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="meter"><div class="meter-fill high"></div></div>celebrity<br>255 (max)</div>
+        <div class="col"><div class="meter"><div class="meter-fill" style="width:70%"></div></div>trending<br>180</div>
+        <div class="col"><div class="meter"><div class="meter-fill low"></div></div>one-time<br>1</div>
+      </div>
+      <p style="text-align:center">8-bit logarithmic counter (0–255). Lowest counter evicted first. Counter <b>decays</b> — halved every lfu-decay-time minutes, so old hotness cools off.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Celebrity Trap</h1>
+    <h2>Where LRU Gets It Wrong</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="cache-slot evict">A</div>Celebrity<br>10K/hr, idle 2min</div>
+        <div class="col"><div class="cache-slot keep">B</div>One-time<br>1 access, idle 1min</div>
+      </div>
+      <p><span class="x-mark">✕</span> LRU evicts A — "idle longer" wins, ignoring value entirely</p>
+      <p><span class="check-mark">✓</span> LFU evicts B correctly — frequency 1 &lt;&lt; frequency 10,000</p>
+      <p style="text-align:center">Skewed traffic? Use LFU. Uniform traffic? LRU is fine.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>TTL Traps</h1>
+    <h2>Concept 3</h2>
+    <div class="body">
+      <p><span class="x-mark">✕</span> TTL = 0 does NOT mean "expire now" — it means <b>no expiry at all</b>, key lives until evicted by policy.</p>
+      <p><span class="check-mark">✓</span> Keys that must NEVER be evicted (source of truth) → <code>volatile-lru</code> + deliberately set <b>no TTL</b> on them. <code>allkeys-lru</code> would still evict them under pressure.</p>
+      <div class="row">
+        <div class="col"><div class="ttl-bar"><div class="ttl-fill" style="width:80%"></div></div>60s window</div>
+        <div class="col"><div class="ttl-bar"><div class="ttl-fill" style="width:15%"></div></div>expiring soon</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Monitoring Evictions</h1>
+    <h2>Concept 4</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>evicted_keys &gt; 0</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>mem_fragmentation<br>&gt; 1.5</div>
+      </div>
+      <p><code>redis-cli INFO stats | grep evicted_keys</code> — nonzero means cache undersized, not a healthy steady state.</p>
+      <p><code>OBJECT FREQ key</code> → LFU counter &nbsp; <code>OBJECT IDLETIME key</code> → LRU idle seconds &nbsp; <code>--bigkeys</code> → memory hogs</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Real World</h1>
+    <h2>Where These Policies Ship</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon">S</div>Swiggy<br>lunch rush</div>
+        <div class="col"><div class="redis-icon">P</div>PhonePe/Paytm<br>UPI limits</div>
+        <div class="col"><div class="redis-icon">F</div>Flipkart<br>flash sale</div>
+      </div>
+      <p><b>Swiggy:</b> trending-restaurant cache → allkeys-lfu (LRU evicts hot restaurants on a timing accident)</p>
+      <p><b>PhonePe/Paytm:</b> UPI rate-limit counters, 60s TTL → volatile-ttl (soonest-to-expire evicted first)</p>
+      <p><b>Flipkart:</b> flash-sale SKU cache, hundreds of thousands of hits in 5 min → allkeys-lfu</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>All 8 Redis maxmemory-policy Options</h1>
+    <h2>Comparison Table</h2>
+    <div class="body">
+      <table>
+        <tr><th>Policy</th><th>Scope</th><th>Order</th></tr>
+        <tr><td>noeviction</td><td>—</td><td>Reject writes (default)</td></tr>
+        <tr><td>allkeys-lru</td><td>All keys</td><td>Recency</td></tr>
+        <tr><td>volatile-lru</td><td>TTL keys only</td><td>Recency</td></tr>
+        <tr><td>allkeys-lfu</td><td>All keys</td><td>Frequency</td></tr>
+        <tr><td>volatile-lfu</td><td>TTL keys only</td><td>Frequency</td></tr>
+        <tr><td>allkeys-random</td><td>All keys</td><td>Random</td></tr>
+        <tr><td>volatile-random</td><td>TTL keys only</td><td>Random</td></tr>
+        <tr><td>volatile-ttl</td><td>TTL keys only</td><td>Soonest expiry</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Uniform traffic? → allkeys-lru. 1-10% of keys get &gt;80% of traffic? → allkeys-lfu. Short-lived counters? → volatile-ttl. Must never lose data? → volatile-lru + no TTL, or noeviction.</p>
+      <div class="quote-box">
+        "Use allkeys-lfu when 1% of keys get 99% of traffic — LFU keeps hot keys warm and evicts cold ones; use allkeys-lru for uniform access patterns where recency predicts future use."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

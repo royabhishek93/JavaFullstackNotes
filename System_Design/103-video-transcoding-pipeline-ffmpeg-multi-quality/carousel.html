@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Video Transcoding Pipeline — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 10px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .server-box {
+    width: 50px; height: 44px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .server-box.ok { border-color: #2ecc71; }
+  .server-box.ok span { background: #2ecc71; }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 28px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Video Transcoding Pipeline</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">2+ hours → &lt;15 min</div>
+      <p>Sequential transcoding of a 2-hour video's highest rung alone takes over 2 hours. Parallelized correctly: under 15 minutes.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Sequential Transcoding Is Slow</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>1 worker</div>
+      </div>
+      <p style="text-align:center">One worker runs all 5 rungs one after another — ~9.6 min even for a 10-min video, dominated by the slowest (1080p) rung.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Parallel-By-Rung</h1>
+    <h2>First Axis</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box ok"><span></span></div>1080p</div>
+        <div class="col"><div class="server-box ok"><span></span></div>720p</div>
+        <div class="col"><div class="server-box ok"><span></span></div>480p</div>
+        <div class="col"><div class="server-box ok"><span></span></div>360p</div>
+        <div class="col"><div class="server-box ok"><span></span></div>240p</div>
+      </div>
+      <p style="text-align:center">Each rung on its own worker, concurrently — 9.6 min drops to ~4 min.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Time-Chunking</h1>
+    <h2>Second Axis — The Real Unlock</h2>
+    <div class="body">
+      <p>Split a 2-hour source into 10 keyframe-aligned 12-min chunks (stream-copy, near-instant). Dispatch each chunk × each rung = up to <b>50 concurrent jobs</b>.</p>
+      <p>Concatenate (stream-copy) back into 5 final renditions once all chunks finish.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Keyframe Alignment</h1>
+    <h2>Required for Adaptive Streaming</h2>
+    <div class="body">
+      <p><code>-g 48 -keyint_min 48 -sc_threshold 0</code></p>
+      <p>Every rung gets a keyframe at the SAME timestamp — the player needs this to switch bitrates cleanly later.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Worker Crash Trap</h1>
+    <h2>Where Corruption Sneaks In</h2>
+    <div class="body">
+      <p>Spot-instance worker killed mid-encode → truncated file still "EXISTS" on disk.</p>
+      <p><span class="x-mark">✕</span> Checking file presence alone silently ships a corrupt chunk. <span class="check-mark">✓</span> Validate checksum/duration instead.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Idempotent Jobs + Dead-Letter Queue</h1>
+    <h2>Reliability</h2>
+    <div class="body">
+      <p>Job key = videoId + rendition + chunkIndex — redelivery never creates conflicting output.</p>
+      <p>Max retries exceeded → dead-letter queue + alert, not infinite retry.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Architecture Comparison</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>10-min video</th><th>2-hr video</th></tr>
+        <tr><td>Sequential</td><td>~9.6 min</td><td>~hours</td></tr>
+        <tr><td>Parallel-by-rung</td><td>~4 min</td><td>~40+ min</td></tr>
+        <tr><td>+ Time-chunking</td><td>~1-2 min</td><td>~1-4 min</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Long video, tight publish SLA? → Parallel-by-rung + time-chunking. Rarely-watched archive content? → On-demand transcode instead.</p>
+      <div class="quote-box">
+        "The design has to parallelize on two axes: across rungs, and within a single rung across time. Keyframes must be aligned identically across every rung — the player needs to switch bitrates cleanly at segment boundaries."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

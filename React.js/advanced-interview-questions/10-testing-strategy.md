@@ -34,7 +34,25 @@ REAL APP: Swiggy-style Food Ordering — Testing Pyramid
  ╱   Jest (reducers, utils,     ╲  - Price calculation fn
 ╱    custom hooks)               ╲  - Coupon validation
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ - useCartTotal hook
+```
+┌───────────────────────────────────────────────┐
+│ E2E - Playwright - ~5 tests                    │
+│ critical flows only                            │
+└───────────────────────┬─────────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│ Integration - RTL + MSW - 50-100 tests         │
+└───────────────────────┬─────────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
+│ Unit - Jest - 200+ tests                       │
+│ reducers, utils, hooks                         │
+└─────────────────────────────────────────────────┘
+```
 
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
   INTEGRATION TEST EXAMPLE (what I test at this level):
   ─────────────────────────────────────────────────────
   // Full checkout flow: add item → apply coupon → pay → success

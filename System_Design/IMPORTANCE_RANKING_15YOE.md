@@ -3,6 +3,8 @@
 **Last updated:** 2026-08-31  
 **Target audience:** Staff/Principal engineers with 15+ years, or L5/L6+ interviews at FAANG  
 
+> See **Tier 6** near the end of this file for previously-hidden gap topics (auth, API gateway/service mesh, Paxos/clock sync, deployment strategies, observability, capacity estimation, data privacy, microservices decomposition) added on 2026-08-31.
+
 ---
 
 ## 🔥 TIER 1: MUST-KNOW (Asked in Nearly Every Interview)
@@ -10,14 +12,14 @@ These are **foundation concepts** that unlock discussions in ANY system design r
 
 | # | Topic | Files | Why Asked | Time |
 |---|-------|-------|-----------|------|
-| 1 | **CAP Theorem & Tradeoffs** | `06_cap_theorem_consistency.md`, `CAP_Theorem_Applied_What_Actually_Breaks.md` | Every distributed system violates CAP — know which tradeoff you're making (AP vs CP vs CA) | 5m |
-| 2 | **Caching Fundamentals** | `02_caching_deep_dive.md`, `Cache_Aside_vs_Write_Through_vs_Write_Behind.md`, `Cache_Eviction_LRU_LFU_TTL_Redis_Policies.md` | 80% of interview discussions include caching; MUST know cache-aside, TTL, invalidation strategies | 10m |
-| 3 | **Database Scaling & Sharding** | `04_database_scaling_sharding.md`, `Database_Sharding_Range_Hash_Consistent_Hashing.md` | When does DB become bottleneck? How do you shard? (range vs hash vs consistent hash) | 10m |
-| 4 | **Load Balancing & Scalability** | `01_scalability_load_balancing.md` | How does traffic distribute? Sticky sessions, health checks, failover? | 5m |
-| 5 | **Distributed Transactions & Saga Pattern** | `05_distributed_transactions_saga.md`, `Saga_Pattern_Choreography_vs_Orchestration.md`, `Two_Phase_Commit_2PC_Distributed_Transactions.md` | How do you maintain consistency across multiple DBs/services? (Saga vs 2PC) | 8m |
-| 6 | **Consistency Models** | `CAP_Theorem_Applied_What_Actually_Breaks.md`, `MVCC_How_PostgreSQL_Reads_Never_Block_Writes.md` | Strong vs eventual consistency tradeoffs, read-your-own-writes problems | 5m |
-| 7 | **Replication & Read Replicas** | `Read_Replica_Lag_Read_Your_Own_Writes.md` | Lag handling, consistency issues, when to read from replica vs primary | 5m |
-| 8 | **Messaging & Event-Driven Arch** | `KAFKA/` folder, `CDC_Change_Data_Capture_Debezium.md` | Async communication, pub-sub, event ordering, exactly-once semantics | 10m |
+| 1 | **CAP Theorem & Tradeoffs** | `001-cap-theorem-consistency.md`, `006-cap-theorem-applied-what-actually-breaks.md` | Every distributed system violates CAP — know which tradeoff you're making (AP vs CP vs CA) | 5m |
+| 2 | **Caching Fundamentals** | `002-caching-deep-dive.md`, `046-cache-aside-vs-write-through-vs-write-behind.md`, `047-cache-eviction-lru-lfu-ttl-redis-policies.md` | 80% of interview discussions include caching; MUST know cache-aside, TTL, invalidation strategies | 10m |
+| 3 | **Database Scaling & Sharding** | `003-database-scaling-sharding.md`, `003b-database-sharding-range-hash-consistent-hashing.md` | When does DB become bottleneck? How do you shard? (range vs hash vs consistent hash) | 10m |
+| 4 | **Load Balancing & Scalability** | `004-scalability-load-balancing.md` | How does traffic distribute? Sticky sessions, health checks, failover? | 5m |
+| 5 | **Distributed Transactions & Saga Pattern** | `005-distributed-transactions-saga.md`, `048-saga-pattern-choreography-vs-orchestration.md`, `049-two-phase-commit-2pc-distributed-transactions.md` | How do you maintain consistency across multiple DBs/services? (Saga vs 2PC) | 8m |
+| 6 | **Consistency Models** | `006-cap-theorem-applied-what-actually-breaks.md`, `024-mvcc-how-postgresql-reads-never-block-writes.md` | Strong vs eventual consistency tradeoffs, read-your-own-writes problems | 5m |
+| 7 | **Replication & Read Replicas** | `007-read-replica-lag-read-your-own-writes.md` | Lag handling, consistency issues, when to read from replica vs primary | 5m |
+| 8 | **Messaging & Event-Driven Arch** | `089-kafka-architecture/`, `008-cdc-change-data-capture-debezium.md` | Async communication, pub-sub, event ordering, exactly-once semantics | 10m |
 
 ---
 
@@ -26,15 +28,15 @@ These are **production patterns** that differentiate strong from average enginee
 
 | # | Topic | Files | Why Asked | Time |
 |---|-------|-------|-----------|------|
-| 9 | **Circuit Breaker & Resilience** | `Circuit_Breaker_Pattern.md`, `Bulkhead_Pattern_Isolate_Failures.md`, `Graceful_Degradation.md` | How do you prevent cascading failures? Timeout, retry, bulkhead, fallback strategies | 8m |
-| 10 | **Idempotency & Deduplication** | `Idempotency_Keys_Prevent_Double_Processing.md`, `Content_Addressable_Storage_Deduplication.md` | Payment systems, retries: how do you ensure idempotent operations? | 7m |
-| 11 | **Rate Limiting** | `02_Distributed_Rate_Limiter_Token_Bucket_Leaky_Bucket_Sliding_Window_HLD_LLD/` | Tier 1: design a rate limiter (token bucket, sliding window, distributed) | 15m |
-| 12 | **Search & Indexing** | `23_design_search_engine/`, `Inverted_Index_How_Elasticsearch_Works.md`, `Index_Types_BTree_Hash_Composite_Covering.md`, `Elasticsearch_vs_PostgreSQL_Full_Text_Search.md` | Full-text search, inverted indexes, ranking algorithms, scalability | 12m |
-| 13 | **Monitoring, Logging, Tracing** | `15_Distributed_Logging_System_Splunk_Logstash_HLD_LLD/`, `DIAGRAMS_INDEX.md` | How do you debug production? Logging infrastructure, trace correlation | 8m |
-| 14 | **Pagination & Cursor-Based Navigation** | `Cursor_Pagination_vs_Offset_Pagination.md`, `N_Plus_1_Query_Problem.md` | Why offset pagination fails at scale? Cursor-based keyset pagination | 5m |
-| 15 | **Data Partitioning Strategies** | `Geohash_vs_QuadTree_Map_Partitioning.md`, `Hot_Partition_Problem_And_Solutions.md` | Geo-partitioning, hot partition detection, rebalancing | 8m |
-| 16 | **Locking & Concurrency** | `Optimistic_vs_Pessimistic_Locking.md`, `Redlock_Distributed_Lock.md` | Lock contention, distributed locks, deadlock prevention | 7m |
-| 17 | **Notification & Push Systems** | `Push_vs_Pull_Notification_APNs_FCM.md`, `Scalable Notifications System | SMS | OTP | Email & Push | HLD | LLD/` | Async delivery, retry, deduplication, prioritization | 10m |
+| 9 | **Circuit Breaker & Resilience** | `009-circuit-breaker-pattern.md`, `010-bulkhead-pattern-isolate-failures.md`, `011-graceful-degradation.md` | How do you prevent cascading failures? Timeout, retry, bulkhead, fallback strategies | 8m |
+| 10 | **Idempotency & Deduplication** | `012-idempotency-keys-prevent-double-processing.md`, `013-content-addressable-storage-deduplication.md` | Payment systems, retries: how do you ensure idempotent operations? | 7m |
+| 11 | **Rate Limiting** | `system_design_interviewwithbunny/055-distributed-rate-limiter/` | Tier 1: design a rate limiter (token bucket, sliding window, distributed) | 15m |
+| 12 | **Search & Indexing** | `076-search-engine-design/`, `014-inverted-index-how-elasticsearch-works.md`, `015-index-types-btree-hash-composite-covering.md`, `016-elasticsearch-vs-postgresql-full-text-search.md` | Full-text search, inverted indexes, ranking algorithms, scalability | 12m |
+| 13 | **Monitoring, Logging, Tracing** | `system_design_interviewwithbunny/069-distributed-logging-splunk/`, `DIAGRAMS_INDEX.md` | How do you debug production? Logging infrastructure, trace correlation | 8m |
+| 14 | **Pagination & Cursor-Based Navigation** | `017-cursor-pagination-vs-offset-pagination.md`, `018-n-plus-1-query-problem.md` | Why offset pagination fails at scale? Cursor-based keyset pagination | 5m |
+| 15 | **Data Partitioning Strategies** | `019-geohash-vs-quadtree-map-partitioning.md`, `020-hot-partition-problem-and-solutions.md` | Geo-partitioning, hot partition detection, rebalancing | 8m |
+| 16 | **Locking & Concurrency** | `021-optimistic-vs-pessimistic-locking.md`, `022-redlock-distributed-lock.md` | Lock contention, distributed locks, deadlock prevention | 7m |
+| 17 | **Notification & Push Systems** | `023-push-vs-pull-notification-apns-fcm.md`, `054d-scalable-notifications-sms-otp-email-push/` | Async delivery, retry, deduplication, prioritization | 10m |
 
 ---
 
@@ -43,19 +45,19 @@ These show **depth in production systems** and edge case handling.
 
 | # | Topic | Files | Why Asked | Time |
 |---|-------|-------|-----------|------|
-| 18 | **Tiny URL / URL Shortening** | `01_Tiny_URL_Design/` | Classic system design: scaling, collision handling, URL generation | 20m |
-| 19 | **Ride-Sharing System (Uber/Ola)** | `06_UBER_OLA_Rapido_Lyft_HLD_LLD/` | Real-time location, matching, pricing, payment, driver availability | 30m |
-| 20 | **Social Media Feed System** | `05_Social_Media_like_Facebook_Instagram_Feeds_Generation_HLD_LLD/`, `11_News_Feed_Instagram_SystemDesign/` | Feed ranking, timeline fetch, user graph, fanout strategies | 25m |
-| 21 | **E-Commerce Platform** | `09_E-Commerce_Platform_like_Amazon/` | Inventory, cart, checkout, payment, fulfillment, seller management | 30m |
-| 22 | **Payment System Design** | `07_Payment_System/`, `19_Stock_Broker_Trading/` | ACID guarantees, idempotency, fraud detection, settlements | 25m |
-| 23 | **Chat Application (WhatsApp)** | `04_Chat_Application_System_Design_like_Whatsapp/` | Message ordering, delivery guarantees, presence, typing indicators | 20m |
-| 24 | **Food Delivery System** | `08_Food_Delivery_Zomato_Swiggy_Uber_Eats_HLD_LLD/` | Restaurant ordering, real-time tracking, assignment, driver allocation | 25m |
-| 25 | **Ticket Booking System** | `11_Ticket_Booking_System_like_BookMyShow/`, `13_bookmyshow/`, `25_Parking_Lot_System/` | Concurrency, overselling prevention, race conditions, inventory lock | 20m |
-| 26 | **Cloud Storage (Google Drive)** | `10_Cloud_Storage_Google_Drive_Dropbox_HLD_LLD/`, `14_Google_Drive_System_Design/`, `Object_vs_Block_vs_File_Storage_S3_EBS_EFS.md` | Object storage, versioning, sync, conflict resolution, deduplication | 22m |
-| 27 | **Hotel Booking** | `12_Hotel_Booking/` | Inventory, rate management, availability, overbooking | 18m |
-| 28 | **Collaborative Editing (Google Docs)** | `18_Text_Editor_Google_Docs_Notion_HLD_LLD/`, `GoogleDocs_System_Design/` | Operational transformation, CRDT, conflict resolution, real-time sync | 25m |
-| 29 | **Leaderboard System** | `13_Top_K_Leaderboard_Ranking_System_Trending_HLD_LLD/`, `21_Likes_Comment_System_Design/` | Sorted sets, real-time updates, eventual consistency, Redis optimizations | 18m |
-| 30 | **Chat/Notification Server** | `03_Notification_System_Design/` | Message queue, fan-out, batching, throttling, retention | 18m |
+| 18 | **Tiny URL / URL Shortening** | `system_design_interviewwithbunny/057-tiny-url-design/` | Classic system design: scaling, collision handling, URL generation | 20m |
+| 19 | **Ride-Sharing System (Uber/Ola)** | `system_design_interviewwithbunny/060-uber-ola-ride-sharing/` | Real-time location, matching, pricing, payment, driver availability | 30m |
+| 20 | **Social Media Feed System** | `system_design_interviewwithbunny/059-social-media-feed-instagram/`, `078-news-feed-instagram/` | Feed ranking, timeline fetch, user graph, fanout strategies | 25m |
+| 21 | **E-Commerce Platform** | `system_design_interviewwithbunny/063-ecommerce-platform-amazon/` | Inventory, cart, checkout, payment, fulfillment, seller management | 30m |
+| 22 | **Payment System Design** | `system_design_interviewwithbunny/061-payment-system/`, `system_design_interviewwithbunny/073-stock-broker-trading/` | ACID guarantees, idempotency, fraud detection, settlements | 25m |
+| 23 | **Chat Application (WhatsApp)** | `system_design_interviewwithbunny/058-chat-application-whatsapp/` | Message ordering, delivery guarantees, presence, typing indicators | 20m |
+| 24 | **Food Delivery System** | `system_design_interviewwithbunny/062-food-delivery-swiggy/` | Restaurant ordering, real-time tracking, assignment, driver allocation | 25m |
+| 25 | **Ticket Booking System** | `system_design_interviewwithbunny/065-ticket-booking-bookmyshow/`, `091-ticket-booking-bookmyshow-alt/`, `085-parking-lot-system/` | Concurrency, overselling prevention, race conditions, inventory lock | 20m |
+| 26 | **Cloud Storage (Google Drive)** | `system_design_interviewwithbunny/064-cloud-storage-google-drive/`, `079-google-drive-cloud-storage/`, `050-object-vs-block-vs-file-storage-s3-ebs-efs.md` | Object storage, versioning, sync, conflict resolution, deduplication | 22m |
+| 27 | **Hotel Booking** | `system_design_interviewwithbunny/066-hotel-booking/` | Inventory, rate management, availability, overbooking | 18m |
+| 28 | **Collaborative Editing (Google Docs)** | `system_design_interviewwithbunny/072-collaborative-editing-google-docs/`, `082-google-docs-collaborative-editing/` | Operational transformation, CRDT, conflict resolution, real-time sync | 25m |
+| 29 | **Leaderboard System** | `system_design_interviewwithbunny/067-leaderboard-top-k-ranking/`, `084-likes-comment-system/` | Sorted sets, real-time updates, eventual consistency, Redis optimizations | 18m |
+| 30 | **Chat/Notification Server** | `system_design_interviewwithbunny/056-notification-system-design/` | Message queue, fan-out, batching, throttling, retention | 18m |
 
 ---
 
@@ -64,21 +66,21 @@ Deep dives into specific problem domains — show when relevant.
 
 | # | Topic | Files | Why Asked | Time |
 |---|-------|-------|-----------|------|
-| 31 | **Geospatial Search** | `14_Proximity_Search_QuadTree_Geohash_PostGIS_Elasticsearch_HLD/` | Map systems, nearby search, geohashing, quadtree, PostGIS | 15m |
-| 32 | **CQRS & Event Sourcing** | `CQRS_Event_Sourcing.md` | Command query separation, append-only logs, event replay | 10m |
-| 33 | **Vector Search & Semantic Similarity** | `BM25_vs_Vector_Search_Semantic_Similarity.md` | ML systems, embeddings, similarity search, RAG architectures | 12m |
-| 34 | **Bloom Filters & HyperLogLog** | `Bloom_Filter_HyperLogLog_Approximate_Data_Structures.md` | Cardinality estimation, membership testing, false positives | 8m |
-| 35 | **B-Tree vs LSM Tree** | `BTree_vs_LSM_Tree_MySQL_vs_Cassandra_RocksDB.md` | Database engine internals, write amplification, read patterns | 10m |
-| 36 | **Backpressure & Reactive Streams** | `Backpressure_Reactive_Streams.md` | Handling slow consumers, buffering strategies, flow control | 8m |
-| 37 | **Cache Stampede & Thundering Herd** | `Cache_Stampede_Thundering_Herd.md`, `Negative_Caching_Cache_Miss_Storm.md` | Cache miss storm handling, probabilistic early expiration | 7m |
-| 38 | **Distributed Locks (Redlock)** | `Redlock_Distributed_Lock.md` | Redis-based distributed locking, quorum, clock skew issues | 8m |
-| 39 | **Heartbeat & Failure Detection** | `Heartbeat_Detection_Dead_vs_Slow_Node.md` | Health checks, timeout tuning, split brain detection | 8m |
-| 40 | **Leader Election** | `Leader_Election_Zookeeper_Raft.md` | Consensus algorithms, Raft vs Paxos, quorum-based election | 10m |
-| 41 | **Gossip Protocol** | `Gossip_Protocol_Node_Discovery.md` | Peer discovery, state propagation, Byzantine-resistant patterns | 8m |
-| 42 | **OTT Platform (Streaming)** | `17_OTT_Platform_System_Design/` | Video streaming, adaptive bitrate, buffering, CDN, DRM | 20m |
-| 43 | **Job Scheduler** | `16_Job_Scheduler_System_Design/` | Task scheduling, distributed scheduling, failure recovery, retries | 18m |
-| 44 | **Email Delivery System** | `20_Email_Delivery_System_Gmail_Outlook_HLD_LLD/` | Queue-based delivery, retries, bounce handling, reputation | 15m |
-| 45 | **Online Learning Platform** | `21_Online_Learning_Platform_Udemy_Coursera_HLD_LLD/` | Video streaming, progress tracking, recommendations, payment | 18m |
+| 31 | **Geospatial Search** | `system_design_interviewwithbunny/068-geospatial-search-proximity/` | Map systems, nearby search, geohashing, quadtree, PostGIS | 15m |
+| 32 | **CQRS & Event Sourcing** | `025-cqrs-event-sourcing.md` | Command query separation, append-only logs, event replay | 10m |
+| 33 | **Vector Search & Semantic Similarity** | `026-bm25-vs-vector-search-semantic-similarity.md` | ML systems, embeddings, similarity search, RAG architectures | 12m |
+| 34 | **Bloom Filters & HyperLogLog** | `027-bloom-filter-hyperloglog-approximate-data-structures.md` | Cardinality estimation, membership testing, false positives | 8m |
+| 35 | **B-Tree vs LSM Tree** | `028-btree-vs-lsm-tree-mysql-vs-cassandra-rocksdb.md` | Database engine internals, write amplification, read patterns | 10m |
+| 36 | **Backpressure & Reactive Streams** | `029-backpressure-reactive-streams.md` | Handling slow consumers, buffering strategies, flow control | 8m |
+| 37 | **Cache Stampede & Thundering Herd** | `030-cache-stampede-thundering-herd.md`, `031-negative-caching-cache-miss-storm.md` | Cache miss storm handling, probabilistic early expiration | 7m |
+| 38 | **Distributed Locks (Redlock)** | `022-redlock-distributed-lock.md` | Redis-based distributed locking, quorum, clock skew issues | 8m |
+| 39 | **Heartbeat & Failure Detection** | `032-heartbeat-detection-dead-vs-slow-node.md` | Health checks, timeout tuning, split brain detection | 8m |
+| 40 | **Leader Election** | `033-leader-election-zookeeper-raft.md` | Consensus algorithms, Raft vs Paxos, quorum-based election | 10m |
+| 41 | **Gossip Protocol** | `034-gossip-protocol-node-discovery.md` | Peer discovery, state propagation, Byzantine-resistant patterns | 8m |
+| 42 | **OTT Platform (Streaming)** | `system_design_interviewwithbunny/071-ott-platform-streaming/` | Video streaming, adaptive bitrate, buffering, CDN, DRM | 20m |
+| 43 | **Job Scheduler** | `system_design_interviewwithbunny/070-job-scheduler-design/` | Task scheduling, distributed scheduling, failure recovery, retries | 18m |
+| 44 | **Email Delivery System** | `system_design_interviewwithbunny/074-email-delivery-system/` | Queue-based delivery, retries, bounce handling, reputation | 15m |
+| 45 | **Online Learning Platform** | `system_design_interviewwithbunny/075-online-learning-udemy/` | Video streaming, progress tracking, recommendations, payment | 18m |
 
 ---
 
@@ -87,23 +89,23 @@ Deep specialists or rare scenarios — bring up only if your target role demands
 
 | # | Topic | Files | Why Asked | Time |
 |---|-------|-------|-----------|------|
-| 46 | **Chunked & Multipart Upload** | `Chunked_Upload_Multipart_Upload.md` | Large file uploads, S3 multipart, resume on failure | 8m |
-| 47 | **Write-Ahead Logging (WAL)** | `Write_Ahead_Log_WAL_Crash_Recovery.md` | Database durability, recovery semantics, fsync tradeoffs | 7m |
-| 48 | **Vector Clocks & Conflict Detection** | `Vector_Clocks_Write_Conflict_Detection.md` | Causal consistency, distributed version control, conflict resolution | 8m |
-| 49 | **Quorum Reads/Writes** | `Quorum_Reads_Writes_Cassandra_W_R_N.md` | Consistency tuning, read repair, hinted handoff | 7m |
-| 50 | **WebSocket vs SSE vs Long Polling** | `WebSocket_vs_SSE_vs_Long_Polling.md` | Real-time transport, server push, browser compatibility | 8m |
-| 51 | **Split Brain Problem** | `Split_Brain_Problem_Two_Primary_Nodes.md` | Network partition, dual-master replication, failover ambiguity | 7m |
-| 52 | **UUID as Primary Key** | `UUID_as_Primary_Key_Why_Its_Bad.md` | Cache locality, index efficiency, alternatives (snowflake IDs) | 6m |
-| 53 | **Long-Tail Latency & P99** | `Long_Tail_Latency_P99_Percentiles.md` | SLO tuning, tail latency causes, hedged requests | 8m |
-| 54 | **Write Skew & Phantom Reads** | `Write_Skew_Phantom_Reads_Isolation_Levels.md` | SERIALIZABLE anomalies, transaction isolation levels, SQL quirks | 8m |
-| 55 | **Timeout Strategies** | `Timeout_Strategy_Too_Short_Too_Long.md` | Timeout tuning, cascading timeouts, retry storms | 6m |
-| 56 | **Retry & Exponential Backoff** | `Retry_Exponential_Backoff_Jitter.md` | Retry logic, jitter, thundering herd prevention | 6m |
-| 57 | **Elevator System** | `26_Elevator_System/` | LLD design, state machine, scheduling algorithms | 12m |
-| 58 | **Airline Management** | `27_Airline_Management_System/` | Seat allocation, overbooking, revenue management | 12m |
-| 59 | **Multitenancy & SaaS Design** | `Multitenancy_SAAS_System_Design/` | Data isolation, row-level security, billing, rate limiting per tenant | 15m |
-| 60 | **Blob Storage vs DB for Files** | `Blob_Storage_vs_Database_For_Files.md` | When to store in S3 vs database, metadata management | 6m |
-| 61 | **CDN: Origin Pull vs Origin Push** | `CDN_Origin_Pull_vs_Origin_Push.md` | Cache warming, edge servers, invalidation, cache keys | 7m |
-| 62 | **Fan-Out Write vs Fan-Out Read** | `Fan_Out_Write_vs_Fan_Out_Read.md` | Feed generation strategies, write amplification vs read cost | 7m |
+| 46 | **Chunked & Multipart Upload** | `035-chunked-upload-multipart-upload.md` | Large file uploads, S3 multipart, resume on failure | 8m |
+| 47 | **Write-Ahead Logging (WAL)** | `036-write-ahead-log-wal-crash-recovery.md` | Database durability, recovery semantics, fsync tradeoffs | 7m |
+| 48 | **Vector Clocks & Conflict Detection** | `037-vector-clocks-write-conflict-detection.md` | Causal consistency, distributed version control, conflict resolution | 8m |
+| 49 | **Quorum Reads/Writes** | `038-quorum-reads-writes-cassandra-w-r-n.md` | Consistency tuning, read repair, hinted handoff | 7m |
+| 50 | **WebSocket vs SSE vs Long Polling** | `039-websocket-vs-sse-vs-long-polling.md` | Real-time transport, server push, browser compatibility | 8m |
+| 51 | **Split Brain Problem** | `040-split-brain-problem-two-primary-nodes.md` | Network partition, dual-master replication, failover ambiguity | 7m |
+| 52 | **UUID as Primary Key** | `041-uuid-as-primary-key-why-its-bad.md` | Cache locality, index efficiency, alternatives (snowflake IDs) | 6m |
+| 53 | **Long-Tail Latency & P99** | `042-long-tail-latency-p99-percentiles.md` | SLO tuning, tail latency causes, hedged requests | 8m |
+| 54 | **Write Skew & Phantom Reads** | `043-write-skew-phantom-reads-isolation-levels.md` | SERIALIZABLE anomalies, transaction isolation levels, SQL quirks | 8m |
+| 55 | **Timeout Strategies** | `044-timeout-strategy-too-short-too-long.md` | Timeout tuning, cascading timeouts, retry storms | 6m |
+| 56 | **Retry & Exponential Backoff** | `045-retry-exponential-backoff-jitter.md` | Retry logic, jitter, thundering herd prevention | 6m |
+| 57 | **Elevator System** | `086-elevator-system/` | LLD design, state machine, scheduling algorithms | 12m |
+| 58 | **Airline Management** | `087-airline-management-system/` | Seat allocation, overbooking, revenue management | 12m |
+| 59 | **Multitenancy & SaaS Design** | `088-multitenancy-saas-design/` | Data isolation, row-level security, billing, rate limiting per tenant | 15m |
+| 60 | **Blob Storage vs DB for Files** | `051-blob-storage-vs-database-for-files.md` | When to store in S3 vs database, metadata management | 6m |
+| 61 | **CDN: Origin Pull vs Origin Push** | `052-cdn-origin-pull-vs-origin-push.md` | Cache warming, edge servers, invalidation, cache keys | 7m |
+| 62 | **Fan-Out Write vs Fan-Out Read** | `053-fan-out-write-vs-fan-out-read.md` | Feed generation strategies, write amplification vs read cost | 7m |
 
 ---
 
@@ -163,5 +165,34 @@ Fri: Search architecture + Monitoring
 
 ---
 
+## ➕ Additional Topics (On Disk, Not Yet Tier-Ranked)
+
+These case-study folders exist under `System_Design/` but weren't in the original ranking pass — add them to your prep once the tiers above are solid.
+
+| Topic | Path | Suggested Tier |
+|-------|------|-----------------|
+| **YouTube System Design** | `077-youtube-system-design/` | Tier 3 (Good-to-Know) — video upload/transcoding, CDN delivery, recommendation feed |
+| **Distributed Systems Concurrency** | `080-distributed-systems-concurrency/` | Tier 2 (Should-Know) — concurrency control fundamentals underpin most distributed-system rounds |
+| **LinkedIn System Design** | `081-linkedin-system-design/` | Tier 3 (Good-to-Know) — social graph, feed ranking, connection recommendations |
+| **UPI Payment System** | `083-upi-payment-system/` | Tier 3 (Good-to-Know) — real-time settlement, idempotency, reconciliation (India-specific FAANG/fintech rounds) |
+
+---
+
+## 🕳️ TIER 6: PREVIOUSLY-HIDDEN GAPS (Added 2026-08-31)
+These concepts came up as recurring interview follow-ups but had **no dedicated file** anywhere in this collection until now — they only appeared as one-line mentions ("JWT · rate limit") inside case-study HLD diagrams, never explained as standalone concepts. Treat these as **Should-Know for Staff/Principal rounds**, since interviewers routinely probe "how do you secure this," "how do you deploy this safely," and "how did you size this" as follow-ups on top of any case study above.
+
+| # | Topic | Files | Why Asked | Time |
+|---|-------|-------|-----------|------|
+| 63 | **AuthN/AuthZ (OAuth2, JWT, SSO, RBAC)** | `115-authn-authz-oauth2-jwt-sso.md` | Every case study assumes "auth happens somewhere" — interviewers probe how tokens are verified without a DB call per request, and how revocation works | 10m |
+| 64 | **API Gateway & Service Mesh** | `116-api-gateway-service-mesh-pattern.md` | North-south vs east-west traffic; where auth/rate-limiting/mTLS/retries actually live in a real microservices deployment | 10m |
+| 65 | **Paxos, Clock Sync & TrueTime** | `117-paxos-clock-synchronization-truetime.md` | Extends Raft/ZooKeeper (Tier 4 #40) — "why is Paxos hard" and "how does Spanner get global consistency without a shared clock" | 10m |
+| 66 | **Deployment Strategies & Chaos Engineering** | `118-deployment-strategies-canary-blue-green-chaos-engineering.md` | Blue-green vs canary vs rolling deploys, zero-downtime schema migration (expand-contract), and proactively testing failure recovery | 10m |
+| 67 | **Observability: Metrics/Logs/Traces & SLI/SLO/SLA** | `119-observability-metrics-logs-traces-slo-sla.md` | "How do you know your system is healthy" and "how do you debug a slow request across 15 services" — distributed tracing + error budgets | 10m |
+| 68 | **Capacity Estimation / Back-of-Envelope Math** | `120-capacity-estimation-back-of-envelope-math.md` | The estimation skill every case study interview opens with (DAU → QPS → storage → bandwidth) — skipping this is a common candidate mistake | 8m |
+| 69 | **Data Privacy: PII, GDPR, Encryption** | `121-data-privacy-gdpr-pii-encryption.md` | Tokenization vaults, right-to-be-forgotten across a distributed system, envelope encryption/KMS — comes up in any payments/user-data system | 10m |
+| 70 | **Microservices Decomposition Patterns** | `122-microservices-decomposition-patterns.md` | Strangler fig, BFF, anti-corruption layer, API composition — "how do you migrate a monolith without a big-bang rewrite" | 10m |
+
+---
+
 **Last sync:** 2026-08-31  
-**Version:** 1.0 (Tier-based ranking for 15 YOE)
+**Version:** 1.1 (Tier-based ranking for 15 YOE + Tier 6 gap coverage)

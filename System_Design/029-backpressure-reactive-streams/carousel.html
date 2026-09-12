@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Backpressure &amp; Reactive Streams — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c; --kafka: #231f20;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 19px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 14px; margin: 0 0 14px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 12px; line-height: 1.5; overflow: hidden; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  .db-icon { width: 50px; height: 56px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 50px; height: 14px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 50px; height: 30px; position: absolute; top: 10px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 50px; height: 14px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .server-box {
+    width: 58px; height: 44px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .kafka-box {
+    width: 64px; height: 50px; border: 2px solid #555; border-radius: 6px; background: var(--kafka);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto;
+    color: #fff; font-weight: 700; font-size: 11px; gap: 3px;
+  }
+  .kafka-box .klines { display: flex; gap: 3px; }
+  .kafka-box .klines span { width: 5px; height: 12px; background: var(--accent); border-radius: 1px; }
+  .arrow { font-size: 18px; color: var(--muted); }
+  .arrow-down { font-size: 16px; color: var(--muted); text-align: center; margin: 2px 0; }
+  .x-mark { color: #e74c3c; font-weight: 700; font-size: 16px; }
+  .check-mark { color: #2ecc71; font-weight: 700; font-size: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.5px; margin: 6px 0; }
+  th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; }
+  th { color: var(--accent); font-weight: 600; }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 9px 12px; font-style: italic;
+    color: var(--text); font-size: 11px; background: rgba(245,166,35,0.08); border-radius: 4px;
+    margin: 6px 0; line-height: 1.5;
+  }
+  .trap-box {
+    border-left: 3px solid #e74c3c; padding: 7px 12px; font-size: 10px;
+    background: rgba(231,76,60,0.08); border-radius: 4px; margin: 6px 0; line-height: 1.45;
+  }
+  .stat { font-size: 28px; font-weight: 800; color: var(--accent); text-align: center; margin: 10px 0; }
+  .stat-small { font-size: 12.5px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+  code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-size: 10.5px; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  ul { margin: 6px 0; padding-left: 18px; }
+  li { margin: 3px 0; line-height: 1.4; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9.5px; font-weight: 700; }
+  .pill-blue { background: rgba(51,103,145,0.3); color: #7fb3d5; }
+  .pill-green { background: rgba(0,191,165,0.2); color: var(--green); }
+  .pill-red { background: rgba(216,44,32,0.25); color: #ff6b5b; }
+
+  /* Pipe metaphor: wide (producer) vs narrow (consumer) */
+  .pipe-wide { width: 120px; height: 34px; background: linear-gradient(90deg, var(--accent), #ffcf6b);
+               border-radius: 4px 14px 14px 4px; margin: 0 auto; position: relative; }
+  .pipe-narrow { width: 56px; height: 11px; background: linear-gradient(90deg, var(--blue), #5a94c4);
+                 border-radius: 4px 8px 8px 4px; margin: 0 auto; }
+  .pipe-wide::after, .pipe-narrow::after { content: ''; }
+
+  /* Buffer / queue stack visualization */
+  .queue-container { width: 56px; height: 74px; border: 2px solid var(--muted); border-radius: 4px;
+                      display: flex; flex-direction: column-reverse; padding: 3px; gap: 2px; margin: 0 auto; }
+  .queue-block { height: 7px; background: var(--accent); border-radius: 2px; }
+  .queue-block.overflow { background: #e74c3c; }
+  .queue-label { text-align: center; font-size: 9.5px; color: var(--muted); margin-top: 4px; }
+
+  /* Flowchart (decision tree) */
+  .flow-step { border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 9.5px;
+               margin: 2px 0; background: rgba(255,255,255,0.03); display: inline-block; }
+  .flow-line { margin: 2px 0; }
+  .flow-outcome { padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; display: inline-block; }
+  .flow-outcome.lsm { background: rgba(0,191,165,0.2); color: var(--green); }
+  .flow-outcome.btree { background: rgba(51,103,145,0.3); color: #7fb3d5; }
+  .flow-outcome.other { background: rgba(255,255,255,0.08); color: var(--muted); }
+
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <h1>Backpressure — Fire Hose Into a Watering Can</h1>
+    <h2>Episode 29 — The Finale of the Series</h2>
+    <div class="body">
+      <p style="font-size: 12px;">"Our service crashes every time there's a traffic spike. We're losing messages. What's going on?"</p>
+      <div class="row">
+        <div class="col">
+          <div class="pipe-wide"></div>
+          <b>Fire hose (Producer)</b><br>500 liters/second
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="pipe-narrow"></div>
+          <b>Watering can (Consumer)</b><br>2 liters/second
+        </div>
+      </div>
+      <p style="font-size: 11.5px;"><span class="pill pill-red">No backpressure</span> water overflows the can everywhere. In software: in-memory buffer fills, OutOfMemoryError, consumer crashes, all buffered messages lost.</p>
+      <p style="font-size: 11.5px;"><span class="pill pill-green">With backpressure</span> the can signals "slow down — I can only take 2L/sec." The hose throttles. Nobody drowns.</p>
+      <p style="font-size: 10.5px; color: var(--muted);">Signal travels differently: same-process reactive streams call <code>request(N)</code>; across services, Kafka consumer just stops polling; HTTP returns 429/503.</p>
+      <div class="stat" style="font-size:16px;">This is the FINAL episode of a 29-part system design series</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <h1>The Problem — Unbounded Buffer Overflow</h1>
+    <h2>Flash Sale: Orders In, Fraud Checks Out</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Producer<br>10,000 orders/sec</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="queue-container">
+            <div class="queue-block overflow"></div><div class="queue-block overflow"></div><div class="queue-block overflow"></div>
+            <div class="queue-block"></div><div class="queue-block"></div><div class="queue-block"></div><div class="queue-block"></div>
+          </div><div class="queue-label">in-memory buffer</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Consumer<br>1,000 checks/sec</div>
+      </div>
+      <div class="stat" style="font-size:22px;">9,000 msg/sec <span class="stat-small">net accumulation (10,000 − 1,000)</span></div>
+      <table>
+        <tr><th>Time</th><th>Buffer state</th></tr>
+        <tr><td>t=0s</td><td>empty, 0 messages</td></tr>
+        <tr><td>t=60s</td><td>540,000 messages (~540MB)</td></tr>
+        <tr><td>t=120s</td><td><span class="pill pill-red">OVERFLOW → OOM → CRASH → all messages lost</span></td></tr>
+      </table>
+      <p style="font-size: 10px; color: var(--muted);">9,000/sec × 3,600 sec = 32.4 MILLION messages/hour. At 1KB avg = 32.4GB → OOM long before that.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: KAFKA AS DURABLE BUFFER -->
+  <div class="slide">
+    <h1>Kafka as a Durable Buffer</h1>
+    <h2>Messages Not Lost — Just Delayed</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Producer<br>10,000/sec</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="kafka-box">Kafka<div class="klines"><span></span><span></span><span></span></div></div>topic (disk, 7-day retention)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Consumer<br>1,000/sec</div>
+      </div>
+      <table>
+        <tr><th>Time</th><th>Kafka topic (on disk)</th></tr>
+        <tr><td>t=0s</td><td>empty</td></tr>
+        <tr><td>t=60s</td><td>540,000 messages, safely on disk</td></tr>
+        <tr><td>t=120s</td><td>1.08M messages — consumer still reading at 1,000/sec</td></tr>
+      </table>
+      <div class="trap-box">
+        Tradeoff: after 1 hour of spike, consumer is 32.4M messages behind.<br>
+        Catch-up time = 32.4M ÷ 1,000/sec = <b>9 hours</b> — need to autoscale!
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: REACTIVE STREAMS PULL MODEL -->
+  <div class="slide">
+    <h1>Reactive Streams — The Pull Model</h1>
+    <h2>Consumer Controls the Rate, Not the Producer</h2>
+    <div class="body">
+      <p style="font-size: 11px;"><b>PUSH (no backpressure):</b> Producer decides when to send → consumer has no say → overwhelmed → OOM.</p>
+      <p style="font-size: 11px;"><b>PULL (backpressure):</b></p>
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Subscriber</div>
+        <div class="arrow">— request(3) →</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Publisher</div>
+      </div>
+      <div class="row" style="margin-top:-6px;">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Subscriber</div>
+        <div class="arrow">← item1,2,3 —</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Publisher</div>
+      </div>
+      <p style="font-size: 10.5px; color: var(--muted);">Publisher CANNOT send item4 until Subscriber asks for it. Consumer paces the entire pipeline.</p>
+      <p style="font-size: 10.5px;">Reactive Streams contract (Java):</p>
+      <code style="display:block; font-size:9.5px; white-space:pre; line-height:1.5;">interface Publisher&lt;T&gt;  { subscribe(Subscriber&lt;T&gt; s); }
+interface Subscriber&lt;T&gt; { onSubscribe(Subscription); onNext(T);
+                          onError(Throwable); onComplete(); }
+interface Subscription  { request(long n); cancel(); }</code>
+      <p style="font-size: 10px; color: var(--muted);">Project Reactor, RxJava, Akka Streams all implement this spec.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: PROJECT REACTOR PATTERNS -->
+  <div class="slide">
+    <h1>Project Reactor — Right vs Wrong</h1>
+    <h2>flatMap vs concatMap vs Bounded flatMap(n)</h2>
+    <div class="body">
+      <table style="font-size:9.5px;">
+        <tr><th>Pattern</th><th>Behavior</th><th>Verdict</th></tr>
+        <tr><td><code>.flatMap(fn)</code></td><td>1,000,000 concurrent subscriptions immediately</td><td><span class="x-mark">✗</span> OOM</td></tr>
+        <tr><td><code>.concatMap(fn)</code></td><td>Waits for each to complete before next; sequential</td><td><span class="pill pill-blue">Slow but safe</span></td></tr>
+        <tr><td><code>.flatMap(fn, 10)</code></td><td>Max 10 concurrent; producer waits when full</td><td><span class="check-mark">✓</span> Right balance</td></tr>
+      </table>
+      <code style="display:block; font-size:9px; white-space:pre; line-height:1.45; margin-top:4px;">// ✅ bounded parallelism — memory bounded, throughput × 10
+Flux.range(1, 1_000_000)
+    .flatMap(i -&gt; callSlowDownstream(i), 10)
+    .subscribe();
+
+// ✅ explicit pull model
+source.subscribe(new BaseSubscriber&lt;Order&gt;() {
+  protected void hookOnSubscribe(Subscription s) { request(10); }
+  protected void hookOnNext(Order o) {
+    processOrder(o);
+    request(1);  // ask for exactly one more
+  }
+});</code>
+      <p style="font-size: 10px; color: var(--muted); margin-top:4px;">concatMap: use when order matters, throughput requirement is low. Bounded flatMap(n): best general-purpose balance.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: 5 STRATEGIES COMPARISON -->
+  <div class="slide">
+    <h1>5 Backpressure Strategies</h1>
+    <h2>Compare Data Loss, Latency, Best Use Case</h2>
+    <div class="body">
+      <table style="font-size:9px;">
+        <tr><th>Strategy</th><th>Data Loss?</th><th>Latency Impact?</th><th>Best Use Case</th></tr>
+        <tr><td>Drop</td><td>YES</td><td>None</td><td>Metrics, logs, analytics</td></tr>
+        <tr><td>Block Producer</td><td>No</td><td>High</td><td>Internal batch, same-JVM</td></tr>
+        <tr><td>External Queue (Kafka)</td><td>No</td><td>Delayed delivery</td><td>Most event-driven systems</td></tr>
+        <tr><td>Autoscale Consumer</td><td>No</td><td>Minimized</td><td>Flash sales, burst traffic</td></tr>
+        <tr><td>Circuit Breaker</td><td>No</td><td>Error (503)</td><td>HTTP chains, no queue</td></tr>
+      </table>
+      <div class="row" style="margin-top:6px;">
+        <div class="col"><div class="queue-container"><div class="queue-block overflow"></div><div class="queue-block overflow"></div></div>Drop on full</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Block producer</div>
+        <div class="col"><div class="kafka-box">Kafka<div class="klines"><span></span><span></span><span></span></div></div>External queue</div>
+      </div>
+      <p style="font-size: 10px; color: var(--muted); margin-top:4px;">Pick based on: is data loss acceptable? Is producer same-JVM? Is traffic bursty?</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: KAFKA PARTITION THROUGHPUT SCALING -->
+  <div class="slide">
+    <h1>Kafka Partition Throughput Scaling</h1>
+    <h2>More Partitions = More Parallel Consumers</h2>
+    <div class="body">
+      <div class="stat" style="font-size:16px;">max_throughput = partitions × throughput_per_consumer</div>
+      <div class="row">
+        <div class="col"><div class="kafka-box">Kafka<div class="klines"><span></span><span></span><span></span></div></div>20 partitions</div>
+        <div class="arrow">×</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>10K/sec<br>per consumer</div>
+        <div class="arrow">=</div>
+        <div class="col"><div class="stat" style="font-size:20px; margin:0;">200K/sec</div>max throughput</div>
+      </div>
+      <code style="display:block; font-size:9.5px; white-space:pre; line-height:1.5; margin-top:6px;">bin/kafka-topics.sh --create --topic orders \
+  --partitions 20 --replication-factor 3 \
+  --config retention.ms=604800000  # 7 days</code>
+      <p style="font-size: 10.5px;">Producer key = <code>order_id</code> (consistent hashing → ordering guaranteed per order).</p>
+      <p style="font-size: 10.5px; color: var(--muted);">Consumer group: each instance gets a subset of partitions. Max useful consumers = partition count. Adding instances triggers automatic rebalance.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: KUBERNETES HPA ON KAFKA LAG -->
+  <div class="slide">
+    <h1>Kubernetes HPA on Kafka Lag</h1>
+    <h2>Autoscale Consumers on the Custom Metric</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="kafka-box">Kafka<div class="klines"><span></span><span></span><span></span></div></div>lag: 145,000 msgs</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>metric:<br><code style="font-size:8.5px;">kafka_consumer_lag_messages</code></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div><div class="server-box" style="margin-top:2px;"><span></span><span></span><span></span></div>scale 2 → 20 pods</div>
+      </div>
+      <code style="display:block; font-size:9px; white-space:pre; line-height:1.45; margin-top:4px;">apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+spec:
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+  - type: External
+    external:
+      metric: {name: kafka_consumer_lag_messages}
+      target: {type: AverageValue, averageValue: "10000"}</code>
+      <div class="trap-box">Scale up when avg lag &gt; 100,000 messages. Alert if lag &gt; 500K for 5+ min — indicates autoscaling isn't keeping up.</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: REAL-WORLD APPEARANCES -->
+  <div class="slide">
+    <h1>Where This Pattern Appears</h1>
+    <h2>Backpressure in Your System Design Interviews</h2>
+    <div class="body">
+      <table style="font-size:9px;">
+        <tr><th>System</th><th>Backpressure Pattern</th></tr>
+        <tr><td>Notification (celebrity fan-out)</td><td>Kafka absorbs burst; fixed-rate consumers autoscale on lag; priority topic for time-sensitive alerts</td></tr>
+        <tr><td>Food Delivery (lunch rush)</td><td>Order bursts 10x normal; prep updates tolerate lag; driver GPS uses WebSocket (real-time, not Kafka)</td></tr>
+        <tr><td>Leaderboard (tournament bursts)</td><td>Redis ZADD consumer autoscales on lag; eventual consistency acceptable during burst</td></tr>
+        <tr><td>E-Commerce (flash sale)</td><td>Order placement spikes 50x; inventory reservation via Kafka outbox — prevents inventory service bottleneck</td></tr>
+      </table>
+      <p style="font-size: 10px; color: var(--muted); margin-top:6px;">Universal rule: if producer and consumer scale independently, use Kafka. Monitor <code>kafka_consumer_group_lag</code>. Alert at 100K messages. Autoscale on lag, not CPU.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + FINALE QUOTE -->
+  <div class="slide">
+    <h1>Decision Tree &amp; Series Finale</h1>
+    <h2>Choosing a Backpressure Strategy</h2>
+    <div class="body">
+      <div class="flow-line"><span class="flow-step">Is data loss acceptable?</span></div>
+      <div class="flow-line" style="margin-left:10px;">├─ YES → <span class="flow-outcome other">Bounded drop-on-overflow (analytics, logs)</span></div>
+      <div class="flow-line" style="margin-left:10px;">└─ NO → <span class="flow-step">Same JVM as consumer?</span></div>
+      <div class="flow-line" style="margin-left:26px;">├─ YES → <span class="flow-outcome btree">LinkedBlockingQueue (block on full)</span></div>
+      <div class="flow-line" style="margin-left:26px;">└─ NO → <span class="flow-step">HTTP service-to-service?</span></div>
+      <div class="flow-line" style="margin-left:42px;">├─ YES → <span class="flow-outcome other">Circuit breaker + 503 + bulkhead</span></div>
+      <div class="flow-line" style="margin-left:42px;">└─ NO → <span class="flow-outcome lsm">Kafka/SQS + HPA autoscale on lag</span></div>
+      <div class="quote-box">
+        "Backpressure is the consumer's ability to signal 'slow down' to the producer — Kafka naturally handles it by decoupling production rate from consumption rate, with lag as the visible signal that triggers autoscaling."
+      </div>
+      <div class="stat" style="font-size:15px;">Episode 29 of 29 — Series Finale</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

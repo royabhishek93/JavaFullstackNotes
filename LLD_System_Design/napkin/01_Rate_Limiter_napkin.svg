@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="620" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <!-- Paper texture border -->
+  <rect x="10" y="10" width="880" height="600" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+
+  <!-- Title -->
+  <text x="450" y="48" text-anchor="middle" font-size="22" font-weight="bold" fill="#2d2d2d">Rate Limiter — Napkin Sketch</text>
+  <line x1="200" y1="56" x2="700" y2="56" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- ── LEFT COLUMN: Request Flow ── -->
+  <!-- Client box -->
+  <rect x="40" y="80" width="110" height="46" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="95" y="99" text-anchor="middle" font-size="13" fill="#1a4a7a" font-weight="bold">Client</text>
+  <text x="95" y="116" text-anchor="middle" font-size="10" fill="#1a4a7a">browser / mobile</text>
+
+  <!-- Arrow: Client → Rate Limiter -->
+  <line x1="150" y1="103" x2="230" y2="103" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="190" y="95" text-anchor="middle" font-size="10" fill="#888">HTTP req</text>
+
+  <!-- Rate Limiter box -->
+  <rect x="230" y="80" width="130" height="46" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="2.5"/>
+  <text x="295" y="99" text-anchor="middle" font-size="13" fill="#7a4a00" font-weight="bold">Rate Limiter</text>
+  <text x="295" y="116" text-anchor="middle" font-size="10" fill="#7a4a00">middleware layer</text>
+
+  <!-- Arrow: Rate Limiter → Backend (allow) -->
+  <line x1="360" y1="95" x2="445" y2="95" stroke="#27ae60" stroke-width="2" marker-end="url(#arrGreen)"/>
+  <text x="402" y="88" text-anchor="middle" font-size="10" fill="#27ae60">✓ allow</text>
+
+  <!-- Arrow: Rate Limiter → 429 (reject) -->
+  <line x1="295" y1="126" x2="295" y2="168" stroke="#e74c3c" stroke-width="2" marker-end="url(#arrRed)"/>
+  <text x="340" y="155" font-size="10" fill="#e74c3c">✗ 429 Too Many Requests</text>
+
+  <!-- Backend box -->
+  <rect x="445" y="80" width="120" height="46" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="505" y="99" text-anchor="middle" font-size="13" fill="#1a5e20" font-weight="bold">API Server</text>
+  <text x="505" y="116" text-anchor="middle" font-size="10" fill="#1a5e20">business logic</text>
+
+  <!-- Redis box -->
+  <rect x="230" y="178" width="130" height="46" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="295" y="197" text-anchor="middle" font-size="13" fill="#7a0000" font-weight="bold">Redis</text>
+  <text x="295" y="214" text-anchor="middle" font-size="10" fill="#7a0000">counters + TTL</text>
+  <!-- Arrow: Rate Limiter ↔ Redis -->
+  <line x1="295" y1="126" x2="295" y2="178" stroke="#888" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="320" y="156" font-size="9" fill="#888">check/incr</text>
+
+  <!-- ── DIVIDER ── -->
+  <line x1="620" y1="70" x2="620" y2="580" stroke="#c8b89a" stroke-width="1" stroke-dasharray="6,4"/>
+
+  <!-- ── RIGHT COLUMN: Algorithms ── -->
+  <text x="755" y="90" text-anchor="middle" font-size="14" font-weight="bold" fill="#2d2d2d">Algorithms</text>
+
+  <!-- Token Bucket -->
+  <rect x="640" y="100" width="230" height="80" rx="6" fill="#f0f8ff" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="755" y="118" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">① Token Bucket</text>
+  <text x="650" y="135" font-size="10" fill="#333">Tokens refill at constant rate</text>
+  <text x="650" y="150" font-size="10" fill="#27ae60">✓ Allows bursts</text>
+  <text x="650" y="165" font-size="10" fill="#888">Use: Stripe, AWS API Gateway</text>
+
+  <!-- Sliding Window -->
+  <rect x="640" y="192" width="230" height="80" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="1.5"/>
+  <text x="755" y="210" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">② Sliding Window Log</text>
+  <text x="650" y="227" font-size="10" fill="#333">Track each request timestamp</text>
+  <text x="650" y="242" font-size="10" fill="#27ae60">✓ Most accurate</text>
+  <text x="650" y="257" font-size="10" fill="#888">Use: Twitter rate limiting</text>
+
+  <!-- Fixed Window -->
+  <rect x="640" y="284" width="230" height="80" rx="6" fill="#fff8f0" stroke="#e6a817" stroke-width="1.5"/>
+  <text x="755" y="302" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a4a00">③ Fixed Window</text>
+  <text x="650" y="319" font-size="10" fill="#333">Counter resets every window</text>
+  <text x="650" y="334" font-size="10" fill="#e74c3c">✗ Boundary burst problem</text>
+  <text x="650" y="349" font-size="10" fill="#888">Use: Simple APIs, internal svc</text>
+
+  <!-- ── BOTTOM: Redis Key Pattern ── -->
+  <rect x="40" y="270" width="540" height="110" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="60" y="292" font-size="13" font-weight="bold" fill="#2d2d2d">Redis Key Pattern (Token Bucket)</text>
+
+  <!-- Key structure -->
+  <rect x="55" y="302" width="490" height="28" rx="3" fill="#2d2d2d"/>
+  <text x="300" y="321" text-anchor="middle" font-size="12" fill="#f8f8f2" font-family="monospace">rate_limit:{userId}:{windowTimestamp}  →  counter (EXPIRE = window)</text>
+
+  <text x="60" y="356" font-size="10" fill="#555">• INCR key  →  atomic counter increment (no race condition)</text>
+  <text x="60" y="372" font-size="10" fill="#555">• EXPIRE key TTL  →  auto-cleanup, no cron job needed</text>
+
+  <!-- ── BOTTOM: Distributed Setup ── -->
+  <rect x="40" y="395" width="540" height="130" rx="6" fill="#f0f8ff" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="60" y="417" font-size="13" font-weight="bold" fill="#1a4a7a">Distributed Rate Limiting</text>
+
+  <!-- Server 1 -->
+  <rect x="60" y="430" width="90" height="36" rx="4" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="105" y="443" text-anchor="middle" font-size="10" fill="#1a4a7a">Server 1</text>
+  <text x="105" y="458" text-anchor="middle" font-size="9" fill="#1a4a7a">node-1</text>
+
+  <!-- Server 2 -->
+  <rect x="175" y="430" width="90" height="36" rx="4" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="220" y="443" text-anchor="middle" font-size="10" fill="#1a4a7a">Server 2</text>
+  <text x="220" y="458" text-anchor="middle" font-size="9" fill="#1a4a7a">node-2</text>
+
+  <!-- Server 3 -->
+  <rect x="290" y="430" width="90" height="36" rx="4" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="335" y="443" text-anchor="middle" font-size="10" fill="#1a4a7a">Server 3</text>
+  <text x="335" y="458" text-anchor="middle" font-size="9" fill="#1a4a7a">node-3</text>
+
+  <!-- Arrows to Redis cluster -->
+  <line x1="105" y1="466" x2="235" y2="508" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="220" y1="466" x2="255" y2="508" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="4,2"/>
+  <line x1="335" y1="466" x2="275" y2="508" stroke="#4a90d9" stroke-width="1.5" stroke-dasharray="4,2"/>
+
+  <!-- Redis Cluster box -->
+  <rect x="180" y="508" width="170" height="36" rx="4" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="265" y="522" text-anchor="middle" font-size="11" fill="#7a0000" font-weight="bold">Redis Cluster</text>
+  <text x="265" y="537" text-anchor="middle" font-size="9" fill="#7a0000">shared counters — single source of truth</text>
+
+  <!-- Trade-off note -->
+  <text x="415" y="455" font-size="10" fill="#e74c3c" font-weight="bold">⚠ Trade-off:</text>
+  <text x="415" y="470" font-size="9" fill="#555">Redis latency adds ~1ms</text>
+  <text x="415" y="485" font-size="9" fill="#555">per request to rate check.</text>
+  <text x="415" y="500" font-size="9" fill="#555">Use local cache + async</text>
+  <text x="415" y="515" font-size="9" fill="#555">sync for high-traffic APIs.</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+    <marker id="arrGreen" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#27ae60"/>
+    </marker>
+    <marker id="arrRed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#e74c3c"/>
+    </marker>
+  </defs>
+
+  <!-- Footer -->
+  <text x="450" y="595" text-anchor="middle" font-size="10" fill="#aaa">Rate Limiter LLD • Interview Napkin • 15 YOE Architect</text>
+</svg>

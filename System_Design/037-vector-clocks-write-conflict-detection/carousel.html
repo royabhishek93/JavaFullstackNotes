@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Vector Clocks & Write Conflict Detection — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #21213a;
+    --accent: #ff9f43;
+    --accent2: #4ecdc4;
+    --danger: #ff5e5e;
+    --text: #eaeaf2;
+    --muted: #9a9ab0;
+    --nodeA: #4ecdc4;
+    --nodeB: #ff9f43;
+    --nodeC: #a29bfe;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    height: 100%;
+  }
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 40px auto;
+    position: relative;
+    background: radial-gradient(circle at top left, #23233f, #1a1a2e 70%);
+    border-radius: 18px;
+    box-shadow: 0 0 0 1px #33334f, 0 20px 50px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 30px 34px 20px 34px;
+    flex-direction: column;
+  }
+  .slide.active { display: flex; }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 22px;
+    margin: 0 0 12px 0;
+    line-height: 1.25;
+    color: var(--text);
+  }
+  h2 {
+    font-size: 17px;
+    margin: 0 0 10px 0;
+    color: var(--accent);
+  }
+  p, li { font-size: 13px; line-height: 1.5; color: var(--text); }
+  .muted { color: var(--muted); }
+  .content { flex: 1; overflow: hidden; }
+  .stage {
+    position: relative;
+    width: 100%;
+    height: 220px;
+    margin: 8px 0 10px 0;
+  }
+
+  /* ---------- Server / node box ---------- */
+  .node-box {
+    position: absolute;
+    width: 92px;
+    height: 66px;
+    border-radius: 8px;
+    background: #2a2a44;
+    border: 2px solid var(--nodeA);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .node-box .lines { width: 60px; margin-top: 4px; }
+  .node-box .lines div { height: 3px; background: rgba(255,255,255,0.25); margin: 3px 0; border-radius: 2px; }
+  .node-box .label { font-weight: 700; font-size: 13px; }
+  .node-box .clock { font-size: 10px; color: var(--muted); margin-top: 4px; font-family: "Courier New", monospace; }
+  .node-b { border-color: var(--nodeB); }
+  .node-c { border-color: var(--nodeC); }
+
+  /* ---------- Arrow ---------- */
+  .arrow {
+    position: absolute;
+    height: 2px;
+    background: var(--muted);
+  }
+  .arrow::after {
+    content: "";
+    position: absolute;
+    right: -1px; top: -4px;
+    border-left: 8px solid var(--muted);
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+  }
+  .arrow-label {
+    position: absolute;
+    font-size: 10px;
+    color: var(--accent2);
+    font-family: "Courier New", monospace;
+  }
+
+  /* ---------- Clock face (wall clock drift) ---------- */
+  .clockface {
+    width: 74px; height: 74px; border-radius: 50%;
+    border: 3px solid var(--text);
+    position: absolute;
+    background: #14142a;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .clockface .hand {
+    position: absolute; background: var(--danger);
+    width: 3px; height: 26px; top: 11px; left: 35.5px;
+    transform-origin: bottom center;
+  }
+  .clockface .hand.min { background: var(--accent2); height: 32px; top: 5px; width: 2px; left: 36px; }
+  .clockface .time {
+    position: absolute; bottom: -20px; width: 100%; text-align: center;
+    font-size: 10px; font-family: "Courier New", monospace; color: var(--muted);
+  }
+
+  /* ---------- DB cylinder ---------- */
+  .cylinder {
+    position: absolute;
+    width: 70px;
+  }
+  .cylinder .top {
+    width: 70px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--accent2);
+    background: #23233f;
+  }
+  .cylinder .body {
+    width: 66px; height: 48px; margin: -9px auto 0 auto;
+    border-left: 2px solid var(--accent2);
+    border-right: 2px solid var(--accent2);
+    background: linear-gradient(#23233f, #2a2a44);
+  }
+  .cylinder .bottom {
+    width: 70px; height: 18px; border-radius: 50%;
+    border: 2px solid var(--accent2);
+    background: #1e1e38;
+    margin-top: -9px;
+  }
+  .cylinder .cyl-label {
+    position: absolute; bottom: -18px; width: 100%; text-align: center;
+    font-size: 10px; color: var(--muted);
+  }
+  .cylinder.danger .top, .cylinder.danger .bottom { border-color: var(--danger); }
+  .cylinder.danger .body { border-color: var(--danger); }
+
+  /* ---------- Redis icon ---------- */
+  .redis-icon {
+    position: absolute;
+    width: 54px; height: 54px; border-radius: 50%;
+    background: #d82c20;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 22px; color: #fff;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    box-shadow: 0 0 0 4px rgba(216,44,32,0.25);
+  }
+
+  /* ---------- Branch diagram ---------- */
+  .branch-line {
+    position: absolute;
+    background: var(--muted);
+    width: 2px;
+  }
+  .conflict-diamond {
+    position: absolute;
+    width: 60px; height: 60px;
+    background: var(--danger);
+    transform: rotate(45deg);
+    display: flex; align-items: center; justify-content: center;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .conflict-diamond span {
+    transform: rotate(-45deg);
+    font-size: 10px; font-weight: 800; color: #1a1a2e; text-align: center;
+  }
+
+  /* ---------- table ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th, td { border: 1px solid #33334f; padding: 6px 8px; text-align: left; }
+  th { background: #2a2a44; color: var(--accent2); }
+  td { color: var(--text); }
+  tr:nth-child(even) td { background: #22223a; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 4px;
+  }
+  .badge.good { background: rgba(78,205,196,0.2); color: var(--nodeA); }
+  .badge.bad { background: rgba(255,94,94,0.2); color: var(--danger); }
+  .badge.mid { background: rgba(255,159,67,0.2); color: var(--accent); }
+
+  .quote-box {
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    background: #22223a;
+    font-style: italic;
+    font-size: 12.5px;
+    margin-top: 10px;
+  }
+
+  .decision-node {
+    border: 2px solid var(--accent2);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11px;
+    display: inline-block;
+    background: #22223a;
+    margin: 3px 0;
+  }
+
+  /* ---------- footer / nav ---------- */
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    padding-top: 8px; border-top: 1px solid #2f2f4a;
+    font-size: 11px; color: var(--muted);
+  }
+  .nav-controls button {
+    background: #2a2a44; color: var(--text); border: 1px solid #3d3d5c;
+    border-radius: 6px; padding: 4px 12px; font-size: 12px; cursor: pointer;
+    margin-left: 6px;
+  }
+  .nav-controls button:hover { background: #34344f; }
+  .counter { font-family: "Courier New", monospace; }
+
+  @media print {
+    body { background: #1a1a2e; }
+    .deck { margin: 0; box-shadow: none; border-radius: 0; }
+    .footer { display: none; }
+    .slide { display: none !important; page-break-after: always; }
+    .slide.print-active { display: flex !important; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- Slide 1: HOOK -->
+  <div class="slide active">
+    <div class="eyebrow">Episode 37 · Slide 1/10</div>
+    <h1>Your cart lost an item. No error. No log. Just gone.</h1>
+    <div class="content">
+      <div class="stage">
+        <div class="node-box" style="left:20px; top:40px;">
+          <div class="label">A · Laptop</div>
+          <div class="clock">{A:2}</div>
+          <div class="lines"><div></div><div></div></div>
+        </div>
+        <div class="node-box node-b" style="right:20px; top:40px;">
+          <div class="label">B · Phone</div>
+          <div class="clock">{A:1,B:1}</div>
+          <div class="lines"><div></div><div></div></div>
+        </div>
+        <div class="conflict-diamond" style="left:225px; top:150px;"><span>CONFLICT</span></div>
+        <div class="arrow" style="left:112px; top:73px; width:100px; transform: rotate(18deg);"></div>
+        <div class="arrow" style="right:112px; top:73px; width:100px; transform: rotate(-18deg) translateX(-100px); left:328px;"></div>
+      </div>
+      <p><b>Amazon Dynamo's original problem:</b> two nodes write concurrently, wall clocks drift by milliseconds, and naive "biggest timestamp wins" (Cassandra's default LWW) silently discards a real write.</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">1</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="eyebrow">The Problem</div>
+    <h1>Wall clocks drift. Order gets reversed.</h1>
+    <div class="content">
+      <div class="stage">
+        <div class="clockface" style="left:60px; top:20px;">
+          <div class="hand" style="transform: rotate(30deg);"></div>
+          <div class="hand min" style="transform: rotate(0deg);"></div>
+          <div class="time">Server A: 10:00:00.100</div>
+        </div>
+        <div class="clockface" style="right:60px; top:20px;">
+          <div class="hand" style="transform: rotate(28deg);"></div>
+          <div class="hand min" style="transform: rotate(-4deg);"></div>
+          <div class="time">Server B: 10:00:00.095</div>
+        </div>
+        <div class="arrow-label" style="left:180px; top:120px;">A's clock says "later" —</div>
+        <div class="arrow-label" style="left:180px; top:138px;">but B's write actually happened first.</div>
+        <div class="conflict-diamond" style="left:225px; top:160px; width:50px; height:50px;"><span style="font-size:9px;">LWW = wrong pick</span></div>
+      </div>
+      <p>Last-Write-Wins trusts timestamps to decide the winner. If clocks drift even a few ms between datacenters, LWW can keep the <b>wrong</b> version and silently drop the real one.</p>
+      <p class="muted">Vector clocks answer a different question: not "which happened first in real time" but "did A happen BEFORE B, or were they concurrent?"</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">2</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 3: Vector clock structure -->
+  <div class="slide">
+    <div class="eyebrow">The Solution — Structure</div>
+    <h1>One counter per node. Increment your own. Merge by max.</h1>
+    <div class="content">
+      <div class="stage">
+        <div class="node-box" style="left:8px; top:10px;">
+          <div class="label">A</div><div class="clock">{A:0,B:0,C:0}</div>
+        </div>
+        <div class="node-box node-b" style="left:8px; top:100px;">
+          <div class="label">B</div><div class="clock">{A:0,B:0,C:0}</div>
+        </div>
+        <div class="node-box node-c" style="left:8px; top:190px;">
+          <div class="label">C</div><div class="clock">{A:0,B:0,C:0}</div>
+        </div>
+        <div class="arrow" style="left:110px; top:43px; width:140px;"></div>
+        <div class="arrow-label" style="left:112px; top:26px;">A writes → {A:1,B:0,C:0}</div>
+        <div class="arrow" style="left:110px; top:133px; width:140px;"></div>
+        <div class="arrow-label" style="left:112px; top:116px;">B writes → {A:0,B:1,C:0}</div>
+        <div class="node-box" style="right:10px; top:80px; width:100px;">
+          <div class="label" style="font-size:11px;">A sends to B</div>
+          <div class="clock">merge = max</div>
+          <div class="clock">{A:3,B:2,C:0}</div>
+        </div>
+      </div>
+      <p>Receiving node merges by taking the <b>max</b> of each position, then increments its own counter. This is how causal knowledge propagates through the cluster.</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">3</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 4: Shopping cart scenario -->
+  <div class="slide">
+    <div class="eyebrow">Scenario — Shopping Cart (Dynamo-style)</div>
+    <h1>Same base version. Two devices. Two futures.</h1>
+    <div class="content">
+      <div class="stage">
+        <div class="node-box" style="left:0px; top:0px; width:150px;">
+          <div class="label" style="font-size:11px;">Synced state {A:1}</div>
+          <div class="clock">["shoes","hat"]</div>
+        </div>
+        <div class="branch-line" style="left:75px; top:66px; height:30px;"></div>
+        <div class="node-box" style="left:0px; top:100px;">
+          <div class="label" style="font-size:11px;">Laptop (A)</div>
+          <div class="clock">{A:2}</div>
+          <div class="clock">+jacket</div>
+        </div>
+        <div class="node-box node-b" style="right:0px; top:100px;">
+          <div class="label" style="font-size:11px;">Phone (B)</div>
+          <div class="clock">{A:1,B:1}</div>
+          <div class="clock">-hat +gloves</div>
+        </div>
+        <div class="conflict-diamond" style="left:225px; top:185px; width:56px; height:56px;"><span>NEITHER DOMINATES</span></div>
+      </div>
+      <p><b>Check:</b> is {A:2} ≥ {A:1,B:1}? A: 2≥1 ✓ — B: 0≥1 ✗. Neither vector dominates → <span class="badge bad">CONCURRENT</span> → real conflict, not just "one is newer."</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">4</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 5: happened-before rule -->
+  <div class="slide">
+    <div class="eyebrow">The Rule</div>
+    <h1>Happened-before vs. Concurrent</h1>
+    <div class="content">
+      <table>
+        <tr><th>Case</th><th>Rule</th><th>Result</th></tr>
+        <tr><td>X={A:1,B:0,C:0}<br>Y={A:2,B:1,C:0}</td><td>Every X[i] ≤ Y[i], at least one &lt;</td><td><span class="badge good">X → Y (no conflict)</span></td></tr>
+        <tr><td>X={A:2,B:0}<br>Y={A:1,B:1}</td><td>A: 2&gt;1, B: 0&lt;1 — neither dominates</td><td><span class="badge bad">CONCURRENT (conflict)</span></td></tr>
+      </table>
+      <div class="quote-box">"X happens-before Y: all X[i] ≤ Y[i] AND at least one strictly less. If neither vector dominates the other, they're concurrent — flag it."</div>
+      <p class="muted">This is the exact same logic as Git: one branch containing the other = fast-forward. Two branches diverging from the same commit = possible merge conflict.</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">5</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 6: Resolution option 1 - LWW -->
+  <div class="slide">
+    <div class="eyebrow">Resolution Option 1</div>
+    <h1>Last Write Wins — simple, lossy</h1>
+    <div class="content">
+      <div class="stage" style="height:170px;">
+        <div class="cylinder" style="left:30px; top:20px;">
+          <div class="top"></div><div class="body"></div><div class="bottom"></div>
+          <div class="cyl-label">Cassandra (default)</div>
+        </div>
+        <div class="cylinder" style="left:150px; top:20px;">
+          <div class="top"></div><div class="body"></div><div class="bottom"></div>
+          <div class="cyl-label">DynamoDB (optional)</div>
+        </div>
+        <div class="arrow" style="left:280px; top:60px; width:90px;"></div>
+        <div class="cylinder danger" style="right:30px; top:20px;">
+          <div class="top"></div><div class="body"></div><div class="bottom"></div>
+          <div class="cyl-label">Keeps higher timestamp</div>
+        </div>
+      </div>
+      <p><b>Mechanism:</b> keep the version with the higher timestamp, discard the other.</p>
+      <p><span class="badge bad">Risk</span> legitimate concurrent writes get silently deleted — no error, no retry, no audit trail.</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">6</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 7: Resolution option 2 - return all versions -->
+  <div class="slide">
+    <div class="eyebrow">Resolution Option 2</div>
+    <h1>Return all versions — correct, but the app must merge</h1>
+    <div class="content">
+      <div class="stage" style="height:180px;">
+        <div class="node-box" style="left:10px; top:10px; width:150px;">
+          <div class="label" style="font-size:11px;">["shoes","hat","jacket"]</div>
+          <div class="clock">{A:2}</div>
+        </div>
+        <div class="node-box node-b" style="left:10px; top:90px; width:150px;">
+          <div class="label" style="font-size:11px;">["shoes","gloves"]</div>
+          <div class="clock">{A:1,B:1}</div>
+        </div>
+        <div class="arrow" style="left:180px; top:60px; width:80px; transform: rotate(15deg);"></div>
+        <div class="node-box node-c" style="right:10px; top:50px; width:130px;">
+          <div class="label" style="font-size:10px;">App merges (union)</div>
+          <div class="clock">shoes,hat,<br>jacket,gloves</div>
+          <div class="clock">{A:2,B:1}</div>
+        </div>
+      </div>
+      <p>Used by <b>Amazon Dynamo</b> (original paper) and <b>Riak</b>. Never silently drop cart items — union both versions, merge clock = max of each component.</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">7</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 8: Resolution option 3 - CRDTs -->
+  <div class="slide">
+    <div class="eyebrow">Resolution Option 3</div>
+    <h1>CRDTs — auto-merge for counters & sets</h1>
+    <div class="content">
+      <div class="stage" style="height:160px;">
+        <div class="redis-icon" style="left:20px; top:30px;">R</div>
+        <div class="arrow-label" style="left:20px; top:92px;">Redis counter type</div>
+        <div class="node-box" style="left:130px; top:20px; width:110px;">
+          <div class="label" style="font-size:11px;">G-Counter</div>
+          <div class="clock">grow-only, sum all</div>
+        </div>
+        <div class="node-box node-b" style="left:130px; top:95px; width:110px;">
+          <div class="label" style="font-size:11px;">PN-Counter</div>
+          <div class="clock">+counter / -counter</div>
+        </div>
+        <div class="node-box node-c" style="right:10px; top:55px; width:110px;">
+          <div class="label" style="font-size:11px;">OR-Set</div>
+          <div class="clock">tracks who added it</div>
+        </div>
+      </div>
+      <p>Data structures engineered so concurrent updates always merge deterministically — no app-level conflict logic needed. Used in <b>Redis</b>, <b>Riak</b> (native CRDTs), <b>Cassandra counters</b>.</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">8</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 9: comparison table -->
+  <div class="slide">
+    <div class="eyebrow">Technology Comparison</div>
+    <h1>Who actually uses what?</h1>
+    <div class="content">
+      <table>
+        <tr><th>System</th><th>Mechanism</th><th>Conflict Detection?</th></tr>
+        <tr><td>Amazon Dynamo</td><td>Version vectors on every object</td><td><span class="badge good">Yes</span></td></tr>
+        <tr><td>Riak</td><td>Native vector clocks</td><td><span class="badge good">Yes</span></td></tr>
+        <tr><td>Cassandra</td><td>Timestamps only (LWW)</td><td><span class="badge bad">No true detection</span></td></tr>
+        <tr><td>CouchDB</td><td>Revision IDs (simplified version vectors)</td><td><span class="badge mid">Partial</span></td></tr>
+        <tr><td>Git</td><td>DAG of commit ancestry</td><td><span class="badge good">Yes (equivalent concept)</span></td></tr>
+      </table>
+      <p class="muted"><b>Vector clock</b> (on events) vs. <b>version vector</b> (on data replicas) — same math, different attachment point. Google Docs uses OT, a related but distinct concept.</p>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">9</span> / 10</span>
+    </div>
+  </div>
+
+  <!-- Slide 10: decision tree + interview quote -->
+  <div class="slide">
+    <div class="eyebrow">Cheat Sheet</div>
+    <h1>Decision tree + the exact interview line</h1>
+    <div class="content">
+      <div class="decision-node">Compare two clocks X, Y</div><br>
+      <div class="decision-node">All X[i] ≤ Y[i]? → <b>happened-before</b>, keep Y</div><br>
+      <div class="decision-node">Neither dominates? → <b>CONCURRENT</b></div><br>
+      <div class="decision-node">Need correctness? → return all versions, app merges</div><br>
+      <div class="decision-node">Need auto-merge? → use a CRDT (counter/set)</div>
+      <div class="quote-box">"Vector clocks track which writes causally preceded others. If two writes both increment different nodes' counters from the same base, neither happened-before the other — they're concurrent — and you have a conflict to resolve. Timestamps alone can't detect this because clocks drift."</div>
+    </div>
+    <div class="footer">
+      <span>Vector Clocks & Write Conflict Detection</span>
+      <span class="counter"><span class="cur">10</span> / 10</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="nav-controls" style="text-align:center; margin-top: -10px; padding-bottom: 30px;">
+  <button id="prevBtn">← Prev</button>
+  <button id="nextBtn">Next →</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+
+  function render() {
+    slides.forEach(function(s, i) {
+      s.classList.toggle('active', i === idx);
+      s.classList.toggle('print-active', i === idx);
+    });
+  }
+
+  function next() { idx = (idx + 1) % total; render(); }
+  function prev() { idx = (idx - 1 + total) % total; render(); }
+
+  document.getElementById('nextBtn').addEventListener('click', next);
+  document.getElementById('prevBtn').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowLeft') prev();
+  });
+
+  render();
+</script>
+</body>
+</html>

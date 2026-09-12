@@ -1,0 +1,535 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- INTERFACES                                  -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <!-- FineCalculator interface -->
+        <mxCell id="iface_FineCalc" value="&lt;&lt;interface&gt;&gt;&#xa;FineCalculator" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="40" width="230" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_FineCalc_m1" value="+ calculate(lending: Lending): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_FineCalc">
+          <mxGeometry x="0" y="40" width="230" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- NotificationService interface -->
+        <mxCell id="iface_Notif" value="&lt;&lt;interface&gt;&gt;&#xa;NotificationService" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="330" y="40" width="260" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Notif_m1" value="+ notify(member: Member, message: String): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Notif">
+          <mxGeometry x="0" y="40" width="260" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- ENUM                                        -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <!-- CopyStatus enum -->
+        <mxCell id="enum_CopyStatus" value="&lt;&lt;enum&gt;&gt;&#xa;CopyStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="60" y="160" width="180" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_CopyStatus_v1" value="AVAILABLE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_CopyStatus">
+          <mxGeometry x="0" y="30" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_CopyStatus_v2" value="BORROWED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_CopyStatus">
+          <mxGeometry x="0" y="52" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_CopyStatus_v3" value="RESERVED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_CopyStatus">
+          <mxGeometry x="0" y="74" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_CopyStatus_v4" value="LOST" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_CopyStatus">
+          <mxGeometry x="0" y="96" width="180" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- CLASSES — CORE ENTITIES                     -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <!-- BookCopy class -->
+        <mxCell id="class_BookCopy" value="BookCopy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="60" y="340" width="230" height="184" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BookCopy_f1" value="- copyId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BookCopy">
+          <mxGeometry x="0" y="30" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BookCopy_f2" value="- isbn: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BookCopy">
+          <mxGeometry x="0" y="52" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BookCopy_f3" value="- status: CopyStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BookCopy">
+          <mxGeometry x="0" y="74" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BookCopy_m1" value="+ tryBorrow(): boolean  [synchronized]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BookCopy">
+          <mxGeometry x="0" y="96" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BookCopy_m2" value="+ returnCopy(): void  [synchronized]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BookCopy">
+          <mxGeometry x="0" y="118" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BookCopy_m3" value="+ reserveCopy(): void  [synchronized]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BookCopy">
+          <mxGeometry x="0" y="140" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BookCopy_m4" value="+ getStatus(): CopyStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BookCopy">
+          <mxGeometry x="0" y="162" width="230" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Book class -->
+        <mxCell id="class_Book" value="Book" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="330" y="340" width="240" height="184" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Book_f1" value="- isbn: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Book">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Book_f2" value="- title: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Book">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Book_f3" value="- author: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Book">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Book_f4" value="- copies: List&lt;BookCopy&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Book">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Book_m1" value="+ addCopy(copy: BookCopy): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Book">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Book_m2" value="+ getAvailableCopy(): Optional&lt;BookCopy&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Book">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Book_m3" value="+ availableCount(): long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Book">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Member class -->
+        <mxCell id="class_Member" value="Member" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="610" y="340" width="240" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Member_f1" value="- memberId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Member">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Member_f2" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Member">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Member_f3" value="- email: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Member">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Member_f4" value="- activeLoans: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Member">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Member_f5" value="- fineOwed: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Member">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Member_m1" value="+ hasPendingFines(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Member">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Member_m2" value="+ addActiveLoan(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Member">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Member_m3" value="+ addFine(amount: double): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Member">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Lending class -->
+        <mxCell id="class_Lending" value="Lending" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="890" y="340" width="240" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lending_f1" value="- lendingId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lending">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lending_f2" value="- copyId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lending">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lending_f3" value="- memberId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lending">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lending_f4" value="- dueDate: LocalDate  (borrowDate + 14d)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lending">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lending_f5" value="- returnDate: LocalDate" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lending">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lending_m1" value="+ markReturned(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lending">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lending_m2" value="+ isOverdue(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lending">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lending_m3" value="+ overdueDays(): long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lending">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Reservation class -->
+        <mxCell id="class_Reservation" value="Reservation" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1170" y="340" width="250" height="162" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Reservation_f1" value="- reservationId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Reservation">
+          <mxGeometry x="0" y="30" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Reservation_f2" value="- isbn: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Reservation">
+          <mxGeometry x="0" y="52" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Reservation_f3" value="- memberId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Reservation">
+          <mxGeometry x="0" y="74" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Reservation_f4" value="- reservedAt: LocalDateTime" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Reservation">
+          <mxGeometry x="0" y="96" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Reservation_f5" value="- expiresAt: LocalDateTime  (+48h)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Reservation">
+          <mxGeometry x="0" y="118" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Reservation_m1" value="+ setExpiresAt(t: LocalDateTime): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Reservation">
+          <mxGeometry x="0" y="140" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- CLASSES — SYSTEM LAYER                      -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <!-- LibrarySystem class -->
+        <mxCell id="class_LibSystem" value="LibrarySystem" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="60" y="610" width="290" height="272" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_f1" value="- catalog: ConcurrentHashMap&lt;String, Book&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_f2" value="- members: ConcurrentHashMap&lt;String, Member&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="52" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_f3" value="- activeLoans: ConcurrentHashMap&lt;String, Lending&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="74" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_f4" value="- reservationQueues: Map&lt;String, Queue&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="96" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_f5" value="- fineCalculator: FineCalculator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="118" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_f6" value="- notifier: NotificationService" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="140" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_f7" value="- bookLocks: Map&lt;String, ReentrantLock&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="162" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_m1" value="+ borrowBook(memberId, isbn): Lending" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="184" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_m2" value="+ returnBook(lendingId): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="206" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_m3" value="+ reserveBook(memberId, isbn): Reservation" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="228" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LibSystem_m4" value="+ addBook(book: Book): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LibSystem">
+          <mxGeometry x="0" y="250" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- StandardFineCalculator class -->
+        <mxCell id="class_StdFineCalc" value="StandardFineCalculator" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="400" y="610" width="260" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_StdFineCalc_f1" value="- FINE_PER_DAY: double = 2.0  [₹2/day]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_StdFineCalc">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_StdFineCalc_f2" value="- MAX_FINE: double = 500.0  [cap ₹500]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_StdFineCalc">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_StdFineCalc_m1" value="+ calculate(lending: Lending): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_StdFineCalc">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- EDGES                                       -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <!-- StandardFineCalculator implements FineCalculator (dashed block arrow) -->
+        <mxCell id="edge_impl_StdFine" value="" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_StdFineCalc" target="iface_FineCalc" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LibrarySystem uses FineCalculator -->
+        <mxCell id="edge_uses_LibFine" value="&lt;&lt;uses&gt;&gt;" style="endArrow=open;" edge="1" source="class_LibSystem" target="iface_FineCalc" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LibrarySystem uses NotificationService -->
+        <mxCell id="edge_uses_LibNotif" value="&lt;&lt;uses&gt;&gt;" style="endArrow=open;" edge="1" source="class_LibSystem" target="iface_Notif" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Book has BookCopy (composition) -->
+        <mxCell id="edge_comp_BookCopy" value="1..*" style="endArrow=open;" edge="1" source="class_Book" target="class_BookCopy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- BookCopy uses CopyStatus -->
+        <mxCell id="edge_uses_CopyStatus" value="" style="endArrow=open;" edge="1" source="class_BookCopy" target="enum_CopyStatus" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LibrarySystem manages Book -->
+        <mxCell id="edge_lib_book" value="manages" style="endArrow=open;" edge="1" source="class_LibSystem" target="class_Book" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LibrarySystem manages Member -->
+        <mxCell id="edge_lib_member" value="manages" style="endArrow=open;" edge="1" source="class_LibSystem" target="class_Member" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LibrarySystem manages Lending -->
+        <mxCell id="edge_lib_lending" value="manages" style="endArrow=open;" edge="1" source="class_LibSystem" target="class_Lending" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LibrarySystem manages Reservation -->
+        <mxCell id="edge_lib_reserv" value="manages" style="endArrow=open;" edge="1" source="class_LibSystem" target="class_Reservation" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Lending references BookCopy -->
+        <mxCell id="edge_lend_copy" value="ref" style="endArrow=open;" edge="1" source="class_Lending" target="class_BookCopy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Reservation references Book (ISBN) -->
+        <mxCell id="edge_reserv_book" value="ISBN ref" style="endArrow=open;" edge="1" source="class_Reservation" target="class_Book" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- LIFELINES                                   -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <mxCell id="life_Member" value="Member" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="50" y="50" width="140" height="840" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_LibSystem" value="LibrarySystem" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="250" y="50" width="140" height="840" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_Book" value="Book" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="450" y="50" width="140" height="840" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_BookCopy" value="BookCopy" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="650" y="50" width="140" height="840" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_Lending" value="Lending" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="850" y="50" width="140" height="840" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_FineCalc" value="FineCalculator" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1050" y="50" width="140" height="840" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_Notif" value="NotificationService" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1250" y="50" width="140" height="840" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- SECTION LABEL: BORROW FLOW                  -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <mxCell id="lbl_borrow" value="[ borrowBook flow ]" style="text;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="120" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- MESSAGES: BORROW FLOW                       -->
+        <!-- Lifeline center-x:                          -->
+        <!--  Member=120, LibSystem=320, Book=520        -->
+        <!--  BookCopy=720, Lending=920, FineCalc=1120   -->
+        <!--  Notif=1320                                  -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <!-- 1. Member -> LibrarySystem: borrowBook -->
+        <mxCell id="msg_1" value="1. borrowBook(memberId, isbn)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="165" as="sourcePoint"/>
+            <mxPoint x="320" y="165" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2. LibrarySystem -> Book: get(isbn) -->
+        <mxCell id="msg_2" value="2. catalog.get(isbn)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="205" as="sourcePoint"/>
+            <mxPoint x="520" y="205" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: Book -> LibrarySystem: Book -->
+        <mxCell id="ret_2" value="Book" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="520" y="230" as="sourcePoint"/>
+            <mxPoint x="320" y="230" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3. LibrarySystem -> Book: getAvailableCopy() -->
+        <mxCell id="msg_3" value="3. getAvailableCopy()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="260" as="sourcePoint"/>
+            <mxPoint x="520" y="260" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4. Book -> BookCopy: filter(AVAILABLE) -->
+        <mxCell id="msg_4" value="4. filter(AVAILABLE)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="520" y="290" as="sourcePoint"/>
+            <mxPoint x="720" y="290" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: BookCopy -> Book: Optional<BookCopy> -->
+        <mxCell id="ret_4" value="Optional" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="720" y="315" as="sourcePoint"/>
+            <mxPoint x="520" y="315" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: Book -> LibrarySystem: Optional<BookCopy> -->
+        <mxCell id="ret_3" value="Optional&lt;BookCopy&gt;" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="520" y="340" as="sourcePoint"/>
+            <mxPoint x="320" y="340" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5. LibrarySystem -> BookCopy: tryBorrow() [per-ISBN ReentrantLock held] -->
+        <mxCell id="msg_5" value="5. tryBorrow()  [per-ISBN ReentrantLock held]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="370" as="sourcePoint"/>
+            <mxPoint x="720" y="370" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_5: BookCopy -> LibrarySystem: true (status=BORROWED) -->
+        <mxCell id="ret_5" value="true  (status → BORROWED)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="720" y="395" as="sourcePoint"/>
+            <mxPoint x="320" y="395" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 6. LibrarySystem -> Lending: new Lending(copyId, memberId) -->
+        <mxCell id="msg_6" value="6. new Lending(copyId, memberId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="425" as="sourcePoint"/>
+            <mxPoint x="920" y="425" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_6: Lending -> LibrarySystem: lending -->
+        <mxCell id="ret_6" value="lending  (dueDate = borrowDate + 14d)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="920" y="450" as="sourcePoint"/>
+            <mxPoint x="320" y="450" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: LibrarySystem -> Member: Lending -->
+        <mxCell id="ret_1" value="Lending" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="480" as="sourcePoint"/>
+            <mxPoint x="120" y="480" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- SECTION LABEL: RETURN FLOW                  -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <mxCell id="lbl_return" value="[ returnBook flow ]" style="text;fontStyle=1;fontSize=13;fillColor=#f5f5f5;strokeColor=#666666;fontColor=#333333;" vertex="1" parent="1">
+          <mxGeometry x="50" y="520" width="200" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════ -->
+        <!-- MESSAGES: RETURN FLOW                       -->
+        <!-- ═══════════════════════════════════════════ -->
+
+        <!-- 7. Member -> LibrarySystem: returnBook(lendingId) -->
+        <mxCell id="msg_7" value="7. returnBook(lendingId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="120" y="560" as="sourcePoint"/>
+            <mxPoint x="320" y="560" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 8. LibrarySystem -> Lending: markReturned() -->
+        <mxCell id="msg_8" value="8. markReturned()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="595" as="sourcePoint"/>
+            <mxPoint x="920" y="595" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 9. LibrarySystem -> FineCalculator: calculate(lending) -->
+        <mxCell id="msg_9" value="9. calculate(lending)  [Strategy Pattern]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="630" as="sourcePoint"/>
+            <mxPoint x="1120" y="630" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_9: FineCalculator -> LibrarySystem: fine amount -->
+        <mxCell id="ret_9" value="fine = min(overdueDays * 2.0, 500)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1120" y="658" as="sourcePoint"/>
+            <mxPoint x="320" y="658" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 10. LibrarySystem -> BookCopy: returnCopy() -->
+        <mxCell id="msg_10" value="10. returnCopy()  (status → AVAILABLE)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="690" as="sourcePoint"/>
+            <mxPoint x="720" y="690" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 11. LibrarySystem -> NotificationService: notify if queue non-empty -->
+        <mxCell id="msg_11" value="11. notify(member, &quot;Reserved copy ready&quot;)  [if queue non-empty]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="730" as="sourcePoint"/>
+            <mxPoint x="1320" y="730" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_11: NotificationService -> LibrarySystem: void -->
+        <mxCell id="ret_11" value="" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1320" y="755" as="sourcePoint"/>
+            <mxPoint x="320" y="755" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_7: LibrarySystem -> Member: fine -->
+        <mxCell id="ret_7" value="fine: double" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="320" y="790" as="sourcePoint"/>
+            <mxPoint x="120" y="790" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

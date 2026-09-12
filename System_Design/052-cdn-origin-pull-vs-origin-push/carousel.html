@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CDN Origin Pull vs Origin Push — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+  /* Origin server icon (reuses server-box conventions) */
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .server-box.origin { border-color: var(--accent); width: 84px; height: 68px; }
+  .server-box.origin span { background: var(--accent); }
+  .server-box.warm { border-color: var(--green); }
+  .server-box.warm span { background: var(--green); }
+  .server-box.shield { border-color: var(--blue); border-width: 3px; }
+  .server-box.shield span { background: var(--blue); }
+
+  /* Globe with edge nodes for CDN layout */
+  .globe {
+    width: 150px; height: 150px; border-radius: 50%; border: 2px dashed var(--muted);
+    position: relative; margin: 0 auto 8px;
+  }
+  .globe::before, .globe::after {
+    content: ""; position: absolute; border: 1px dashed var(--border); border-radius: 50%;
+  }
+  .globe::before { width: 150px; height: 60px; top: 45px; left: 0; }
+  .globe::after { width: 60px; height: 150px; left: 45px; top: 0; }
+  .edge-dot {
+    width: 16px; height: 16px; border-radius: 50%; position: absolute;
+    display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: 700; color: #fff;
+  }
+  .edge-dot.hit { background: var(--green); }
+  .edge-dot.miss { background: #e74c3c; }
+  .edge-dot.idle { background: var(--muted); }
+  .edge-o1 { top: 6px; left: 67px; }
+  .edge-o2 { top: 30px; left: 130px; }
+  .edge-o3 { top: 100px; left: 130px; }
+  .edge-o4 { top: 128px; left: 67px; }
+  .edge-o5 { top: 100px; left: 4px; }
+  .edge-o6 { top: 30px; left: 4px; }
+  .globe-center {
+    position: absolute; top: 62px; left: 55px; width: 40px; height: 26px;
+    border: 2px solid var(--accent); border-radius: 4px; font-size: 8px;
+    display: flex; align-items: center; justify-content: center; color: var(--accent); font-weight: 700;
+  }
+
+  .arrow { font-size: 26px; color: var(--muted); }
+  .arrow.pull { color: var(--green); }
+  .arrow.push { color: var(--accent); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>CDN Origin Pull vs Origin Push</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">10,000,000</div>
+      <p>Users try to stream a movie premiere <b>at the same second</b>. Get the CDN strategy wrong and every one of them is a cache miss — all slamming your origin server at once.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Origin Pull — Lazy</h1>
+    <h2>The Default Strategy</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>User (Tokyo)</div>
+        <div class="arrow pull">→</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>CDN Node<br>MISS</div>
+        <div class="arrow pull">→</div>
+        <div class="col"><div class="server-box origin"><span></span><span></span><span></span></div>Origin<br>(NYC)</div>
+      </div>
+      <p><b>First request:</b> 150ms cache miss, CDN fetches &amp; caches (TTL=7d). <span class="check-mark">✓</span> Every request after: 5ms cache hit. <span class="x-mark">✕</span> No cache warming — first user always pays the cost.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Origin Push — Eager</h1>
+    <h2>Pre-Warming Before Launch</h2>
+    <div class="body">
+      <div class="globe">
+        <div class="globe-center">S3</div>
+        <div class="edge-dot hit edge-o1">✓</div>
+        <div class="edge-dot hit edge-o2">✓</div>
+        <div class="edge-dot hit edge-o3">✓</div>
+        <div class="edge-dot hit edge-o4">✓</div>
+        <div class="edge-dot hit edge-o5">✓</div>
+        <div class="edge-dot hit edge-o6">✓</div>
+      </div>
+      <p style="text-align:center">Push content to all 220+ edges <b>before</b> any user requests it. First viewer anywhere, worldwide: 5ms cache HIT. Zero cold starts. Best for scheduled launches &amp; known-viral content.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Cache Miss Storm</h1>
+    <h2>Trap 1</h2>
+    <div class="body">
+      <div class="globe">
+        <div class="globe-center">Origin</div>
+        <div class="edge-dot miss edge-o1">✕</div>
+        <div class="edge-dot miss edge-o2">✕</div>
+        <div class="edge-dot miss edge-o3">✕</div>
+        <div class="edge-dot miss edge-o4">✕</div>
+        <div class="edge-dot miss edge-o5">✕</div>
+        <div class="edge-dot miss edge-o6">✕</div>
+      </div>
+      <p style="text-align:center">100,000 users, viral video, never cached. All edges MISS simultaneously → all hammer origin at once. Fix: <b>request coalescing</b> (1 origin call per URL, not 1000), <b>pre-warming</b>, or <b>origin shield</b>.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Origin Shield</h1>
+    <h2>Absorbing the Stampede</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>219 edges</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box shield"><span></span><span></span><span></span></div>Shield<br>(us-east-1)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box origin"><span></span><span></span><span></span></div>Origin</div>
+      </div>
+      <p>One designated region talks to origin. Every other edge fetches from the shield instead. <b>N edges hammering origin → 1 shield hammering origin.</b></p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cache Invalidation</h1>
+    <h2>Trap 2 — The Hard Problem</h2>
+    <div class="body">
+      <p>Price changes, but cached page has TTL=24h. Users see the old price for a full day.</p>
+      <table>
+        <tr><th>Strategy</th><th>Trade-off</th></tr>
+        <tr><td>Short TTL (60s)</td><td>Simple, but 60x more origin requests</td></tr>
+        <tr><td>Explicit purge</td><td>~30s propagation, $0.005/1000 paths</td></tr>
+        <tr><td>Cache busting (hash in URL)</td><td>1-year TTL, <b>zero invalidation ever</b></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Where This Shows Up</h1>
+    <h2>Real Systems &amp; Company Examples</h2>
+    <div class="body">
+      <p><b>Hotstar-style premiere:</b> 10M+ concurrent viewers. 220 edges × 14.4GB (1,440 HLS segments/edge) = <b>3.17TB pre-warmed in 15-30 min</b> before kickoff.</p>
+      <p><b>Swiggy/Zomato menu images:</b> origin pull + origin shield, targeting &gt;95% cache hit rate on unpredictable long-tail assets.</p>
+      <p><b>Flipkart/Myntra flash sale:</b> cache-busted URLs for static assets + explicit purge (~30s propagation) for live pricing pages.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cache-Control by Content Type</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Content</th><th>Cache-Control</th></tr>
+        <tr><td>HTML pages</td><td>public, max-age=60</td></tr>
+        <tr><td>API JSON</td><td><span class="badge badge-cp">no-store</span></td></tr>
+        <tr><td>CSS/JS (hashed URL)</td><td>public, max-age=31536000, immutable</td></tr>
+        <tr><td>Video segments</td><td>public, max-age=31536000, immutable</td></tr>
+        <tr><td>Video manifest (.m3u8)</td><td>public, max-age=5</td></tr>
+      </table>
+      <p style="text-align:center"><span class="badge badge-ap">no-cache</span> ≠ "don't cache" — it means revalidate every request via ETag. Want zero caching? Use <span class="badge badge-cp">no-store</span> instead.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Known viral / scheduled launch? → <b>Origin push</b>, pre-warm all edges. Unpredictable long-tail content? → <b>Origin pull</b> + origin shield. Static assets? → cache-busted URLs, 1-year TTL.</p>
+      <div class="quote-box">
+        "Origin pull is lazy: CDN fetches from origin on first miss per edge. Origin push is eager: you pre-warm content before users arrive. For a viral movie launch, pre-warm all 220 edge nodes — zero cache misses on launch day. For long-tail content, origin pull with origin shield prevents stampede to your origin."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

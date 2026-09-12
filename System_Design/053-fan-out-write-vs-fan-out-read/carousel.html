@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Fan-Out on Write vs Fan-Out on Read — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+  /* Celebrity + follower icons (fan-out visuals) */
+  .celeb-icon {
+    width: 66px; height: 66px; border-radius: 50%; background: var(--accent); color: #1a1a2e;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; margin: 0 auto;
+    box-shadow: 0 0 0 3px rgba(245,166,35,0.25);
+  }
+  .user-icon {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--blue); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; margin: 0 auto;
+  }
+  .dot-cluster { display: flex; flex-wrap: wrap; gap: 4px; width: 140px; justify-content: center; }
+  .follower-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--blue); }
+  .follower-dot.hot { background: #e74c3c; }
+  .feed-box {
+    width: 74px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .feed-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .feed-box.instant { border-color: #2ecc71; }
+  .feed-box.instant span { background: #2ecc71; }
+  .redis-icon {
+    width: 56px; height: 56px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; margin: 0 auto;
+  }
+  .db-icon { width: 56px; height: 62px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 56px; height: 16px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 56px; height: 34px; position: absolute; top: 12px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 56px; height: 16px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+
+  .arrow { font-size: 24px; color: var(--muted); }
+  .arrow-fan { font-size: 18px; color: var(--accent); line-height: 1.1; text-align: center; }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-write { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-read { background: rgba(216,44,32,0.2); color: var(--redis); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Fan-Out on Write vs Fan-Out on Read</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">50,000,000</div>
+      <p>Cristiano Ronaldo posts a photo. Push it to every follower's feed right now, and that single post queues <b>50 million Redis writes</b> that take <b>10–30 minutes</b> to drain. Do it wrong and 50 celebrities posting together means <b>2.5 billion</b> writes fighting the same queue.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Fan-Out on Write (Push)</h1>
+    <h2>Scenario 1 — On Post</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="celeb-icon">CR7</div>50M followers</div>
+        <div class="arrow-fan">⇒⇒⇒</div>
+        <div class="col"><div class="dot-cluster">
+          <div class="follower-dot"></div><div class="follower-dot"></div><div class="follower-dot"></div>
+          <div class="follower-dot"></div><div class="follower-dot"></div><div class="follower-dot"></div>
+          <div class="follower-dot"></div><div class="follower-dot"></div><div class="follower-dot"></div>
+          <div class="follower-dot"></div><div class="follower-dot"></div><div class="follower-dot"></div>
+        </div>50M Redis ZADDs</div>
+      </div>
+      <p>Post Service inserts into Posts DB + publishes to Kafka → 200 OK instantly. A fan-out worker then pushes <code>post_id</code> into every follower's Redis ZSET, one <code>ZADD feed:{follower_id}</code> at a time.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Fan-Out on Write — Read Path &amp; Trap</h1>
+    <h2>Scenario 2 — Where It Breaks</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon">R</div>Pre-built ZSET</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="feed-box instant"><span></span><span></span><span></span></div>ZRANGE &lt;1ms</div>
+      </div>
+      <p><span class="check-mark">✓</span> Reads are instant — feed already pre-computed.</p>
+      <p><span class="x-mark">✕</span> 50M writes take 10–30 min to drain → followers who open the app right after the post don't see it yet (inconsistency window). 50 celebrities posting together = 2.5 billion writes, queue explodes.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Fan-Out on Read (Pull)</h1>
+    <h2>Scenario 3 — On Post &amp; On Read</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="celeb-icon">CR7</div>1 DB insert</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Posts DB</div>
+      </div>
+      <div class="row">
+        <div class="col"><div class="dot-cluster">
+          <div class="follower-dot hot"></div><div class="follower-dot hot"></div><div class="follower-dot hot"></div>
+          <div class="follower-dot hot"></div><div class="follower-dot hot"></div><div class="follower-dot hot"></div>
+        </div>500 followings</div>
+        <div class="arrow-fan">⇐⇐⇐</div>
+        <div class="col"><div class="feed-box"><span></span><span></span><span></span></div>Merge + sort</div>
+      </div>
+      <p>Posting is free — one insert. Reading pulls latest posts from <b>every</b> followed account (200–500 queries) and merges by timestamp.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Fan-Out on Read — The Trap</h1>
+    <h2>Scenario 4 — Where It Breaks</h2>
+    <div class="body">
+      <div class="stat">500M</div>
+      <p>queries/sec at just 1M users opening feeds simultaneously (1M × 500 queries each) — <span class="x-mark">✕</span> impossible for any database to sustain.</p>
+      <p>A user following 1,000 accounts triggers 1,000 DB queries per single feed refresh. Without partitioned indexes on <code>(user_id, created_at DESC)</code>, even the celebrity-pull path degrades into a full table scan.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Hybrid (What Instagram Does)</h1>
+    <h2>Scenario 5 — On Post</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="user-icon">&lt;10K</div>Regular user</div>
+        <div class="arrow">→</div>
+        <div class="col"><span class="badge badge-write">FAN-OUT ON WRITE</span><br>~10ms for 10K writes</div>
+      </div>
+      <div class="row">
+        <div class="col"><div class="celeb-icon">CR7</div>≥10K followers</div>
+        <div class="arrow">→</div>
+        <div class="col"><span class="badge badge-read">FAN-OUT ON READ</span><br>skip fan-out, just insert</div>
+      </div>
+      <p>Threshold (typically 10K–100K followers) is tunable based on observed Redis write-queue depth.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Hybrid Read Path &amp; Data Model</h1>
+    <h2>Scenario 6 — On Read</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon">R</div>Pre-built feed</div>
+        <div class="col" style="font-size:20px;color:var(--accent)">+</div>
+        <div class="col"><div class="celeb-icon" style="width:50px;height:50px;font-size:10px">3–10<br>celebs</div>direct pull</div>
+      </div>
+      <p>Merge Redis ZSET (regular accounts, fanned out on write) with 3–10 direct celebrity queries → sort by timestamp → cache merged result 60s.</p>
+      <p><b>Data model:</b> Redis ZSET <code>feed:{user_id}</code> scored by timestamp; Posts partitioned by <code>(user_id, created_at DESC)</code> in Cassandra; separate Following/Followers tables for both directions.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Real World</h1>
+    <h2>Where This Pattern Shows Up</h2>
+    <div class="body">
+      <p><b>Swiggy / Zomato:</b> a restaurant/influencer account with lakhs of followers posting a menu update creates the same write-storm CR7 creates — needs the small-vs-large account split.</p>
+      <p><b>Flipkart:</b> a seller account with millions of followers broadcasting a mega-sale update needs fan-out-on-read, while small sellers stay on fan-out-on-write.</p>
+      <p><b>PhonePe / Paytm:</b> merchant offer feeds — a small kirana store (300 followers) pushes on write; a national brand (crores of subscribers) must be pulled on read.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Push vs Pull vs Hybrid</h1>
+    <h2>Slide 9 / 10 — Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Model</th><th>Write Cost</th><th>Read Cost</th><th>Celebrity-Safe?</th></tr>
+        <tr><td>Fan-out on Write</td><td>High (50M writes)</td><td>Instant (&lt;1ms)</td><td><span class="x-mark">✕</span> Queue explodes</td></tr>
+        <tr><td>Fan-out on Read</td><td>Free (1 insert)</td><td>High (200–500 queries)</td><td><span class="check-mark">✓</span> No write amp.</td></tr>
+        <tr><td>Hybrid (&lt;10K vs ≥10K)</td><td>Low</td><td>Low (3–10 pulls)</td><td><span class="check-mark">✓</span> Production standard</td></tr>
+      </table>
+      <p style="margin-top:10px">Companies running the hybrid: Instagram, Twitter, Facebook, LinkedIn.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Slide 10 / 10 — Quick Reference</h2>
+    <div class="body">
+      <p>Poster has &lt;10K followers? → Fan-out on write. ≥10K followers (celebrity)? → Fan-out on read. On every read → merge pre-built Redis feed with live celebrity pulls, cache 60s.</p>
+      <div class="quote-box">
+        "Fan-out on write pre-builds feeds — great for reads but write-amplification kills you for celebrities. Fan-out on read is write-cheap but read-expensive. The hybrid: fan out small accounts on write, pull celebrity posts on read. Most production social networks do exactly this."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CAP Theorem &amp; Consistency Models — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 26px; margin: 0 auto;
+  }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .poly-square {
+    width: 52px; height: 52px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; color: #fff; font-size: 12px;
+  }
+  .poly-pg { background: var(--blue); }
+  .poly-cas { background: var(--yellow); color: #1a1a2e; }
+  .poly-es { background: var(--green); }
+  .poly-redis { background: var(--redis); }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>CAP Theorem</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">6 MIN</div>
+      <p>A flash-sale outage caused not by a crashed server — but by a database that picked <b>Consistency</b> when it should have picked <b>Availability</b>.</p>
+      <p>One wrong CAP decision. Millions in lost sales. Let's make sure that's never you.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Pick 2 of 3 — Except You Can't Really Choose</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Node A</div>
+        <div class="arrow x-mark">⚡✕</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Node B</div>
+      </div>
+      <p style="text-align:center">Network partition = P. Not optional — networks fail.</p>
+      <p style="text-align:center">So the real choice during a split: <span class="badge badge-cp">C</span> refuse requests, or <span class="badge badge-ap">A</span> serve possibly-stale data.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Shopping Cart → AP</h1>
+    <h2>Scenario 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Node A<br>[iPhone, Charger]</div>
+        <div class="arrow">⇄</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Node B<br>[iPhone, Case]</div>
+      </div>
+      <p><span class="badge badge-ap">AP</span> A 5-second stale cart beats a 500 error and a lost sale.</p>
+      <p>Conflict resolution: <b>CRDT merge</b>, not last-write-wins → cart becomes [iPhone, Charger, Case]. Items are never silently lost.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Bank Transfer → CP</h1>
+    <h2>Scenario 2</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Savings</div>
+        <div class="arrow x-mark">✕</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Checking</div>
+      </div>
+      <p><span class="badge badge-cp">CP</span> During a partition: refuse the ₹10,000 transfer rather than deduct from Savings and never credit Checking.</p>
+      <p>"Down for 2 minutes" is recoverable. "Lost ₹10,000" is not.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>View Counter at 1B Views → AP</h1>
+    <h2>Scenario 3</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DC-1</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DC-2</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DC-3</div>
+      </div>
+      <p style="text-align:center">Merged every ~30s. Your screen: 1,247,423,891. Friend's screen: 1,247,423,856.</p>
+      <p style="text-align:center">Strong consistency here = impossible performance. Eventual consistency = perfectly fine.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>PACELC &gt; CAP for Daily Decisions</h1>
+    <h2>The More Useful Model</h2>
+    <div class="body">
+      <table>
+        <tr><th>Category</th><th>During Partition</th><th>Normal Ops (Else)</th><th>Examples</th></tr>
+        <tr><td>PA/EL</td><td>Availability</td><td>Low Latency</td><td>DynamoDB, Cassandra</td></tr>
+        <tr><td>PC/EC</td><td>Consistency</td><td>Consistency</td><td>ZooKeeper, HBase</td></tr>
+        <tr><td>PA/EC</td><td>Availability</td><td>Consistency</td><td>MySQL async replication</td></tr>
+      </table>
+      <p>Partitions are rare. The "Else" (normal-ops) choice is the one you make every single day.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>"I'll Use Strong Consistency Everywhere"</h1>
+    <h2>The #1 Interview Trap</h2>
+    <div class="body">
+      <p><span class="x-mark">✕</span> <b>Performance:</b> 5 replicas to confirm = 5× write latency at 100,000 writes/sec</p>
+      <p><span class="x-mark">✕</span> <b>Availability:</b> 1 replica down = writes blocked entirely (CP behavior)</p>
+      <p><span class="x-mark">✕</span> <b>Unnecessary:</b> follower count off by 1 for 2s? Fine. Bank balance off for 2s? Not fine.</p>
+      <p class="quote-box">Design consistency level PER FEATURE — not one setting for the whole system.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Where Real Systems Fall</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>CP Systems</th><th>AP Systems</th><th>CA (Single Node)</th></tr>
+        <tr><td>ZooKeeper</td><td>Cassandra</td><td>PostgreSQL (single)</td></tr>
+        <tr><td>Consul</td><td>DynamoDB (default)</td><td>MySQL (single)</td></tr>
+        <tr><td>HBase</td><td>CouchDB</td><td>—</td></tr>
+        <tr><td>MongoDB (majority)</td><td>DNS</td><td>—</td></tr>
+      </table>
+      <p>Tunable: Cassandra QUORUM = CP-like, ONE = AP-like. DynamoDB strongly_consistent_reads=true = CP-like.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Is staleness dangerous (money, inventory, auth)? → <span class="badge badge-cp">CP</span></p>
+      <p>Is being down worse than being stale (cart, feed, counters)? → <span class="badge badge-ap">AP</span></p>
+      <div class="quote-box">
+        "CAP theorem says you can't have Consistency, Availability, and Partition tolerance simultaneously — and since partitions are inevitable, the real choice is CP vs AP. For financial data: CP. For user-experience features: AP. Tunable databases like Cassandra and DynamoDB let you choose per operation. The most common mistake is defaulting to strong consistency everywhere — design consistency per feature instead."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

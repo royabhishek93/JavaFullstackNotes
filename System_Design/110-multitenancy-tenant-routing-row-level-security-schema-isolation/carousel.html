@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multi-Tenant Data Isolation — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --accent: #4cc9f0;
+    --accent2: #f72585;
+    --accent3: #7bdc6a;
+    --accent4: #ffb703;
+    --text: #eaeaf5;
+    --muted: #9a9ac0;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #0d0d1a;
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    color: var(--text);
+  }
+
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+  }
+
+  .slide {
+    width: 540px;
+    height: 540px;
+    background: var(--bg);
+    border-radius: 14px;
+    padding: 28px 30px;
+    display: none;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .slide.active { display: flex; }
+
+  .kicker {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  h1 {
+    font-size: 25px;
+    margin: 0 0 10px 0;
+    line-height: 1.25;
+  }
+
+  h2 {
+    font-size: 19px;
+    margin: 0 0 10px 0;
+    color: var(--accent);
+  }
+
+  p, li {
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text);
+  }
+
+  .muted { color: var(--muted); }
+
+  .stat {
+    font-size: 52px;
+    font-weight: 800;
+    color: var(--accent2);
+    line-height: 1;
+    margin: 6px 0;
+  }
+
+  .stat-sub {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  ul.tight { margin: 6px 0; padding-left: 18px; }
+  ul.tight li { margin-bottom: 6px; }
+
+  .body-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    justify-content: center;
+  }
+
+  .col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ---------- DB CYLINDER ---------- */
+  .cyl-wrap { width: 90px; }
+  .cyl-top {
+    height: 16px;
+    border-radius: 50%;
+    margin-bottom: -8px;
+    border: 2px solid rgba(0,0,0,0.35);
+    position: relative;
+    z-index: 2;
+  }
+  .cyl-body {
+    height: 54px;
+    border-left: 2px solid rgba(0,0,0,0.35);
+    border-right: 2px solid rgba(0,0,0,0.35);
+    position: relative;
+    z-index: 1;
+  }
+  .cyl-bottom {
+    height: 16px;
+    border-radius: 50%;
+    margin-top: -8px;
+    border: 2px solid rgba(0,0,0,0.35);
+    filter: brightness(0.82);
+  }
+  .cyl-label { font-size: 11px; text-align: center; color: var(--muted); margin-top: 4px; }
+  .cyl-teal .cyl-top, .cyl-teal .cyl-body, .cyl-teal .cyl-bottom { background: var(--accent); }
+  .cyl-pink .cyl-top, .cyl-pink .cyl-body, .cyl-pink .cyl-bottom { background: var(--accent2); }
+  .cyl-green .cyl-top, .cyl-green .cyl-body, .cyl-green .cyl-bottom { background: var(--accent3); }
+  .cyl-orange .cyl-top, .cyl-orange .cyl-body, .cyl-orange .cyl-bottom { background: var(--accent4); }
+  .cyl-purple .cyl-top, .cyl-purple .cyl-body, .cyl-purple .cyl-bottom { background: #b388ff; }
+  .cyl-small { transform: scale(0.75); }
+
+  /* dot representing a tenant row inside a cylinder */
+  .tenant-dot {
+    width: 9px; height: 9px; border-radius: 50%;
+    display: inline-block; margin: 2px;
+  }
+
+  /* ---------- SERVER / APP BOX ---------- */
+  .server-box {
+    width: 130px;
+    height: 78px;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    background: var(--panel);
+    padding: 8px;
+  }
+  .server-line {
+    height: 4px;
+    background: var(--accent);
+    opacity: 0.6;
+    margin: 6px 4px;
+    border-radius: 2px;
+  }
+  .server-label { font-size: 10.5px; text-align: center; color: var(--muted); margin-top: 4px; }
+
+  /* ---------- ARROWS ---------- */
+  .arrow-right {
+    font-size: 26px;
+    color: var(--accent4);
+    font-weight: 700;
+  }
+  .arrow-down {
+    font-size: 22px;
+    color: var(--accent4);
+    text-align: center;
+    font-weight: 700;
+  }
+  .flow-line {
+    height: 2px;
+    background: var(--muted);
+    flex: 1;
+    min-width: 20px;
+  }
+
+  /* ---------- SCHEMA BOX (schema-per-tenant) ---------- */
+  .schema-box {
+    width: 78px;
+    height: 62px;
+    border: 2px dashed var(--accent);
+    border-radius: 6px;
+    background: rgba(76,201,240,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    text-align: center;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .instance-frame {
+    border: 2px solid var(--muted);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    gap: 8px;
+  }
+
+  /* ---------- COMPARISON TABLE ---------- */
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+  }
+  table.cmp th, table.cmp td {
+    border: 1px solid #33334f;
+    padding: 5px 6px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.cmp th {
+    background: #2a2a48;
+    color: var(--accent);
+    font-size: 10px;
+  }
+  table.cmp td.fail { color: var(--accent2); font-weight: 600; }
+
+  /* ---------- DECISION TREE ---------- */
+  .tree-node {
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    background: var(--panel);
+    text-align: center;
+  }
+  .tree-branch { font-size: 11px; color: var(--muted); text-align: center; margin: 2px 0; }
+
+  .quote-box {
+    border-left: 4px solid var(--accent2);
+    background: var(--panel);
+    padding: 10px 14px;
+    font-style: italic;
+    font-size: 12.5px;
+    margin-top: 10px;
+    border-radius: 4px;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  .badge-fail { background: rgba(247,37,133,0.18); color: var(--accent2); }
+  .badge-fix { background: rgba(123,220,106,0.18); color: var(--accent3); }
+
+  /* ---------- CONTROLS (hidden on print) ---------- */
+  .controls {
+    width: 540px;
+    margin: 10px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+  .controls button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: var(--accent); color: #0d0d1a; }
+  .counter { font-size: 14px; color: var(--muted); min-width: 60px; text-align: center; }
+
+  @media print {
+    body { background: #0d0d1a; }
+    .controls { display: none; }
+    .deck { margin: 0; }
+    .slide { display: none; page-break-after: always; }
+    .slide.active { display: flex; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active" data-idx="0">
+    <div class="kicker">Multi-Tenant Data Isolation</div>
+    <h1>RLS is OFF by default<br>on every new table you create.</h1>
+    <div class="body-area">
+      <div class="stat">2-5%</div>
+      <div class="stat-sub">is the RLS latency overhead you pay when it's ON.</div>
+      <div class="stat-sub">The cost when it's silently OFF? Every tenant sees<br>every other tenant's rows.</div>
+      <div class="row" style="margin-top:10px;">
+        <div class="col">
+          <div class="cyl-wrap cyl-pink">
+            <div class="cyl-top"></div>
+            <div class="cyl-body"></div>
+            <div class="cyl-bottom"></div>
+          </div>
+          <div class="cyl-label">invoices table<br><span style="color:var(--accent2)">no RLS policy</span></div>
+        </div>
+        <div class="arrow-right">→</div>
+        <div class="col">
+          <span class="badge badge-fail">LEAK</span>
+          <div class="stat-sub">"Single most common<br>multi-tenant bug<br>in production"</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <section class="slide" data-idx="1">
+    <div class="kicker">The Problem</div>
+    <h2>8,000 tenants. One database. Zero room for error.</h2>
+    <div class="body-area">
+      <div class="row">
+        <div class="col">
+          <div class="cyl-wrap cyl-teal" style="transform:scale(1.3)">
+            <div class="cyl-top"></div>
+            <div class="cyl-body"></div>
+            <div class="cyl-bottom"></div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center; margin-top:-10px;">
+        <span class="tenant-dot" style="background:var(--accent3)"></span>
+        <span class="tenant-dot" style="background:var(--accent4)"></span>
+        <span class="tenant-dot" style="background:#b388ff"></span>
+        <span class="tenant-dot" style="background:var(--accent2)"></span>
+        <span class="tenant-dot" style="background:var(--accent3)"></span>
+        <span class="tenant-dot" style="background:var(--accent4)"></span>
+        <span class="tenant-dot" style="background:var(--accent2); box-shadow:0 0 8px var(--accent2);"></span>
+        <span class="tenant-dot" style="background:#b388ff"></span>
+      </div>
+      <p style="text-align:center;">One shared floor. Thousands of tenants packed in.<br>
+      One forgotten <code>WHERE tenant_id = ?</code> or one query storm from a single tenant,
+      and the whole floor feels it.</p>
+      <ul class="tight">
+        <li><span class="badge badge-fail">Leak risk</span> A bug in one query path exposes another tenant's data</li>
+        <li><span class="badge badge-fail">Noisy neighbor</span> One tenant's heavy query degrades everyone sharing the instance</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: SHARED SCHEMA + RLS -->
+  <section class="slide" data-idx="2">
+    <div class="kicker">Tier 1 · 8,000 small tenants</div>
+    <h2>Shared Schema + Row-Level Security</h2>
+    <div class="body-area">
+      <div class="row">
+        <div class="cyl-wrap cyl-teal">
+          <div class="cyl-top"></div>
+          <div class="cyl-body"></div>
+          <div class="cyl-bottom"></div>
+        </div>
+        <div class="col">
+          <div class="server-box" style="width:170px;">
+            <div class="server-label" style="margin-top:0;color:var(--accent)">orders table</div>
+            <div class="server-line" style="background:var(--accent3)"></div>
+            <div class="server-line" style="background:var(--accent4)"></div>
+            <div class="server-line" style="background:#b388ff"></div>
+          </div>
+          <div class="server-label">every row tagged tenant_id</div>
+        </div>
+      </div>
+      <p>Postgres policy auto-rewrites <b>every</b> query:<br>
+      <span class="muted">... AND tenant_id = current_setting('app.tenant_id')</span></p>
+      <ul class="tight">
+        <li>Cheapest, highest density — thousands of tenants per instance</li>
+        <li>Belt-and-suspenders: Hibernate <code>@Filter</code> at app layer + RLS policy at DB layer</li>
+        <li><span class="badge badge-fail">Trap</span> table <b>owners bypass RLS</b> unless you run <code>FORCE ROW LEVEL SECURITY</code></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SLIDE 4: SCHEMA-PER-TENANT -->
+  <section class="slide" data-idx="3">
+    <div class="kicker">Tier 2 · 200 mid-size tenants</div>
+    <h2>Schema-per-Tenant</h2>
+    <div class="body-area">
+      <div class="row">
+        <div class="instance-frame">
+          <div class="schema-box">tenant_acme.orders</div>
+          <div class="schema-box">tenant_globex.orders</div>
+          <div class="schema-box">tenant_initech.orders</div>
+        </div>
+      </div>
+      <p style="text-align:center;" class="muted">One Postgres instance · N schemas · same building, separate locked floors</p>
+      <ul class="tight">
+        <li>Routed via <code>AbstractRoutingDataSource</code> or <code>SET search_path TO tenant_acme, public</code></li>
+        <li>Cross-schema query requires explicit schema-qualified SQL — accidental leakage structurally harder</li>
+        <li><span class="badge badge-fail">Limit</span> ~1,000–2,000 schemas/instance before catalog bloat (pg_class, pg_attribute)</li>
+        <li><span class="badge badge-fail">Trap</span> PgBouncer transaction-pooling needs search_path reset per transaction</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: DATABASE-PER-TENANT -->
+  <section class="slide" data-idx="4">
+    <div class="kicker">Tier 3 · 5 enterprise tenants</div>
+    <h2>Database-per-Tenant</h2>
+    <div class="body-area">
+      <div class="row">
+        <div class="col">
+          <div class="cyl-wrap cyl-green cyl-small"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+          <div class="cyl-label">db-acme-corp</div>
+        </div>
+        <div class="col">
+          <div class="cyl-wrap cyl-orange cyl-small"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+          <div class="cyl-label">db-globex-inc</div>
+        </div>
+        <div class="col">
+          <div class="cyl-wrap cyl-purple cyl-small"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+          <div class="cyl-label">db-healthco<br><span class="muted">(region-pinned)</span></div>
+        </div>
+      </div>
+      <p style="text-align:center;">Each an entirely separate building: own connections, own storage,<br>own backup/restore, own failover.</p>
+      <ul class="tight">
+        <li>Total physical isolation — no shared connection pool, no shared query planner</li>
+        <li>Right when contract, regulation, or scale demands it — e.g. HIPAA data-residency for a healthcare tenant</li>
+        <li><span class="badge badge-fail">Cost</span> highest $/tenant — don't use this for 12 small customers</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: REQUEST ROUTING LIFECYCLE -->
+  <section class="slide" data-idx="5">
+    <div class="kicker">Tenant Routing</div>
+    <h2>Subdomain/JWT → TenantContext → DB Filter</h2>
+    <div class="body-area">
+      <div class="row">
+        <div class="col">
+          <div class="server-box" style="width:110px;height:64px;">
+            <div class="server-label" style="margin-top:0;">acme-corp<br>.myapp.com</div>
+          </div>
+        </div>
+        <div class="arrow-right">→</div>
+        <div class="col">
+          <div class="server-box" style="width:120px;height:64px;">
+            <div class="server-label" style="margin-top:0;color:var(--accent4)">TenantResolutionFilter</div>
+          </div>
+        </div>
+        <div class="arrow-right">→</div>
+        <div class="col">
+          <div class="server-box" style="width:110px;height:64px;">
+            <div class="server-label" style="margin-top:0;color:var(--accent3)">TenantContext<br>(ThreadLocal)</div>
+          </div>
+        </div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <p style="text-align:center;">Hibernate <code>session.enableFilter("tenantFilter")</code><br>
+      → every query gets <code>AND tenant_id = ?</code> silently applied</p>
+      <div class="arrow-down">↓</div>
+      <p style="text-align:center;">Postgres RLS policy checks <b>again</b>, independently<br>
+      <span class="muted">business logic never references tenant_id explicitly</span></p>
+    </div>
+  </section>
+
+  <!-- SLIDE 7: TRAPS — LEAK + NOISY NEIGHBOR -->
+  <section class="slide" data-idx="6">
+    <div class="kicker">Deep Dive — Failure Modes</div>
+    <h2>Where Engineers Get It Wrong</h2>
+    <div class="body-area">
+      <div>
+        <span class="badge badge-fail">Failure Mode 1</span> The Forgotten Policy
+        <p>New table shipped without <code>ENABLE ROW LEVEL SECURITY</code> + <code>CREATE POLICY</code>.
+        RLS is off by default — any session sees every tenant's rows.</p>
+        <p class="muted"><span class="badge badge-fix">Fix</span> CI check fails build if a tenant table lacks an RLS policy; CREATE TABLE + ENABLE RLS ship as one atomic reviewed unit.</p>
+      </div>
+      <div>
+        <span class="badge badge-fail">Failure Mode 2</span> Noisy Neighbor
+        <p><b>BigCorp</b> runs a 40-second full-table-scan report hourly. Every other tenant's p99 latency:
+        <span style="color:var(--accent2); font-weight:700;">80ms → 3–4 sec</span></p>
+        <p class="muted"><span class="badge badge-fix">Fix</span> Bulkhead pattern (cap connection pool per tenant) + per-tenant rate limiting keyed by tenant_id.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8: EXPAND-CONTRACT MIGRATION -->
+  <section class="slide" data-idx="7">
+    <div class="kicker">Migrating 2,000 Tenant Schemas</div>
+    <h2>Expand → Backfill → Dual-Write → Contract</h2>
+    <div class="body-area">
+      <div class="row">
+        <div class="tree-node" style="border-color:var(--accent3)">1. EXPAND<br><span class="muted" style="font-size:10px;">ADD COLUMN nullable<br>~6 sec / 2,000 schemas</span></div>
+        <div class="arrow-right">→</div>
+        <div class="tree-node" style="border-color:var(--accent4)">2. BACKFILL<br><span class="muted" style="font-size:10px;">batched UPDATE<br>throttled, off-peak</span></div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="row">
+        <div class="tree-node" style="border-color:#b388ff">3. DUAL-WRITE<br><span class="muted" style="font-size:10px;">app tolerates<br>old + new state</span></div>
+        <div class="arrow-right">→</div>
+        <div class="tree-node" style="border-color:var(--accent2)">4. CONTRACT<br><span class="muted" style="font-size:10px;">SET NOT NULL<br>only after 100% migrated</span></div>
+      </div>
+      <p style="text-align:center; margin-top:8px;" class="muted">Why: migration script failing on schema #1,743 of 2,000 leaves a
+      partial rollout — you can't take 8,000 tenants offline for one blocking DDL.</p>
+    </div>
+  </section>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <section class="slide" data-idx="8">
+    <div class="kicker">Decision Framework</div>
+    <h2>Isolation Strategy Comparison</h2>
+    <div class="body-area">
+      <table class="cmp">
+        <tr><th>Approach</th><th>Tradeoff</th><th>Latency</th><th>When It Fails</th></tr>
+        <tr>
+          <td>Shared schema + RLS</td>
+          <td>Cheapest, densest; isolation depends on RLS + app filter both correct</td>
+          <td>+2–5%</td>
+          <td class="fail">Missing policy = silent leak</td>
+        </tr>
+        <tr>
+          <td>Shared schema, no RLS</td>
+          <td>Cheapest, zero DB backstop</td>
+          <td>Baseline</td>
+          <td class="fail">One forgotten WHERE = leak</td>
+        </tr>
+        <tr>
+          <td>Schema-per-tenant</td>
+          <td>Strong isolation; N migrations not 1</td>
+          <td>Baseline</td>
+          <td class="fail">Catalog bloat past ~1-2K schemas</td>
+        </tr>
+        <tr>
+          <td>Database-per-tenant</td>
+          <td>Total isolation; highest cost/ops</td>
+          <td>Baseline</td>
+          <td class="fail">Ops overhead scales linearly</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- SLIDE 10: DECISION TREE + INTERVIEW QUOTE -->
+  <section class="slide" data-idx="9">
+    <div class="kicker">Cheat Sheet</div>
+    <h2>Pick the Tier. Say the Line.</h2>
+    <div class="body-area">
+      <div class="tree-node">Small &amp; low-risk tenants?</div>
+      <div class="tree-branch">↓ yes</div>
+      <div class="tree-node" style="border-color:var(--accent3)">Shared Schema + RLS</div>
+      <div class="tree-branch">↓ needs blast-radius containment</div>
+      <div class="tree-node" style="border-color:var(--accent4)">Schema-per-Tenant</div>
+      <div class="tree-branch">↓ regulatory / data-residency mandate</div>
+      <div class="tree-node" style="border-color:var(--accent2)">Database-per-Tenant</div>
+      <div class="quote-box">
+        "I wouldn't pick a single isolation model — I'd run a tiered hybrid...
+        A resolved tenant-routing layer sits in front of all three tiers... the business logic
+        code never has to know or care which tier a given tenant is on."
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="controls">
+  <button id="prevBtn">← Prev</button>
+  <div class="counter" id="counter">1 / 10</div>
+  <button id="nextBtn">Next →</button>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  let current = 0;
+
+  function showSlide(idx) {
+    if (idx < 0) idx = 0;
+    if (idx > slides.length - 1) idx = slides.length - 1;
+    slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+    document.getElementById('counter').textContent = (idx + 1) + ' / ' + slides.length;
+    current = idx;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => showSlide(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => showSlide(current + 1));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') showSlide(current + 1);
+    if (e.key === 'ArrowLeft') showSlide(current - 1);
+  });
+
+  showSlide(0);
+</script>
+
+</body>
+</html>

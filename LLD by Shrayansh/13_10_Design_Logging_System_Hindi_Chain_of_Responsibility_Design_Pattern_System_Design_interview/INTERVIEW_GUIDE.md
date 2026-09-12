@@ -1,6 +1,8 @@
 # 📝 Logging System - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -301,6 +303,35 @@ Real logging frameworks (Log4j2, Logback) solve all of these: async I/O, JSON st
 ### **Log Storage: ELK Stack vs Splunk vs CloudWatch**
 
 **You**: "**ELK (Elasticsearch-Logstash-Kibana)** for self-hosted, cost-sensitive setups with high log volume. **Splunk** for enterprise with budget (excellent search, but expensive per GB). **CloudWatch Logs** for AWS-native simplicity (less powerful querying but zero infra management)."
+
+---
+
+## 🔥 Real-World Production Issue: Synchronous Logging That Took Down the API
+
+*In plain English: writing logs synchronously to a slow disk can block and crash the entire API, even though the actual business logic was fine.*
+
+**The war story:**
+
+"An early version of our `LogProcessor` chain wrote directly to disk SYNCHRONOUSLY on the request thread — 'it's just a log line, how slow can it be?' It was fine for months, until the log disk volume started approaching capacity."
+
+```
+Normal disk write:      ~2ms per log call         -> negligible
+Disk at 95% capacity:   ~1500ms per log call        -> because of filesystem
+                                                          fragmentation + I/O
+                                                          scheduler contention
+
+Every API request logs at least 3 lines (entry, business event, exit)
+-> each request now blocked for 3 x 1500ms = 4.5 SECONDS just on logging
+-> request thread pool exhausted within 2 minutes
+-> entire API became unresponsive, even though the actual BUSINESS
+   LOGIC of every request was completing in under 50ms
+```
+
+**Root cause:** logging was implemented as a chain of SYNCHRONOUS handlers directly on the caller's thread — exactly the naive version of Chain of Responsibility from the transcript, without the "Async Logging" callout in this guide's Final Tips being actually enforced. A disk-capacity issue (arguably a separate, lower-priority problem) became a full site outage because logging had an implicit hard dependency on disk latency staying low.
+
+**The fix:** moved all log writes onto an async, bounded in-memory queue with a dedicated background writer thread; if the queue fills up (disk falling behind), the system now DROPS low-priority DEBUG logs first rather than blocking request threads — a deliberate, documented trade-off (lose some non-critical logs vs. take down the whole API).
+
+**Lesson for a new developer:** "Any 'chain of handlers' pattern that runs on the caller's thread inherits ALL the failure modes of every handler in the chain, transitively. If handler #3's failure mode is 'disk is slow', your ENTIRE request path now has that failure mode too. Decouple with async queues wherever a handler talks to a slow external resource (disk, network, DB)."
 
 ---
 

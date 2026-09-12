@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Content-Addressable Storage — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 56px; height: 62px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 56px; height: 16px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 56px; height: 34px; position: absolute; top: 12px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 56px; height: 16px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .chunk { width: 20px; height: 20px; border-radius: 3px; display: inline-block; margin: 2px; }
+  .chunk-green { background: var(--green); }
+  .chunk-red { background: var(--redis); }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 34px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Content-Addressable Storage</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">1GB → 4MB</div>
+      <p>Edit page 5 of a 1GB file. Dropbox uploads <b>4MB</b>, not 1GB. Same trick Git uses to store 1000 commits without exploding disk usage.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Path-Based Storage Wastes Space</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>vacation.jpg<br>2MB</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>summer.jpg<br>2MB</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>photo.jpg<br>2MB</div>
+      </div>
+      <p style="text-align:center">Same file, 3 different names → stored 3 times. 6MB for 1 unique file.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Hash = Address</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>abc123...<br>(1 blob, 2MB)</div>
+      </div>
+      <p style="text-align:center">All 3 uploads hash to the same value → 1 physical copy, 3 metadata records pointing at it. 66% saved.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Files Table + Blobs Table</h1>
+    <h2>Data Model</h2>
+    <div class="body">
+      <p><code>files(file_id, user_id, filename, content_hash)</code></p>
+      <p><code>blobs(content_hash, size_bytes, ref_count)</code></p>
+      <p>3 files can point at the SAME content_hash — physical bytes stored once.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Chunked CAS</h1>
+    <h2>Small Edits, Small Uploads</h2>
+    <div class="body">
+      <div class="row">
+        <div>
+          <span class="chunk chunk-green"></span><span class="chunk chunk-green"></span><span class="chunk chunk-green"></span><span class="chunk chunk-red"></span><span class="chunk chunk-green"></span><span class="chunk chunk-green"></span>
+        </div>
+      </div>
+      <p style="text-align:center">1GB file = 256 × 4MB chunks, each hashed independently. Edit 1 chunk → upload only that 4MB, the other 255 stay untouched.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Reference Counting</h1>
+    <h2>The Trap Nobody Remembers</h2>
+    <div class="body">
+      <p>Deleting a file ≠ deleting the blob — other users may still reference it.</p>
+      <p>ref_count: 3 → 2 (Alice deletes) → still 2 users share the blob. Only ref_count = 0 triggers actual deletion.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Verify Ownership, Not Just Existence</h1>
+    <h2>Security Trap</h2>
+    <div class="body">
+      <p>Blobs are shared by design — a user can't guess another's SHA-256 hash (astronomically unlikely), but you must still check they OWN a metadata record pointing at that blob before serving it.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Where Else CAS Is Used</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>System</th><th>What's Content-Addressed</th></tr>
+        <tr><td>Git</td><td>Every blob, tree, commit (SHA-1)</td></tr>
+        <tr><td>Docker</td><td>Every image layer</td></tr>
+        <tr><td>IPFS</td><td>File blocks (CID)</td></tr>
+        <tr><td>BitTorrent</td><td>Each piece, verified on download</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Storing large files with likely overlap/versions? → CAS + chunking + ref counting.</p>
+      <div class="quote-box">
+        "Content-addressable storage makes deduplication automatic — same bytes produce the same hash, so you store the content once and reference it everywhere."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

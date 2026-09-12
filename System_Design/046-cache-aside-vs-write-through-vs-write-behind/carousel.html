@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cache-Aside vs Write-Through vs Write-Behind — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); text-align: center; }
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; margin: 0 auto;
+  }
+  .redis-icon.small { width: 44px; height: 44px; font-size: 16px; }
+  .cache-box {
+    width: 70px; height: 58px; border: 2px solid var(--redis); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+    margin: 0 auto; color: var(--redis); font-weight: 700; font-size: 11px; background: rgba(216,44,32,0.08);
+  }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .arrow.down { display: block; text-align: center; margin: 4px 0; }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Cache-Aside vs Write-Through vs Write-Behind</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">5s load time</div>
+      <p>Your product page used to load in <b>0.5s</b>. Now it's 5 seconds because every request hits the database directly. "Just add Redis" isn't the answer — <b>which</b> caching strategy you pick decides whether you show stale prices or lose a customer's cart forever.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Three Strategies, One Notepad</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="cache-box">Cache</div>Notepad</div>
+        <div class="arrow">⇄</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Kitchen (DB)</div>
+      </div>
+      <p style="text-align:center">Every write to the DB must somehow reach the cache. Get the ordering wrong and you either serve stale data, slow every write down, or silently lose data on a crash.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cache-Aside (Lazy Loading)</h1>
+    <h2>Strategy 1 — Read/Write Path</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon small">R</div>Miss</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DB read</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="cache-box">set()</div>Populate</div>
+      </div>
+      <p><span class="check-mark">✓</span> App fetches on miss, fast repeat reads &nbsp; <span class="x-mark">✕</span> Can be stale</p>
+      <p><b>Write rule:</b> DB.write(key, val) → cache.<b>delete</b>(key) — never cache.set(). Update-then-race = permanently wrong data; delete is idempotent and self-heals on next read.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Write-Through</h1>
+    <h2>Strategy 2 — Always Fresh</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="cache-box">set()</div>Cache</div>
+        <div class="col" style="justify-content:center;"><span style="font-size:11px;color:var(--muted);">both sync</span></div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DB write</div>
+      </div>
+      <p><span class="check-mark">✓</span> Zero stale reads after first write &nbsp; <span class="x-mark">✕</span> Every write is 2 synchronous ops — slower</p>
+      <p>Use for data you can <b>never</b> show stale: prices, inventory counts, wallet balances. A ₹999 price shown when it's really ₹1499 is a business bug, not a UX nitpick.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Write-Behind (Write-Back)</h1>
+    <h2>Strategy 3 — Fastest, Riskiest</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="cache-box">set()</div>Instant</div>
+        <div class="arrow">⇢</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Buffer/Queue</div>
+        <div class="arrow">⇢</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Batch DB write<br>every 1-5s</div>
+      </div>
+      <p><span class="x-mark">⚠</span> Cache crash before flush = <b>data lost forever</b>. Mitigation: Redis AOF, <code>appendfsync everysec</code> caps loss at 1s (vs <code>always</code> = zero loss but ~50% slower writes).</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cache Stampede</h1>
+    <h2>Trap 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>10,000 requests<br>miss at once</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-red"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DB overload</div>
+      </div>
+      <p style="text-align:center">Cold start or TTL expiry → every request hits the DB for the same key simultaneously. <b>Fixes:</b> mutex lock (1 fetches, rest wait), pre-warm before flash sales, TTL + random jitter (0-60s) so keys don't all expire together.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>TTL: Freshness vs Load</h1>
+    <h2>Trap 2</h2>
+    <div class="body">
+      <table>
+        <tr><th>Short TTL (30s)</th><th>Long TTL (1hr)</th></tr>
+        <tr><td>Low staleness</td><td>Low DB load</td></tr>
+        <tr><td>More DB hits</td><td>Stale up to 1hr</td></tr>
+        <tr><td>More stampede risk</td><td>Fewer stampedes</td></tr>
+      </table>
+      <p><b>Production pattern:</b> long TTL as a safety net + explicit <code>cache.delete()</code> on every write for correctness. Best of both.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Read-Through vs Cache-Aside</h1>
+    <h2>The Fourth Pattern</h2>
+    <div class="body">
+      <p><b>Cache-Aside:</b> app code checks cache, and on miss the <b>app</b> queries the DB and populates the cache.</p>
+      <p><b>Read-Through:</b> app always calls the cache; the <b>cache itself</b> fetches from the DB on a miss. App never talks to the DB directly.</p>
+      <p>Redis doesn't support this natively — needs a layer like AWS ElastiCache with a custom provider, AWS DAX, or NCache.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Strategy Comparison</h1>
+    <h2>Decision Dimensions</h2>
+    <div class="body">
+      <table>
+        <tr><th>Dimension</th><th>Cache-Aside</th><th>Write-Through</th><th>Write-Behind</th></tr>
+        <tr><td>Write latency</td><td>Fast</td><td>Slow (2x)</td><td>Fastest</td></tr>
+        <tr><td>Freshness</td><td>Can be stale</td><td>Always fresh</td><td>Fresh, lagging DB</td></tr>
+        <tr><td>Durability risk</td><td>Low</td><td>Low</td><td><b>High</b></td></tr>
+        <tr><td>Best for</td><td>Product info</td><td>Price/wallet</td><td>Cart/counters</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Write-heavy bursts? → Write-Behind (+AOF). Stale data ever unacceptable (price, wallet)? → Write-Through. Otherwise, DB lookup on miss tolerable? → Cache-Aside.</p>
+      <div class="quote-box">
+        "Cache-aside for read-heavy data where staleness is tolerable, write-through when you can never show stale data, and write-behind when your write volume outpaces what your DB can synchronously absorb."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

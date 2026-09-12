@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CRDTs: Conflict-Free Replicated Data Types — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 26px; margin: 0 auto;
+  }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .poly-square {
+    width: 52px; height: 52px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; color: #fff; font-size: 12px;
+  }
+  .poly-pg { background: var(--blue); }
+  .poly-cas { background: var(--yellow); color: #1a1a2e; }
+  .poly-es { background: var(--green); }
+  .poly-redis { background: var(--redis); }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .merge-arrow { font-size: 20px; color: var(--accent); font-weight: 700; }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 6px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .node-tag { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>CRDTs: Conflict-Free Replicated Data Types</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">40,000+</div>
+      <p>Invisible "tombstone" nodes can hide inside a 10,000-character document after 50,000 keystrokes — dead, but still eating memory and still transmitted on every sync. Merge two offline replicas with zero server, zero locking — if you get the data structure right.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Core Idea</h1>
+    <h2>Grocery List Analogy</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Replica A<div class="node-tag">list + tombstone</div></div>
+        <div class="merge-arrow">⇄ merge</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Replica B<div class="node-tag">list + tombstone</div></div>
+      </div>
+      <p><span class="check-mark">✓</span> Naive union resurrects deleted items &nbsp; <span class="check-mark">✓</span> Tombstone ("milk, bought") instead of hard delete = safe merge</p>
+      <p style="text-align:center">Merge must be <b>commutative</b>, <b>associative</b>, <b>idempotent</b> — order and repeats never matter.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>G-Counter (Grow-Only Counter)</h1>
+    <h2>Simplest CRDT</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>{A:1}</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>{B:3}</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>{C:1}</div>
+      </div>
+      <p style="text-align:center">Each replica writes ONLY its own slot. merge(s1,s2) = elementwise <b>max()</b>.</p>
+      <p style="text-align:center">Converged state: <b>{A:1, B:3, C:1}</b> → total = <span class="stat" style="font-size:22px">5</span> likes</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Why Not a Shared Counter?</h1>
+    <h2>The Race Condition Trap</h2>
+    <div class="body">
+      <div class="row">
+        <div class="redis-icon">+1</div>
+        <div class="x-mark" style="font-size:30px">✕</div>
+      </div>
+      <p style="text-align:center">Two replicas incrementing the SAME shared integer concurrently = lost-update race condition across a network partition.</p>
+      <p style="text-align:center"><span class="check-mark">✓</span> Fix: per-replica slots (G-Counter) sidestep the race entirely — no locks, no CAS, no coordinator.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>RGA — Sequence CRDT</h1>
+    <h2>Collaborative Text</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>A(R1,1)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>X(R1,3)</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Y(R2,1)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>B(R1,2)</div>
+      </div>
+      <p>Every char: (replicaId, logicalClock, parentRef). Concurrent inserts after 'A' tie-break by <b>higher clock wins</b> → deterministic order on every replica, no coordination: "AXYB"</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Tombstones — The Real Cost</h1>
+    <h2>Trap: Metadata Growth</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>X(R1,3)<div class="node-tag">DELETED</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>hidden from user</div>
+      </div>
+      <p>Deletes are flagged, never removed — a concurrent remote insert may still reference the node. 10K-char doc, 50K keystrokes → 40,000+ tombstoned nodes, ~33+ bytes/char overhead.</p>
+      <p><b>Fix:</b> GC once version vectors prove ALL replicas saw the tombstone (Yjs, Automerge).</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>CvRDT vs CmRDT</h1>
+    <h2>State-Based vs Operation-Based</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><span class="badge badge-ap">CvRDT</span><div class="node-tag">ships full state</div></div>
+        <div class="col"><span class="badge badge-cp">CmRDT</span><div class="node-tag">ships single ops</div></div>
+      </div>
+      <p><span class="badge badge-ap">CvRDT</span> 50-150KB per sync for a 5K-char doc — simple, but bandwidth-heavy if done every keystroke.</p>
+      <p><span class="badge badge-cp">CmRDT</span> 40-60 bytes/op — lean, but needs guaranteed at-least-once delivery or an edit silently vanishes.</p>
+      <p style="text-align:center">Production systems (Automerge, Yjs) are <b>hybrid</b>: ops for live sync, state snapshots for bootstrap + GC.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Real World</h1>
+    <h2>Figma + Indian Scale</h2>
+    <div class="body">
+      <p><b>Figma:</b> custom CRDT-like canvas — shapes merge as independent last-writer-wins fields per property, not one linear sequence. "CRDT" is a family of techniques, not one algorithm.</p>
+      <p><b>Swiggy:</b> delivery-partner status updates in low-network zones merge as additive facts, so a delivered order never flips back to "in transit."</p>
+      <p><b>Zomato / PhonePe:</b> concurrent menu edits and multi-device transaction history dedupe cleanly on reconnect — same G-Counter/RGA pattern, different payload.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>CRDT vs Alternatives</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Offline?</th><th>Risk</th></tr>
+        <tr><td>CRDT</td><td><span class="check-mark">✓</span> Full</td><td>Tombstone/metadata growth</td></tr>
+        <tr><td>Operational Transform</td><td><span class="x-mark">✕</span> Needs server</td><td>Transform-function bugs</td></tr>
+        <tr><td>Last-Write-Wins</td><td><span class="check-mark">✓</span></td><td>Lossy — silently drops writes</td></tr>
+        <tr><td>3-Way Merge (git)</td><td><span class="check-mark">✓</span> Partial</td><td>Manual conflict resolution</td></tr>
+        <tr><td>Optimistic Locking</td><td><span class="x-mark">✕</span> Needs DB</td><td>Retries degrade under contention</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Extended offline editing + no mandatory server? → CRDT. Always-reachable server? → OT is simpler. Need strong (not eventual) consistency — e.g. a bank balance? → Skip CRDTs entirely.</p>
+      <div class="quote-box">
+        "The moment 'no server available to referee in real time' is a hard requirement, Operational Transformation is off the table — OT fundamentally needs a central authority to transform incoming operations against everything it's already committed. CRDTs solve the same convergence problem without that requirement, because the merge logic lives inside the data structure itself rather than in a coordinating service."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

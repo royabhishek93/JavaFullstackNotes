@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Index Types — B-Tree vs Hash vs Composite vs Covering</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#22223b;
+    --panel2:#25264a;
+    --border:#3d3d63;
+    --text:#e6e6f0;
+    --sub:#a9a9c9;
+    --accent:#4cc9f0;
+    --accent2:#f72585;
+    --accent3:#7bdc7b;
+    --accent4:#ffd166;
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  #app{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100vh;padding:20px;gap:16px;
+  }
+  .slide{
+    width:min(90vw,900px);height:min(90vw,900px);max-width:900px;max-height:900px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:34px 40px;
+    display:none;
+    flex-direction:column;
+    position:relative;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .slide.active{display:flex;}
+  .eyebrow{
+    font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);
+    font-weight:700;margin-bottom:6px;
+  }
+  h1{font-size:30px;margin:0 0 6px 0;line-height:1.2;color:var(--text);}
+  h2{font-size:22px;margin:0 0 12px 0;color:var(--accent);}
+  h3{font-size:16px;margin:14px 0 6px 0;color:var(--accent4);}
+  p.sub{color:var(--sub);font-size:15px;margin:0 0 14px 0;line-height:1.5;}
+  .content{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;overflow:hidden;}
+  .row{display:flex;gap:20px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  .code{
+    background:#141428;border:1px solid var(--border);border-radius:8px;
+    font-family:var(--mono);font-size:12.5px;color:#c8f7d4;padding:10px 14px;
+    line-height:1.55;white-space:pre;overflow:auto;
+  }
+  .code .c-comment{color:#7d8590;}
+  .code .c-good{color:#7bdc7b;}
+  .code .c-bad{color:#ff8080;}
+  .code .c-key{color:#4cc9f0;}
+  .badge{
+    display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;
+    letter-spacing:0.5px;
+  }
+  .badge.good{background:rgba(123,220,123,0.15);color:#7bdc7b;border:1px solid #7bdc7b;}
+  .badge.bad{background:rgba(255,128,128,0.15);color:#ff8080;border:1px solid #ff8080;}
+
+  /* ---------- DB cylinder ---------- */
+  .cylinder-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;}
+  .cylinder{position:relative;width:86px;height:96px;}
+  .cylinder .cyl-top{
+    position:absolute;top:0;left:0;width:86px;height:26px;border-radius:50%;
+    border:2px solid var(--cyl-color,#4cc9f0);
+    background:linear-gradient(180deg,rgba(76,201,240,0.35),rgba(76,201,240,0.1));
+  }
+  .cylinder .cyl-body{
+    position:absolute;top:13px;bottom:13px;left:0;right:0;
+    border-left:2px solid var(--cyl-color,#4cc9f0);
+    border-right:2px solid var(--cyl-color,#4cc9f0);
+    background:linear-gradient(180deg,rgba(76,201,240,0.12),rgba(76,201,240,0.04));
+  }
+  .cylinder .cyl-bottom{
+    position:absolute;bottom:0;left:0;width:86px;height:26px;border-radius:50%;
+    border:2px solid var(--cyl-color,#4cc9f0);
+    background:rgba(76,201,240,0.18);
+  }
+  .cylinder-label{font-size:12px;color:var(--sub);font-weight:600;}
+  .cylinder-sub{font-size:10.5px;color:var(--sub);font-family:var(--mono);}
+
+  /* ---------- server / disk box ---------- */
+  .server-box{
+    width:150px;border:2px solid var(--accent);border-radius:6px;
+    background:rgba(76,201,240,0.06);padding:8px;
+  }
+  .server-box .srv-title{font-size:10.5px;color:var(--accent);text-align:center;margin-bottom:6px;font-weight:700;letter-spacing:0.5px;}
+  .server-box .srv-line{height:7px;margin:5px 4px;background:rgba(230,230,240,0.18);border-radius:2px;}
+  .server-box .srv-line.hit{background:var(--accent3);}
+  .server-box .srv-line.miss{background:rgba(255,128,128,0.4);}
+
+  /* ---------- arrows ---------- */
+  .arrow-right{font-size:26px;color:var(--accent4);}
+  .arrow-down{font-size:22px;color:var(--accent4);}
+  .flow{display:flex;align-items:center;gap:10px;}
+
+  /* ---------- pure-css tree ---------- */
+  .tree, .tree ul, .tree li{list-style:none;margin:0;padding:0;position:relative;}
+  .tree{display:flex;justify-content:center;padding-top:4px;}
+  .tree li{display:inline-block;text-align:center;padding:18px 6px 0 6px;position:relative;vertical-align:top;}
+  .tree li::before, .tree li::after{
+    content:'';position:absolute;top:0;right:50%;border-top:2px solid var(--border);width:50%;height:18px;
+  }
+  .tree li::after{right:auto;left:50%;border-left:2px solid var(--border);}
+  .tree li:only-child::after, .tree li:only-child::before{display:none;}
+  .tree li:only-child{padding-top:0;}
+  .tree li:first-child::before, .tree li:last-child::after{border:0 none;}
+  .tree li:last-child::before{border-right:2px solid var(--border);border-radius:0 5px 0 0;}
+  .tree li:first-child::after{border-radius:5px 0 0 0;}
+  .tree ul::before{content:'';position:absolute;top:0;left:50%;border-left:2px solid var(--border);width:0;height:18px;}
+  .node{
+    border:2px solid var(--accent);border-radius:6px;padding:5px 9px;font-family:var(--mono);
+    font-size:11.5px;display:inline-block;background:rgba(76,201,240,0.08);color:var(--text);
+  }
+  .node.leaf{border-color:var(--accent3);background:rgba(123,220,123,0.08);color:var(--accent3);}
+  .node.root{border-color:var(--accent2);background:rgba(247,37,133,0.1);color:#ff9dc4;}
+
+  /* ---------- table ---------- */
+  table.ref{border-collapse:collapse;width:100%;font-size:12px;}
+  table.ref th, table.ref td{border:1px solid var(--border);padding:7px 8px;text-align:left;vertical-align:top;}
+  table.ref th{background:rgba(76,201,240,0.12);color:var(--accent);font-size:11.5px;}
+  table.ref td{color:var(--text);}
+  table.ref td.good{color:#7bdc7b;}
+  table.ref td.bad{color:#ff8080;}
+
+  ul.bullets{margin:0;padding-left:18px;color:var(--text);font-size:13.5px;line-height:1.6;}
+  ul.bullets li{margin-bottom:4px;}
+  ul.bullets b{color:var(--accent4);}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+
+  .quote-box{
+    border-left:4px solid var(--accent2);background:rgba(247,37,133,0.08);
+    padding:16px 18px;border-radius:6px;font-size:15px;font-style:italic;color:#ffd8e6;line-height:1.6;
+  }
+
+  .footer{
+    display:flex;justify-content:space-between;align-items:center;margin-top:12px;
+    font-size:11px;color:var(--sub);
+  }
+
+  /* ---------- nav ---------- */
+  #nav{display:flex;align-items:center;gap:18px;}
+  #nav button{
+    background:var(--panel2);color:var(--text);border:1px solid var(--border);
+    padding:8px 18px;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;
+  }
+  #nav button:hover{background:var(--accent);color:#0b0b1a;}
+  #counter{font-family:var(--mono);color:var(--sub);font-size:14px;min-width:60px;text-align:center;}
+
+  @media print{
+    @page{size:540px 540px;margin:0;}
+    #nav{display:none;}
+    #app{padding:0;min-height:0;display:block;}
+    .slide{
+      display:flex !important;
+      width:540px !important;height:540px !important;
+      max-width:540px;max-height:540px;
+      page-break-after:always;
+      border-radius:0;box-shadow:none;
+      padding:20px 24px;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    }
+    h1{font-size:20px;}
+    h2{font-size:16px;}
+    .code{font-size:9px;}
+    p.sub{font-size:11px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- SLIDE 1 : HOOK -->
+  <section class="slide active">
+    <div class="eyebrow">Index Types · Slide 1</div>
+    <h1>A 500-Page Book With No Table of Contents</h1>
+    <p class="sub">To find "connection pooling" you'd read every page. That's a full table scan — O(N). Add an index at the back: "connection pooling → page 247" — jump straight there — O(log N) or better.</p>
+    <div class="content">
+      <div class="row">
+        <div class="cylinder-wrap">
+          <div class="cylinder" style="--cyl-color:#ff8080;">
+            <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+          </div>
+          <div class="cylinder-label">users (no index)</div>
+        </div>
+        <div class="arrow-right">→</div>
+        <div class="server-box">
+          <div class="srv-title">SCAN EVERY ROW</div>
+          <div class="srv-line"></div><div class="srv-line"></div><div class="srv-line"></div>
+          <div class="srv-line"></div><div class="srv-line"></div><div class="srv-line"></div>
+          <div class="srv-line hit"></div><div class="srv-line"></div>
+        </div>
+        <div class="arrow-right">→</div>
+        <div style="text-align:center;">
+          <div class="badge bad">O(N)</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <div class="cylinder-wrap">
+          <div class="cylinder" style="--cyl-color:#7bdc7b;">
+            <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+          </div>
+          <div class="cylinder-label">users (indexed)</div>
+        </div>
+        <div class="arrow-right">→</div>
+        <div class="node root">B-Tree</div>
+        <div class="arrow-right">→</div>
+        <div style="text-align:center;">
+          <div class="badge good">O(log N)</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Index Types — B-Tree vs Hash vs Composite vs Covering</span><span>Full table scan vs indexed lookup</span></div>
+  </section>
+
+  <!-- SLIDE 2 : THE PROBLEM -->
+  <section class="slide">
+    <div class="eyebrow">Slide 2 · The Problem</div>
+    <h2>Full Table Scan — The Bottleneck</h2>
+    <p class="sub">Without an index, the database has no shortcut. It must open every disk page in the table heap and inspect every row, one by one, until it finds (or rules out) a match.</p>
+    <div class="content">
+      <div class="row" style="gap:26px;">
+        <div class="cylinder-wrap">
+          <div class="cylinder" style="--cyl-color:#ff8080;width:100px;">
+            <div class="cyl-top" style="width:100px;"></div>
+            <div class="cyl-body"></div>
+            <div class="cyl-bottom" style="width:100px;"></div>
+          </div>
+          <div class="cylinder-label">orders table</div>
+          <div class="cylinder-sub">10,000,000 rows</div>
+        </div>
+        <div class="arrow-right">→</div>
+        <div class="server-box" style="width:220px;">
+          <div class="srv-title">TABLE HEAP · DISK PAGES READ SEQUENTIALLY</div>
+          <div class="srv-line miss"></div>
+          <div class="srv-line miss"></div>
+          <div class="srv-line miss"></div>
+          <div class="srv-line miss"></div>
+          <div class="srv-line hit"></div>
+          <div class="srv-line miss"></div>
+          <div class="srv-line miss"></div>
+          <div class="srv-line miss"></div>
+        </div>
+      </div>
+      <div class="code" style="margin-top:14px;">
+SELECT * FROM orders WHERE user_id = 42;
+<span class="c-comment">-- no index on user_id → engine reads all 10M rows</span>
+<span class="c-bad">-- cost grows linearly with table size: O(N)</span>
+      </div>
+    </div>
+    <div class="footer"><span>The Problem</span><span>2 / 10</span></div>
+  </section>
+
+  <!-- SLIDE 3 : B-TREE -->
+  <section class="slide">
+    <div class="eyebrow">Slide 3 · The Default Index</div>
+    <h2>B-Tree Index — 95% of Indexes You'll Create</h2>
+    <p class="sub">A balanced tree: each node holds a sorted range of keys with pointers to children or row data. Leaf nodes are doubly linked for fast range scans.</p>
+    <div class="content">
+      <ul class="tree">
+        <li>
+          <span class="node root">ROOT [30]</span>
+          <ul>
+            <li>
+              <span class="node">[15][22]</span>
+              <ul>
+                <li><span class="node leaf">10,12</span></li>
+                <li><span class="node leaf">18,20</span></li>
+                <li><span class="node leaf">25,28</span></li>
+              </ul>
+            </li>
+            <li>
+              <span class="node">[38][45]</span>
+              <ul>
+                <li><span class="node leaf">32,35</span></li>
+                <li><span class="node leaf">40,42</span></li>
+                <li><span class="node leaf">48,50</span></li>
+              </ul>
+            </li>
+          </ul>
+        </li>
+      </ul>
+      <div class="code" style="margin-top:8px;">
+<span class="c-good">WHERE age = 25</span>                    <span class="c-good">✓ O(log N)</span>
+<span class="c-good">WHERE age BETWEEN 20 AND 35</span>       <span class="c-good">✓ O(log N + K)</span> — walk leaf chain
+<span class="c-good">WHERE name LIKE 'Abh%'</span>            <span class="c-good">✓ O(log N)</span> prefix match
+<span class="c-bad">WHERE name LIKE '%bhi'</span>            <span class="c-bad">✗ full scan</span> (suffix, can't use tree)
+<span class="c-bad">WHERE age != 25</span>                   <span class="c-bad">✗ usually full scan</span>
+<span class="c-bad">WHERE YEAR(created_at) = 2024</span>    <span class="c-bad">✗ function breaks index</span>
+<span class="c-comment">CREATE INDEX idx_users_age ON users(age);</span>
+      </div>
+    </div>
+    <div class="footer"><span>B-Tree Index</span><span>3 / 10</span></div>
+  </section>
+
+  <!-- SLIDE 4 : HASH INDEX -->
+  <section class="slide">
+    <div class="eyebrow">Slide 4 · Exact-Match Only</div>
+    <h2>Hash Index — O(1) Equality Lookup</h2>
+    <p class="sub">Instead of a tree, build a hash map: hash(key) → row pointer. Fastest possible lookup for equality — but gives no ordering at all.</p>
+    <div class="content">
+      <div class="row">
+        <div class="node">"alice@x.com"</div>
+        <div class="arrow-right">→</div>
+        <div class="node" style="border-color:var(--accent4);color:var(--accent4);">hash 0xA3F1</div>
+        <div class="arrow-right">→</div>
+        <div class="node leaf">bucket[5]</div>
+        <div class="arrow-right">→</div>
+        <div class="badge good">row 1041 · O(1)</div>
+      </div>
+      <div class="code" style="margin-top:12px;">
+<span class="c-good">WHERE email = 'alice@x.com'</span>   <span class="c-good">✓ O(1) fastest possible</span>
+<span class="c-bad">WHERE age &gt; 30</span>                <span class="c-bad">✗ no ordering</span>
+<span class="c-bad">WHERE age BETWEEN 20 AND 35</span>   <span class="c-bad">✗ not supported</span>
+<span class="c-bad">ORDER BY age</span>                  <span class="c-bad">✗ not supported</span>
+<span class="c-comment">-- collisions: bucket becomes linked list; worst case O(N)</span>
+      </div>
+      <div class="grid2" style="margin-top:6px;">
+        <ul class="bullets">
+          <li><b>MySQL InnoDB:</b> no user-created hash index — but <b>Adaptive Hash Index (AHI)</b> auto-built internally for hot B-tree pages</li>
+          <li><b>MySQL MEMORY engine:</b> supports hash indexes</li>
+        </ul>
+        <ul class="bullets">
+          <li><b>PostgreSQL:</b> supports hash indexes explicitly</li>
+          <li><b>Redis:</b> its entire data model IS a hash map</li>
+          <li>Practical rule: don't choose hash explicitly — use B-tree, engines optimize internally</li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer"><span>Hash Index</span><span>4 / 10</span></div>
+  </section>
+
+  <!-- SLIDE 5 : COMPOSITE / LEFT PREFIX -->
+  <section class="slide">
+    <div class="eyebrow">Slide 5 · Multi-Column Index</div>
+    <h2>Composite Index — The Left-Prefix Rule</h2>
+    <p class="sub">An index on multiple columns together. MySQL can only use <b>consecutive columns starting from the left</b> — it stops at the first column missing from the WHERE clause.</p>
+    <div class="content">
+      <div class="code">
+CREATE INDEX idx_orders_status_date ON orders(<span class="c-key">status</span>, <span class="c-key">created_at</span>, user_id);
+<span class="c-comment">--                                            └first┘ └second┘   └third┘</span>
+      </div>
+      <div class="grid2" style="margin-top:10px;">
+        <div>
+          <h3>✓ Can use the index</h3>
+          <div class="code">
+<span class="c-good">WHERE status = 'pending'</span>
+<span class="c-comment">uses (status)</span>
+
+<span class="c-good">WHERE status='pending'
+  AND created_at &gt; '2024'</span>
+<span class="c-comment">uses (status, created_at)</span>
+
+<span class="c-good">WHERE status='pending'
+  AND created_at &gt; '2024'
+  AND user_id = 42</span>
+<span class="c-comment">uses all 3 columns</span>
+          </div>
+        </div>
+        <div>
+          <h3>✗ Cannot use the index</h3>
+          <div class="code">
+<span class="c-bad">WHERE created_at &gt; '2024'</span>
+<span class="c-comment">skips leftmost column</span>
+
+<span class="c-bad">WHERE user_id = 42</span>
+<span class="c-comment">skips both left columns</span>
+
+<span class="c-bad">WHERE created_at &gt; '2024'
+  AND user_id = 42</span>
+<span class="c-comment">skips leftmost column</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Composite Index — Left-Prefix Rule</span><span>5 / 10</span></div>
+  </section>
+
+  <!-- SLIDE 6 : COLUMN ORDER RULE + ORDERS EXAMPLE -->
+  <section class="slide">
+    <div class="eyebrow">Slide 6 · Column Ordering</div>
+    <h2>Equality Before Range — Orders Table Example</h2>
+    <p class="sub">Rule: put <b>equality</b> columns before <b>range</b> columns. MySQL stops using the index at the first range column it hits.</p>
+    <div class="content">
+      <div class="grid2">
+        <div class="code">
+<span class="c-comment">BAD order:</span>
+CREATE INDEX i ON orders(<span class="c-bad">created_at</span>, status);
+<span class="c-comment">-- WHERE status='pending'
+--   AND created_at &gt; '2024'
+-- → uses only created_at (range first),
+--   then filters status manually</span> <span class="badge bad">SLOW</span>
+        </div>
+        <div class="code">
+<span class="c-comment">GOOD order:</span>
+CREATE INDEX i ON orders(<span class="c-good">status</span>, created_at);
+<span class="c-comment">-- WHERE status='pending'
+--   AND created_at &gt; '2024'
+-- → uses status (equality) then
+--   narrows by created_at range</span> <span class="badge good">FAST</span>
+        </div>
+      </div>
+      <h3>Real example — designing the orders index</h3>
+      <div class="row">
+        <div class="cylinder-wrap">
+          <div class="cylinder" style="--cyl-color:#4cc9f0;">
+            <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+          </div>
+          <div class="cylinder-label">orders</div>
+        </div>
+        <div class="code" style="flex:1;">
+SELECT * FROM orders
+WHERE user_id = 42 AND status = 'pending'
+  AND created_at &gt; '2024-01-01'
+ORDER BY created_at DESC;
+
+CREATE INDEX idx_orders_user_status_date
+ON orders(<span class="c-key">user_id</span>, <span class="c-key">status</span>, <span class="c-good">created_at</span>);
+<span class="c-comment">-- 1) user_id  : equality, most selective (millions→dozens)
+-- 2) status   : equality, narrows further (~10% pending)
+-- 3) created_at: range, last — also satisfies ORDER BY</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Column Order Rule + Orders Example</span><span>6 / 10</span></div>
+  </section>
+
+  <!-- SLIDE 7 : COVERING INDEX -->
+  <section class="slide">
+    <div class="eyebrow">Slide 7 · The Index IS the Answer</div>
+    <h2>Covering Index — Skip the Table Heap Entirely</h2>
+    <p class="sub">An index that contains every column the query needs. MySQL never touches the actual table row.</p>
+    <div class="content">
+      <div class="grid2">
+        <div>
+          <h3>Normal index lookup</h3>
+          <div class="flow" style="margin-bottom:6px;">
+            <div class="node">B-tree (age)</div>
+            <div class="arrow-right">→</div>
+            <div class="server-box" style="width:120px;">
+              <div class="srv-title">TABLE HEAP</div>
+              <div class="srv-line miss"></div>
+              <div class="srv-line miss"></div>
+              <div class="srv-line miss"></div>
+            </div>
+          </div>
+          <div class="code">
+SELECT name, email FROM users
+WHERE age = 25;
+<span class="c-comment">3 random disk reads
+("bookmark lookup")</span>
+          </div>
+        </div>
+        <div>
+          <h3>Covering index lookup</h3>
+          <div class="flow" style="margin-bottom:6px;">
+            <div class="node leaf">idx(age,name,email)</div>
+            <div class="arrow-right">→</div>
+            <div class="badge good">DONE — no table read</div>
+          </div>
+          <div class="code">
+CREATE INDEX idx_covering
+ON users(age, name, email);
+<span class="c-comment">leaf already has age+name+email
+→ read straight from index</span>
+          </div>
+        </div>
+      </div>
+      <h3>EXPLAIN — how to spot it</h3>
+      <div class="code">
+<span class="c-comment">Without covering index:</span>       Extra: <span class="c-bad">(blank) → goes to table</span>
+<span class="c-comment">With covering index:</span>          Extra: <span class="c-good">"Using index" → covered!</span>
+      </div>
+    </div>
+    <div class="footer"><span>Covering Index</span><span>7 / 10</span></div>
+  </section>
+
+  <!-- SLIDE 8 : WHY IGNORED + ANTI-PATTERNS -->
+  <section class="slide">
+    <div class="eyebrow">Slide 8 · Traps</div>
+    <h2>Why MySQL Ignores Your Index — &amp; 5 Anti-Patterns</h2>
+    <div class="content" style="gap:6px;">
+      <h3>Interview: "Your query has an index but still full-scans — why?"</h3>
+      <ul class="bullets">
+        <li><b>Function on indexed column:</b> <code>WHERE YEAR(created_at)=2024</code> — tree is sorted by raw value, not the function result. Fix: <code>created_at BETWEEN '2024-01-01' AND '2024-12-31'</code></li>
+        <li><b>Low cardinality / &gt;30% of rows match:</b> optimizer decides a full scan beats random index lookups (e.g. <code>status</code> with only 3 values)</li>
+        <li><b>Missing composite index:</b> separate <code>idx(user_id)</code> + <code>idx(status)</code> may use only one, then filter the rest in memory — a composite <code>(user_id,status)</code> handles both in one traversal</li>
+      </ul>
+      <h3>5 Index Anti-Patterns</h3>
+      <ul class="bullets">
+        <li><b>1. Index on every column</b> — every INSERT updates every index; 10 indexes = 10x write amplification; index data can exceed table size</li>
+        <li><b>2. Duplicate indexes</b> — <code>idx(col1)</code> is redundant once <code>idx(col1,col2)</code> exists; MySQL won't auto-dedupe</li>
+        <li><b>3. Function in WHERE on indexed column</b> — <code>WHERE LOWER(email)='x'</code> ignores index on email; fix with functional index <code>((LOWER(email)))</code></li>
+        <li><b>4. Boolean / low-cardinality column indexed alone</b> — <code>WHERE is_deleted=false</code> matches 95% of rows → useless; use as 2nd column in a composite instead</li>
+        <li><b>5. Too many covering indexes</b> — wider indexes need more RAM; only cover your most critical hot queries</li>
+      </ul>
+    </div>
+    <div class="footer"><span>Why Ignored + Anti-Patterns</span><span>8 / 10</span></div>
+  </section>
+
+  <!-- SLIDE 9 : QUICK REFERENCE CARD -->
+  <section class="slide">
+    <div class="eyebrow">Slide 9 · Cheat Sheet</div>
+    <h2>Quick Reference Card</h2>
+    <div class="content">
+      <table class="ref">
+        <thead><tr><th>Index Type</th><th>Supports</th><th>Does NOT support</th><th>Best for</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>B-Tree</b><br><span style="color:var(--sub)">(default)</span></td>
+            <td class="good">=, &gt;, &lt;, BETWEEN, LIKE 'abc%', ORDER BY</td>
+            <td class="bad">Suffix LIKE ('%abc'), functions on column</td>
+            <td>General purpose — 95% of cases</td>
+          </tr>
+          <tr>
+            <td><b>Hash</b></td>
+            <td class="good">= only, O(1) lookup</td>
+            <td class="bad">Ranges, ORDER BY</td>
+            <td>Exact match on high-cardinality (email, token)</td>
+          </tr>
+          <tr>
+            <td><b>Composite</b><br><span style="color:var(--sub)">(multi-col)</span></td>
+            <td class="good">Left-prefix combinations, ORDER BY cover</td>
+            <td class="bad">Non-left columns alone</td>
+            <td>Multi-column WHERE clauses — order matters!</td>
+          </tr>
+          <tr>
+            <td><b>Covering</b><br><span style="color:var(--sub)">(includes all SELECT cols)</span></td>
+            <td class="good">Entire query from index only, no table read</td>
+            <td class="bad">N/A — it's a strategy, not a type</td>
+            <td>Hot read queries, no table fetch</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3 style="margin-top:12px;">Column order inside a composite index</h3>
+      <ul class="bullets">
+        <li>1. Equality columns first (=)</li>
+        <li>2. Range columns last (&gt;, &lt;, BETWEEN, LIKE 'x%')</li>
+        <li>3. Columns in ORDER BY last (avoids filesort)</li>
+        <li>4. Higher cardinality first within the equality group</li>
+      </ul>
+    </div>
+    <div class="footer"><span>Quick Reference Card</span><span>9 / 10</span></div>
+  </section>
+
+  <!-- SLIDE 10 : DECISION + QUOTE -->
+  <section class="slide">
+    <div class="eyebrow">Slide 10 · Decision Guidance</div>
+    <h2>Pick the Index by the Shape of the Query</h2>
+    <div class="content">
+      <div class="row" style="justify-content:space-around;">
+        <div style="text-align:center;">
+          <div class="node root">= equality</div>
+          <div class="arrow-down">▼</div>
+          <div class="badge good">Hash</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="node root">range / sort</div>
+          <div class="arrow-down">▼</div>
+          <div class="badge good">B-Tree</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="node root">multi-column</div>
+          <div class="arrow-down">▼</div>
+          <div class="badge good">Composite</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="node root">2D coordinates</div>
+          <div class="arrow-down">▼</div>
+          <div class="badge good">Spatial</div>
+        </div>
+      </div>
+      <div class="quote-box" style="margin-top:20px;">
+        "Choose the index type by the shape of your query: hash for exact equality, B-tree for range and sort, composite for multi-column filters, spatial for 2D coordinates — never just add an index and hope."
+      </div>
+    </div>
+    <div class="footer"><span>Decision Guidance + Interview Quote</span><span>10 / 10</span></div>
+  </section>
+
+</div>
+
+<div id="nav">
+  <button id="prevBtn">← Prev</button>
+  <span id="counter">1 / 10</span>
+  <button id="nextBtn">Next →</button>
+</div>
+
+<script>
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var idx = 0;
+  var counter = document.getElementById('counter');
+
+  function show(i){
+    if(i < 0) i = 0;
+    if(i >= slides.length) i = slides.length - 1;
+    slides[idx].classList.remove('active');
+    idx = i;
+    slides[idx].classList.add('active');
+    counter.textContent = (idx + 1) + ' / ' + slides.length;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', function(){ show(idx - 1); });
+  document.getElementById('nextBtn').addEventListener('click', function(){ show(idx + 1); });
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight'){ show(idx + 1); }
+    else if(e.key === 'ArrowLeft'){ show(idx - 1); }
+  });
+
+  show(0);
+</script>
+</body>
+</html>

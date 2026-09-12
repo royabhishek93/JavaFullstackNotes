@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- INTERFACE: SplitStrategy -->
+        <mxCell id="iface_SplitStrategy" value="«interface» SplitStrategy" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="500" y="40" width="380" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_SplitStrategy_m1" value="+ split(totalAmount: double, userIds: List&lt;String&gt;, params: List&lt;Double&gt;): List&lt;UserShare&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_SplitStrategy">
+          <mxGeometry x="0" y="40" width="380" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: User -->
+        <mxCell id="class_User" value="User" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="50" y="200" width="190" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_User_f1" value="- userId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_User">
+          <mxGeometry x="0" y="30" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_User_f2" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_User">
+          <mxGeometry x="0" y="52" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_User_f3" value="- email: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_User">
+          <mxGeometry x="0" y="74" width="190" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: Group -->
+        <mxCell id="class_Group" value="Group" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="270" y="200" width="250" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Group_f1" value="- groupId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Group">
+          <mxGeometry x="0" y="30" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Group_f2" value="- name: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Group">
+          <mxGeometry x="0" y="52" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Group_f3" value="- memberIds: List&lt;String&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Group">
+          <mxGeometry x="0" y="74" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Group_f4" value="- expenses: List&lt;Expense&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Group">
+          <mxGeometry x="0" y="96" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Group_f5" value="- rwLock: ReadWriteLock" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Group">
+          <mxGeometry x="0" y="118" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Group_m1" value="+ addExpense(expense: Expense)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Group">
+          <mxGeometry x="0" y="140" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Group_m2" value="+ getExpenses(): List&lt;Expense&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Group">
+          <mxGeometry x="0" y="162" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Group_m3" value="+ getMemberIds(): List&lt;String&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Group">
+          <mxGeometry x="0" y="184" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: Expense -->
+        <mxCell id="class_Expense" value="Expense" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="550" y="200" width="260" height="252" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_f1" value="- expenseId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_f2" value="- description: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_f3" value="- totalAmount: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_f4" value="- paidByUserId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="96" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_f5" value="- shares: List&lt;UserShare&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="118" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_f6" value="- createdAt: LocalDateTime" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="140" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_m1" value="+ getPaidByUserId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="162" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_m2" value="+ getShares(): List&lt;UserShare&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="184" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_m3" value="+ getTotalAmount(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="206" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Expense_m4" value="+ getExpenseId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Expense">
+          <mxGeometry x="0" y="228" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: UserShare -->
+        <mxCell id="class_UserShare" value="UserShare" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="840" y="200" width="210" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_UserShare_f1" value="- userId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_UserShare">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_UserShare_f2" value="- amount: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_UserShare">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_UserShare_m1" value="+ getUserId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_UserShare">
+          <mxGeometry x="0" y="74" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_UserShare_m2" value="+ getAmount(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_UserShare">
+          <mxGeometry x="0" y="96" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: Transaction (record) -->
+        <mxCell id="class_Transaction" value="«record» Transaction" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="200" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Transaction_f1" value="fromUserId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Transaction">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Transaction_f2" value="toUserId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Transaction">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Transaction_f3" value="amount: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Transaction">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: BalanceCalculator -->
+        <mxCell id="class_BalanceCalculator" value="BalanceCalculator" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="270" y="540" width="300" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BalanceCalculator_m1" value="+ computeNetBalances(g: Group): Map&lt;String,Double&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BalanceCalculator">
+          <mxGeometry x="0" y="30" width="300" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BalanceCalculator_m2" value="+ simplifyDebts(g: Group): List&lt;Transaction&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BalanceCalculator">
+          <mxGeometry x="0" y="52" width="300" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: ExpenseService -->
+        <mxCell id="class_ExpenseService" value="ExpenseService" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="600" y="540" width="320" height="186" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ExpenseService_f1" value="- groups: Map&lt;String, Group&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ExpenseService">
+          <mxGeometry x="0" y="30" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ExpenseService_f2" value="- strategies: Map&lt;SplitType, SplitStrategy&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ExpenseService">
+          <mxGeometry x="0" y="52" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ExpenseService_f3" value="- calculator: BalanceCalculator" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ExpenseService">
+          <mxGeometry x="0" y="74" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ExpenseService_m1" value="+ addExpense(...): Expense" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ExpenseService">
+          <mxGeometry x="0" y="96" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ExpenseService_m2" value="+ getBalances(groupId): Map&lt;String, Double&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ExpenseService">
+          <mxGeometry x="0" y="118" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ExpenseService_m3" value="+ getSimplifiedDebts(groupId): List&lt;Transaction&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ExpenseService">
+          <mxGeometry x="0" y="140" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ExpenseService_m4" value="+ createGroup(group: Group)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ExpenseService">
+          <mxGeometry x="0" y="162" width="320" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ENUM: SplitType -->
+        <mxCell id="enum_SplitType" value="«enum» SplitType" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="50" y="540" width="180" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_SplitType_f1" value="EQUAL" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_SplitType">
+          <mxGeometry x="0" y="30" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_SplitType_f2" value="EXACT" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_SplitType">
+          <mxGeometry x="0" y="52" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_SplitType_f3" value="PERCENTAGE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_SplitType">
+          <mxGeometry x="0" y="74" width="180" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_SplitType_f4" value="SHARES" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_SplitType">
+          <mxGeometry x="0" y="96" width="180" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: EqualSplit -->
+        <mxCell id="class_EqualSplit" value="EqualSplit" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="960" y="540" width="220" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_EqualSplit_m1" value="+ split(...): List&lt;UserShare&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_EqualSplit">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: ExactSplit -->
+        <mxCell id="class_ExactSplit" value="ExactSplit" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="960" y="620" width="220" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ExactSplit_m1" value="+ split(...): List&lt;UserShare&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ExactSplit">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CLASS: PercentageSplit -->
+        <mxCell id="class_PercentageSplit" value="PercentageSplit" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="960" y="700" width="220" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PercentageSplit_m1" value="+ split(...): List&lt;UserShare&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PercentageSplit">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- EDGES -->
+
+        <!-- implements: EqualSplit -> SplitStrategy -->
+        <mxCell id="edge_1" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_EqualSplit" target="iface_SplitStrategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- implements: ExactSplit -> SplitStrategy -->
+        <mxCell id="edge_2" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_ExactSplit" target="iface_SplitStrategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- implements: PercentageSplit -> SplitStrategy -->
+        <mxCell id="edge_3" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_PercentageSplit" target="iface_SplitStrategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- contains: Group -> Expense -->
+        <mxCell id="edge_4" value="contains" style="endArrow=open;" edge="1" source="class_Group" target="class_Expense" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- contains: Expense -> UserShare -->
+        <mxCell id="edge_5" value="contains" style="endArrow=open;" edge="1" source="class_Expense" target="class_UserShare" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- uses: ExpenseService -> Group -->
+        <mxCell id="edge_6" value="uses" style="endArrow=open;" edge="1" source="class_ExpenseService" target="class_Group" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- uses: ExpenseService -> SplitStrategy -->
+        <mxCell id="edge_7" value="uses" style="endArrow=open;" edge="1" source="class_ExpenseService" target="iface_SplitStrategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- uses: ExpenseService -> BalanceCalculator -->
+        <mxCell id="edge_8" value="uses" style="endArrow=open;" edge="1" source="class_ExpenseService" target="class_BalanceCalculator" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- uses: BalanceCalculator -> Group -->
+        <mxCell id="edge_9" value="uses" style="endArrow=open;" edge="1" source="class_BalanceCalculator" target="class_Group" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- produces: BalanceCalculator -> Transaction -->
+        <mxCell id="edge_10" value="produces" style="endArrow=open;" edge="1" source="class_BalanceCalculator" target="class_Transaction" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- uses: ExpenseService -> SplitType -->
+        <mxCell id="edge_11" value="uses" style="endArrow=open;" edge="1" source="class_ExpenseService" target="enum_SplitType" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- LIFELINES -->
+        <mxCell id="life_Client" value=":Client" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="750" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_ExpenseService" value=":ExpenseService" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="750" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_SplitStrategy" value=":SplitStrategy" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="750" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_Group" value=":Group" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="750" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_BalanceCalculator" value=":BalanceCalculator" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="750" as="geometry"/>
+        </mxCell>
+
+        <!-- MESSAGES -->
+        <!-- Lifeline centers: Client=130, ExpenseService=330, SplitStrategy=530, Group=730, BalanceCalculator=930 -->
+
+        <!-- msg_1: Client -> ExpenseService: addExpense(...) -->
+        <mxCell id="msg_1" value="addExpense(groupId, amount, splitType, params)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="160" as="sourcePoint"/>
+            <mxPoint x="330" y="160" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_2: ExpenseService -> SplitStrategy: split(...) -->
+        <mxCell id="msg_2" value="split(amount, userIds, params)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="220" as="sourcePoint"/>
+            <mxPoint x="530" y="220" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: SplitStrategy -> ExpenseService: List<UserShare> -->
+        <mxCell id="ret_1" value="List&lt;UserShare&gt;" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="270" as="sourcePoint"/>
+            <mxPoint x="330" y="270" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_3: ExpenseService -> Group: addExpense(expense) [write lock] -->
+        <mxCell id="msg_3" value="addExpense(expense) [acquires write lock]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="330" as="sourcePoint"/>
+            <mxPoint x="730" y="330" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: Group -> ExpenseService: void -->
+        <mxCell id="ret_2" value="void" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="380" as="sourcePoint"/>
+            <mxPoint x="330" y="380" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: ExpenseService -> Client: Expense -->
+        <mxCell id="ret_3" value="Expense" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="430" as="sourcePoint"/>
+            <mxPoint x="130" y="430" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_4: Client -> ExpenseService: getSimplifiedDebts(groupId) -->
+        <mxCell id="msg_4" value="getSimplifiedDebts(groupId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="500" as="sourcePoint"/>
+            <mxPoint x="330" y="500" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_5: ExpenseService -> BalanceCalculator: simplifyDebts(group) -->
+        <mxCell id="msg_5" value="simplifyDebts(group)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="550" as="sourcePoint"/>
+            <mxPoint x="930" y="550" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_6: BalanceCalculator -> Group: getExpenses() [read lock] -->
+        <mxCell id="msg_6" value="getExpenses() [read lock]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="600" as="sourcePoint"/>
+            <mxPoint x="730" y="600" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: Group -> BalanceCalculator: List<Expense> -->
+        <mxCell id="ret_4" value="List&lt;Expense&gt;" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="650" as="sourcePoint"/>
+            <mxPoint x="930" y="650" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_5: BalanceCalculator -> ExpenseService: List<Transaction> -->
+        <mxCell id="ret_5" value="List&lt;Transaction&gt; (simplified debts)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="700" as="sourcePoint"/>
+            <mxPoint x="330" y="700" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_6: ExpenseService -> Client: List<Transaction> -->
+        <mxCell id="ret_6" value="List&lt;Transaction&gt;" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="750" as="sourcePoint"/>
+            <mxPoint x="130" y="750" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

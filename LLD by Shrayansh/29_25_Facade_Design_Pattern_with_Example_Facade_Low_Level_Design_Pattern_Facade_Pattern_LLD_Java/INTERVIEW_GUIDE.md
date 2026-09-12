@@ -1,6 +1,8 @@
 # 🎭 Facade Design Pattern - Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📗 Difficulty: Beginner** — ideal starting point for a new developer; read this before tackling applied system-design questions.
+
 ---
 
 **Interviewer**: "Explain the Facade Design Pattern."
@@ -126,6 +128,35 @@ Also, Facade doesn't necessarily change the subsystem's interface shape - it jus
 ## 7. Technology Choices
 
 **You**: "**Spring's `JdbcTemplate`** is a real-world Facade - it hides the complexity of JDBC's `Connection`, `Statement`, `ResultSet`, exception handling, and resource cleanup behind simple methods like `queryForObject()`. Similarly, many **SDK client libraries** (AWS SDK's `S3Client`, for example) act as facades over dozens of underlying HTTP API calls and authentication complexity."
+
+---
+
+## 🔥 Real-World Production Issue: The Facade That Hid a Silent Partial Failure
+
+*In plain English: swallowing a failed step silently and still returning "success" hides a real problem from the customer.*
+
+**The war story:**
+
+"A `HomeTheaterFacade`-style `CheckoutFacade.completeOrder()` orchestrated 5 subsystem calls (inventory, payment, tax, shipping, notifications). It caught exceptions from the LESS critical steps (shipping label, notification) internally and just logged them, so a single flaky subsystem wouldn't fail the whole checkout — a reasonable-sounding resilience choice."
+
+```java
+void completeOrder(Order order) {
+    inventory.reserve(order);
+    payment.capture(order);
+    tax.calculate(order);
+    try { shipping.generateLabel(order); } catch (Exception e) { log.warn("shipping failed", e); }
+    try { notifications.send(order); }    catch (Exception e) { log.warn("notify failed", e); }
+    return "Order completed successfully";   // <- ALWAYS returned this, regardless!
+}
+```
+
+**Incident:** during a 2-hour shipping-provider outage, EVERY order's `generateLabel()` call failed and was silently swallowed exactly as designed — but the facade still reported "Order completed successfully" to the client for all of them. ~3,000 orders were charged and confirmed to customers with NO shipping label ever generated, discovered only when the warehouse team noticed a growing backlog of "paid but unshippable" orders.
+
+**Root cause:** the Facade successfully hid subsystem COMPLEXITY (its whole job) but, in doing so, also hid a genuinely important PARTIAL FAILURE from the caller — the caller (and ultimately the customer) had no way to know that one of the orchestrated steps silently failed, because the facade's return value didn't communicate partial success/failure at all.
+
+**The fix:** the facade now returns a structured `OrderCompletionResult` with a per-step status (`inventoryReserved: true, paymentCaptured: true, shippingLabelGenerated: false, ...`), and the caller (checkout API) surfaces a clear "order confirmed, shipping label pending—we'll notify you" message instead of a blanket "success", plus triggers an automatic retry queue for the failed steps.
+
+**Lesson for a new developer:** "Facade hiding complexity from the caller is good; Facade hiding FAILURES from the caller is a bug waiting to surface as a customer complaint. When a facade orchestrates multiple steps and chooses to tolerate individual step failures for resilience, it must still communicate partial failure state back to the caller — never collapse a multi-step result into a single blanket success/failure boolean."
 
 ---
 

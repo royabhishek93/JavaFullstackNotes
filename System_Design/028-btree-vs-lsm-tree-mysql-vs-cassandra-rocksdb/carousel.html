@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>B-Tree vs LSM Tree — MySQL vs Cassandra / RocksDB — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c; --kafka: #231f20;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 19px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 14px; margin: 0 0 14px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 12px; line-height: 1.5; overflow: hidden; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); text-align: center; }
+  .db-icon { width: 50px; height: 56px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 50px; height: 14px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 50px; height: 30px; position: absolute; top: 10px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 50px; height: 14px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .server-box {
+    width: 58px; height: 44px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .arrow { font-size: 18px; color: var(--muted); }
+  .arrow-down { font-size: 16px; color: var(--muted); text-align: center; margin: 2px 0; }
+  .x-mark { color: #e74c3c; font-weight: 700; font-size: 16px; }
+  .check-mark { color: #2ecc71; font-weight: 700; font-size: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 10.5px; margin: 6px 0; }
+  th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: left; }
+  th { color: var(--accent); font-weight: 600; }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 9px 12px; font-style: italic;
+    color: var(--text); font-size: 11px; background: rgba(245,166,35,0.08); border-radius: 4px;
+    margin: 6px 0; line-height: 1.5;
+  }
+  .trap-box {
+    border-left: 3px solid #e74c3c; padding: 7px 12px; font-size: 10px;
+    background: rgba(231,76,60,0.08); border-radius: 4px; margin: 6px 0; line-height: 1.45;
+  }
+  .stat { font-size: 28px; font-weight: 800; color: var(--accent); text-align: center; margin: 10px 0; }
+  .stat-small { font-size: 12.5px; color: var(--muted); font-weight: 400; margin-top: 4px; }
+  code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-size: 10.5px; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  ul { margin: 6px 0; padding-left: 18px; }
+  li { margin: 3px 0; line-height: 1.4; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 9.5px; font-weight: 700; }
+  .pill-blue { background: rgba(51,103,145,0.3); color: #7fb3d5; }
+  .pill-green { background: rgba(0,191,165,0.2); color: var(--green); }
+  .pill-red { background: rgba(216,44,32,0.25); color: #ff6b5b; }
+
+  /* B-Tree diagram */
+  .tree-wrap { display: flex; flex-direction: column; align-items: center; margin: 4px 0; }
+  .tnode { border: 1.5px solid var(--accent); background: rgba(245,166,35,0.12); border-radius: 4px;
+           padding: 4px 6px; font-size: 9px; font-family: monospace; color: var(--text); text-align: center; white-space: nowrap; }
+  .tnode.root { border-color: #7fb3d5; background: rgba(51,103,145,0.28); color: #7fb3d5; }
+  .tnode.leaf { border-color: var(--green); background: rgba(0,191,165,0.12); color: var(--green); }
+  .trow { display: flex; justify-content: center; gap: 16px; }
+  .tstem-cell { width: 66px; display: flex; justify-content: center; }
+  .tline-v { width: 0; height: 9px; border-left: 2px solid var(--muted); }
+  .tline-h { height: 0; border-top: 2px solid var(--muted); margin: 0 auto; }
+
+  /* Flowchart */
+  .flow-step { border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font-size: 9.5px;
+               margin: 2px 0; background: rgba(255,255,255,0.03); display: inline-block; }
+  .flow-line { margin: 2px 0; }
+  .flow-outcome { padding: 2px 7px; border-radius: 4px; font-size: 9px; font-weight: 700; display: inline-block; }
+  .flow-outcome.lsm { background: rgba(0,191,165,0.2); color: var(--green); }
+  .flow-outcome.btree { background: rgba(51,103,145,0.3); color: #7fb3d5; }
+  .flow-outcome.other { background: rgba(255,255,255,0.08); color: var(--muted); }
+
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <h1>B-Tree vs LSM Tree</h1>
+    <h2>The Hook — Two Ways to Run a Library</h2>
+    <div class="body">
+      <p style="font-size: 12px;">You're a librarian. A new book arrives every second. How do you shelve it?</p>
+      <div class="row">
+        <div class="col">
+          <div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>
+          <b>B-Tree (MySQL)</b><br>Tree of sorted shelves
+        </div>
+        <div class="arrow">vs</div>
+        <div class="col">
+          <div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>
+          <b>LSM Tree (Cassandra)</b><br>Drop-on-table, package later
+        </div>
+      </div>
+      <p style="font-size: 11.5px;"><b>Option A:</b> walk to the right shelf, and if it's full — split it into two, re-link the parent. Sometimes cascades 3-4 levels up. <span class="pill pill-red">disruptive writes</span></p>
+      <p style="font-size: 11.5px;"><b>Option B:</b> drop the new book on a table near the door (<b>MemTable</b>). Once 100 pile up, bundle them into a sorted package (<b>SSTable</b>) in the back room. Merge packages later (<b>compaction</b>). <span class="pill pill-green">always fast writes</span></p>
+      <div class="stat" style="font-size:18px;">Finding a book: 3 steps either way <span class="stat-small">— the difference is what happens when a NEW book arrives</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: B-TREE STRUCTURE -->
+  <div class="slide">
+    <h1>B-Tree Internal Structure</h1>
+    <h2>MySQL InnoDB — Balanced Tree → O(log N) Reads</h2>
+    <div class="body">
+      <div class="tree-wrap">
+        <div class="tnode root">ROOT&nbsp; [30|60|90]</div>
+        <div class="tline-v"></div>
+        <div class="tline-h" style="width:180px;"></div>
+        <div class="trow">
+          <div class="tstem-cell"><div class="tline-v"></div></div>
+          <div class="tstem-cell"><div class="tline-v"></div></div>
+          <div class="tstem-cell"><div class="tline-v"></div></div>
+        </div>
+        <div class="trow">
+          <div class="tstem-cell"><div class="tnode">[10|20|30]</div></div>
+          <div class="tstem-cell"><div class="tnode">[40|50|60]</div></div>
+          <div class="tstem-cell"><div class="tnode">[70|80|90]</div></div>
+        </div>
+        <div class="trow">
+          <div class="tstem-cell"><div class="tline-v"></div></div>
+          <div class="tstem-cell"><div class="tline-v"></div></div>
+          <div class="tstem-cell"><div class="tline-v"></div></div>
+        </div>
+        <div class="trow">
+          <div class="tstem-cell"><div class="tnode leaf">10,15,20</div></div>
+          <div class="tstem-cell"><div class="tnode leaf">31,40,50</div></div>
+          <div class="tstem-cell"><div class="tnode leaf">61,70,80</div></div>
+        </div>
+      </div>
+      <p style="font-size: 10.5px; text-align:center; color: var(--muted); margin-top:4px;">Leaf nodes are doubly linked (←→) — range scans just follow the chain. All row data lives at leaf level (clustered index).</p>
+      <div class="stat" style="font-size:22px;">O(log N) = 3-4 disk reads <span class="stat-small">for a table of millions of rows</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: PAGE SPLIT -->
+  <div class="slide">
+    <h1>Page Split — The Hidden Write Cost</h1>
+    <h2>Insert key=22 Into a Full Leaf</h2>
+    <div class="body">
+      <p style="font-size: 11px; color: var(--muted);">BEFORE — leaf is full, no room for 22:</p>
+      <div class="row"><div class="tnode leaf" style="font-size:11px; padding:8px 14px;">10, 15, 20, 25 (FULL)</div></div>
+      <div class="arrow-down" style="text-align:center;">↓ split</div>
+      <p style="font-size: 11px; color: var(--muted);">AFTER — parent gets a new pointer, leaf splits in two:</p>
+      <div class="row"><div class="tnode root" style="font-size:10px;">PARENT (+1 pointer, key=20)</div></div>
+      <div class="trow" style="margin-top:6px;">
+        <div class="tstem-cell"><div class="tline-v"></div></div>
+        <div class="tstem-cell"><div class="tline-v"></div></div>
+      </div>
+      <div class="trow">
+        <div class="tstem-cell"><div class="tnode leaf">10, 15</div></div>
+        <div class="tstem-cell"><div class="tnode leaf">20, 22, 25</div></div>
+      </div>
+      <p style="font-size: 10.5px; margin-top:8px;">Parent may also be full → split cascades up 2-3 more levels. At high write throughput: constant splits → fragmentation → slower reads over time.</p>
+      <p style="font-size: 10.5px; color: var(--muted);">Fix: <code>OPTIMIZE TABLE</code> / rebuild index — an expensive, often offline operation on large tables.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: LSM WRITE PATH -->
+  <div class="slide">
+    <h1>LSM Tree Write Path</h1>
+    <h2>Cassandra / RocksDB — WAL → MemTable → SSTable → Compaction</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>WAL<br>(append-only, disk)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>MemTable<br>(sorted, RAM)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>SSTable L0<br>(immutable)</div>
+      </div>
+      <div class="row" style="margin-top:2px;">
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>SSTable L1</div>
+        <div class="arrow">←</div>
+        <div style="font-size:10.5px; color:var(--muted);">compaction<br>merges + dedups</div>
+        <div class="arrow">←</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>SSTable L2<br>(fewer, larger)</div>
+      </div>
+      <p style="font-size: 10.5px; margin-top:6px;">Write = append to WAL + insert into MemTable RAM tree → ACK. Sub-millisecond, no searching, no splits.</p>
+      <p style="font-size: 10.5px;">Each SSTable carries a <b>Bloom Filter</b>: <span class="x-mark">NO</span> → skip file, 0 disk reads. <span class="check-mark">MAYBE</span> → read file to confirm.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: READ PATH COMPARISON -->
+  <div class="slide">
+    <h1>Read Path Comparison</h1>
+    <h2>Point Read: id = 42</h2>
+    <div class="body">
+      <table>
+        <tr><th>Step</th><th>B-Tree (MySQL)</th><th>LSM Tree (Cassandra)</th></tr>
+        <tr><td>1</td><td>Root page (in RAM)</td><td>Check MemTable (RAM) → miss</td></tr>
+        <tr><td>2</td><td>Internal page (1 disk read)</td><td>SSTable L0 Bloom Filter → NO → skip</td></tr>
+        <tr><td>3</td><td>Leaf page (1 disk read)</td><td>SSTable L0 Bloom → MAYBE → read → miss</td></tr>
+        <tr><td>4</td><td>Return row data</td><td>SSTable L1 Bloom → YES → read → FOUND</td></tr>
+        <tr><td><b>Total</b></td><td><b>2-4 disk reads</b>, O(log N)</td><td><b>2-5 disk reads</b>, Bloom Filters skip most</td></tr>
+      </table>
+      <p style="font-size: 11px; margin-top:8px;"><span class="pill pill-blue">Winner: point reads</span> B-Tree — always a bounded, predictable traversal.</p>
+      <p style="font-size: 11px;"><span class="pill pill-blue">Winner: range scans</span> B-Tree — leaves are doubly linked. LSM data is scattered across levels.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: WRITE PATH COMPARISON -->
+  <div class="slide">
+    <h1>Write Path Comparison</h1>
+    <h2>INSERT id=42, name='Abhi'</h2>
+    <div class="body">
+      <table>
+        <tr><th>Step</th><th>B-Tree (MySQL)</th><th>LSM Tree (Cassandra)</th></tr>
+        <tr><td>1</td><td>Find right leaf (random read)</td><td>Append to WAL (sequential disk)</td></tr>
+        <tr><td>2</td><td>If full → SPLIT (random write + cascade)</td><td>Insert into MemTable (RAM)</td></tr>
+        <tr><td>3</td><td>Write leaf page (random write)</td><td>Return ACK ✓</td></tr>
+        <tr><td>4</td><td>Update WAL</td><td>—</td></tr>
+        <tr><td><b>Total</b></td><td>2-10 random I/Os, high variance</td><td>1 sequential write + 1 RAM write, O(1)</td></tr>
+      </table>
+      <div class="row" style="margin-top:8px;">
+        <div class="col"><div class="stat" style="font-size:20px; margin:2px 0;">10K-50K/sec</div>B-Tree write throughput</div>
+        <div class="arrow">vs</div>
+        <div class="col"><div class="stat" style="font-size:20px; margin:2px 0; color:var(--green);">100K-500K/sec</div>LSM write throughput</div>
+      </div>
+      <p style="font-size: 11px; text-align:center; color: var(--accent);">Sequential writes are ~10x faster than random writes on SSD and HDD alike. Winner for writes: LSM — always.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: COMPACTION -->
+  <div class="slide">
+    <h1>Compaction — The Hidden Cost</h1>
+    <h2>The Write Cost Doesn't Disappear — It's Deferred</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>WRITE: ~1ms<br>(WAL + MemTable)<br><span class="pill pill-green">looks free!</span></div>
+        <div class="arrow">→ hours/days later →</div>
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>COMPACTION<br>reads all L0, merges,<br>writes L1, deletes L0</div>
+      </div>
+      <div class="trap-box">
+        Compaction is a background I/O storm. It can consume <b>30-50% of disk I/O bandwidth</b>.
+        Reads slow down while it runs. You need <b>2x your data size</b> in free disk space for it to complete.
+      </div>
+      <p style="font-size: 10.5px;">Production practice: monitor compaction queue depth (growing queue = writing faster than compacting).</p>
+      <p style="font-size: 10.5px;"><b>Size-tiered compaction:</b> merges similar-size SSTables — good for write-heavy workloads.<br><b>Leveled compaction:</b> smaller SSTables, better read performance — RocksDB's default.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: DECISION FRAMEWORK -->
+  <div class="slide">
+    <h1>Decision Framework</h1>
+    <h2>Which Storage Engine Do I Pick?</h2>
+    <div class="body">
+      <div class="flow-line"><span class="flow-step">Write throughput &gt; 50K/sec?</span></div>
+      <div class="flow-line" style="margin-left:10px;">├─ YES → <span class="flow-step">Simple data model (KV / wide-column)?</span></div>
+      <div class="flow-line" style="margin-left:26px;">├─ YES → <span class="flow-outcome lsm">Cassandra / DynamoDB / HBase (LSM)</span></div>
+      <div class="flow-line" style="margin-left:38px; color:var(--muted); font-size:9.5px;">activity feeds, IoT sensors, time-series, leaderboard ingestion</div>
+      <div class="flow-line" style="margin-left:26px;">└─ NO → <span class="flow-outcome other">Kafka + batch writes into Cassandra</span></div>
+      <div class="flow-line" style="margin-left:10px;">└─ NO → <span class="flow-step">Need complex queries / joins / ACID?</span></div>
+      <div class="flow-line" style="margin-left:26px;">├─ YES → <span class="flow-outcome btree">MySQL / PostgreSQL (B-Tree)</span></div>
+      <div class="flow-line" style="margin-left:38px; color:var(--muted); font-size:9.5px;">payments, e-commerce orders, accounts, bookings</div>
+      <div class="flow-line" style="margin-left:26px;">└─ NO → <span class="flow-step">Need full-text search?</span></div>
+      <div class="flow-line" style="margin-left:42px;">├─ YES → <span class="flow-outcome other">Elasticsearch (inverted index)</span></div>
+      <div class="flow-line" style="margin-left:42px;">└─ NO → <span class="flow-outcome other">Redis (hot) + MySQL (persistence)</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: QUICK REFERENCE CARD -->
+  <div class="slide">
+    <h1>Quick Reference Card</h1>
+    <h2>B-Tree (MySQL) vs LSM Tree (Cassandra)</h2>
+    <div class="body">
+      <table style="font-size:10px;">
+        <tr><th></th><th>B-Tree (MySQL)</th><th>LSM Tree (Cassandra)</th></tr>
+        <tr><td>Write latency</td><td>High (page splits)</td><td>Low (append-only)</td></tr>
+        <tr><td>Read latency</td><td>Low (O log N)</td><td>Medium (multi-level)</td></tr>
+        <tr><td>Range scans</td><td>Excellent</td><td>Poor</td></tr>
+        <tr><td>Write throughput</td><td>~10K-50K/sec</td><td>~100K-500K/sec</td></tr>
+        <tr><td>Transactions (ACID)</td><td>Yes (InnoDB)</td><td>No (eventual)</td></tr>
+        <tr><td>Storage overhead</td><td>~2x (fragmentation)</td><td>~2x (compaction)</td></tr>
+        <tr><td>Disk I/O pattern</td><td>Random</td><td>Sequential</td></tr>
+        <tr><td>Update in-place</td><td>Yes</td><td>No (tombstone)</td></tr>
+        <tr><td>Best for</td><td>OLTP, payments, bookings</td><td>Time-series, feeds, logs, IoT</td></tr>
+      </table>
+      <p style="font-size: 10px; color: var(--muted); margin-top:6px;"><b>B-Tree products:</b> MySQL (InnoDB), PostgreSQL, SQLite, Oracle, SQL Server<br><b>LSM products:</b> Cassandra, RocksDB (Facebook, TikTok), LevelDB (Chrome IndexedDB), HBase, BadgerDB</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: REAL-WORLD MAPPING + DECISION CHECKLIST + TRAP + QUOTE -->
+  <div class="slide">
+    <h1>Real-World Mapping &amp; The Interview Answer</h1>
+    <h2>Choosing the Right Engine — And Cassandra's Trap</h2>
+    <div class="body">
+      <table style="font-size:9px;">
+        <tr><th>System</th><th>DB choice</th><th>Why</th></tr>
+        <tr><td>Payment</td><td>MySQL (InnoDB)</td><td>ACID non-negotiable</td></tr>
+        <tr><td>Chat (WhatsApp)</td><td>Cassandra</td><td>500K msgs/sec, append-only</td></tr>
+        <tr><td>Social Feed</td><td>Cassandra + Redis</td><td>High write + hot-feed cache</td></tr>
+        <tr><td>Leaderboard</td><td>Cassandra + Redis</td><td>Ingest high-write, top-K reads fast</td></tr>
+        <tr><td>E-Commerce</td><td>MySQL + Elasticsearch</td><td>ACID orders + full-text search</td></tr>
+      </table>
+      <div class="trap-box">
+        <b>Interviewer trap:</b> "Query all activities where type='comment' across all users?"
+        Wrong: add a secondary index in Cassandra (every write updates every node's index; reads still scatter to all nodes).
+        Right: stream events via Kafka into a data warehouse (BigQuery/Redshift) for cross-partition analytics — Cassandra stays the operational write path.
+      </div>
+      <div class="quote-box">
+        "LSM Tree moves the write cost from the hot path into background compaction. You're not eliminating I/O — you're deferring it and making it sequential instead of random."
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

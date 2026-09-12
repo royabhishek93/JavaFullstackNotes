@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Elasticsearch vs PostgreSQL Full-Text Search</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#22223a;
+    --panel2:#262642;
+    --text:#e8e8f0;
+    --muted:#9c9cb8;
+    --pg:#4a90d9;
+    --pg-dark:#1b2f45;
+    --es:#f5a623;
+    --es-dark:#3a2c10;
+    --kafka:#3a3a3a;
+    --kafka-light:#5a5a5a;
+    --debezium:#3ba55d;
+    --debezium-dark:#123a1f;
+    --good:#3ba55d;
+    --bad:#e05a5a;
+    --warn:#f5c518;
+    --accent:#7aa2ff;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    background:#0d0d18;
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  .deck{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:24px 0 40px;
+  }
+  .slide{
+    display:none;
+    width:960px;
+    max-width:96vw;
+    min-height:600px;
+    background:var(--bg);
+    border-radius:14px;
+    border:1px solid #33334f;
+    padding:36px 44px;
+    position:relative;
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
+  }
+  .slide.active{display:flex;flex-direction:column;}
+  .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:2px;
+    font-size:12px;
+    color:var(--accent);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  h1{font-size:30px;margin:0 0 6px;color:#fff;}
+  h2{font-size:22px;margin:0 0 14px;color:#fff;}
+  p.sub{color:var(--muted);font-size:15px;margin:0 0 18px;line-height:1.5;}
+  .row{display:flex;gap:24px;align-items:flex-start;flex:1;}
+  .col{flex:1;min-width:0;}
+  .panel{
+    background:var(--panel);
+    border:1px solid #34345a;
+    border-radius:10px;
+    padding:16px 18px;
+  }
+  .panel h3{margin:0 0 10px;font-size:15px;color:#fff;}
+  code, pre{
+    font-family:"SF Mono",Consolas,Monaco,monospace;
+  }
+  pre{
+    background:#141428;
+    border:1px solid #2f2f4f;
+    border-radius:8px;
+    padding:12px 14px;
+    font-size:12.5px;
+    line-height:1.55;
+    color:#c9d6f5;
+    overflow-x:auto;
+    margin:0;
+  }
+  .kw{color:#7aa2ff;}
+  .str{color:#9ece6a;}
+  .cmt{color:#6b7089;}
+  .num{color:#e0af68;}
+
+  /* ---------- DB CYLINDER ---------- */
+  .db-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .db-cyl{width:76px;}
+  .cyl-top{height:16px;border-radius:50%;border:2px solid #888;background:#333;}
+  .cyl-mid{height:54px;border-left:2px solid #888;border-right:2px solid #888;background:#333;margin-top:-8px;}
+  .cyl-bottom{height:16px;border-radius:50%;border:2px solid #888;background:#333;margin-top:-8px;}
+  .db-cyl.pg .cyl-top,.db-cyl.pg .cyl-bottom{border-color:var(--pg);background:var(--pg-dark);}
+  .db-cyl.pg .cyl-mid{border-color:var(--pg);background:var(--pg-dark);}
+  .db-cyl.es .cyl-top,.db-cyl.es .cyl-bottom{border-color:var(--es);background:var(--es-dark);}
+  .db-cyl.es .cyl-mid{border-color:var(--es);background:var(--es-dark);}
+  .db-label{font-size:12px;font-weight:700;color:var(--text);text-align:center;}
+  .db-label small{display:block;font-weight:400;color:var(--muted);font-size:10.5px;margin-top:2px;}
+
+  /* ---------- SERVER BOX ---------- */
+  .server-box{
+    width:78px;height:58px;
+    border:2px solid #7d8bab;border-radius:6px;
+    background:#1e2436;
+    display:flex;flex-direction:column;justify-content:center;gap:6px;
+    padding:8px 8px;
+  }
+  .server-box .s-line{height:4px;border-radius:2px;background:#7d8bab;}
+  .server-box.mesh{border-color:#9c9cb8;}
+  .server-box.mesh .s-line{background:#9c9cb8;}
+
+  /* ---------- FLOW BOXES (CDC pipeline) ---------- */
+  .flow-row{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:nowrap;}
+  .flow-node{display:flex;flex-direction:column;align-items:center;gap:8px;width:118px;}
+  .flow-box{
+    width:96px;height:64px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;text-align:center;
+    border:2px solid transparent;
+  }
+  .flow-box.pg{background:var(--pg-dark);border-color:var(--pg);color:#bcd8ff;}
+  .flow-box.debezium{background:var(--debezium-dark);border-color:var(--debezium);color:#b9f5cb;}
+  .flow-box.kafka{background:#222222;border-color:var(--kafka-light);color:#eee;}
+  .flow-box.indexer{background:#1e2436;border-color:#9c9cb8;color:#dfe2f2;}
+  .flow-box.es{background:var(--es-dark);border-color:var(--es);color:#ffe3a8;}
+  .flow-arrow{font-size:26px;color:var(--muted);margin-top:-24px;}
+  .flow-caption{font-size:10.5px;color:var(--muted);text-align:center;max-width:118px;}
+
+  /* kafka partitions look */
+  .kafka-stack{display:flex;gap:3px;}
+  .kafka-stack div{width:12px;height:26px;background:#111;border:1px solid var(--kafka-light);border-radius:2px;}
+
+  /* ---------- POLYGLOT SQUARES ---------- */
+  .square{
+    width:54px;height:54px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:800;color:#fff;
+  }
+  .sq-pg{background:var(--pg);}
+  .sq-es{background:var(--es);color:#2a2000;}
+  .sq-kafka{background:var(--kafka);border:1px solid #666;}
+  .sq-debezium{background:var(--debezium);}
+
+  /* ---------- TABLE ---------- */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th,td{padding:8px 10px;text-align:left;border-bottom:1px solid #33334f;}
+  th{color:#fff;background:#1e1e36;font-size:12px;text-transform:uppercase;letter-spacing:.5px;}
+  td{color:var(--text);}
+  .yes{color:var(--good);font-weight:700;}
+  .no{color:var(--bad);font-weight:700;}
+  .warn-cell{color:var(--warn);font-weight:700;}
+  tr td:first-child{color:#cfd4ee;font-weight:600;}
+
+  /* ---------- CHECKLIST ---------- */
+  .checklist{list-style:none;margin:0;padding:0;}
+  .checklist li{
+    display:flex;gap:10px;align-items:flex-start;
+    padding:9px 0;border-bottom:1px solid #2c2c48;
+    font-size:14px;
+  }
+  .checklist li:last-child{border-bottom:none;}
+  .chk{
+    flex:0 0 22px;height:22px;border-radius:50%;
+    border:2px solid var(--accent);
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:var(--accent);font-weight:800;
+  }
+
+  /* ---------- STAT CARD ---------- */
+  .stat-card{
+    flex:1;border-radius:10px;padding:18px 20px;border:2px solid;
+  }
+  .stat-card.es-card{background:var(--es-dark);border-color:var(--es);}
+  .stat-card.pg-card{background:var(--pg-dark);border-color:var(--pg);}
+  .stat-card h3{margin:0 0 10px;font-size:16px;color:#fff;}
+  .stat-line{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px dashed rgba(255,255,255,0.12);}
+  .stat-line b{color:#fff;}
+
+  /* histogram bars */
+  .hist{display:flex;align-items:flex-end;gap:6px;height:70px;margin-top:8px;}
+  .hist div{width:16px;background:var(--es);border-radius:3px 3px 0 0;}
+  .hist-labels{display:flex;gap:6px;margin-top:4px;}
+  .hist-labels span{width:16px;font-size:8px;color:var(--muted);text-align:center;}
+
+  /* decision tree */
+  .tree{font-size:13px;line-height:1.9;}
+  .tree .q{color:#fff;font-weight:700;}
+  .tree .branch{margin-left:22px;color:var(--muted);}
+  .tree .yes-out{color:var(--good);font-weight:700;}
+  .tree .no-out{color:var(--bad);font-weight:700;}
+
+  .quote-panel{
+    margin-top:auto;
+    background:linear-gradient(135deg,#1e2436,#141428);
+    border:1px solid #3a3a66;border-left:4px solid var(--accent);
+    border-radius:8px;padding:16px 20px;font-size:14px;color:#dfe2f2;font-style:italic;
+  }
+
+  .notebook-icon{width:74px;height:92px;background:#2b2b46;border:2px solid #7d8bab;border-radius:4px;position:relative;padding:10px 8px;}
+  .notebook-icon .spiral{position:absolute;left:-6px;top:8px;display:flex;flex-direction:column;gap:8px;}
+  .notebook-icon .spiral div{width:10px;height:10px;border-radius:50%;border:2px solid #9c9cb8;background:#1a1a2e;}
+  .notebook-icon .nline{height:3px;background:#7d8bab;border-radius:2px;margin-bottom:8px;}
+  .notebook-icon .nline:nth-child(2){width:70%;}
+
+  .appliance-icon{width:80px;height:80px;position:relative;}
+  .appliance-icon .rack{width:80px;height:60px;background:#1e2436;border:2px solid var(--es);border-radius:6px;padding:8px;display:flex;flex-direction:column;gap:6px;}
+  .appliance-icon .rack .s-line{height:4px;background:var(--es);border-radius:2px;}
+  .appliance-icon .glass{position:absolute;top:-14px;right:-10px;width:22px;height:22px;border:3px solid #f5c518;border-radius:50%;background:transparent;}
+  .appliance-icon .glass:after{content:"";position:absolute;width:12px;height:3px;background:#f5c518;bottom:-8px;right:-4px;transform:rotate(45deg);border-radius:2px;}
+
+  .fork{display:flex;justify-content:center;align-items:center;gap:60px;position:relative;margin:10px 0 4px;}
+  .fork:before{
+    content:"";position:absolute;top:-20px;left:50%;width:2px;height:20px;background:var(--muted);
+  }
+
+  /* ---------- NAV ---------- */
+  .nav{
+    display:flex;align-items:center;gap:16px;margin-top:18px;
+  }
+  .nav button{
+    background:var(--panel2);color:var(--text);border:1px solid #3a3a5f;
+    padding:8px 18px;border-radius:6px;font-size:14px;cursor:pointer;
+  }
+  .nav button:hover{background:#31314f;}
+  .counter{font-size:13px;color:var(--muted);min-width:56px;text-align:center;}
+
+  @media print{
+    @page{ size:540px 540px; margin:0; }
+    html,body{background:#1a1a2e;}
+    .nav{display:none;}
+    .deck{padding:0;}
+    .slide{
+      display:flex !important;
+      width:540px;height:540px;
+      border-radius:0;border:none;
+      page-break-after:always;
+      box-shadow:none;
+      padding:20px 24px;
+      transform:scale(1);
+    }
+    * {
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1 : HOOK -->
+  <section class="slide active">
+    <div class="eyebrow">Slide 1 · The Hook</div>
+    <h1>Elasticsearch vs PostgreSQL Full-Text Search</h1>
+    <p class="sub">"We already have PostgreSQL. Do we really need Elasticsearch?" — Maybe not. It depends on what kind of tool you're building.</p>
+    <div class="row" style="align-items:center;">
+      <div class="col panel" style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+        <div class="notebook-icon">
+          <div class="spiral"><div></div><div></div><div></div><div></div></div>
+          <div class="nline"></div><div class="nline"></div><div class="nline"></div><div class="nline"></div>
+        </div>
+        <div class="db-label">PostgreSQL FTS<small>a searchable notebook</small></div>
+        <p class="sub" style="text-align:center;margin:0;">Great at storing structured data. <b style="color:#fff;">tsvector + GIN</b> gives solid keyword search, stemming, ranking — for free, with zero extra infrastructure.</p>
+      </div>
+      <div class="col panel" style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+        <div class="appliance-icon">
+          <div class="rack"><div class="s-line"></div><div class="s-line"></div><div class="s-line"></div><div class="s-line"></div></div>
+          <div class="glass"></div>
+        </div>
+        <div class="db-label">Elasticsearch<small>a Google-quality search appliance</small></div>
+        <p class="sub" style="text-align:center;margin:0;">A dedicated search engine bolted alongside your notebook: distributed, faceted search, typo tolerance, autocomplete, vector search — but a whole separate system to run.</p>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:16px;"><b style="color:#fff;">The real question:</b> does your use case justify the added complexity of a second system?</p>
+  </section>
+
+  <!-- SLIDE 2 : THE PROBLEM -->
+  <section class="slide">
+    <div class="eyebrow">Slide 2 · The Problem</div>
+    <h2>Same Data, Two Possible Paths</h2>
+    <p class="sub">One product catalog. Two very different ways to make it searchable — the choice depends on scale and required features.</p>
+    <div class="row">
+      <div class="col panel" style="text-align:center;">
+        <h3>Path A — Keyword Search In-Place</h3>
+        <div style="display:flex;justify-content:center;gap:18px;align-items:flex-end;margin:14px 0;">
+          <div class="db-wrap">
+            <div class="db-cyl pg"><div class="cyl-top"></div><div class="cyl-mid"></div><div class="cyl-bottom"></div></div>
+            <div class="db-label">PostgreSQL<small>tsvector + GIN</small></div>
+          </div>
+        </div>
+        <p class="sub">Add a <code>tsvector</code> column, index it with GIN, query with <code>ts_rank</code>. One system, ACID, immediately consistent.</p>
+      </div>
+      <div class="col panel" style="text-align:center;">
+        <h3>Path B — Dedicated Search Cluster</h3>
+        <div style="display:flex;justify-content:center;gap:10px;align-items:flex-end;margin:14px 0;">
+          <div class="server-box mesh"><div class="s-line"></div><div class="s-line"></div><div class="s-line"></div></div>
+          <div class="server-box mesh"><div class="s-line"></div><div class="s-line"></div><div class="s-line"></div></div>
+          <div class="server-box mesh"><div class="s-line"></div><div class="s-line"></div><div class="s-line"></div></div>
+        </div>
+        <div class="db-label" style="margin-top:6px;">Elasticsearch Cluster<small>sharded, replicated nodes</small></div>
+        <p class="sub">A separate, purpose-built cluster: faceted search, fuzzy matching, sub-10ms latency at huge scale — synced from PostgreSQL.</p>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:10px;">Most production systems use <b style="color:#fff;">both</b>: PostgreSQL as source of truth, Elasticsearch as the read-optimized search index.</p>
+  </section>
+
+  <!-- SLIDE 3 : PG FTS MECHANICS -->
+  <section class="slide">
+    <div class="eyebrow">Slide 3 · PostgreSQL FTS Mechanics</div>
+    <h2>tsvector + GIN Index + ts_rank</h2>
+    <div class="row">
+      <div class="col" style="flex:0 0 110px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div class="db-cyl pg"><div class="cyl-top"></div><div class="cyl-mid"></div><div class="cyl-bottom"></div></div>
+        <div class="db-label">PostgreSQL<small>10-100ms @ 10M rows</small></div>
+      </div>
+      <div class="col">
+        <pre><span class="cmt">-- 1. Generated tsvector column (computed on write, stored on disk)</span>
+<span class="kw">ALTER TABLE</span> products <span class="kw">ADD COLUMN</span> search_vector tsvector
+  <span class="kw">GENERATED ALWAYS AS</span> (to_tsvector(<span class="str">'english'</span>, title || <span class="str">' '</span> || description)) <span class="kw">STORED</span>;
+
+<span class="cmt">-- 2. GIN index: lexeme -> row locations</span>
+<span class="kw">CREATE INDEX</span> products_search_gin_idx <span class="kw">ON</span> products <span class="kw">USING</span> GIN(search_vector);
+
+<span class="cmt">-- 3. Query with relevance ranking</span>
+<span class="kw">SELECT</span> id, title, ts_rank(search_vector, query) <span class="kw">AS</span> rank
+<span class="kw">FROM</span> products, plainto_tsquery(<span class="str">'english'</span>, <span class="str">'wireless headphones'</span>) query
+<span class="kw">WHERE</span> search_vector @@ query
+<span class="kw">ORDER BY</span> rank <span class="kw">DESC</span> <span class="kw">LIMIT</span> <span class="num">10</span>;
+
+<span class="cmt">-- Typo tolerance needs a SEPARATE extension + index</span>
+<span class="kw">CREATE EXTENSION</span> pg_trgm;
+<span class="kw">CREATE INDEX</span> products_trgm_idx <span class="kw">ON</span> products <span class="kw">USING</span> GIN(title gin_trgm_ops);</pre>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:12px;">GIN build time: ~10 min / 10M rows. Index size: ~30-40% of source text. Fuzzy matching (pg_trgm) is a second, separate index — a second maintenance cost.</p>
+  </section>
+
+  <!-- SLIDE 4 : ES CAPABILITIES -->
+  <section class="slide">
+    <div class="eyebrow">Slide 4 · Elasticsearch Capabilities</div>
+    <h2>One Query: Results + Facets + Histogram</h2>
+    <div class="row">
+      <div class="col" style="flex:0 0 110px;display:flex;flex-direction:column;align-items:center;gap:10px;">
+        <div class="db-cyl es"><div class="cyl-top"></div><div class="cyl-mid"></div><div class="cyl-bottom"></div></div>
+        <div class="db-label">Elasticsearch<small>&lt;10ms @ 100M docs</small></div>
+      </div>
+      <div class="col">
+        <pre><span class="kw">GET</span> /products/_search
+{
+  <span class="str">"query"</span>: { <span class="str">"match"</span>: {<span class="str">"title"</span>: <span class="str">"wireless"</span>} },
+  <span class="str">"aggs"</span>: {
+    <span class="str">"categories"</span>: { <span class="str">"terms"</span>: {<span class="str">"field"</span>: <span class="str">"category"</span>} },
+    <span class="str">"price_range"</span>: { <span class="str">"histogram"</span>: {<span class="str">"field"</span>: <span class="str">"price"</span>, <span class="str">"interval"</span>: <span class="num">50</span>} }
+  }
+}</pre>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <div class="col panel">
+        <h3>Facet counts (one query)</h3>
+        <div class="stat-line"><span>Electronics</span><b>4,213</b></div>
+        <div class="stat-line"><span>Home &amp; Kitchen</span><b>2,988</b></div>
+        <div class="stat-line"><span>Accessories</span><b>1,120</b></div>
+      </div>
+      <div class="col panel">
+        <h3>Price histogram</h3>
+        <div class="hist">
+          <div style="height:20px;"></div><div style="height:44px;"></div><div style="height:66px;"></div><div style="height:34px;"></div><div style="height:14px;"></div>
+        </div>
+        <div class="hist-labels"><span>0-50</span><span>50-100</span><span>100-150</span><span>150-200</span><span>200+</span></div>
+      </div>
+    </div>
+    <p class="sub" style="margin-top:12px;">PostgreSQL needs N separate GROUP BY queries for the same facet counts — 200-500ms combined vs 10-30ms for one ES query.</p>
+  </section>
+
+  <!-- SLIDE 5 : SCALE COMPARISON -->
+  <section class="slide">
+    <div class="eyebrow">Slide 5 · Scale Comparison</div>
+    <h2>Measured Performance, Side by Side</h2>
+    <table>
+      <tr><th>Dimension</th><th>PostgreSQL FTS</th><th>Elasticsearch</th></tr>
+      <tr><td>Sweet spot</td><td>&lt; 10M documents</td><td>10M → 1B+ documents</td></tr>
+      <tr><td>Simple query latency</td><td>10-100ms @10M · 1-5s @100M</td><td>&lt;10ms @100M · &lt;50ms @1B</td></tr>
+      <tr><td>Concurrent QPS</td><td>~1K (shared with OLTP!)</td><td>100K+ per shard (dedicated)</td></tr>
+      <tr><td>Faceted search</td><td>N GROUP BYs, 200-500ms</td><td>1 query w/ aggs, 10-30ms</td></tr>
+      <tr><td>Fuzzy matching</td><td class="warn-cell">pg_trgm — functional, slower</td><td class="yes">Native, 2-5x faster</td></tr>
+      <tr><td>Operational cost</td><td class="yes">$0 extra (have PG)</td><td class="warn-cell">~$500-2000/mo (3-node)</td></tr>
+      <tr><td>Write consistency</td><td class="yes">ACID, immediate</td><td class="warn-cell">Eventual (1s refresh)</td></tr>
+      <tr><td>Vector search</td><td class="warn-cell">pgvector, good &lt;1M</td><td class="yes">Native HNSW, scales &gt;1M</td></tr>
+    </table>
+  </section>
+
+  <!-- SLIDE 6 : CDC ARCHITECTURE -->
+  <section class="slide">
+    <div class="eyebrow">Slide 6 · Dual-Write / CDC Architecture</div>
+    <h2>PostgreSQL → Debezium → Kafka → ES Indexer → Elasticsearch</h2>
+    <div class="flow-row" style="margin:18px 0 6px;">
+      <div class="flow-node">
+        <div class="flow-box pg">PostgreSQL<br><small>source of truth</small></div>
+        <div class="flow-caption">Writes are ACID, immediate</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box debezium">Debezium<br><small>CDC connector</small></div>
+        <div class="flow-caption">Reads the PostgreSQL WAL</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box kafka">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <div class="kafka-stack"><div></div><div></div><div></div></div>
+            <span>Kafka Topic</span>
+          </div>
+        </div>
+        <div class="flow-caption">"product-changes"</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box indexer">ES Indexer<br><small>consumer svc</small></div>
+        <div class="flow-caption">Transforms + writes docs</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="flow-box es">Elasticsearch<br><small>search index</small></div>
+        <div class="flow-caption">Searchable after ~1s refresh</div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:14px;">
+      <h3>Failure scenarios</h3>
+      <div class="stat-line"><span>Elasticsearch is down</span><span>Writes still succeed to PG; ES catches up on restart</span></div>
+      <div class="stat-line"><span>Kafka lag builds up</span><span>ES temporarily stale (minutes); PG remains current</span></div>
+      <div class="stat-line" style="border-bottom:none;"><span>ES index corrupted</span><span>Full reindex from PostgreSQL (source of truth)</span></div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7 : DECISION CHECKLIST -->
+  <section class="slide">
+    <div class="eyebrow">Slide 7 · Decision Checklist</div>
+    <h2>Do You Actually Need Elasticsearch?</h2>
+    <p class="sub">If 3+ boxes below are checked, Elasticsearch is justified. Otherwise, stay on PostgreSQL FTS.</p>
+    <ul class="checklist">
+      <li><span class="chk">?</span>Document count &gt; 10M?</li>
+      <li><span class="chk">?</span>Need faceted search — filter by N attributes in one query?</li>
+      <li><span class="chk">?</span>Need autocomplete / search-as-you-type?</li>
+      <li><span class="chk">?</span>Need relevance tuning (boost by popularity, freshness, margin)?</li>
+      <li><span class="chk">?</span>Search QPS &gt; 500 on a database shared with OLTP?</li>
+      <li><span class="chk">?</span>Need vector / semantic search at scale (&gt;1M vectors)?</li>
+      <li><span class="chk">?</span>Need multi-language stemming (Arabic, Chinese, Japanese)?</li>
+      <li><span class="chk">?</span>Sub-10ms latency required at large scale?</li>
+    </ul>
+  </section>
+
+  <!-- SLIDE 8 : INTERVIEW NUMBERS -->
+  <section class="slide">
+    <div class="eyebrow">Slide 8 · The Interview Numbers</div>
+    <h2>50M Products vs a 2M-Product Startup</h2>
+    <div class="row">
+      <div class="stat-card es-card">
+        <h3>50M products → Elasticsearch</h3>
+        <div class="stat-line"><span>Faceted search (PG)</span><b>200-500ms</b></div>
+        <div class="stat-line"><span>Faceted search (ES)</span><b>10-30ms</b></div>
+        <div class="stat-line"><span>GIN index size</span><b>~5-10GB</b></div>
+        <div class="stat-line"><span>3-node cluster cost</span><b>$500-600/mo</b></div>
+        <div class="stat-line" style="border-bottom:none;"><span>Concurrent load</span><b>500+ req → PG lock contention</b></div>
+      </div>
+      <div class="stat-card pg-card">
+        <h3>2M products (startup) → PostgreSQL FTS</h3>
+        <div class="stat-line"><span>GIN index size</span><b>~200-300MB</b></div>
+        <div class="stat-line"><span>Simple query latency</span><b>10-20ms</b></div>
+        <div class="stat-line"><span>Faceted filters</span><b>Indexed WHERE clauses</b></div>
+        <div class="stat-line"><span>Extra infrastructure</span><b>$0</b></div>
+        <div class="stat-line" style="border-bottom:none;"><span>Migration trigger</span><b>10M docs, &gt;50ms latency, real-time facets</b></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9 : FEATURE COMPARISON -->
+  <section class="slide">
+    <div class="eyebrow">Slide 9 · Feature Comparison</div>
+    <h2>PostgreSQL FTS vs Elasticsearch</h2>
+    <table>
+      <tr><th>Feature</th><th>PostgreSQL FTS</th><th>Elasticsearch</th></tr>
+      <tr><td>Basic full-text search</td><td class="yes">Native</td><td class="yes">Native</td></tr>
+      <tr><td>Stemming / stop words</td><td class="yes">Built-in</td><td class="yes">Built-in</td></tr>
+      <tr><td>Relevance ranking</td><td class="yes">ts_rank</td><td class="yes">BM25 + field boosting</td></tr>
+      <tr><td>Fuzzy / typo tolerance</td><td class="warn-cell">pg_trgm extension</td><td class="yes">Native fuzziness</td></tr>
+      <tr><td>Faceted search</td><td class="no">Separate GROUP BY query</td><td class="yes">Aggregations in 1 query</td></tr>
+      <tr><td>Autocomplete</td><td class="no">Complex to build</td><td class="yes">Completion suggester</td></tr>
+      <tr><td>Vector / semantic search</td><td class="warn-cell">pgvector extension</td><td class="yes">Native HNSW</td></tr>
+      <tr><td>Horizontal scale</td><td class="no">Vertical only</td><td class="yes">Add shards / nodes</td></tr>
+      <tr><td>ACID consistency</td><td class="yes">Always</td><td class="no">Eventual (1s default)</td></tr>
+      <tr><td>Operational complexity</td><td class="yes">Zero extra</td><td class="no">Cluster to manage</td></tr>
+      <tr><td>Cost</td><td class="yes">Free (have PG)</td><td class="no">$500+/month for cluster</td></tr>
+    </table>
+  </section>
+
+  <!-- SLIDE 10 : DECISION FLOWCHART + RECOMMENDATION -->
+  <section class="slide">
+    <div class="eyebrow">Slide 10 · Decision Flowchart &amp; Recommendation</div>
+    <h2>Choosing the Right Search Architecture</h2>
+    <div class="tree panel">
+      <div class="q">Do you need full-text search? → YES</div>
+      <div class="branch">How many documents?
+        <div class="branch">&lt; 1M → <span class="yes-out">PostgreSQL FTS. Done.</span></div>
+        <div class="branch">1M – 10M → <span class="yes-out">PostgreSQL FTS</span> (monitor, plan ES migration)</div>
+        <div class="branch">&gt; 10M → <span class="no-out">lean Elasticsearch</span></div>
+      </div>
+      <div class="branch">Need faceted search (aggregations)? →
+        <span class="no-out">YES: Elasticsearch</span> · <span class="yes-out">NO: PostgreSQL may work</span>
+      </div>
+      <div class="branch">Need sub-10ms latency at scale? →
+        <span class="no-out">YES: Elasticsearch</span> · <span class="yes-out">NO: PostgreSQL FTS</span>
+      </div>
+      <div class="branch">Need semantic / vector search? →
+        <span class="yes-out">&lt;1M vectors: pgvector</span> · <span class="no-out">&gt;1M vectors: Elasticsearch (HNSW)</span>
+      </div>
+      <div class="branch">Elasticsearch operational experience? →
+        <span class="yes-out">NO + scale allows: PostgreSQL FTS</span> · <span class="no-out">YES / managed available: Elasticsearch</span>
+      </div>
+    </div>
+    <div class="quote-panel">
+      "PostgreSQL as source of truth, Elasticsearch as search index — pick Elasticsearch only when document count, faceted search, or latency truly demand it."
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">◀ Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  const total = slides.length;
+  let current = 0;
+
+  function showSlide(i){
+    current = (i + total) % total;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    document.getElementById('counter').textContent = (current + 1) + ' / ' + total;
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => showSlide(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => showSlide(current + 1));
+
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'ArrowRight') showSlide(current + 1);
+    if(e.key === 'ArrowLeft') showSlide(current - 1);
+  });
+
+  showSlide(0);
+</script>
+</body>
+</html>

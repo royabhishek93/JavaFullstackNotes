@@ -1,0 +1,43 @@
+<mxfile host="app.diagrams.net" modified="2026-08-31T00:00:00.000Z" agent="draft" version="24.7.5" type="device">
+  <diagram name="Control Plane vs Data Plane" id="cp-vs-dp">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="900" pageHeight="420" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="cp" value="CONTROL PLANE&lt;br&gt;(istiod / Consul Servers)&lt;br&gt;the brain: config, certs, service registry" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="330" y="30" width="260" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="Envoy - service A" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="80" y="230" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="Envoy - service B" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="360" y="230" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="Envoy - service C" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="640" y="230" width="180" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="dpLabel" value="DATA PLANE (the hands): actually moves the bytes, per request" style="text;html=1;align=center;fontStyle=2;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="80" y="190" width="740" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeCP1" value="pushes config, certs, registry (xDS)" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;fontSize=10;" edge="1" parent="1" source="cp" target="e1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeCP2" value="pushes config, certs, registry (xDS)" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;fontSize=10;" edge="1" parent="1" source="cp" target="e2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeCP3" value="pushes config, certs, registry (xDS)" style="edgeStyle=orthogonalEdgeStyle;html=1;dashed=1;fontSize=10;" edge="1" parent="1" source="cp" target="e3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeD1" value="mTLS traffic" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="e1" target="e2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edgeD2" value="mTLS traffic" style="edgeStyle=orthogonalEdgeStyle;html=1;strokeWidth=2;fontSize=10;" edge="1" parent="1" source="e2" target="e3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="useCase" value="💡 Use Case: Deciding blast radius &amp; HA design — e.g. why production runs 3-5 control-plane replicas so proxies keep working during a control-plane outage." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=2;fontSize=12;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="40" y="360" width="820" height="50" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,6 +1,8 @@
 # 👁️ Visitor Design Pattern - Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📗 Difficulty: Beginner** — ideal starting point for a new developer; read this before tackling applied system-design questions.
+
 ---
 
 **Interviewer**: "Explain the Visitor Design Pattern and Double Dispatch."
@@ -142,6 +144,42 @@ This TWO-STEP dance is why it's called 'double dispatch' - the correct method is
 ## 7. Technology Choices
 
 **You**: "**AST (Abstract Syntax Tree) traversal in compilers** is THE classic real-world Visitor Pattern use case - a stable set of node types (BinaryExpr, Literal, FunctionCall) with MANY different operations needed (type-checking, code generation, optimization passes, pretty-printing) - each implemented as a separate Visitor without touching the AST node classes."
+
+---
+
+## 🔥 Real-World Production Issue: The Visitor That Forgot to Handle a New Element Type
+
+*In plain English: across independently-deployed services, adding a new type doesn't guarantee every service was updated to handle it.*
+
+**The war story:**
+
+"A hotel-booking platform used Visitor Pattern for room operations (`RoomPricingVisitor`, `RoomMaintenanceVisitor`, `RoomCleaningVisitor` — exactly this guide's example). This guide even calls out the Visitor Pattern's own trade-off: 'easy to add operations, hard to add new element types.' The team learned this the hard way when Product added a new room type."
+
+```
+Existing element types: SingleRoom, DoubleRoom, DeluxeRoom
+Existing visitors: RoomPricingVisitor, RoomMaintenanceVisitor, RoomCleaningVisitor
+(each visitor has a visit() overload for EACH of the 3 room types)
+
+Product added a new room type: SuiteRoom (extends Room, new element type)
+
+BUG: the RoomVisitor INTERFACE was updated to add "visit(SuiteRoom)",
+which the compiler correctly forced RoomPricingVisitor and
+RoomCleaningVisitor to implement -- BUT RoomMaintenanceVisitor lived
+in a SEPARATE microservice/repo (maintained by a different team) that
+wasn't redeployed at the same time, and its OLD version of the
+RoomVisitor interface (without visit(SuiteRoom)) was still in production
+
+Result: SuiteRoom bookings silently skipped maintenance scheduling
+entirely for 3 weeks, because the OLD maintenance service's visitor
+implementation had no code path for the new room type at all --
+discovered when a guest complained about an uncleaned suite
+```
+
+**Root cause:** this is the EXACT trade-off the guide warns about ("hard to add new element types") manifesting across a distributed system — within a single deployable, the compiler guarantees every Visitor implements every element type; but across independently-deployed SERVICES sharing a versioned interface contract, that compile-time guarantee doesn't span deployment boundaries, so a new element type can silently go unhandled by a service that hasn't been updated yet.
+
+**The fix:** for distributed/microservice contexts, added a runtime-level contract test (consumer-driven contract testing) verifying every service implementing `RoomVisitor` handles ALL currently-known room types, run in CI for every service, catching missed implementations BEFORE deployment rather than relying purely on same-process compiler guarantees; also established a rollout convention: new element types require ALL consuming services to deploy their updated visitor implementations before the new element type can be created in production.
+
+**Lesson for a new developer:** "Visitor Pattern's 'add a new element type = compiler forces every visitor to handle it' safety guarantee is a SINGLE-DEPLOYABLE guarantee — it evaporates the moment different Visitor implementations live in independently-deployed services. In a microservices context, pair Visitor Pattern with contract tests and coordinated rollout practices to preserve the safety it promises on paper."
 
 ---
 

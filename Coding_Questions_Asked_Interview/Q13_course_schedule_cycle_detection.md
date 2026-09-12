@@ -36,6 +36,23 @@ int[][] prerequisites = {{1, 0}, {2, 0}, {3, 1}, {3, 2}};
 // Order: 0, then (1,2 in any order), then 3 ✅
 ```
 
+```
++---------------------------------------------------------+
+| Scenario 3: Valid DAG                                    |
+|                                                          |
+|   [Course 0] --> [Course 1] --> [Course 3]               |
+|       '-------> [Course 2] -------^                      |
++---------------------------------------------------------+
+
++---------------------------------------------------------+
+| Scenario 2: Cycle (impossible schedule)  ** CYCLE **     |
+|                                                          |
+|   [Course 0] --(needs 1 before 0)--> [Course 1]          |
+|       ^--------------(needs 0 before 1)---------'        |
++---------------------------------------------------------+
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ---
 
 ## 🏗️ Key Concepts

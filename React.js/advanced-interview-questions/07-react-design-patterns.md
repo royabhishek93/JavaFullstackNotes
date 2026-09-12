@@ -154,4 +154,41 @@ REAL APP: Design System — Select Dropdown Component
   // Custom hooks don't have this problem
 ```
 
+```
+┌────────────────────────────────────────────────────┐
+│ Need flexible, reusable component composition       │
+└─────────────────────────┬────────────────────────────┘
+                          │
+                          ▼
+┌──────────────────────────────────────────────────────────────────┐
+│ Q1: Do you control the structure via children,                    │
+│     like <Select> <Select.Option>?                                 │
+└───────────────┬──────────────────────────────┬─────────────────────┘
+                │ Yes, consumer                │ No, structure is
+                │ controls structure           │ fixed by the library
+                ▼                              ▼
+┌─────────────────────────────┐   ┌────────────────────────────────────────────────────┐
+│ Compound Components          │   │ Q2: Does the library control WHAT/WHERE,            │
+│ (Context + sub-components)   │   │     giving you only content via                     │
+└─────────────────────────────┘   │     function-as-children?                            │
+                                   └───────────────┬─────────────────────┬─────────────────┘
+                                                   │ Yes                │ No
+                                                   ▼                    ▼
+                                   ┌─────────────────────────────┐  ┌──────────────────────────────────────────┐
+                                   │ Render Props                 │  │ Q3: Is this a cross-cutting concern        │
+                                   │ (e.g. react-window            │  │     wrapping an ENTIRE component            │
+                                   │ itemRenderer)                 │  │     (auth, tracking)?                        │
+                                   └─────────────────────────────┘  └───────────────┬───────────────┬─────────────┘
+                                                                                    │ Yes, at route/ │ No, logic needed
+                                                                                    │ page level     │ INSIDE a component
+                                                                                    ▼                 ▼
+                                                                     ┌─────────────────────────┐  ┌───────────────────────────┐
+                                                                     │ HOC                      │  │ Prefer a Custom Hook       │
+                                                                     │ (withAuth,               │  │ instead                    │
+                                                                     │ withPageTracking)         │  └───────────────────────────┘
+                                                                     └─────────────────────────┘
+```
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ---

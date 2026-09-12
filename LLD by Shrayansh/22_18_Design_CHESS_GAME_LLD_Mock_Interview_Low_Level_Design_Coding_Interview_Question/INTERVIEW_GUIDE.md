@@ -1,6 +1,8 @@
 # ♟️ Chess Game - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -364,6 +366,37 @@ This 'pinned piece' scenario is a favorite interview gotcha - shows if you truly
 ## 9. Technology Choices
 
 **You**: "For online multiplayer chess: **WebSocket** for real-time move sync, **Redis** for active game state (fast reads/writes during gameplay), **PostgreSQL** for completed game history/replay (analytics, puzzle generation from famous games)."
+
+---
+
+## 🔥 Real-World Production Issue: The Move-Validation Bypass Via Client-Trusted State
+
+*In plain English: trusting the client to validate moves, instead of re-checking on the server, lets a modified client cheat.*
+
+**The war story:**
+
+"An online chess platform's move-validation used the Strategy Pattern correctly (each piece type has its own movement-validation logic) — but ran ENTIRELY on the client (JavaScript) for responsiveness, with the server just trusting and recording whatever move the client reported, 'because validating chess moves is complex and we already wrote it client-side.'"
+
+```
+Client sends: { "from": "e2", "to": "e5", "piece": "pawn" }
+
+Server: recordMove(from, to)   // <- no re-validation!
+
+A modified client (browser devtools / intercepted request) sent:
+{ "from": "a1", "to": "h8", "piece": "rook" }   // illegal rook move
+(rook can't move diagonally)
+
+Server accepted it -> game state corrupted, opponent's king could be
+"captured" through an illegal path -> competitive ranked matches were
+being won via move-spoofing, discovered when tournament replays
+showed physically impossible piece movements
+```
+
+**Root cause:** classic trust-boundary violation (an OWASP-relevant broken-access-control pattern) — the same Strategy Pattern-based validation logic that correctly encapsulated "how each piece type is allowed to move" existed ONLY on the client, which is fundamentally untrustworthy input in any competitive/multiplayer system.
+
+**The fix:** the exact same `MoveValidationStrategy` classes (one per piece type) were reused SERVER-SIDE as the authoritative validator — client-side validation kept only as a UX optimization (instant feedback, no round-trip needed for obviously illegal moves), but the server independently re-validates and is the only source of truth for whether a move is accepted.
+
+**Lesson for a new developer:** "Client-side validation logic (even if it's beautifully designed with Strategy Pattern) is a UX nicety, never a security/correctness boundary. Any game-state-changing action must be independently re-validated server-side using the SAME rules — which is exactly why designing your validation logic as reusable, pluggable Strategy objects pays off: you can share the identical logic between client and server instead of re-implementing it."
 
 ---
 

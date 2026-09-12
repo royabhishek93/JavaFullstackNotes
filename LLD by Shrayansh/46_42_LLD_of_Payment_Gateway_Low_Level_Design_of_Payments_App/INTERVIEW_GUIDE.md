@@ -1,6 +1,8 @@
 # 💳 Payment Gateway - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📕 Difficulty: Advanced** — concurrency, scale, or financial-correctness heavy; aim for this once you're comfortable with the Beginner/Intermediate guides.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -401,6 +403,42 @@ class ReconciliationJob {
 ### **Message Queue: Kafka for Payment Events**
 
 **You**: "Every state transition published to Kafka (`payment-events` topic) - enables: fraud detection service consuming events in real-time, analytics/reporting, and audit compliance (financial regulations often require immutable event logs)."
+
+---
+
+## 🔥 Real-World Production Issue: The Idempotency Key That Wasn't Actually Idempotent
+
+*In plain English: treating a timeout as "definitely failed" instead of "unknown" can cause a customer to be charged twice.*
+
+**The war story:**
+
+"A payment gateway correctly implemented idempotency keys with a DB UNIQUE constraint (exactly this guide's #1 recommended pattern) to prevent double-charging on client retries. It still double-charged customers during a specific network-partition scenario nobody had load-tested for."
+
+```
+Client sends charge request with idempotencyKey="abc123"
+
+Server: BEGIN TRANSACTION
+        INSERT INTO payments (idempotency_key, status) VALUES ('abc123', 'PROCESSING')
+        call external card-network API to actually charge the card ... 🔥 NETWORK TIMEOUT
+        (server never received the card network's response, doesn't know if it
+         succeeded or failed on THEIR side)
+        ROLLBACK  <- since the code treated "no response" as "this attempt failed",
+                     it rolled back the transaction, DELETING the idempotency
+                     key row entirely, believing it could safely be retried
+
+Client retries with the SAME idempotencyKey="abc123" (correct client behavior!)
+Server: idempotency_key no longer exists (rolled back) -> treated as a
+        BRAND NEW request -> charges the card AGAIN
+        -> but the card network HAD actually processed the FIRST charge
+           successfully despite the response never reaching our server
+           -> customer charged TWICE for one purchase
+```
+
+**Root cause:** the idempotency implementation assumed "if our own transaction fails/rolls back, it's always safe to allow a retry with the same key" — but that assumption breaks when the FAILURE is actually just "we don't know the outcome" (a network timeout to an external system) rather than "we know for certain it failed." Rolling back and deleting the idempotency key erased the exact information needed to prevent the retry from re-charging.
+
+**The fix:** introduced a third state beyond success/failure: `UNKNOWN/RECONCILING`. On ANY ambiguous outcome (timeout, 5xx from the card network, connection reset), the payment record is marked `RECONCILING` (NOT rolled back/deleted) and the idempotency key is PRESERVED; a reconciliation job actively queries the card network's own status API to determine the true outcome before allowing any retry to proceed, exactly matching the guide's own "Reconciliation: Never trust ambiguous timeouts - actively verify with provider" final tip.
+
+**Lesson for a new developer:** "Idempotency keys only work if they SURVIVE every ambiguous failure mode, not just clean, certain failures. The moment you roll back / delete an idempotency record on a TIMEOUT (as opposed to a confirmed rejection), you've reopened the exact double-processing window idempotency was supposed to close. Always treat 'I don't know what happened' as its own explicit state, never collapse it into either 'succeeded' or 'safe to retry'."
 
 ---
 

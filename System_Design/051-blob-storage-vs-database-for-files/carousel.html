@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Blob Storage vs Database for Files — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+  /* Database cylinder icon */
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+
+  /* Blob/object storage bucket icon */
+  .blob-icon { width: 58px; height: 66px; position: relative; margin: 0 auto; }
+  .blob-icon .blob-lid { width: 66px; height: 12px; border-radius: 4px; background: var(--accent); position: absolute; top: 0; left: -4px; }
+  .blob-icon .blob-body { width: 58px; height: 48px; border-radius: 0 0 10px 10px; background: var(--accent); opacity: 0.8; position: absolute; top: 10px; }
+  .blob-icon .blob-band { width: 58px; height: 4px; background: var(--panel); position: absolute; top: 28px; opacity: 0.6; }
+
+  /* CDN / edge node icon */
+  .cdn-icon { width: 60px; height: 60px; border-radius: 50%; border: 3px solid var(--green); position: relative; margin: 0 auto; display: flex; align-items: center; justify-content: center; }
+  .cdn-icon::before { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+
+  /* Size comparison bars */
+  .bar-chart { display: flex; align-items: flex-end; gap: 28px; justify-content: center; height: 110px; margin: 10px 0; }
+  .bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+  .bar { width: 40px; border-radius: 4px 4px 0 0; }
+  .bar-small { height: 6px; background: var(--green); }
+  .bar-big { height: 100px; background: #e74c3c; }
+
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Blob Storage vs Database for Files</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">200GB of BLOBs</div>
+      <p>100,000 users × 2MB profile photos, stored directly in MySQL. Your <b>5-minute backup</b> just became a <b>6-hour job</b> — and that's before the query latency spikes hit.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Row Size Explosion</h1>
+    <h2>Where It Starts</h2>
+    <div class="body">
+      <div class="bar-chart">
+        <div class="bar-col"><div class="bar bar-small"></div>116 bytes<br>normal row</div>
+        <div class="bar-col"><div class="bar bar-big"></div>~2MB row<br>with BLOB</div>
+      </div>
+      <p>InnoDB's max row size is ~65,535 bytes. A 2MB row overflows to off-page storage — even <code>SELECT name WHERE id=42</code> now triggers an extra disk read.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Buffer Pool Contamination</h1>
+    <h2>Trap 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Buffer pool<br>(hot pages)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-red"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>1000 BLOBs<br>= 2GB loaded</div>
+      </div>
+      <p style="text-align:center"><code>SELECT * FROM users LIMIT 1000</code> evicts hot index pages. Latency across the <b>ENTIRE</b> database spikes from 1ms to 100ms.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Backup &amp; Replication Nightmare</h1>
+    <h2>Trap 2</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>Without BLOBs</th><th>With 200GB BLOBs</th></tr>
+        <tr><td>mysqldump</td><td>2GB / 5 min</td><td>200GB / 6 hours</td></tr>
+        <tr><td>Binary log</td><td>tiny</td><td>+2MB per signup</td></tr>
+        <tr><td>Replication</td><td>fast</td><td>lag spikes</td></tr>
+      </table>
+      <p>S3 handles durability (11 nines) automatically — MySQL only replicates a 50-byte key string.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>No Efficient HTTP Serving</h1>
+    <h2>Trap 3</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>10K requests<br>10K DB conns<br>20GB RAM</div>
+        <div class="arrow">✕</div>
+        <div class="col"><div class="cdn-icon"></div>CDN → S3<br>direct serve<br>0 API load</div>
+      </div>
+      <p style="text-align:center">Serving from MySQL routes every image through your API server. S3 + CDN bypasses it entirely.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Right Pattern</h1>
+    <h2>Metadata in DB, Bytes in S3</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>MySQL<br>~200 bytes<br>(S3 key only)</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="blob-icon"><div class="blob-lid"></div><div class="blob-body"></div><div class="blob-band"></div></div>S3<br>2MB bytes</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="cdn-icon"></div>CDN<br>serves user</div>
+      </div>
+      <p>Upload flow: validate → PUT to S3 → save <code>profile_photo_key</code> in DB. If DB update fails: orphaned S3 object, cleaned up by lifecycle policy after 7 days.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>When Is BLOB-in-DB OK?</h1>
+    <h2>The Decision Rule</h2>
+    <div class="body">
+      <p><span class="check-mark">✓</span> Guaranteed &lt;1KB: icons, tiny base64 thumbnails — row impact negligible</p>
+      <p><span class="check-mark">✓</span> Strict compliance + encryption-at-rest: medical/legal docs, capped &lt;1MB (Postgres <code>bytea</code>)</p>
+      <p><span class="x-mark">✕</span> Any file that could exceed 100KB → object storage, always</p>
+      <p>Gray zone 1KB–100KB → default to S3 unless there's a strong reason not to.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Database BLOB vs Object Storage</h1>
+    <h2>Slide 8 / 9 — Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Dimension</th><th>MySQL BLOB</th><th>S3 + CDN</th></tr>
+        <tr><td>Row size</td><td>up to 2MB+</td><td>~200 bytes (key only)</td></tr>
+        <tr><td>Backup (200GB data)</td><td>~6 hours</td><td>minutes (metadata only)</td></tr>
+        <tr><td>Serving 10K reqs</td><td>10K DB conns, 20GB RAM</td><td>0 API server load</td></tr>
+        <tr><td>Durability</td><td>manual</td><td>11 nines, built-in</td></tr>
+      </table>
+      <span class="badge badge-cp">DB BLOB: fragile at scale</span>
+      <span class="badge badge-ap">S3+CDN: scales for free</span>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>File could be &gt;100KB? → S3, always. Guaranteed &lt;1KB? → DB is fine. Private + compliance-bound? → S3 presigned URLs (or encrypted <code>bytea</code> if audited).</p>
+      <div class="quote-box">
+        "Store S3 key in DB, bytes in S3. A 2MB BLOB in MySQL corrupts the buffer pool, bloats the binary log, and forces every image request through your API server. S3 + CDN serves images directly to browsers — zero API server load, zero DB impact."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

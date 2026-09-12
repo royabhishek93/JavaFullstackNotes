@@ -1,0 +1,32 @@
+# Two-Phase Inventory Locking: Soft-Hold + TTL Pattern — YouTube Script
+Duration: ~10 min | Target: Engineers 3–10 YOE | Episode: 21 of 20 (Bonus)
+
+## HOOK (0:00–0:30)
+"A user sits on a movie checkout page for 3 minutes entering their card details. If your database holds a row lock on that seat the ENTIRE time, 500 concurrent buyers for that same seat exhaust your entire connection pool in seconds. Today I'm showing you the two-phase pattern that lets BookMyShow hold a seat for ten minutes while only ever locking the database for single-digit milliseconds."
+
+[Screen cue: A database connection pool gauge climbing to "100/100 EXHAUSTED" with a single hot seat row highlighted.]
+
+## THE PROBLEM (0:30–2:00)
+"Think about it this way — a box office clerk who has to physically write each customer's name on a paper chart before the next customer can even look at it creates a line that backs up for an hour. That's exactly what happens if you take a full database transaction lock for the entire time a user is browsing, entering payment, and waiting on a card authorization — which can easily take 30 to 180 seconds. A `SELECT ... FOR UPDATE` held for that whole window ties up one connection from your pool per active checkout, and at 500 concurrent buyers on one hot seat, you get instant connection pool exhaustion and cascading timeouts across the entire service."
+
+[Screen cue: Draw a single database row with a lock icon held for 3 minutes, with a queue of 500 waiting connections stacking up behind it.]
+
+## THE SOLUTION (2:00–5:00)
+"Now watch what happens with the two-phase pattern. Phase one is the soft hold: the moment a user clicks a seat, you don't touch the database at all — you run one Redis command, `SET seat:F12 alice:token NX EX 600`. The NX flag means 'only set if it doesn't already exist,' and because Redis processes commands one at a time on a single thread, this is atomic mutual exclusion for free — if two users click the same seat within milliseconds, exactly one SET succeeds and the other gets nil back instantly, no waiting, no database contention. The EX 600 gives the user a ten-minute window, and if they abandon the flow, Redis auto-expires the key with zero cleanup code needed. Phase two happens only once, when payment actually succeeds: open a real database transaction, insert the permanent booking row, and only then release the soft hold. This is the ONLY moment a real DB lock exists, and it's held for two to eight milliseconds — a single INSERT plus COMMIT — instead of minutes. Redis holds the seat for ~90-599 seconds; the database holds it for single-digit milliseconds."
+
+[Screen cue: Draw the two phases side by side — Phase 1 "Redis SET NX EX, ~90-600s" vs Phase 2 "DB INSERT+COMMIT, ~2-8ms" — with a huge visual size difference representing the time disparity.]
+
+## DEEP DIVE — WHERE ENGINEERS GET IT WRONG (5:00–8:00)
+"Here's the trap that catches almost every first implementation: what happens when the payment confirmation arrives at almost exactly the moment the ten-minute TTL expires? Picture this exact timeline — at 598 seconds, Alice's slow 3D-Secure payment step finally responds. At 600 seconds, Redis's TTL fires and deletes her hold automatically — the seat is now 'available' again. At 600.4 seconds, another user, Carol, immediately grabs the now-free seat with her own hold. At 601 seconds, Alice's confirmation request finally arrives at your server, delayed by network lag. If you naively do a GET followed by a DEL from application code, your app reads Carol's hold value, ignores that it doesn't match Alice's token, deletes it anyway, and inserts Alice's booking into the database — you've just silently destroyed Carol's legitimate hold, and if Carol had already confirmed a moment earlier, you now have TWO bookings for the same seat, the exact bug this whole pattern exists to prevent. The fix is a single atomic Lua script that checks 'does the current Redis value still match Alice's token?' and only deletes if it matches, all as one indivisible server-side operation — if it doesn't match, you reject Alice's confirmation and tell her to retry, rather than silently corrupting Carol's hold. Second operational trap: monitor your hold-to-confirm conversion rate. A healthy flash-sale funnel converts 30-50% of holds into actual bookings — if that rate drops below 10%, you're likely seeing bot scalping, mass-holding inventory with zero intent to buy, which you mitigate with per-user hold-rate limiting, separate from the locking mechanism itself."
+
+[Screen cue: The dangerous race timeline drawn frame by frame — T+598s payment responds, T+600s TTL fires, T+600.4s Carol grabs the seat, T+601s Alice's stale confirm arrives — ending in a red X for the naive GET+DEL vs a green check for the atomic Lua check-and-confirm.]
+
+## REAL WORLD (8:00–9:30)
+"Think about BookMyShow during a blockbuster's opening-day booking rush — the exact soft-hold pattern this file describes, with a 3-5 minute TTL for high-demand releases to force fast decisions from genuine buyers while still being fair. Think about Flipkart or Myntra during a flash sale on a limited-stock item — the same pattern applies to inventory count instead of a specific seat identity, holding a unit in a cart for a short window before releasing it back if checkout stalls. And think about a hotel booking platform like MakeMyTrip — room holds during a multi-step booking flow typically use a longer 15-20 minute TTL, because the decision cycle for a hotel booking, often involving date changes and add-on selection, is naturally longer than a movie seat pick."
+
+[Screen cue: Three logo-style cards — "BookMyShow: 3-5min TTL for high-demand releases", "Flipkart/Myntra: soft-hold on flash-sale inventory", "MakeMyTrip-style: 15-20min TTL for multi-step hotel booking".]
+
+## OUTRO + NEXT EPISODE (9:30–10:00)
+"So remember: split inventory locking into a cheap, self-expiring Redis soft-hold for the long 'user is thinking' phase, and a fast, durable database transaction for the split-second 'payment actually succeeded' phase — and always use an atomic Lua script to check-and-confirm, never a naive GET-then-DEL. That's a wrap on this deep dive into inventory locking — thanks for following along through this series, and stay tuned for more system design breakdowns covering the exact production patterns that power India's largest platforms."
+
+[Screen cue: "THANKS FOR WATCHING — MORE DEEP DIVES COMING" title card with subscribe animation.]

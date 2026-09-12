@@ -27,5 +27,16 @@ with no error, no warning, and no way to know they were even sent.
 ## Production Example
 A chat app relying purely on Pub/Sub for message delivery has a user who briefly loses their mobile network in a tunnel. Any messages sent to them during that gap never arrive, even after their connection is restored — there's no "catch-up" behavior built into Pub/Sub. This is exactly why production chat systems typically pair Pub/Sub (for instant delivery to online users) with a durable store or Redis Streams (so a reconnecting client can also fetch anything it missed).
 
+The same gap shows up in a completely different trigger: a rolling deployment. A team relying purely on Pub/Sub for "your export is ready" email triggers found that during routine rolling restarts (each pod down for ~5–8 seconds), any export that finished during that exact window silently never triggered an email — no errors anywhere, because nothing failed; the message simply had zero subscribers to deliver to at that instant.
+
+```bash
+# Pub/Sub (loses messages during a subscriber's restart or network drop)
+PUBLISH report-ready '{"userId": "42"}'
+
+# Streams (survives restarts/disconnects — consumer resumes where it left off)
+XADD report-events * userId 42
+XREADGROUP GROUP email-workers worker-1 STREAMS report-events >
+```
+
 ## Why Interviewers Ask This
 It's the single most important thing to understand about Redis Pub/Sub before using it in production — this question filters out candidates who assume Redis Pub/Sub "just works like a message queue," when it fundamentally does not guarantee delivery to anyone who wasn't listening at that exact moment.

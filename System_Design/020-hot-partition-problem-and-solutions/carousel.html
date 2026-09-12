@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hot Partition Problem and Solutions — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#16213e;
+    --panel2:#0f0f1e;
+    --border:#2e3a5c;
+    --blue:#54a0ff;
+    --blue-dark:#2e86de;
+    --hot:#ff4757;
+    --hot-light:#ff6b6b;
+    --green:#2ecc71;
+    --gold:#f5c542;
+    --purple:#a55eea;
+    --text:#e8e8f0;
+    --muted:#9aa0b4;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:#0a0a14;color:var(--text);font-family:'Trebuchet MS','Segoe UI',Arial,sans-serif;}
+  .stage{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px 0 90px;}
+  .slide{
+    display:none;
+    width:960px;height:540px;flex-shrink:0;
+    background:var(--bg);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:26px 34px;
+    flex-direction:column;
+    box-shadow:0 10px 40px rgba(0,0,0,.6);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .slide.active{display:flex;}
+  .kicker{font-size:12px;letter-spacing:2px;color:var(--purple);font-weight:bold;text-transform:uppercase;margin-bottom:2px;}
+  h1{font-size:25px;margin:0 0 12px;color:#fff;border-bottom:2px solid var(--border);padding-bottom:8px;}
+  h2{font-size:15px;margin:0 0 6px;color:var(--gold);}
+  .body{flex:1;display:flex;gap:18px;overflow:hidden;}
+  .col{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .muted{color:var(--muted);}
+  small.note{color:var(--muted);font-size:11px;}
+  code, .code{
+    font-family:'Courier New',monospace;font-size:11.5px;background:var(--panel2);
+    border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:block;
+    white-space:pre;color:#c9d1d9;line-height:1.45;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .code .kw{color:#ff79c6;} .code .str{color:#f1fa8c;} .code .cm{color:#6272a4;} .code .fn{color:#8be9fd;} .code .num{color:#bd93f9;}
+
+  /* ---------- Bar chart (horizontal bars made of divs) ---------- */
+  .bar-row{display:flex;align-items:center;gap:8px;margin:4px 0;}
+  .bar-label{width:34px;text-align:right;font-size:11px;font-family:'Courier New',monospace;color:var(--muted);flex-shrink:0;}
+  .bar-track{flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:4px;height:18px;position:relative;overflow:hidden;}
+  .bar-fill{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:10px;color:#fff;font-weight:bold;white-space:nowrap;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .bar-fill.normal{background:linear-gradient(90deg,var(--blue-dark),var(--blue));}
+  .bar-fill.hot{background:linear-gradient(90deg,#c0392b,var(--hot),var(--hot-light));box-shadow:0 0 10px rgba(255,71,87,.7);}
+  .bar-fill.good{background:linear-gradient(90deg,#1e8449,var(--green));}
+
+  /* ---------- Node / server boxes ---------- */
+  .node-box{border:2px solid var(--blue);border-radius:8px;background:var(--panel);padding:8px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .node-box.hot{border-color:var(--hot);box-shadow:0 0 16px rgba(255,71,87,.55);}
+  .node-title{font-size:11px;font-weight:bold;text-align:center;margin-bottom:6px;color:#fff;}
+  .node-box.hot .node-title{color:var(--hot-light);}
+  .node-line{height:5px;background:var(--blue);margin:4px 2px;border-radius:2px;}
+  .node-box.hot .node-line{background:var(--hot);}
+  .node-stat{font-size:10px;text-align:center;color:var(--muted);margin-top:4px;}
+
+  /* ---------- DB cylinder (CSS drawn) ---------- */
+  .cylinder{width:64px;margin:0 auto;position:relative;}
+  .cyl-top{width:64px;height:16px;border-radius:50%;background:var(--blue);border:2px solid var(--blue-dark);-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cyl-body{width:60px;height:46px;margin:-8px auto 0;background:var(--panel2);border-left:2px solid var(--blue-dark);border-right:2px solid var(--blue-dark);position:relative;overflow:hidden;}
+  .cyl-fill{position:absolute;bottom:0;left:0;width:100%;background:linear-gradient(0deg,var(--blue-dark),var(--blue));-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cyl-bottom{width:64px;height:16px;border-radius:50%;background:var(--blue-dark);border:2px solid var(--blue-dark);margin-top:-8px;}
+  .cylinder.hot .cyl-top{background:var(--hot-light);border-color:var(--hot);}
+  .cylinder.hot .cyl-bottom{background:#c0392b;border-color:var(--hot);}
+  .cylinder.hot .cyl-body{border-color:var(--hot);box-shadow:0 0 12px rgba(255,71,87,.6);}
+  .cylinder.hot .cyl-fill{background:linear-gradient(0deg,#c0392b,var(--hot),var(--hot-light));}
+  .cyl-label{text-align:center;font-size:10px;margin-top:4px;color:var(--muted);}
+  .cyl-pct{text-align:center;font-size:11px;font-weight:bold;margin-top:1px;}
+
+  /* ---------- Arrows ---------- */
+  .arrow-down{font-size:22px;color:var(--purple);text-align:center;line-height:1;}
+  .arrow-right{font-size:18px;color:var(--purple);}
+  .flow-arrow{display:flex;align-items:center;justify-content:center;color:var(--purple);font-size:20px;}
+
+  /* small vehicle block for highway analogy */
+  .lane{flex:1;display:flex;flex-direction:column-reverse;align-items:center;gap:2px;height:130px;border:1px dashed #333a55;border-radius:4px;padding:4px 2px;background:var(--panel2);}
+  .lane.hot{border-color:var(--hot);background:#2a1220;}
+  .car{width:80%;height:8px;border-radius:2px;background:var(--blue);-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .lane.hot .car{background:var(--hot);box-shadow:0 0 6px rgba(255,71,87,.7);}
+  .lane-num{font-size:9px;color:var(--muted);margin-top:2px;}
+
+  table.tbl{width:100%;border-collapse:collapse;font-size:11px;}
+  table.tbl th, table.tbl td{border:1px solid var(--border);padding:5px 7px;text-align:left;}
+  table.tbl th{background:var(--panel2);color:var(--gold);}
+  table.tbl tr.hotrow td{background:rgba(255,71,87,.15);color:var(--hot-light);font-weight:bold;}
+
+  .quote{font-style:italic;background:var(--panel);border-left:4px solid var(--gold);padding:14px 18px;border-radius:6px;font-size:13px;line-height:1.5;}
+  .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:bold;}
+  .badge.hot{background:var(--hot);color:#fff;}
+  .badge.normal{background:var(--blue-dark);color:#fff;}
+  .badge.good{background:var(--green);color:#062;}
+
+  .stat-box{flex:1;text-align:center;border-radius:8px;padding:8px;border:1px solid var(--border);}
+  .stat-box.hot{background:rgba(255,71,87,.12);border-color:var(--hot);}
+  .stat-box.good{background:rgba(46,204,113,.12);border-color:var(--green);}
+  .stat-num{font-size:20px;font-weight:bold;}
+  .stat-label{font-size:10px;color:var(--muted);}
+
+  .grid-cells{display:grid;grid-template-columns:repeat(10,1fr);gap:2px;}
+  .cell-sq{aspect-ratio:1/1;background:var(--blue-dark);border-radius:2px;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cell-sq.gold{background:var(--gold);}
+  .cell-sq.pick{background:var(--hot);box-shadow:0 0 6px rgba(255,71,87,.8);}
+
+  .tree-box{border:2px solid var(--blue);border-radius:8px;background:var(--panel);padding:6px 10px;font-size:11px;text-align:center;}
+  .tree-box.q{border-color:var(--gold);color:var(--gold);}
+  .tree-box.ans{border-color:var(--green);color:var(--green);}
+  .tree-box.ans2{border-color:var(--hot);color:var(--hot-light);}
+
+  /* ---------- Nav / counter ---------- */
+  .nav{position:fixed;bottom:18px;left:0;right:0;display:flex;justify-content:center;gap:14px;align-items:center;z-index:10;}
+  .nav button{background:var(--panel);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:8px 18px;font-size:14px;cursor:pointer;}
+  .nav button:hover{background:var(--blue-dark);}
+  .counter{font-family:'Courier New',monospace;font-size:13px;color:var(--muted);min-width:60px;text-align:center;}
+
+  @media print{
+    @page{ size:540px 540px; margin:0; }
+    body{background:#fff;}
+    .stage{min-height:auto;padding:0;display:block;}
+    .nav{display:none;}
+    .slide{
+      display:flex !important;
+      width:540px;height:540px;
+      margin:0;box-shadow:none;border:none;border-radius:0;
+      page-break-after:always;
+      padding:14px 18px;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;
+    }
+    .slide, .slide *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- SLIDE 1 : HOOK -->
+  <section class="slide active">
+    <div class="kicker">Hot Partition Problem &amp; Solutions</div>
+    <h1>One Lane Gets 99% of the Traffic</h1>
+    <div class="body">
+      <div class="col" style="flex:1.4">
+        <div class="panel" style="flex:1;">
+          <h2>The 10-Lane Highway Analogy</h2>
+          <div style="display:flex;gap:4px;height:130px;">
+            <div class="lane"><div class="car"></div><div class="car"></div><div class="lane-num">L1</div></div>
+            <div class="lane"><div class="car"></div><div class="lane-num">L2</div></div>
+            <div class="lane hot">
+              <div class="car"></div><div class="car"></div><div class="car"></div><div class="car"></div>
+              <div class="car"></div><div class="car"></div><div class="car"></div><div class="car"></div>
+              <div class="lane-num">L3 🔥</div>
+            </div>
+            <div class="lane"><div class="car"></div><div class="lane-num">L4</div></div>
+            <div class="lane"><div class="car"></div><div class="car"></div><div class="lane-num">L5</div></div>
+            <div class="lane"><div class="car"></div><div class="lane-num">L6</div></div>
+            <div class="lane"><div class="car"></div><div class="lane-num">L7</div></div>
+            <div class="lane"><div class="car"></div><div class="car"></div><div class="lane-num">L8</div></div>
+            <div class="lane"><div class="car"></div><div class="lane-num">L9</div></div>
+            <div class="lane"><div class="car"></div><div class="lane-num">L10</div></div>
+          </div>
+          <small class="note">Normal: ~10% of traffic per lane. A celebrity's convoy enters → 99% of all traffic routes into Lane 3. Lane 3 gridlocks; Lanes 1,2,4-10 sit nearly empty. Adding more lanes does not help — the problem is <b>routing skew</b>, not total capacity.</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="flow-arrow">▼ same failure mode in distributed systems ▼</div>
+        <div class="node-box hot" style="flex:1;">
+          <div class="node-title">Kafka Partition — keyed by user_id</div>
+          <div class="node-line"></div><div class="node-line"></div><div class="node-line"></div>
+          <div class="node-stat">Cristiano Ronaldo · 500M followers<br>every post → 500M fan-feed events<br>ALL hash to <b>one</b> partition</div>
+          <div class="node-stat" style="margin-top:6px;"><span class="badge hot">1000x</span> traffic vs. an average user's partition</div>
+        </div>
+        <div class="panel">
+          <small class="note"><b>This is the hot partition problem:</b> you split data across shards/partitions to distribute load, but if the partitioning key is uneven, one partition drowns while the rest idle — and total-throughput monitoring still says "all systems normal."</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 2 : KAFKA HOT PARTITION -->
+  <section class="slide">
+    <div class="kicker">Diagram 1</div>
+    <h1>Kafka Hot Partition — Topic "user-events" (6 partitions)</h1>
+    <div class="body">
+      <div class="col">
+        <div class="panel" style="flex:1;">
+          <h2>Normal Day — Even Distribution</h2>
+          <div class="bar-row"><div class="bar-label">P0</div><div class="bar-track"><div class="bar-fill normal" style="width:24%;">2K/s</div></div></div>
+          <div class="bar-row"><div class="bar-label">P1</div><div class="bar-track"><div class="bar-fill normal" style="width:24%;">2K/s</div></div></div>
+          <div class="bar-row"><div class="bar-label">P2</div><div class="bar-track"><div class="bar-fill normal" style="width:24%;">2K/s</div></div></div>
+          <div class="bar-row"><div class="bar-label">P3</div><div class="bar-track"><div class="bar-fill normal" style="width:24%;">2K/s</div></div></div>
+          <div class="bar-row"><div class="bar-label">P4</div><div class="bar-track"><div class="bar-fill normal" style="width:24%;">2K/s</div></div></div>
+          <div class="bar-row"><div class="bar-label">P5</div><div class="bar-track"><div class="bar-fill normal" style="width:24%;">2K/s</div></div></div>
+          <small class="note">Total: <b>12K events/sec</b> — smooth, uniform, hash(user_id) % 6 spreads evenly.</small>
+        </div>
+      </div>
+      <div class="flow-arrow">▶</div>
+      <div class="col">
+        <div class="panel" style="flex:1;">
+          <h2>Ronaldo Posts — hash("user_12345") % 6 = 3</h2>
+          <div class="bar-row"><div class="bar-label">P0</div><div class="bar-track"><div class="bar-fill normal" style="width:4%;"></div></div><small class="note">2K/s</small></div>
+          <div class="bar-row"><div class="bar-label">P1</div><div class="bar-track"><div class="bar-fill normal" style="width:4%;"></div></div><small class="note">2K/s</small></div>
+          <div class="bar-row"><div class="bar-label">P2</div><div class="bar-track"><div class="bar-fill normal" style="width:4%;"></div></div><small class="note">2K/s</small></div>
+          <div class="bar-row"><div class="bar-label">P3</div><div class="bar-track"><div class="bar-fill hot" style="width:100%;">50K/s ← ALL Ronaldo</div></div></div>
+          <div class="bar-row"><div class="bar-label">P4</div><div class="bar-track"><div class="bar-fill normal" style="width:4%;"></div></div><small class="note">2K/s</small></div>
+          <div class="bar-row"><div class="bar-label">P5</div><div class="bar-track"><div class="bar-fill normal" style="width:4%;"></div></div><small class="note">2K/s</small></div>
+          <small class="note">Total: <b>62K events/sec</b> (looks "fine" on average).</small>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div class="stat-box hot"><div class="stat-num">0 → millions</div><div class="stat-label">P3 consumer lag</div></div>
+          <div class="stat-box hot"><div class="stat-num">OOMKilled</div><div class="stat-label">heap exhausted</div></div>
+          <div class="stat-box good"><div class="stat-num">idle</div><div class="stat-label">P0-P2,P4-P5 consumers fine</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3 : HOT DATABASE SHARD -->
+  <section class="slide">
+    <div class="kicker">Diagram 2</div>
+    <h1>Hot Shard — Table "orders" Sharded by created_at (DATE)</h1>
+    <div class="body">
+      <div class="col">
+        <div class="panel" style="flex:1;display:flex;flex-direction:column;">
+          <h2>5 Shards, 4 Years of History → All Writes Land on Shard 5</h2>
+          <div style="display:flex;gap:14px;justify-content:space-around;flex:1;align-items:flex-end;">
+            <div>
+              <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"><div class="cyl-fill" style="height:5%;"></div></div><div class="cyl-bottom"></div></div>
+              <div class="cyl-label">Shard 1 · 2021</div><div class="cyl-pct">5% reads · CPU 5%</div>
+            </div>
+            <div>
+              <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"><div class="cyl-fill" style="height:10%;"></div></div><div class="cyl-bottom"></div></div>
+              <div class="cyl-label">Shard 2 · 2022</div><div class="cyl-pct">10% reads · CPU 10%</div>
+            </div>
+            <div>
+              <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"><div class="cyl-fill" style="height:20%;"></div></div><div class="cyl-bottom"></div></div>
+              <div class="cyl-label">Shard 3 · 2023</div><div class="cyl-pct">20% reads · CPU 15%</div>
+            </div>
+            <div>
+              <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"><div class="cyl-fill" style="height:30%;"></div></div><div class="cyl-bottom"></div></div>
+              <div class="cyl-label">Shard 4 · 2024</div><div class="cyl-pct">30% reads · CPU 20%</div>
+            </div>
+            <div>
+              <div class="cylinder hot"><div class="cyl-top"></div><div class="cyl-body"><div class="cyl-fill" style="height:100%;"></div></div><div class="cyl-bottom"></div></div>
+              <div class="cyl-label">Shard 5 · 2025-today</div><div class="cyl-pct" style="color:var(--hot-light);">35% reads + 100% writes<br>CPU 95% 🔥</div>
+            </div>
+          </div>
+          <div class="arrow-down">▲ all new orders write here</div>
+        </div>
+      </div>
+      <div class="col" style="flex:.7">
+        <div class="panel hot" style="border-color:var(--hot);flex:1;">
+          <h2 style="color:var(--hot-light);">Lesson</h2>
+          <small class="note">Time-based shard keys are <b>almost always a bad idea</b> — "today" is always hot, "history" is always cold, no matter how many shards you add.</small>
+        </div>
+        <div class="panel good" style="border-color:var(--green);flex:1;">
+          <h2 style="color:var(--green);">Better Shard Keys</h2>
+          <div class="code">hash(user_id)
+hash(order_id)</div>
+          <small class="note">→ uniform distribution across all shards.</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4 : HOT CACHE KEY -->
+  <section class="slide">
+    <div class="kicker">Diagram 3</div>
+    <h1>Hot Key in Cache — Viral Product on Redis</h1>
+    <div class="body">
+      <div class="col">
+        <div class="node-box" style="flex:1;">
+          <div class="node-title">Redis Node 1</div>
+          <div class="node-line"></div><div class="node-line" style="width:70%"></div><div class="node-line" style="width:50%"></div>
+          <div class="node-stat">product_A 1.0K/s · product_B 0.9K/s ...</div>
+          <div class="node-stat"><span class="badge normal">~5K req/s total</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="node-box hot" style="flex:1;">
+          <div class="node-title">Redis Node 2 🔥 TikTok influencer wears product_G</div>
+          <div class="node-line" style="width:100%"></div><div class="node-line" style="width:100%"></div><div class="node-line" style="width:100%"></div>
+          <div class="node-stat" style="color:var(--hot-light);font-weight:bold;">product_G → 200,000 req/sec</div>
+          <div class="node-stat"><span class="badge hot">CPU 100%</span> <span class="badge hot">NIC saturated</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="node-box" style="flex:1;">
+          <div class="node-title">Redis Node 3</div>
+          <div class="node-line"></div><div class="node-line" style="width:70%"></div><div class="node-line" style="width:50%"></div>
+          <div class="node-stat">product_E 0.95K/s · product_F 1.0K/s ...</div>
+          <div class="node-stat"><span class="badge normal">~5K req/s total</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:10px;">
+      <small class="note">Redis can handle <b>~500K req/sec</b> per node in aggregate — but 10M users hitting one product page in 10 minutes all hash to node 2 for that key. <b>Even with 3 Redis nodes, one node absorbs 100% of the viral traffic</b> — "add more Redis nodes" does not fix this; you must change how the hot key itself is distributed.</small>
+    </div>
+  </section>
+
+  <!-- SLIDE 5 : DETECTION -->
+  <section class="slide">
+    <div class="kicker">Detection</div>
+    <h1>Finding Hot Partitions Before They Cause Outages</h1>
+    <div class="body">
+      <div class="col">
+        <div class="panel">
+          <h2>kafka-consumer-groups.sh --describe (sorted by LAG desc)</h2>
+          <table class="tbl">
+            <tr><th>TOPIC</th><th>PARTITION</th><th>CURRENT-OFFSET</th><th>LOG-END-OFFSET</th><th>LAG</th></tr>
+            <tr class="hotrow"><td>user-events</td><td>3</td><td>4,000,000</td><td>54,000,000</td><td>50,000,000 🔥</td></tr>
+            <tr><td>user-events</td><td>0</td><td>2,000,000</td><td>2,100,000</td><td>100,000</td></tr>
+            <tr><td>user-events</td><td>1</td><td>1,500,000</td><td>1,600,000</td><td>100,000</td></tr>
+          </table>
+          <small class="note">Partition 3: 50M lag. Partitions 0,1: &lt;200K lag. Classic hot-partition signature.</small>
+        </div>
+        <div class="panel" style="flex:1;">
+          <h2>Database — pg_stat_user_tables</h2>
+          <div class="code">SELECT schemaname, tablename,
+  n_tup_ins + n_tup_upd + n_tup_del AS writes,
+  seq_scan, idx_scan
+FROM pg_stat_user_tables
+ORDER BY writes DESC;</div>
+        </div>
+      </div>
+      <div class="col" style="flex:.75">
+        <div class="panel">
+          <h2>Redis — Hot Key Scan</h2>
+          <div class="code">redis-cli --hotkeys
+<span class="cm"># requires maxmemory-policy allkeys-lru</span></div>
+        </div>
+        <div class="panel">
+          <h2>Shard Routing Logs</h2>
+          <div class="code">grep "routing to shard" app.log \
+ | awk '{print $NF}' | sort | uniq -c | sort -nr</div>
+        </div>
+        <div class="panel hot" style="border-color:var(--hot);text-align:center;flex:1;display:flex;align-items:center;justify-content:center;">
+          <div><div style="font-size:22px;font-weight:bold;color:var(--hot-light);">&gt; 5x average traffic</div><div class="stat-label">= HOT PARTITION (the rule of thumb)</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6 : SOLUTION 1 - SALT -->
+  <section class="slide">
+    <div class="kicker">Solution 1</div>
+    <h1>Salt / Random Prefix on the Partition Key</h1>
+    <div class="body">
+      <div class="col">
+        <div class="panel" style="flex:1;">
+          <h2>Producer side (Java)</h2>
+          <div class="code"><span class="kw">public</span> String buildPartitionKey(String userId, <span class="kw">boolean</span> isCelebrity) {
+  <span class="kw">if</span> (isCelebrity) {
+    <span class="kw">int</span> salt = ThreadLocalRandom.current().nextInt(10);
+    <span class="kw">return</span> userId + <span class="str">"_"</span> + salt; <span class="cm">// "user_12345_7"</span>
+  }
+  <span class="kw">return</span> userId;
+}</div>
+        </div>
+        <div class="panel">
+          <h2>Fan-out across partitions</h2>
+          <div style="display:flex;align-items:center;gap:6px;justify-content:center;">
+            <div class="tree-box">user_12345</div>
+            <div class="flow-arrow">▶</div>
+            <div class="tree-box q">+ salt 0-9</div>
+            <div class="flow-arrow">▶</div>
+            <div class="tree-box ans">spread across 6 partitions</div>
+          </div>
+        </div>
+      </div>
+      <div class="col" style="flex:.85">
+        <div class="panel hot" style="border-color:var(--hot);flex:1;">
+          <h2 style="color:var(--hot-light);">Trade-off: Ordering Is Broken</h2>
+          <small class="note"><b>Before salting:</b> all events for user X in one partition → ordering guaranteed.<br><br>
+          <b>After salting:</b> events for user_12345_3 and user_12345_7 may arrive out of order relative to each other.<br><br>
+          To process ALL of a user's events (e.g. Ronaldo), consumers must now read from <b>every</b> partition and aggregate.</small>
+        </div>
+        <div class="panel good" style="border-color:var(--green);">
+          <h2 style="color:var(--green);">Fix: Sequence Number</h2>
+          <small class="note">Add a monotonic sequence number to each event; re-sort on the consumer side to restore per-user ordering.</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7 : SOLUTION 2 dedicated + 3 cell-based -->
+  <section class="slide">
+    <div class="kicker">Solution 2 &amp; 3</div>
+    <h1>Dedicated Partitions for Hot Keys · Cell-Based Sharding</h1>
+    <div class="body">
+      <div class="col">
+        <div class="panel">
+          <h2>Dedicated Topic Tier</h2>
+          <small class="note">"user-events" (normal, 6 partitions):</small>
+          <div class="grid-cells" style="grid-template-columns:repeat(6,1fr);max-width:120px;margin:4px 0;">
+            <div class="cell-sq"></div><div class="cell-sq"></div><div class="cell-sq"></div>
+            <div class="cell-sq"></div><div class="cell-sq"></div><div class="cell-sq"></div>
+          </div>
+          <small class="note">"celebrity-events" (dedicated, 100 partitions):</small>
+          <div class="grid-cells">
+            <div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div>
+            <div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div>
+            <div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div>
+            <div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div><div class="cell-sq gold"></div>
+          </div>
+          <small class="note">Celebrity consumers: more instances, more memory, dedicated cluster if needed.</small>
+        </div>
+        <div class="panel">
+          <div class="code">CELEBRITY_USER_IDS = load_from_redis(<span class="str">"celebrity_set"</span>)
+<span class="kw">def</span> get_kafka_key(user_id):
+  <span class="kw">if</span> user_id in CELEBRITY_USER_IDS:
+    <span class="kw">return</span> <span class="fn">f"celebrity:{user_id}"</span>
+  <span class="kw">return</span> user_id
+<span class="cm"># alert if any partition has 10x avg event rate</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="panel">
+          <h2>Cell-Based Sharding — Alice trades 10K tx/sec</h2>
+          <div style="text-align:center;">
+            <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"><div class="cyl-fill" style="height:60%;"></div></div><div class="cyl-bottom"></div></div>
+            <div class="cyl-label">account_cells (account_id, cell_id)</div>
+          </div>
+          <div class="grid-cells" style="margin-top:6px;">
+            <div class="cell-sq"></div><div class="cell-sq"></div><div class="cell-sq"></div><div class="cell-sq"></div><div class="cell-sq"></div>
+            <div class="cell-sq"></div><div class="cell-sq pick"></div><div class="cell-sq"></div><div class="cell-sq"></div><div class="cell-sq"></div>
+          </div>
+          <small class="note">Alice split across 10 cells (0-9) · random write picks cell 7 → no single hot row.</small>
+        </div>
+        <div class="panel">
+          <div class="code"><span class="kw">INSERT INTO</span> account_cells (account_id, cell_id, balance)
+<span class="kw">VALUES</span> (<span class="str">'alice'</span>, 7, 99.50)
+<span class="kw">ON CONFLICT</span> ... <span class="kw">DO UPDATE SET</span> balance += EXCLUDED.balance;
+
+<span class="cm">-- read: aggregate all cells</span>
+<span class="kw">SELECT</span> account_id, <span class="fn">SUM</span>(balance) <span class="kw">AS</span> total_balance
+<span class="kw">FROM</span> account_cells <span class="kw">WHERE</span> account_id=<span class="str">'alice'</span> <span class="kw">GROUP BY</span> account_id;</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8 : SOLUTION 4 local cache + 5 adaptive backpressure -->
+  <section class="slide">
+    <div class="kicker">Solution 4 &amp; 5</div>
+    <h1>Local In-Process Cache (Caffeine) · Adaptive Backpressure</h1>
+    <div class="body">
+      <div class="col">
+        <div class="panel">
+          <h2>Caffeine Absorbs the Spike Before Redis</h2>
+          <div style="display:flex;align-items:center;justify-content:space-around;gap:6px;">
+            <div class="tree-box hot ans2">100 app instances<br>local cache, 1s TTL</div>
+            <div class="flow-arrow">▼</div>
+            <div class="node-box" style="width:130px;"><div class="node-title">Redis</div><div class="node-line"></div></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;">
+            <div class="stat-box hot"><div class="stat-num">200,000/s</div><div class="stat-label">into app tier</div></div>
+            <div class="flow-arrow" style="align-items:center;">▶</div>
+            <div class="stat-box good"><div class="stat-num">~100/s</div><div class="stat-label">reaching Redis</div></div>
+          </div>
+        </div>
+        <div class="panel" style="flex:1;">
+          <div class="code">Cache&lt;String,Product&gt; localCache = Caffeine.newBuilder()
+  .maximumSize(1000)
+  .expireAfterWrite(1, SECONDS)
+  .build();
+<span class="cm">// check localCache -&gt; then redis -&gt; then DB fallback</span></div>
+        </div>
+      </div>
+      <div class="col" style="flex:.85">
+        <div class="panel" style="flex:1;">
+          <h2>Adaptive Rate Limiting / Backpressure</h2>
+          <div class="code"><span class="fn">max.poll.records</span>: 100
+<span class="fn">fetch.max.wait.ms</span>: 100
+<span class="fn">pause.on.lag</span>: true <span class="cm"># custom</span></div>
+        </div>
+        <div class="panel hot" style="border-color:var(--hot);">
+          <small class="note">If partition lag &gt; <b>1M records</b>: pause consumer on that partition.<br>Resume when lag &lt; <b>100K</b>.<br>Prevents OOM from processing 50M messages at once.</small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9 : DECISION FRAMEWORK + NUMBERS -->
+  <section class="slide">
+    <div class="kicker">Decision Framework</div>
+    <h1>Hot Partition Mitigation by Layer</h1>
+    <div class="body">
+      <div class="col" style="flex:1.3">
+        <table class="tbl">
+          <tr><th>Layer</th><th>Symptom</th><th>Root Cause</th><th>Solution</th></tr>
+          <tr><td>Kafka</td><td>One partition's lag grows, others flat</td><td>Skewed key (user_id, merchant_id)</td><td>Salt key OR dedicated topic</td></tr>
+          <tr><td>DB shard</td><td>One node 95% CPU, others 10%</td><td>Time-based key / single hot entity</td><td>hash(entity_id) OR cell-based</td></tr>
+          <tr><td>Cache (Redis)</td><td>One node saturated, others idle</td><td>Viral item hashes to one node</td><td>Local cache (Caffeine) top-N keys</td></tr>
+          <tr><td>CDN / HTTP</td><td>One origin overwhelmed</td><td>Popular resource not cached</td><td>CDN cache + stale-while-revalidate</td></tr>
+          <tr><td>Load balancer</td><td>Sticky sessions → uneven load</td><td>Session affinity same node</td><td>Round-robin OR IP-hash + migration</td></tr>
+        </table>
+      </div>
+      <div class="col">
+        <div class="panel">
+          <h2>Kafka Limits</h2>
+          <small class="note">Single partition max: ~50MB/s write, ~150MB/s read.<br>Safe range: 10MB/s write, 30MB/s read.<br><b>&gt;5x average → hot.</b></small>
+        </div>
+        <div class="panel">
+          <h2>Redis Limits</h2>
+          <small class="note">~500K simple ops/sec (GET/SET), ~200K complex (ZRANGE, GEORADIUS).<br><b>&gt;50K req/sec on one key → local cache.</b></small>
+        </div>
+        <div class="panel">
+          <h2>PostgreSQL Limits</h2>
+          <small class="note">~5K writes/sec (indexed), ~50K reads/sec (buffer hits).<br><b>&gt;3x average → re-shard / read replicas.</b></small>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 10 : DECISION TREE + ONE-LINER -->
+  <section class="slide">
+    <div class="kicker">Decision Tree &amp; Takeaway</div>
+    <h1>Which Fix to Apply — And the Interview One-Liner</h1>
+    <div class="body">
+      <div class="col" style="flex:1.3">
+        <div class="panel" style="flex:1;">
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:center;">
+            <div class="tree-box q">Hot key PREDICTABLE? (celebrity, large merchant)</div>
+            <div class="flow-arrow">▼ YES</div>
+            <div class="tree-box ans">DEDICATED PARTITION / SHARD — its own high-throughput tier</div>
+            <div class="flow-arrow">▼ NO</div>
+            <div class="tree-box q">TEMPORARY? (viral content, flash sale)</div>
+            <div class="flow-arrow">▼ YES</div>
+            <div class="tree-box ans">LOCAL CACHE (in-process, 1-5s TTL) — absorbs the thundering herd</div>
+            <div class="flow-arrow">▼ NO</div>
+            <div class="tree-box q">ORDERING required per entity?</div>
+            <div class="flow-arrow">▼ YES · NO</div>
+            <div style="display:flex;gap:10px;">
+              <div class="tree-box ans2">SALT + SEQUENCE NUMBER</div>
+              <div class="tree-box ans2">RANDOM SALT (simplest)</div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <small class="note"><b>At database layer:</b> time-based key → re-shard hash(entity_id) ASAP · single entity too large → cell-based sharding · read-heavy hot shard → dedicated read replicas.</small>
+        </div>
+      </div>
+      <div class="col">
+        <div class="quote">
+          "The hot partition problem is where your load distribution assumption fails — you assumed uniform traffic per key but got power-law distribution, so you fix it either by splitting the hot key across multiple partitions with a salt or by giving predictably hot entities their own dedicated partition tier that can scale independently."
+          <div style="text-align:right;margin-top:8px;font-style:normal;color:var(--muted);font-size:11px;">— Architect's one-liner</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">◀ Prev</button>
+  <div class="counter"><span id="curNum">1</span> / <span id="totalNum">10</span></div>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+  document.getElementById('totalNum').textContent = total;
+
+  function show(i){
+    idx = (i + total) % total;
+    slides.forEach(function(s, n){ s.classList.toggle('active', n === idx); });
+    document.getElementById('curNum').textContent = idx + 1;
+  }
+  document.getElementById('prevBtn').addEventListener('click', function(){ show(idx - 1); });
+  document.getElementById('nextBtn').addEventListener('click', function(){ show(idx + 1); });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight') show(idx + 1);
+    if (e.key === 'ArrowLeft') show(idx - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

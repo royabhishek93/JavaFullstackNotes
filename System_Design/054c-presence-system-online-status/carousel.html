@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Presence System — Online/Last Seen — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+  /* Redis circle icon (reused from reference deck) */
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 22px; margin: 0 auto;
+  }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+
+  /* Topic-specific CSS-drawn icons: no emoji */
+
+  /* Online / offline status dot with glow */
+  .status-dot {
+    width: 20px; height: 20px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 10px var(--green); margin: 0 auto;
+  }
+  .status-dot.offline { background: var(--muted); box-shadow: none; }
+
+  /* Heartbeat pulse — CSS bar chart forming an ECG-like spike */
+  .pulse { display: flex; align-items: flex-end; gap: 3px; height: 44px; margin: 0 auto; width: 90px; }
+  .pulse span { width: 6px; border-radius: 2px; background: var(--green); }
+  .pulse span:nth-child(1) { height: 8px; }
+  .pulse span:nth-child(2) { height: 16px; }
+  .pulse span:nth-child(3) { height: 44px; }
+  .pulse span:nth-child(4) { height: 10px; }
+  .pulse span:nth-child(5) { height: 22px; }
+  .pulse span:nth-child(6) { height: 8px; }
+  .pulse.flat span { height: 6px !important; background: var(--muted); }
+
+  /* WebSocket persistent-connection icon: two nodes joined by a dashed live line */
+  .ws-wrap { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 0 auto; width: 140px; }
+  .ws-node {
+    width: 34px; height: 34px; border-radius: 8px; border: 2px solid var(--blue);
+    display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--blue); font-weight: 700;
+  }
+  .ws-line { flex: 1; height: 0; border-top: 2px dashed var(--green); position: relative; }
+  .ws-line::after {
+    content: ""; position: absolute; top: -3px; left: 50%; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green);
+  }
+
+  /* Redis key with TTL countdown ring */
+  .key-wrap { position: relative; width: 66px; height: 66px; margin: 0 auto; }
+  .key-ring {
+    width: 66px; height: 66px; border-radius: 50%; border: 3px dashed var(--accent);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .key-ring .ttl-label { font-size: 11px; color: var(--accent); font-weight: 700; }
+  .key-ring.expired { border-color: var(--muted); border-style: solid; }
+  .key-ring.expired .ttl-label { color: var(--muted); }
+
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Presence System — Online / Last Seen</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">16.7M writes/sec</div>
+      <p>500 million concurrent WhatsApp users, each sending a heartbeat every 30 seconds. That's the write load your presence store has to survive — and it's all built on ONE Redis key with a TTL.</p>
+      <div class="row" style="margin-top:18px;">
+        <div class="col"><div class="status-dot"></div>Online</div>
+        <div class="col"><div class="status-dot offline"></div>Offline</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Heartbeat Flow</h1>
+    <h2>Scenario 1 — How "Online" Actually Works</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="pulse"><span></span><span></span><span></span><span></span><span></span><span></span></div>Every 30s</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="key-ring"><span class="ttl-label">60s</span></div>SETEX ...online 60 "1"</div>
+      </div>
+      <p style="text-align:center">Client sends a heartbeat every 30s over the open WebSocket. Server refreshes a Redis key with a 60-second TTL — double the heartbeat interval, so one dropped packet doesn't falsely mark you offline.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Silence Means Offline</h1>
+    <h2>Scenario 2 — TTL Expiry</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="pulse flat"><span></span><span></span><span></span><span></span><span></span><span></span></div>No heartbeat</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="key-ring expired"><span class="ttl-label">gone</span></div>Key expired</div>
+      </div>
+      <p style="text-align:center">App backgrounds or loses network → no more heartbeats → 60s later Redis auto-deletes the key. No cron job. Key missing = offline. <code>last_seen</code> timestamp is written on every heartbeat and kept permanently (no TTL).</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Reading Presence — O(1)</h1>
+    <h2>Scenario 3 — EXISTS Query</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="ws-wrap"><div class="ws-node">Bob</div><div class="ws-line"></div><div class="ws-node">API</div></div>GET /presence/alice</div>
+      </div>
+      <table>
+        <tr><th>Command</th><th>Purpose</th></tr>
+        <tr><td>SETEX user:alice:online 60 "1"</td><td>Write presence (heartbeat)</td></tr>
+        <tr><td>EXISTS user:alice:online</td><td>1 = online, 0 = offline</td></tr>
+        <tr><td>GET user:alice:last_seen</td><td>Fallback timestamp if offline</td></tr>
+      </table>
+      <p style="text-align:center">Every read is O(1) — constant time whether you have 1,000 users or 500 million.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Scale Problem</h1>
+    <h2>Scenario 4 — Redis Cluster Hash-Slot Sharding</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon">R</div>Shard 1</div>
+        <div class="col"><div class="redis-icon">R</div>Shard 2</div>
+        <div class="col"><div class="redis-icon">R</div>...20</div>
+      </div>
+      <p style="text-align:center">500M users × 1 heartbeat/30s = 16.7M writes/sec. One Redis node caps at ~1M ops/sec. Fix: Redis Cluster, hash user ID into 16,384 slots across 20 shards → ~850K ops/sec each. Memory: 500M × 50 bytes = 25GB total, under 2GB per shard.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Privacy Reciprocity Trap</h1>
+    <h2>Trap 1 — "Last Seen" Visibility</h2>
+    <div class="body">
+      <p><b>Settings:</b> Everyone / My Contacts / Nobody.</p>
+      <p><span class="x-mark">✕</span> Checking only the viewer's own setting = one-sided surveillance.</p>
+      <p><span class="check-mark">✓</span> Correct fix: check BOTH users' settings before revealing either's last seen. If Alice hides hers from Bob, Alice also cannot see Bob's — no exceptions.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Group Chat Fan-Out Trap</h1>
+    <h2>Trap 2 — Naive Per-Member EXISTS</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>500 members<br>× 1000 opens<br>= 500,000 queries</div>
+      </div>
+      <p style="text-align:center"><span class="x-mark">✕</span> Individual online dots for every member doesn't scale. <span class="check-mark">✓</span> Real fix: show aggregate "N members online" count. 1-on-1 chats: single EXISTS per open is fine. Status pushed over the existing WebSocket instead of polled.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Detecting Disconnects</h1>
+    <h2>Soft vs Hard Disconnect — Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Method</th><th>Speed</th><th>Trigger</th></tr>
+        <tr><td>TTL expiry <span class="badge badge-ap">soft</span></td><td>Up to 60s delay</td><td>No heartbeat arrives in time</td></tr>
+        <tr><td>WS onDisconnect <span class="badge badge-cp">hard</span></td><td>Immediate</td><td>TCP connection actually drops</td></tr>
+      </table>
+      <p style="text-align:center">Production systems use both: TTL as the safety net, WebSocket disconnect events as the fast path — up to 30s faster.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Need "online now"? → EXISTS user:{id}:online. Need last activity? → GET user:{id}:last_seen. Writes outgrowing 1 Redis node? → Redis Cluster, hash-sharded. Large group? → aggregate count, not per-member dots.</p>
+      <div class="quote-box">
+        "Heartbeat + Redis TTL. Client sends SETEX with 60s TTL every 30 seconds. If the app closes, no more heartbeats, key expires after 60s → offline. At 500M scale: Redis Cluster distributes the 17M heartbeat writes/sec across shards. Presence check is one EXISTS call per query."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

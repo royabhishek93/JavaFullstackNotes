@@ -1,6 +1,8 @@
 # 🔨 Online Auction System - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -322,6 +324,40 @@ With `SERIALIZABLE` isolation or `SELECT FOR UPDATE`, concurrent bid attempts ar
 ## 9. Technology Choices
 
 **You**: "**WebSocket** for real-time bid updates to all watching bidders (crucial for the 'exciting last-minute bidding war' UX). **PostgreSQL** with `SERIALIZABLE` isolation for bid consistency - correctness over raw throughput since financial disputes are costly. **Redis** for caching current highest bid for fast read-only display (non-authoritative, just for UI performance)."
+
+---
+
+## 🔥 Real-World Production Issue: The Mediator That Became a Single Point of Failure for Every Auction
+
+*In plain English: sharing one mediator across many unrelated auctions creates lock contention that slows down auctions that have nothing to do with each other.*
+
+**The war story:**
+
+"An online auction platform's `AuctionMediator` correctly centralized ALL bidder coordination (exactly per this pattern) — but it was implemented as ONE shared, in-process singleton handling coordination for ALL active auctions simultaneously, rather than one Mediator instance PER auction."
+
+```
+singleton AuctionMediator {
+    handleBid(auctionId, bid) { ... coordinates ALL auctions ... }
+}
+
+During a major auction event, 500 different auctions ran concurrently.
+One popular, high-traffic auction (a rare item, thousands of bidders)
+generated a huge volume of concurrent placeBid() calls into the
+SAME shared Mediator instance, which used method-level synchronization
+for thread safety (synchronized handleBid(...)).
+
+Result: the synchronized lock on the SHARED Mediator instance became
+a bottleneck for ALL 500 auctions, not just the busy one -- bidders
+on completely unrelated, low-traffic auctions experienced multi-second
+bid-placement delays purely because of lock contention caused by
+a DIFFERENT auction entirely
+```
+
+**Root cause:** Mediator Pattern correctly decoupled bidders from talking directly to each other (N² -> N communication, exactly as intended) — but implementing it as ONE global Mediator instance for ALL auctions meant unrelated auctions shared a synchronization bottleneck, creating exactly the kind of tight coupling (contention) between UNRELATED entities that good design should avoid.
+
+**The fix:** refactored to one `AuctionMediator` instance PER auction (keyed by `auctionId`, created on auction start, discarded on auction close), each with its own independent lock/synchronization scope — preserving the Mediator's decoupling benefit for bidders WITHIN one auction, while eliminating cross-auction contention entirely, since unrelated auctions no longer share any synchronized resource.
+
+**Lesson for a new developer:** "When applying Mediator Pattern (or any pattern that introduces a central coordinating object) at scale, be deliberate about the SCOPE of that central object — a mediator scoped too broadly (one instance for many logically-independent groups) reintroduces the exact kind of unwanted coupling/contention the pattern was meant to eliminate, just moved to a different layer (shared lock instead of direct references)."
 
 ---
 

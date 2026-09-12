@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <rect x="10" y="10" width="1180" height="880" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+  <text x="600" y="42" text-anchor="middle" font-size="20" font-weight="bold" fill="#2d2d2d">WhatsApp-Style Chat System — Architecture</text>
+  <line x1="350" y1="54" x2="850" y2="54" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <rect x="480" y="70" width="240" height="50" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="600" y="90" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5e20">Clients</text>
+  <text x="600" y="106" text-anchor="middle" font-size="9" fill="#1a5e20">iOS / Android / Web</text>
+
+  <line x1="560" y1="120" x2="380" y2="160" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="640" y1="120" x2="820" y2="160" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="420" y="140" font-size="9" fill="#888">WSS</text>
+  <text x="770" y="140" font-size="9" fill="#888">HTTPS</text>
+
+  <rect x="200" y="160" width="260" height="70" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="330" y="180" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">WebSocket Gateway (LB)</text>
+  <text x="215" y="198" font-size="9" fill="#333">Sticky — consistent hash on user_id</text>
+  <text x="215" y="212" font-size="9" fill="#333">(same user always same server)</text>
+
+  <rect x="700" y="160" width="260" height="70" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="830" y="180" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">API Gateway (LB)</text>
+  <text x="715" y="198" font-size="9" fill="#333">Round-robin — REST is stateless</text>
+  <text x="715" y="212" font-size="9" fill="#333">(any server can handle any request)</text>
+
+  <line x1="330" y1="230" x2="330" y2="270" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="830" y1="230" x2="830" y2="270" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <rect x="200" y="270" width="260" height="60" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="330" y="292" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">WebSocket Server</text>
+  <text x="215" y="310" font-size="9" fill="#1a4a7a">Stateful — holds live connections</text>
+
+  <rect x="700" y="270" width="260" height="60" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="830" y="292" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">REST API Server</text>
+  <text x="715" y="310" font-size="9" fill="#1a4a7a">Profile, auth, group CRUD</text>
+
+  <line x1="330" y1="330" x2="450" y2="380" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <rect x="340" y="380" width="260" height="70" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="2.5"/>
+  <text x="470" y="400" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a4a00">Chat Service</text>
+  <text x="355" y="418" font-size="9" fill="#333">Routes msg, persists, publishes</text>
+  <text x="355" y="432" font-size="9" fill="#333">to Redis Streams, updates status</text>
+
+  <line x1="400" y1="450" x2="230" y2="510" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="540" y1="450" x2="700" y2="510" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="270" y="480" font-size="9" fill="#888">persist</text>
+  <text x="640" y="480" font-size="9" fill="#888">XADD</text>
+
+  <rect x="100" y="510" width="260" height="70" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="230" y="530" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a0000">Cassandra</text>
+  <text x="115" y="548" font-size="9" fill="#333">Messages store — partition key</text>
+  <text x="115" y="562" font-size="9" fill="#333">= chat_id, clustering = timestamp</text>
+
+  <rect x="600" y="510" width="280" height="70" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="740" y="530" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">Redis Streams</text>
+  <text x="615" y="548" font-size="9" fill="#333">stream:server.&lt;ws_id&gt;.inbox</text>
+  <text x="615" y="562" font-size="9" fill="#333">one stream per chat server, not per user</text>
+
+  <line x1="680" y1="580" x2="600" y2="630" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="800" y1="580" x2="880" y2="630" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <rect x="470" y="630" width="240" height="60" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="590" y="650" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5e20">Online WS Delivery</text>
+  <text x="485" y="668" font-size="9" fill="#1a5e20">XREAD by owning server</text>
+
+  <rect x="760" y="630" width="240" height="60" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="880" y="650" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">Notification Service</text>
+  <text x="775" y="668" font-size="9" fill="#4a0a7a">FCM / APNs push if offline</text>
+
+  <rect x="40" y="700" width="230" height="70" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="155" y="720" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">Presence Service</text>
+  <text x="55" y="738" font-size="9" fill="#333">Redis Pub/Sub, user:online_set</text>
+  <text x="55" y="752" font-size="9" fill="#333">registry TTL 60s / heartbeat 30s</text>
+
+  <rect x="290" y="700" width="230" height="70" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="405" y="720" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5e20">Media Service</text>
+  <text x="305" y="738" font-size="9" fill="#333">Pre-signed S3 URL + CloudFront</text>
+  <text x="305" y="752" font-size="9" fill="#333">Bytes never touch Chat Service</text>
+
+  <rect x="540" y="700" width="230" height="70" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="655" y="720" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">User / Auth Service</text>
+  <text x="555" y="738" font-size="9" fill="#333">PostgreSQL + Redis cache</text>
+  <text x="555" y="752" font-size="9" fill="#333">profiles, contacts, phone uniqueness</text>
+
+  <rect x="790" y="700" width="290" height="70" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="935" y="720" text-anchor="middle" font-size="12" font-weight="bold" fill="#2d2d2d">Kafka (separate path)</text>
+  <text x="805" y="738" font-size="9" fill="#333">Replayable consumers only: search index,</text>
+  <text x="805" y="752" font-size="9" fill="#333">analytics, CDC, audit — NOT hot-path delivery</text>
+
+  <line x1="740" y1="580" x2="935" y2="700" stroke="#888" stroke-width="1.5" stroke-dasharray="5,3" marker-end="url(#arr)"/>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+  </defs>
+
+  <text x="600" y="850" text-anchor="middle" font-size="10" fill="#aaa">Chat System Design — Architecture Diagram</text>
+</svg>

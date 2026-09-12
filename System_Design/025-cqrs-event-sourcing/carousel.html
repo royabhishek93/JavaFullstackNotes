@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CQRS &amp; Event Sourcing — Why Financial Systems Never UPDATE — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c; --kafka: #231f20;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); text-align: center; }
+  .db-icon { width: 54px; height: 60px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 54px; height: 15px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 54px; height: 32px; position: absolute; top: 11px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 54px; height: 15px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .server-box {
+    width: 54px; height: 46px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .kafka-box {
+    width: 70px; height: 46px; border: 2px solid var(--kafka); background: var(--kafka);
+    border-radius: 6px; padding: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #fff; text-align: center; margin: 0 auto;
+  }
+  .event-box {
+    background: rgba(245, 166, 35, 0.15); border: 1px solid var(--accent);
+    padding: 6px 10px; border-radius: 4px; font-size: 11px; margin: 4px 0;
+    font-family: monospace; color: var(--accent);
+  }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; font-size: 18px; }
+  .check-mark { color: #2ecc71; font-weight: 700; font-size: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); font-weight: 600; }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 12px; background: rgba(245,166,35,0.08); border-radius: 4px;
+    margin: 8px 0; line-height: 1.6;
+  }
+  .stat { font-size: 32px; font-weight: 800; color: var(--accent); text-align: center; margin: 16px 0; }
+  .stat-small { font-size: 14px; color: var(--muted); font-weight: 400; margin-top: 8px; }
+  code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  ul { margin: 8px 0; padding-left: 20px; }
+  li { margin: 4px 0; line-height: 1.4; }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <h1>CQRS &amp; Event Sourcing</h1>
+    <h2>The Hook — History Lost Forever</h2>
+    <div class="body">
+      <div class="stat">UPDATE</div>
+      <p style="text-align:center; font-size: 15px; margin: 16px 0;">Traditional databases lose history on every UPDATE.</p>
+      <div style="background: rgba(231, 76, 60, 0.15); border: 1px solid #e74c3c; padding: 12px; border-radius: 6px; margin-top: 20px;">
+        <p style="margin: 0; font-family: monospace; font-size: 12px; color: #e74c3c;">
+          <b>Order 42:</b> When was it placed?<br>
+          <b>Answer:</b> No idea — timestamp overwritten.<br><br>
+          UPDATE orders SET status='SHIPPED'...<br>
+          → Placement timestamp: <b>GONE</b>
+        </p>
+      </div>
+      <p style="text-align:center; margin-top: 20px; font-size: 13px; color: var(--muted);">Financial systems can't afford this. That's why they never UPDATE.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide">
+    <h1>The Problem: One Model Can't Do Both</h1>
+    <h2>CQRS Bank Counter Analogy</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col">
+          <div class="server-box"><span></span><span></span><span></span></div>
+          <b>Counter A</b><br>Teller Window
+        </div>
+        <div class="col">
+          <div class="server-box"><span></span><span></span><span></span></div>
+          <b>Counter B</b><br>Customer Service
+        </div>
+      </div>
+      <p style="margin-top: 16px;"><b>Counter A (Write):</b> Validates transactions, applies business rules, ACID guarantees. Normalized data. Slow joins OK.</p>
+      <p><b>Counter B (Read):</b> Answers balance queries instantly. Denormalized snapshot. Pre-aggregated. No joins.</p>
+      <p style="margin-top: 16px; color: var(--accent);"><b>They don't share the same queue.</b> That's CQRS — separate write and read models optimized for different jobs.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: CQRS ARCHITECTURE -->
+  <div class="slide">
+    <h1>CQRS Architecture</h1>
+    <h2>Write Side vs Read Side</h2>
+    <div class="body">
+      <div class="row" style="margin-bottom: 10px;">
+        <div class="col">
+          <div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>
+          <b>Write Side</b><br>PostgreSQL<br>(normalized)
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="kafka-box">Kafka<br>Events</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="db-icon db-green"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>
+          <b>Read Side</b><br>Elasticsearch<br>(denormalized)
+        </div>
+      </div>
+      <table>
+        <tr><th>Operation</th><th>Time</th></tr>
+        <tr><td>Write: INSERT + publish event</td><td>~5ms</td></tr>
+        <tr><td>Kafka consumer processes event</td><td>~100ms delay</td></tr>
+        <tr><td>Read query: single doc lookup</td><td>~5ms</td></tr>
+      </table>
+      <p style="margin-top: 10px; font-size: 12px;">Write side handles validation and consistency. Read side handles scale — multiple read models from one event stream.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: EVENT SOURCING CONCEPT -->
+  <div class="slide">
+    <h1>Event Sourcing</h1>
+    <h2>Immutable Event Log vs Mutable State</h2>
+    <div class="body">
+      <p style="margin-bottom: 8px;"><b>Traditional (mutable state):</b></p>
+      <div style="background: rgba(231, 76, 60, 0.1); padding: 8px; border-radius: 4px; font-size: 11px; margin-bottom: 12px;">
+        orders: {id: 42, status: "SHIPPED", total: 198}<br>
+        <span class="x-mark">✕</span> Can't answer: "When was order 42 placed?"
+      </div>
+      <p style="margin-bottom: 8px;"><b>Event Sourcing (immutable log):</b></p>
+      <div class="event-box">seq=1: OrderPlaced {orderId:42, total:198, ts:...}</div>
+      <div class="event-box">seq=2: PaymentCharged {orderId:42, amount:198}</div>
+      <div class="event-box">seq=3: OrderShipped {carrier:"UPS", tracking:...}</div>
+      <div class="event-box">seq=4: OrderDelivered {deliveredAt:...}</div>
+      <p style="margin-top: 10px; font-size: 12px;"><span class="check-mark">✓</span> Current state = replay events 1..4. Complete audit trail. Time-travel queries. Never delete.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: SNAPSHOT OPTIMIZATION -->
+  <div class="slide">
+    <h1>Snapshot Optimization</h1>
+    <h2>Solving the 2000 Events Problem</h2>
+    <div class="body">
+      <div style="background: rgba(231, 76, 60, 0.1); padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+        <p style="margin: 0; font-size: 13px;"><b>Problem:</b> Order 42 has <b>2000 events</b> (active since 2019). Replaying 2000 events on every read is slow.</p>
+      </div>
+      <div style="background: rgba(46, 204, 113, 0.1); padding: 12px; border-radius: 6px;">
+        <p style="margin: 0 0 8px; font-size: 13px;"><b>Solution:</b> Snapshot every <b>100 events</b></p>
+        <div style="font-family: monospace; font-size: 11px; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px;">
+snapshot_store:<br>
+orderId: 42, seq: 1000, state: {status: SHIPPED, ...}<br>
+orderId: 42, seq: 1100, state: {status: DELIVERED, ...}
+        </div>
+      </div>
+      <p style="margin-top: 16px; font-size: 12px;"><b>To get current state:</b></p>
+      <ol style="font-size: 12px; margin: 8px 0; padding-left: 20px;">
+        <li>Load latest snapshot (seq=1100) — 1 row read</li>
+        <li>Replay events 1101..current — at most 100 events</li>
+      </ol>
+      <p style="font-size: 12px; color: var(--accent);">Total: snapshot + 0-100 events, <b>not 2000 events</b></p>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: EVENT STORE OPTIONS -->
+  <div class="slide">
+    <h1>Event Store Options</h1>
+    <h2>Kafka vs EventStoreDB vs PostgreSQL</h2>
+    <div class="body">
+      <table>
+        <tr>
+          <th>Store</th>
+          <th>Best For</th>
+          <th>Limitation</th>
+        </tr>
+        <tr>
+          <td><b>Kafka</b></td>
+          <td>Event streaming, retention forever, horizontal scale</td>
+          <td>Can't query "get all events for orderId=42" efficiently</td>
+        </tr>
+        <tr>
+          <td><b>EventStoreDB</b></td>
+          <td>Per-stream storage, optimistic concurrency, built-in projections</td>
+          <td>Best for &lt;1B events total</td>
+        </tr>
+        <tr>
+          <td><b>PostgreSQL</b></td>
+          <td>Simple, battle-tested, UNIQUE(aggregate_id, version) for locking</td>
+          <td>Single-node write bottleneck</td>
+        </tr>
+      </table>
+      <p style="margin-top: 12px; font-size: 12px;"><b>Common pattern:</b> Kafka for event streaming + PostgreSQL for per-aggregate event lookup.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: EVENTUAL CONSISTENCY -->
+  <div class="slide">
+    <h1>Eventual Consistency</h1>
+    <h2>The 110ms Problem + 4 Solutions</h2>
+    <div class="body">
+      <table style="font-size: 10.5px; margin-bottom: 12px;">
+        <tr><th>Time</th><th>Event</th></tr>
+        <tr><td>T+0ms</td><td>User clicks "Place Order"</td></tr>
+        <tr><td>T+5ms</td><td>Write side stores OrderPlacedEvent</td></tr>
+        <tr><td>T+5ms</td><td>HTTP 200 returned: "Order placed!"</td></tr>
+        <tr><td>T+10ms</td><td>User requests GET /orders?userId=42</td></tr>
+        <tr><td style="color: #e74c3c;"><b>T+10ms</b></td><td style="color: #e74c3c;"><b>Read model NOT updated yet → order missing!</b></td></tr>
+        <tr><td>T+105ms</td><td>Kafka consumer processes event</td></tr>
+        <tr><td>T+110ms</td><td>Read model (Elasticsearch) updated</td></tr>
+      </table>
+      <p style="font-size: 12px; margin-bottom: 6px;"><b>Solutions:</b></p>
+      <ul style="font-size: 11px; margin: 0; padding-left: 18px;">
+        <li><b>Optimistic UI:</b> Show order from command response</li>
+        <li><b>Read-your-writes:</b> Route user to write DB for 500ms</li>
+        <li><b>Event-driven UI:</b> WebSocket push when read model updates</li>
+        <li><b>Accept it:</b> 100ms lag is fine for most cases</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: DECISION FRAMEWORK -->
+  <div class="slide">
+    <h1>Decision Framework</h1>
+    <h2>When to Use CQRS / Event Sourcing</h2>
+    <div class="body">
+      <table style="font-size: 10px;">
+        <tr>
+          <th>Scenario</th>
+          <th>Pattern</th>
+          <th>Why</th>
+        </tr>
+        <tr>
+          <td>Simple CRUD app, &lt;100K records</td>
+          <td>Plain MVC + ORM</td>
+          <td>CQRS overhead not worth it</td>
+        </tr>
+        <tr>
+          <td>Read-heavy, complex queries (dashboards)</td>
+          <td>CQRS without Event Sourcing</td>
+          <td>Separate read model, store current state</td>
+        </tr>
+        <tr>
+          <td>Audit trail required (finance, healthcare)</td>
+          <td>Event Sourcing</td>
+          <td>Immutable log is the requirement</td>
+        </tr>
+        <tr>
+          <td>Complex domain logic, multiple aggregates</td>
+          <td>CQRS + Event Sourcing</td>
+          <td>Bounded contexts, event-driven integration</td>
+        </tr>
+        <tr>
+          <td>Regulatory compliance (SEC, SEBI, GDPR)</td>
+          <td>Event Sourcing mandatory</td>
+          <td>Cannot delete history</td>
+        </tr>
+        <tr>
+          <td>Microservices integration</td>
+          <td>Event Sourcing + Kafka</td>
+          <td>Events are the integration contract</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: REAL-WORLD EXAMPLES -->
+  <div class="slide">
+    <h1>Real-World Examples</h1>
+    <h2>Where This Pattern Appears</h2>
+    <div class="body">
+      <table style="font-size: 10px;">
+        <tr>
+          <th>System</th>
+          <th>Why Event Sourcing / CQRS</th>
+        </tr>
+        <tr>
+          <td><b>Payment Ledger</b></td>
+          <td>Every debit/credit stored as immutable event. Regulators audit complete history. Balance = sum of events.</td>
+        </tr>
+        <tr>
+          <td><b>E-Commerce</b></td>
+          <td>CQRS: write (PostgreSQL, ACID) vs read (Elasticsearch). Black Friday queries don't compete with order writes.</td>
+        </tr>
+        <tr>
+          <td><b>Leaderboard</b></td>
+          <td>Event log holds score history. "Show Alice's progression" = replay score events. Current standings in Redis ZSET.</td>
+        </tr>
+        <tr>
+          <td><b>Stock Broker</b></td>
+          <td>SEC/SEBI require full audit. Every order, execution, cancellation = immutable event. Read models: open positions, P&L, tax lots.</td>
+        </tr>
+      </table>
+      <p style="margin-top: 12px; font-size: 11px; color: var(--muted);">Common pattern: <b>Axon Framework</b> (Java) with <code>@Aggregate</code>, <code>@CommandHandler</code>, <code>@EventSourcingHandler</code> annotations for write side. Event consumers update read models.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + ARCHITECT QUOTE -->
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>The Architect's One-Liner</h2>
+    <div class="body">
+      <p style="font-size: 12px; margin-bottom: 12px;"><b>Quick decision tree:</b></p>
+      <ul style="font-size: 11px; margin: 0 0 16px; padding-left: 18px; line-height: 1.6;">
+        <li><b>Need audit trail or time-travel?</b> → Event Sourcing</li>
+        <li><b>Read/write ratio &gt; 10:1?</b> → CQRS</li>
+        <li><b>Regulatory compliance?</b> → Event Sourcing mandatory</li>
+        <li><b>Complex domain + microservices?</b> → Both (CQRS + Event Sourcing)</li>
+        <li><b>Simple CRUD?</b> → Neither (plain MVC)</li>
+      </ul>
+      <div class="quote-box">
+        "Event Sourcing treats the database as an append-only ledger of what happened — never what 'currently is' — which gives you a complete audit trail, time-travel queries, and the ability to rebuild any read model from scratch; CQRS then separates who writes to that ledger from who reads from its projections, letting each side scale and evolve independently."
+      </div>
+      <p style="margin-top: 12px; text-align: center; font-size: 11px; color: var(--accent);"><b>Complexity:</b> High. <b>Benefit:</b> High. <b>When justified:</b> Payments, trading, healthcare, finance.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

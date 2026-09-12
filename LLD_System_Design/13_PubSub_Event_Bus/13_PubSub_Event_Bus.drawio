@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══ INTERFACE ═══ -->
+        <mxCell id="iface_1" value="&lt;&lt;interface&gt;&gt; EventHandler&lt;T&gt;" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="590" y="40" width="270" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_1_m1" value="+ handle(Event&lt;T&gt;) throws Exception" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_1">
+          <mxGeometry x="0" y="40" width="270" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ CLASSES ═══ -->
+
+        <!-- Event<T> -->
+        <mxCell id="class_1" value="Event&lt;T&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="30" y="250" width="260" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f1" value="- eventId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_1">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f2" value="- topic: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_1">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f3" value="- payload: T" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_1">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f4" value="- publishedAt: Instant" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_1">
+          <mxGeometry x="0" y="96" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_f5" value="- retryCount: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_1">
+          <mxGeometry x="0" y="118" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_m1" value="+ withIncrementedRetry(): Event&lt;T&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_1">
+          <mxGeometry x="0" y="140" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_1_m2" value="+ getEventId() / getTopic() / getPayload() / getRetryCount()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_1">
+          <mxGeometry x="0" y="162" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Subscription<T> -->
+        <mxCell id="class_2" value="Subscription&lt;T&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="320" y="250" width="260" height="210" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f1" value="- subscriptionId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_2">
+          <mxGeometry x="0" y="30" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f2" value="- topic: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_2">
+          <mxGeometry x="0" y="52" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f3" value="- handler: EventHandler&lt;T&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_2">
+          <mxGeometry x="0" y="74" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_f4" value="- subscriberName: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_2">
+          <mxGeometry x="0" y="96" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_m1" value="+ getSubscriptionId(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_2">
+          <mxGeometry x="0" y="118" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_m2" value="+ getTopic(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_2">
+          <mxGeometry x="0" y="140" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_m3" value="+ getHandler(): EventHandler&lt;T&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_2">
+          <mxGeometry x="0" y="162" width="260" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_2_m4" value="+ getSubscriberName(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_2">
+          <mxGeometry x="0" y="184" width="260" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- EventBus -->
+        <mxCell id="class_3" value="EventBus" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="620" y="250" width="320" height="320" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f1" value="- subscriptions: ConcurrentHashMap&lt;String, CopyOnWriteArrayList&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="30" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f2" value="- dispatcher: ExecutorService (newFixedThreadPool=10)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="52" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f3" value="- retryScheduler: ScheduledExecutorService (pool=4)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="74" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f4" value="- dlq: DeadLetterQueue" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="96" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f5" value="- maxRetries: int = 3  |  baseDelayMs: long = 1000" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="118" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_f6" value="- processedEventIds: Set&lt;String&gt; (ConcurrentHashMap-backed)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="140" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_m1" value="+ subscribe(topic, subscriberName, handler): Subscription&lt;T&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="162" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_m2" value="+ unsubscribe(sub: Subscription&lt;?&gt;): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="184" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_m3" value="+ publish(topic: String, payload: T): void  [async dispatch]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="206" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_m4" value="- deliverWithRetry(event, sub, attempt): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="228" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_m5" value="+ publishSync(topic, payload): Map&lt;String, Boolean&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="250" width="320" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_3_m6" value="+ shutdown(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_3">
+          <mxGeometry x="0" y="272" width="320" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- DeadLetterQueue -->
+        <mxCell id="class_4" value="DeadLetterQueue" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="990" y="250" width="270" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_4_f1" value="- dlq: BlockingQueue&lt;DeadLetterEntry&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_4">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_4_m1" value="+ enqueue(event, subscriber, cause): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_4">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_4_m2" value="+ drain(): List&lt;DeadLetterEntry&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_4">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_4_m3" value="+ size(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_4">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ UTILITIES / RECORDS ═══ -->
+
+        <!-- DeadLetterEntry record -->
+        <mxCell id="class_5" value="&lt;&lt;record&gt;&gt; DeadLetterEntry" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="990" y="460" width="270" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_5_f1" value="event: Event&lt;?&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_5">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_5_f2" value="subscriber: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_5">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_5_f3" value="errorMessage: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_5">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_5_f4" value="failedAt: Instant" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_5">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- UsageDemo -->
+        <mxCell id="class_6" value="UsageDemo" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="460" width="200" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_6_m1" value="+ main(String[]): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_6">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ RELATIONSHIPS ═══ -->
+        <!-- Subscription uses EventHandler -->
+        <mxCell id="edge_1" value="uses" style="endArrow=open;" edge="1" source="class_2" target="iface_1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- EventHandler uses Event (parameter) -->
+        <mxCell id="edge_7" value="uses" style="endArrow=open;" edge="1" source="iface_1" target="class_1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- EventBus stores Subscription -->
+        <mxCell id="edge_2" value="stores" style="endArrow=open;" edge="1" source="class_3" target="class_2" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- EventBus creates Event -->
+        <mxCell id="edge_5" value="creates" style="endArrow=open;" edge="1" source="class_3" target="class_1" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- EventBus has DeadLetterQueue -->
+        <mxCell id="edge_3" value="has" style="endArrow=open;" edge="1" source="class_3" target="class_4" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- DeadLetterQueue stores DeadLetterEntry -->
+        <mxCell id="edge_4" value="stores" style="endArrow=open;" edge="1" source="class_4" target="class_5" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <!-- UsageDemo uses EventBus -->
+        <mxCell id="edge_6" value="uses" style="endArrow=open;" edge="1" source="class_6" target="class_3" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══ LIFELINES ═══ -->
+        <!-- 200px apart starting x=60, width=140 -->
+        <!-- Centers: Publisher=130, EventBus=330, InventoryHandler=530, EmailHandler=730, DeadLetterQueue=930 -->
+
+        <mxCell id="life_1" value="Publisher (OrderSvc)" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_2" value="EventBus" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_3" value="InventoryHandler" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_4" value="EmailHandler" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_5" value="DeadLetterQueue" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══ MESSAGES ═══ -->
+
+        <!-- 1. Publisher → EventBus: publish -->
+        <mxCell id="msg_1" value="1. publish(&quot;orders&quot;, new Order(...))" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="160" as="sourcePoint"/>
+            <mxPoint x="330" y="160" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2a. EventBus → InventoryHandler: async dispatch -->
+        <mxCell id="msg_2" value="2a. [async] deliverWithRetry(event, inventorySub, 0)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="210" as="sourcePoint"/>
+            <mxPoint x="530" y="210" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: InventoryHandler success -->
+        <mxCell id="ret_1" value="success (stock deducted)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="250" as="sourcePoint"/>
+            <mxPoint x="330" y="250" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2b. EventBus → EmailHandler: async dispatch attempt 1 -->
+        <mxCell id="msg_3" value="2b. [async] deliverWithRetry(event, emailSub, 0) — attempt 1" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="300" as="sourcePoint"/>
+            <mxPoint x="730" y="300" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: EmailHandler throws -->
+        <mxCell id="ret_2" value="throws RuntimeException (&quot;Email server down&quot;)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="340" as="sourcePoint"/>
+            <mxPoint x="330" y="340" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3a. EventBus → EmailHandler: retry +1s attempt 2 -->
+        <mxCell id="msg_4" value="3a. [retry +1s] deliverWithRetry(event, emailSub, 1) — attempt 2" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="400" as="sourcePoint"/>
+            <mxPoint x="730" y="400" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: EmailHandler throws -->
+        <mxCell id="ret_3" value="throws RuntimeException" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="440" as="sourcePoint"/>
+            <mxPoint x="330" y="440" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3b. EventBus → EmailHandler: retry +2s attempt 3 -->
+        <mxCell id="msg_5" value="3b. [retry +2s] deliverWithRetry(event, emailSub, 2) — attempt 3" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="490" as="sourcePoint"/>
+            <mxPoint x="730" y="490" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: EmailHandler maxRetries exhausted -->
+        <mxCell id="ret_4" value="throws RuntimeException (maxRetries=3 exhausted)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="530" as="sourcePoint"/>
+            <mxPoint x="330" y="530" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4. EventBus → DeadLetterQueue: enqueue -->
+        <mxCell id="msg_6" value="4. dlq.enqueue(event, &quot;EmailHandler&quot;, cause)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="580" as="sourcePoint"/>
+            <mxPoint x="930" y="580" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

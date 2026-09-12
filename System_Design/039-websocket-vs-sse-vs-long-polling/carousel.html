@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WebSocket vs SSE vs Long Polling — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22233a;
+    --accent-ws: #00d9a3;
+    --accent-sse: #4da3ff;
+    --accent-lp: #ff9f43;
+    --accent-redis: #d82c20;
+    --text: #eaeaf0;
+    --muted: #9a9ab0;
+    --border: #3a3a5a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide {
+    display: none;
+    width: 100%;
+    height: 100%;
+    padding: 28px 30px;
+    flex-direction: column;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide.active { display: flex; }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  h1 { font-size: 24px; margin: 0 0 10px 0; line-height: 1.25; }
+  h2 { font-size: 18px; margin: 0 0 8px 0; color: var(--accent-sse); }
+  p { font-size: 13px; line-height: 1.5; color: var(--text); margin: 4px 0; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .stat {
+    font-size: 42px;
+    font-weight: 800;
+    color: var(--accent-lp);
+    margin: 6px 0;
+  }
+  .content { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+  .diagram { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; }
+
+  /* ---- Server box (CSS-drawn, horizontal lines) ---- */
+  .server-box {
+    width: 120px;
+    height: 76px;
+    background: var(--panel);
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .server-box .line { height: 4px; background: var(--muted); border-radius: 2px; opacity: 0.6; }
+  .server-box .label { font-size: 10px; text-align: center; color: var(--text); font-weight: 600; margin-top: 4px; }
+  .server-box.client { border-color: var(--accent-sse); }
+  .server-box.srv { border-color: var(--accent-lp); }
+  .server-box.ws { border-color: var(--accent-ws); }
+
+  .row { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
+
+  /* ---- Arrows ---- */
+  .arrow-track { flex: 1; max-width: 180px; height: 28px; position: relative; }
+  .arrow-line { position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: var(--muted); transform: translateY(-50%); }
+  .arrow-line.one-way::after {
+    content: ""; position: absolute; right: -1px; top: -5px;
+    width: 0; height: 0;
+    border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+    border-left: 10px solid var(--muted);
+  }
+  .arrow-line.two-way::before {
+    content: ""; position: absolute; left: -1px; top: -5px;
+    width: 0; height: 0;
+    border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+    border-right: 10px solid var(--accent-ws);
+  }
+  .arrow-line.two-way::after {
+    content: ""; position: absolute; right: -1px; top: -5px;
+    width: 0; height: 0;
+    border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+    border-left: 10px solid var(--accent-ws);
+  }
+  .arrow-line.persistent { background: var(--accent-sse); height: 3px; }
+  .arrow-line.persistent::after {
+    content: ""; position: absolute; right: -1px; top: -6px;
+    width: 0; height: 0;
+    border-top: 6px solid transparent; border-bottom: 6px solid transparent;
+    border-left: 10px solid var(--accent-sse);
+  }
+  .tag { font-size: 9px; color: var(--muted); text-align: center; margin-top: 2px; }
+
+  /* ---- Polling loop (repeated request arrows) ---- */
+  .poll-loop { display: flex; flex-direction: column; gap: 6px; width: 100%; align-items: center; }
+  .poll-req { display: flex; align-items: center; gap: 4px; font-size: 9px; color: var(--accent-lp); }
+  .poll-req .dash { width: 60px; height: 2px; background: var(--accent-lp); position: relative; }
+  .poll-req .dash::after {
+    content: ""; position: absolute; right: -1px; top: -4px;
+    width: 0; height: 0;
+    border-top: 4px solid transparent; border-bottom: 4px solid transparent;
+    border-left: 7px solid var(--accent-lp);
+  }
+
+  /* ---- Redis icon ---- */
+  .redis-icon {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--accent-redis);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 20px; color: #fff;
+    border: 2px solid #fff2;
+  }
+
+  /* ---- Comparison table ---- */
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  table.cmp th, table.cmp td { border: 1px solid var(--border); padding: 5px 6px; text-align: center; }
+  table.cmp th { background: var(--panel); color: var(--accent-sse); font-size: 10px; }
+  table.cmp td.metric { text-align: left; color: var(--muted); }
+  table.cmp td.ws { color: var(--accent-ws); font-weight: 600; }
+  table.cmp td.sse { color: var(--accent-sse); font-weight: 600; }
+  table.cmp td.lp { color: var(--accent-lp); font-weight: 600; }
+
+  /* ---- Decision tree ---- */
+  .tree-node {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    text-align: center;
+  }
+  .tree-branch { display: flex; gap: 24px; margin-top: 6px; }
+  .tree-answer { font-size: 10px; color: var(--muted); text-align: center; margin-top: 2px; }
+
+  .quote-box {
+    border-left: 3px solid var(--accent-ws);
+    background: var(--panel);
+    padding: 10px 12px;
+    font-size: 12px;
+    font-style: italic;
+    line-height: 1.5;
+    border-radius: 4px;
+  }
+
+  .footer-row { display: flex; justify-content: space-between; align-items: center; margin-top: auto; }
+  .counter { font-size: 11px; color: var(--muted); }
+  .legend { display: flex; gap: 12px; font-size: 9px; color: var(--muted); }
+  .legend span.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 3px; }
+
+  /* ---- Nav controls (screen only) ---- */
+  .nav {
+    width: 540px;
+    margin: 0 auto 40px auto;
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+  }
+  .nav button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .nav button:hover { border-color: var(--accent-sse); }
+
+  @media print {
+    body { background: #fff; margin: 0; }
+    .nav { display: none; }
+    .deck {
+      width: 540px; height: 540px; margin: 0;
+      border: none; border-radius: 0;
+      page-break-after: always;
+    }
+    .slide { display: none !important; }
+    .slide.active { display: flex !important; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- Slide 1: HOOK -->
+  <div class="slide active" data-idx="1">
+    <div class="eyebrow">Episode 39 · System Design</div>
+    <h1>100,000 users refresh a leaderboard.<br>The servers hit 100% CPU.</h1>
+    <div class="content">
+      <div class="stat">~500B</div>
+      <p class="muted">wasted HTTP header overhead — on <em>every single poll</em>, every 2 seconds, from every one of 100K clients.</p>
+      <p>Not a compute problem. A <strong>transport choice</strong> problem.</p>
+    </div>
+    <div class="footer-row">
+      <span class="counter">1 / 10</span>
+      <span class="legend"><span class="dot" style="background:var(--accent-lp)"></span>Long Polling</span>
+    </div>
+  </div>
+
+  <!-- Slide 2: THE PROBLEM -->
+  <div class="slide" data-idx="2">
+    <div class="eyebrow">The Problem</div>
+    <h1>HTTP is request-response only.</h1>
+    <div class="diagram">
+      <div class="row">
+        <div class="server-box client"><div class="line"></div><div class="line"></div><div class="label">Client</div></div>
+        <div class="arrow-track"><div class="arrow-line one-way"></div><div class="tag">"anything new?"</div></div>
+        <div class="server-box srv"><div class="line"></div><div class="line"></div><div class="label">Server</div></div>
+      </div>
+      <div class="row">
+        <div class="server-box client"><div class="line"></div><div class="line"></div><div class="label">Client</div></div>
+        <div class="arrow-track"><div class="arrow-line one-way"></div><div class="tag">"anything new?" (again)</div></div>
+        <div class="server-box srv"><div class="line"></div><div class="line"></div><div class="label">Server</div></div>
+      </div>
+      <p class="muted">The server can never speak first. It can only answer.</p>
+    </div>
+    <div class="footer-row"><span class="counter">2 / 10</span></div>
+  </div>
+
+  <!-- Slide 3: Long Polling -->
+  <div class="slide" data-idx="3">
+    <div class="eyebrow">Solution 1</div>
+    <h2>Long Polling</h2>
+    <div class="diagram">
+      <div class="poll-loop">
+        <div class="poll-req"><span>GET /events?lastId=42</span><span class="dash"></span><span>hold... (20s)</span></div>
+        <div class="poll-req"><span>event arrives</span><span class="dash"></span><span>respond id=43</span></div>
+        <div class="poll-req"><span>GET /events?lastId=43</span><span class="dash"></span><span>hold again...</span></div>
+      </div>
+      <p><strong>Latency:</strong> 1–5s &nbsp;|&nbsp; <strong>Overhead:</strong> ~500B headers/req</p>
+      <p class="muted">1 thread per waiting connection (blocking model) · works through every firewall</p>
+    </div>
+    <div class="footer-row"><span class="counter">3 / 10</span></div>
+  </div>
+
+  <!-- Slide 4: SSE -->
+  <div class="slide" data-idx="4">
+    <div class="eyebrow">Solution 2</div>
+    <h2 style="color:var(--accent-sse)">Server-Sent Events (SSE)</h2>
+    <div class="diagram">
+      <div class="row">
+        <div class="server-box client"><div class="line"></div><div class="line"></div><div class="label">Client</div></div>
+        <div class="arrow-track"><div class="arrow-line persistent"></div><div class="tag">text/event-stream (stays open)</div></div>
+        <div class="server-box srv"><div class="line"></div><div class="line"></div><div class="label">Server</div></div>
+      </div>
+      <p>t=1s <code>data:{"score":9821}</code> → t=3s <code>data:{"rank":1}</code> → t=5s ...</p>
+      <p><strong>Latency:</strong> &lt;100ms &nbsp;|&nbsp; one-way, server → client only</p>
+      <p class="muted">Auto-reconnect built into browser's EventSource · multiplexes over HTTP/2</p>
+    </div>
+    <div class="footer-row"><span class="counter">4 / 10</span></div>
+  </div>
+
+  <!-- Slide 5: WebSocket -->
+  <div class="slide" data-idx="5">
+    <div class="eyebrow">Solution 3</div>
+    <h2 style="color:var(--accent-ws)">WebSocket</h2>
+    <div class="diagram">
+      <div class="row">
+        <div class="server-box client"><div class="line"></div><div class="line"></div><div class="label">Client</div></div>
+        <div class="arrow-track"><div class="arrow-line two-way"></div><div class="tag">HTTP 101 Upgrade → raw TCP frames</div></div>
+        <div class="server-box ws"><div class="line"></div><div class="line"></div><div class="label">Server</div></div>
+      </div>
+      <p><strong>Latency:</strong> &lt;50ms &nbsp;|&nbsp; <strong>Overhead:</strong> ~2B/frame</p>
+      <p class="muted">Bidirectional — both sides send anytime · no built-in reconnect · some firewalls block the upgrade</p>
+    </div>
+    <div class="footer-row"><span class="counter">5 / 10</span></div>
+  </div>
+
+  <!-- Slide 6: Real systems mapping -->
+  <div class="slide" data-idx="6">
+    <div class="eyebrow">Where Each Fits</div>
+    <h2>Match the direction, match the protocol</h2>
+    <div class="content" style="gap:6px;">
+      <p><span style="color:var(--accent-ws)">●</span> <strong>Chat (WhatsApp)</strong> — WebSocket: send + receive, same connection</p>
+      <p><span style="color:var(--accent-ws)">●</span> <strong>Uber driver tracking</strong> — WebSocket: GPS out every 3s + dispatch in</p>
+      <p><span style="color:var(--accent-sse)">●</span> <strong>Leaderboard</strong> — SSE: server pushes rank, no data sent back</p>
+      <p><span style="color:var(--accent-ws)">●</span> <strong>Google Docs editor</strong> — WebSocket: keystrokes + broadcasts, &lt;100ms</p>
+      <p><span style="color:var(--accent-ws)">●</span> <strong>Stock Broker</strong> — WebSocket: orders out + bid/ask stream every 100ms</p>
+    </div>
+    <div class="footer-row"><span class="counter">6 / 10</span></div>
+  </div>
+
+  <!-- Slide 7: Traps -->
+  <div class="slide" data-idx="7">
+    <div class="eyebrow">Deep Dive — Traps</div>
+    <h1 style="font-size:20px;">Where engineers get it wrong</h1>
+    <div class="content" style="gap:6px;">
+      <p>❶ Defaulting to WebSocket "because real-time" — SSE has no manual reconnect burden</p>
+      <p>❷ Ignoring corporate firewalls that block the WS upgrade handshake</p>
+      <p>❸ Forgetting sticky sessions — SSE/WS need LB affinity, long polling doesn't</p>
+      <p>❹ Long polling under 5s update frequency — burns threads + bandwidth</p>
+      <p>❺ Expecting SSE to receive client data — it's one-way, period</p>
+      <p>❻ Missing SSE's free HTTP/2 multiplexing advantage over WebSocket</p>
+    </div>
+    <div class="footer-row"><span class="counter">7 / 10</span></div>
+  </div>
+
+  <!-- Slide 8: Real World Scale -->
+  <div class="slide" data-idx="8">
+    <div class="eyebrow">Real World — 100K Concurrent Users</div>
+    <h2>Leaderboard @ scale (SSE architecture)</h2>
+    <div class="diagram">
+      <div class="row">
+        <div class="server-box srv" style="width:90px;"><div class="line"></div><div class="label">Kafka</div></div>
+        <div class="arrow-track" style="max-width:60px;"><div class="arrow-line one-way"></div></div>
+        <div class="redis-icon">R</div>
+        <div class="arrow-track" style="max-width:60px;"><div class="arrow-line one-way"></div></div>
+        <div class="server-box ws" style="width:90px;"><div class="line"></div><div class="label">SSE Pub</div></div>
+      </div>
+      <p class="muted">nginx (upstream keepalive) → async servers (WebFlux/Go) → 100K+ SSE handles, sharded by leaderboard ID</p>
+      <p><strong>Each SSE conn = 1 async handle, not 1 thread.</strong></p>
+    </div>
+    <div class="footer-row"><span class="counter">8 / 10</span></div>
+  </div>
+
+  <!-- Slide 9: Comparison Table -->
+  <div class="slide" data-idx="9">
+    <div class="eyebrow">Comparison</div>
+    <h2>Long Polling vs SSE vs WebSocket</h2>
+    <table class="cmp">
+      <tr><th>Metric</th><th style="color:var(--accent-lp)">Long Polling</th><th style="color:var(--accent-sse)">SSE</th><th style="color:var(--accent-ws)">WebSocket</th></tr>
+      <tr><td class="metric">Direction</td><td class="lp">Client→Server</td><td class="sse">Server→Client</td><td class="ws">Both</td></tr>
+      <tr><td class="metric">Latency</td><td class="lp">1–5s</td><td class="sse">&lt;100ms</td><td class="ws">&lt;50ms</td></tr>
+      <tr><td class="metric">Overhead/msg</td><td class="lp">~500B</td><td class="sse">~50B</td><td class="ws">~2B</td></tr>
+      <tr><td class="metric">Reconnect</td><td class="lp">Built-in</td><td class="sse">Built-in</td><td class="ws">Manual</td></tr>
+      <tr><td class="metric">Firewall friendly</td><td class="lp">Yes</td><td class="sse">Yes</td><td class="ws">Sometimes no</td></tr>
+      <tr><td class="metric">HTTP/2 multiplex</td><td class="lp">No</td><td class="sse">Yes</td><td class="ws">No</td></tr>
+      <tr><td class="metric">Client sends data</td><td class="lp">New request</td><td class="sse">Separate POST</td><td class="ws">Same conn</td></tr>
+      <tr><td class="metric">LB stickiness</td><td class="lp">Not needed</td><td class="sse">Needed</td><td class="ws">Needed</td></tr>
+    </table>
+    <div class="footer-row"><span class="counter">9 / 10</span></div>
+  </div>
+
+  <!-- Slide 10: Decision Tree + Quote -->
+  <div class="slide" data-idx="10">
+    <div class="eyebrow">Decision Tree</div>
+    <h2>Pick in 3 questions</h2>
+    <div class="content" style="gap:8px;">
+      <div class="tree-node">Does client need to SEND data over the channel?</div>
+      <div class="tree-branch">
+        <div><div class="tree-answer">YES</div><div class="tree-node" style="border-color:var(--accent-ws);">WebSocket</div></div>
+        <div><div class="tree-answer">NO</div><div class="tree-node" style="border-color:var(--accent-sse);">SSE</div></div>
+      </div>
+      <div class="tree-node" style="margin-top:8px;">Blocked by enterprise firewall/proxy?</div>
+      <div class="tree-answer">YES → SSE or Long Polling &nbsp;|&nbsp; NO → WebSocket OK</div>
+      <div class="quote-box">
+        "If the client sends data in real-time, you need WebSocket — SSE is one-way server push, long polling is a workaround from 2005."
+      </div>
+    </div>
+    <div class="footer-row"><span class="counter">10 / 10</span></div>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="go(-1)">&larr; Prev</button>
+  <button id="nextBtn" onclick="go(1)">Next &rarr;</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  function render() {
+    slides.forEach(function (s, i) {
+      s.classList.toggle('active', i === current);
+    });
+  }
+
+  function go(delta) {
+    current = (current + delta + total) % total;
+    render();
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight') go(1);
+    if (e.key === 'ArrowLeft') go(-1);
+  });
+
+  render();
+</script>
+
+</body>
+</html>

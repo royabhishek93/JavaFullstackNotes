@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Connection Pooling — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+  /* App pod icon — a small app-server square */
+  .app-pod {
+    width: 40px; height: 40px; border: 2px solid var(--blue); border-radius: 6px;
+    background: rgba(51,103,145,0.25); display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: var(--text); margin: 0 auto;
+  }
+
+  /* Proxy icon — a diamond/funnel shape representing PgBouncer / RDS Proxy */
+  .proxy-icon {
+    width: 56px; height: 56px; background: var(--accent); color: #1a1a2e;
+    transform: rotate(45deg); display: flex; align-items: center; justify-content: center;
+    margin: 8px auto; border-radius: 8px;
+  }
+  .proxy-icon span { transform: rotate(-45deg); font-size: 10px; font-weight: 800; text-align: center; }
+
+  /* Connection slot icon — a small pool connection block, idle (green) or busy (red) */
+  .conn-slot {
+    width: 34px; height: 34px; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; color: #fff; margin: 0 auto;
+  }
+  .conn-idle { background: var(--green); }
+  .conn-busy { background: #e74c3c; }
+  .conn-wait { background: var(--yellow); color: #1a1a2e; }
+
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Connection Pooling</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">151 → 0.1s</div>
+      <p>A raw DB connection costs <b>50–150ms</b> (TCP + TLS + auth) before any query runs. MySQL's default <b>max_connections is 151</b> — open one connection per HTTP request at 1,000 req/sec, and you blow through that limit in <b>a tenth of a second</b> — "Too many connections," app down.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Problem</h1>
+    <h2>One Connection Per Request</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="app-pod">REQ</div>3ms TCP</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="app-pod">TLS</div>5ms</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="app-pod">AUTH</div>50ms</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="app-pod">SQL</div>2ms</div>
+      </div>
+      <p style="text-align:center">60ms total — the actual query is <b>3% of the work</b>. At 1,000 req/sec that's 100 seconds of setup wasted every second, and MySQL's 151-connection limit is gone instantly.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Solution</h1>
+    <h2>Open Connections Once, Reuse Them</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="conn-slot conn-idle">C1</div>idle</div>
+        <div class="col"><div class="conn-slot conn-busy">C2</div>busy</div>
+        <div class="col"><div class="conn-slot conn-idle">C3</div>idle</div>
+        <div class="col"><div class="conn-slot conn-busy">C4</div>busy</div>
+        <div class="col"><div class="conn-slot conn-idle">C5</div>idle</div>
+      </div>
+      <p style="text-align:center">HikariCP opens a fixed pool at startup. Borrow (~0.01ms) → query (2ms) → return. Total: <b>~2ms</b> instead of 60ms — no TCP, no TLS, no auth per request.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Pool Sizing Formula</h1>
+    <h2>From the HikariCP Docs</h2>
+    <div class="body">
+      <p style="text-align:center; font-size:16px;"><b>pool_size = (cores × 2) + spindle_count</b></p>
+      <div class="row">
+        <div class="col"><div class="app-pod">8 CPU</div>SSD server</div>
+        <div class="arrow">=</div>
+        <div class="col"><div class="conn-slot conn-idle">17</div>connections</div>
+      </div>
+      <p>4 app instances × 17 = <b>68 total</b> vs MySQL's 151 limit — safe. Why not just 200? That's ~1GB of session memory, brutal context-switching, and diminishing parallelism past core count.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Pool Exhaustion</h1>
+    <h2>The Dangerous Scenario</h2>
+    <div class="body">
+      <div class="row">
+        <div class="conn-slot conn-busy">1</div><div class="conn-slot conn-busy">2</div>
+        <div class="conn-slot conn-busy">3</div><div class="conn-slot conn-busy">…</div>
+        <div class="conn-slot conn-busy">10</div>
+        <div class="arrow">←</div>
+        <div class="conn-slot conn-wait">40 waiting</div>
+      </div>
+      <p style="text-align:center">Pool size 10, 50 concurrent slow (2s) queries. After the 30s <b>connectionTimeout</b>: SQLTimeoutException cascades. App CPU drops to <b>~0%</b> — every thread just blocked on <code>getConnection()</code>, looks "hung."</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Bug: The Connection Leak</h1>
+    <h2>The #1 Production Killer</h2>
+    <div class="body">
+      <p>An early-return path forgets to release the connection. The pool <b>drains silently over hours</b> — <code>getConnection()</code> gets slower and slower until a restart "fixes" it (until next time).</p>
+      <div class="quote-box">Fix: always use try-with-resources — the connection auto-returns to the pool the instant the block exits, no matter how it's left.</div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Bug: Held Transactions &amp; Fleet Sprawl</h1>
+    <h2>Two More Traps</h2>
+    <div class="body">
+      <p><b>Held connection:</b> calling an external API mid-transaction holds a scarce pool slot hostage for the whole call — finish DB work, release, THEN call out.</p>
+      <p><b>Fleet mismatch:</b> 3 services × pool=50 = 150 connections vs MySQL's 151 limit. One more instance anywhere → crash. Nobody tracked the total centrally.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Real World Numbers</h1>
+    <h2>Payment / E-Commerce / Flash Sale</h2>
+    <div class="body">
+      <table>
+        <tr><th>System</th><th>Without Pool</th><th>Fix</th></tr>
+        <tr><td>Payments (5K TPS)</td><td>15,000 conn attempts vs 500 limit</td><td>Pool of 20–30 + queuing</td></tr>
+        <tr><td>E-commerce (10K users)</td><td>40,000 conn attempts</td><td>Pool of 30, DB stays healthy</td></tr>
+        <tr><td>Flash sale (100K users)</td><td>DB crashes before 1 booking</td><td>Redis INCR pre-filter + bounded pool</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Pooling Options Compared</h1>
+    <h2>Slide 9 / 10 — Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Tool</th><th>Layer</th><th>Best For</th></tr>
+        <tr><td>HikariCP</td><td>App-level (JVM)</td><td>Fastest Java pool, default in Spring Boot</td></tr>
+        <tr><td>PgBouncer</td><td>Proxy (PostgreSQL)</td><td>Multiplex 1000s of app conns → small real pool</td></tr>
+        <tr><td>RDS Proxy / ProxySQL</td><td>Proxy (managed / MySQL)</td><td>Survives fleet auto-scaling, adds routing</td></tr>
+      </table>
+      <div class="row">
+        <div class="col"><div class="app-pod">A1</div></div><div class="col"><div class="app-pod">A2</div></div>
+        <div class="col"><div class="app-pod">A3</div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="proxy-icon"><span>PROXY</span></div></div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>DB</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Slide 10 / 10 — Quick Reference</h2>
+    <div class="body">
+      <p>Single service? → HikariCP, size = (cores×2)+spindles. Multiple services, same DB? → Add PgBouncer/RDS Proxy in front. Seeing timeouts? → Check for leaks before raising pool size.</p>
+      <div class="quote-box">
+        "A connection pool is a fixed-size gate between your application and the database — it converts a thundering herd of concurrent requests into an orderly queue, keeping DB connections within its physical limits."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

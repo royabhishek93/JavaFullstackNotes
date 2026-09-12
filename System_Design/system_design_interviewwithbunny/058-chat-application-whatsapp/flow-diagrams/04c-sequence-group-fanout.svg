@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1550" height="1000" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <rect x="10" y="10" width="1530" height="980" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+  <text x="775" y="40" text-anchor="middle" font-size="20" font-weight="bold" fill="#2d2d2d">Sequence: Group Message Fanout</text>
+  <line x1="550" y1="52" x2="1000" y2="52" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <rect x="20" y="70" width="140" height="46" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="90" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#1a5e20">User A (sender)</text>
+
+  <rect x="190" y="70" width="140" height="46" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="2"/>
+  <text x="260" y="98" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a4a00">Chat Service</text>
+
+  <rect x="360" y="70" width="140" height="46" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="2"/>
+  <text x="430" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#7a4a00">Group Service</text>
+
+  <rect x="530" y="70" width="150" height="46" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="605" y="98" text-anchor="middle" font-size="10" font-weight="bold" fill="#4a0a7a">Redis ws_registry</text>
+
+  <rect x="710" y="70" width="150" height="46" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="785" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#4a0a7a">Redis Streams</text>
+
+  <rect x="890" y="70" width="130" height="46" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="955" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#1a4a7a">ws-server-2</text>
+
+  <rect x="1050" y="70" width="130" height="46" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="1115" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#1a4a7a">ws-server-3</text>
+
+  <rect x="1210" y="70" width="140" height="46" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="1280" y="98" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a0000">Cassandra</text>
+
+  <rect x="1380" y="70" width="140" height="46" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="1450" y="98" text-anchor="middle" font-size="11" font-weight="bold" fill="#4a0a7a">FCM / APNs</text>
+
+  <g stroke="#999" stroke-width="1.5" stroke-dasharray="4,3">
+    <line x1="90" y1="116" x2="90" y2="930"/>
+    <line x1="260" y1="116" x2="260" y2="930"/>
+    <line x1="430" y1="116" x2="430" y2="930"/>
+    <line x1="605" y1="116" x2="605" y2="930"/>
+    <line x1="785" y1="116" x2="785" y2="930"/>
+    <line x1="955" y1="116" x2="955" y2="930"/>
+    <line x1="1115" y1="116" x2="1115" y2="930"/>
+    <line x1="1280" y1="116" x2="1280" y2="930"/>
+    <line x1="1450" y1="116" x2="1450" y2="930"/>
+  </g>
+
+  <line x1="90" y1="150" x2="255" y2="150" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="95" y="145" font-size="10" fill="#333">1. WS SEND {group_id: G1, content}</text>
+
+  <line x1="260" y1="180" x2="425" y2="180" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="265" y="175" font-size="10" fill="#333">2. GET /groups/G1/members</text>
+
+  <line x1="430" y1="210" x2="265" y2="210" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="270" y="205" font-size="10" fill="#333">3. returns [B, C, D, ...] (up to 256)</text>
+
+  <line x1="260" y1="240" x2="95" y2="240" stroke="#27ae60" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <text x="100" y="235" font-size="10" fill="#27ae60">4. single tick sent immediately (does not wait for fanout)</text>
+
+  <!-- Step 5 branching box -->
+  <rect x="180" y="270" width="1330" height="230" rx="6" fill="#fff8f0" stroke="#e6a817" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="195" y="290" font-size="11" font-weight="bold" fill="#7a4a00">5. Per-member fanout — Chat Service iterates every member individually:</text>
+
+  <text x="195" y="315" font-size="10" fill="#333">5a. User B: HGET ws_registry &#8594; {ws-server-2} (online)</text>
+  <line x1="260" y1="325" x2="600" y2="325" stroke="#555" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="605" y1="340" x2="780" y2="340" stroke="#8e44ad" stroke-width="1.2" marker-end="url(#arrPurple)"/>
+  <text x="610" y="335" font-size="9" fill="#333">XADD stream:ws-server-2 {msg}</text>
+
+  <text x="195" y="370" font-size="10" fill="#333">5b. User C: HGET ws_registry &#8594; null (offline)</text>
+  <line x1="260" y1="380" x2="600" y2="380" stroke="#555" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="605" y1="395" x2="1275" y2="395" stroke="#e74c3c" stroke-width="1.2" marker-end="url(#arrRed)"/>
+  <text x="610" y="390" font-size="9" fill="#333">INSERT Cassandra status=PENDING, trigger FCM push</text>
+
+  <text x="195" y="425" font-size="10" fill="#333">5c. User D: HGET ws_registry &#8594; {ws-server-3} (online)</text>
+  <line x1="260" y1="435" x2="600" y2="435" stroke="#555" stroke-width="1.2" marker-end="url(#arr)"/>
+  <line x1="605" y1="450" x2="1110" y2="450" stroke="#8e44ad" stroke-width="1.2" marker-end="url(#arrPurple)"/>
+  <text x="610" y="445" font-size="9" fill="#333">XADD stream:ws-server-3 {msg}</text>
+
+  <text x="195" y="480" font-size="9" fill="#7a4a00" font-style="italic">(each additional member repeats one of these three branches — up to 256 total lookups/writes)</text>
+
+  <line x1="785" y1="530" x2="950" y2="530" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+  <text x="790" y="525" font-size="10" fill="#333">6. XREAD stream:ws-server-2</text>
+
+  <line x1="785" y1="565" x2="1110" y2="565" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+  <text x="790" y="560" font-size="10" fill="#333">7. XREAD stream:ws-server-3</text>
+
+  <line x1="955" y1="600" x2="1445" y2="600" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="960" y="595" font-size="9" fill="#333">8. push to B over WebSocket</text>
+
+  <line x1="1115" y1="635" x2="1445" y2="635" stroke="#555" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="1120" y="630" font-size="9" fill="#333">9. push to D over WebSocket</text>
+
+  <line x1="1280" y1="670" x2="1445" y2="670" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+  <text x="1285" y="665" font-size="9" fill="#333">10. FCM/APNs delivers push to C's device</text>
+
+  <line x1="955" y1="705" x2="265" y2="705" stroke="#27ae60" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <text x="300" y="700" font-size="10" fill="#27ae60">11. DELIVERY_ACK from B</text>
+
+  <line x1="1115" y1="735" x2="265" y2="735" stroke="#27ae60" stroke-width="1.5" marker-end="url(#arrGreen)"/>
+  <text x="300" y="730" font-size="10" fill="#27ae60">12. DELIVERY_ACK from D</text>
+
+  <rect x="195" y="750" width="700" height="26" rx="4" fill="#fde8e8" stroke="#e74c3c" stroke-width="1"/>
+  <text x="205" y="768" font-size="9" fill="#7a0000">UPDATE group_message_delivery: B=DELIVERED, D=DELIVERED, C=still PENDING</text>
+
+  <rect x="30" y="800" width="1470" height="110" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+  <text x="45" y="820" font-size="11" font-weight="bold" fill="#2d2d2d">Why individual fanout, not one broadcast channel?</text>
+  <text x="45" y="838" font-size="10" fill="#333">A single broadcast has no way to track who specifically received the message. WhatsApp shows "Delivered to 245/256, Read</text>
+  <text x="45" y="854" font-size="10" fill="#333">by 189/256" — that granularity requires per-member delivery rows, which is why each member is processed individually.</text>
+  <text x="45" y="875" font-size="10" fill="#333">Trade-off: a 256-member group = up to 256 registry lookups + Cassandra writes per message — the accepted cost of</text>
+  <text x="45" y="891" font-size="10" fill="#333">per-member delivery visibility, bounded by the 256-member cap.</text>
+
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#555"/></marker>
+    <marker id="arrGreen" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#27ae60"/></marker>
+    <marker id="arrRed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#e74c3c"/></marker>
+    <marker id="arrPurple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L8,3 z" fill="#8e44ad"/></marker>
+  </defs>
+
+  <text x="775" y="965" text-anchor="middle" font-size="10" fill="#aaa">Chat System Design — Group Fanout Sequence</text>
+</svg>

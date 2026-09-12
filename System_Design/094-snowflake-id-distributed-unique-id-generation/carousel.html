@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Snowflake ID — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .server-box {
+    width: 60px; height: 52px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .bit-seg { display: flex; height: 40px; border-radius: 6px; overflow: hidden; margin: 12px 0; }
+  .bit-seg div { display: flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; font-weight: 700; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 34px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Snowflake ID</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">4.2B IDs/sec</div>
+      <p>1024 workers, zero central coordination. This is the 64-bit trick Twitter, Discord, and Instagram all use.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>500 Bakeries, No Central Phone Line</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box hot"><span></span><span></span></div>Central<br>counter</div>
+      </div>
+      <p style="text-align:center">Every node calling one office for "next ID" = bottleneck + single point of failure. Snowflake mints IDs locally instead.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The 64-Bit Layout</h1>
+    <h2>Anatomy of a Snowflake ID</h2>
+    <div class="body">
+      <div class="bit-seg">
+        <div style="background:#e74c3c; width:5%;">sgn</div>
+        <div style="background:#336791; width:55%;">41 bits: timestamp</div>
+        <div style="background:#e0b400; width:20%; color:#1a1a2e;">10: worker</div>
+        <div style="background:#00bfa5; width:20%;">12: sequence</div>
+      </div>
+      <p>69.7 years of range · 1024 workers · 4096 IDs/ms/worker</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decoding a Real ID</h1>
+    <h2>Extract Timestamp, Worker, Sequence</h2>
+    <div class="body">
+      <p><code>timestamp = (id &gt;&gt; 22) + EPOCH</code></p>
+      <p><code>workerId = (id &gt;&gt; 12) &amp; 0x3FF</code></p>
+      <p><code>sequence = id &amp; 0xFFF</code></p>
+      <p>Result: "1st ID minted at 2023-10-19T08:44:20Z by worker #1"</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Throughput</h1>
+    <h2>Real Numbers</h2>
+    <div class="body">
+      <p>4096 IDs/ms/worker × 1000ms = <b>~4.1M IDs/sec</b> per worker</p>
+      <p>× 1024 workers = <b>~4.2 BILLION IDs/sec</b> theoretical system ceiling</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Clock Drift</h1>
+    <h2>The #1 Production Trap</h2>
+    <div class="body">
+      <p>NTP corrects clock backward → risk of a duplicate ID if you naively use current time.</p>
+      <p><b>Fix:</b> <span class="x-mark">REJECT</span> (throw, force retry) or <span class="check-mark">WAIT</span> (spin until clock catches up) — never silently reuse a (timestamp, sequence) pair.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Sequence Exhaustion</h1>
+    <h2>&gt;4096 Requests in 1ms</h2>
+    <div class="body">
+      <p>Sequence hits 4096 → overflow → generator busy-waits until the clock ticks to the next millisecond, then resets sequence to 0.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Snowflake vs Alternatives</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Size</th><th>Index Locality</th></tr>
+        <tr><td>Snowflake</td><td>64 bits</td><td>Excellent (time-ordered)</td></tr>
+        <tr><td>UUIDv4</td><td>128 bits</td><td>Poor (random)</td></tr>
+        <tr><td>UUIDv7</td><td>128 bits</td><td>Good (time-ordered)</td></tr>
+        <tr><td>Central counter</td><td>64 bits</td><td>Perfect, but SPOF</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Sharding across many nodes, need time-sortable keys? → Snowflake. Security-sensitive public ID? → UUIDv4 instead (reveals nothing).</p>
+      <div class="quote-box">
+        "Snowflake fixes both problems UUIDs have: it's 64 bits instead of 128, and because the timestamp occupies the highest bits, IDs generated later are numerically larger — as a primary key, new rows insert at the tail of the B-tree instead of scattering randomly."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

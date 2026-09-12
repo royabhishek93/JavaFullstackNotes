@@ -50,6 +50,22 @@ public class ThreadProblem {
 **ThreadLocal:** Each thread gets its own **isolated copy** of the variable.
 
 ```
++-----------------------------------------------------------+
+| Without ThreadLocal (shared static field)                  |
+|                                                             |
+|   [Thread-1] --> [static userId] <-- [Thread-2]            |
++-----------------------------------------------------------+
+
++-----------------------------------------------------------+
+| With ThreadLocal                                            |
+|                                                             |
+|   [Thread-1] --> [userId = 'user1' (T1's own copy)]        |
+|   [Thread-2] --> [userId = 'user2' (T2's own copy)]        |
++-----------------------------------------------------------+
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
+```
 Without ThreadLocal:
   Thread-1: userId ─┐
                    ├→ [shared memory] ← conflict!

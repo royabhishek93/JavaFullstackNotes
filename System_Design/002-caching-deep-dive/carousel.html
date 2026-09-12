@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Caching Deep Dive — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 26px; margin: 0 auto;
+  }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .poly-square {
+    width: 52px; height: 52px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-weight: 700; color: #fff; font-size: 12px;
+  }
+  .poly-pg { background: var(--blue); }
+  .poly-cas { background: var(--yellow); color: #1a1a2e; }
+  .poly-es { background: var(--green); }
+  .poly-redis { background: var(--redis); }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Caching Deep Dive</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">50,000</div>
+      <p>concurrent users hit a flash-sale product at the exact second its cache key expires. All 50,000 miss at once. All 50,000 hit the database at once.</p>
+      <p>This is a cache stampede — and it's completely preventable.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Every Request Passes Through Layers</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Browser</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>CDN</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="redis-icon">R</div>Redis</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Aurora</div>
+      </div>
+      <p style="text-align:center">No cache: 1,000 users → 1,000 identical 2s DB queries. With cache: 1 query, then 1ms responses for everyone else.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cache-Aside (Lazy Loading)</h1>
+    <h2>Pattern 1 — Most Common</h2>
+    <div class="body">
+      <p>App checks Redis first. Miss → load from DB → store with TTL (e.g. 5 min).</p>
+      <p><span class="check-mark">✓</span> Only caches what's actually requested (efficient memory use)</p>
+      <p><span class="x-mark">✕</span> Cache miss = 2 trips (cache + DB) — latency spike on first request</p>
+      <p><b>Use for:</b> product catalog, user profiles, configuration data</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Write-Through</h1>
+    <h2>Pattern 2 — Always Fresh</h2>
+    <div class="body">
+      <p>Every write updates the DB AND Redis simultaneously.</p>
+      <p><span class="check-mark">✓</span> Cache is never stale</p>
+      <p><span class="x-mark">✕</span> Every write hits both stores (more write latency); caches data that may never be read</p>
+      <p><b>Use for:</b> inventory counts, stock levels — must be fresh for purchase decisions</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Write-Behind (Write-Back)</h1>
+    <h2>Pattern 3 — Deferred Writes</h2>
+    <div class="body">
+      <p>Writes go to Redis only. A background process flushes to the DB every N seconds.</p>
+      <p><span class="check-mark">✓</span> Ultra-fast writes; fewer DB transactions (batched)</p>
+      <p><span class="x-mark">✕</span> Data loss if cache crashes before flush — not durable</p>
+      <p><b>Use for:</b> view counters, like counts — losing 10s of data is acceptable</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Refresh-Ahead</h1>
+    <h2>Pattern 4 — Proactive Warming</h2>
+    <div class="body">
+      <p>Before a hot entry expires, a background job pre-fetches fresh data — the cache never actually goes cold.</p>
+      <p><span class="check-mark">✓</span> Zero misses on hot items; predictable, scheduled DB load</p>
+      <p><b>Use for:</b> top 10,000 products during a sale, refreshed every ~4 minutes</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cache Stampede (Thundering Herd)</h1>
+    <h2>The #1 Production Trap</h2>
+    <div class="body">
+      <p>Popular key expires under load → thousands miss simultaneously → all hammer the DB → CPU 100% → 10s+ latency → crash.</p>
+      <p><b>Fix 1:</b> TTL jitter — randomize 270-330s instead of a flat 300s, spreads expiry over 60s</p>
+      <p><b>Fix 2:</b> Mutex lock — only 1 thread refreshes, others wait ~50ms then read fresh cache</p>
+      <p><b>Fix 3:</b> Caffeine <code>refreshAfterWrite</code> — serves stale instantly while refreshing in the background</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cache Penetration &amp; CDN Leaks</h1>
+    <h2>Two More Traps</h2>
+    <div class="body">
+      <p><b>Penetration:</b> attacker spams non-existent IDs → guaranteed miss every time → DB overload. Fix: cache the NULL result, or use a Bloom filter (10M capacity, ~1% false-positive) to reject bad IDs before Redis.</p>
+      <p><b>CDN leak:</b> caching a page with "Welcome back, Abhishek!" means the next visitor sees Abhishek's session. Fix: cache only the shell/static assets; fetch user-specific data client-side via an uncached API.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Pattern Comparison</h1>
+    <h2>Which Pattern, Which Job</h2>
+    <div class="body">
+      <table>
+        <tr><th>Pattern</th><th>Freshness</th><th>Write Cost</th><th>Best For</th></tr>
+        <tr><td>Cache-Aside</td><td>TTL-bound</td><td>Low</td><td>Product catalog</td></tr>
+        <tr><td>Write-Through</td><td>Always fresh</td><td>High</td><td>Inventory</td></tr>
+        <tr><td>Write-Behind</td><td>Eventual</td><td>Very low</td><td>Counters/likes</td></tr>
+        <tr><td>Refresh-Ahead</td><td>Always fresh</td><td>Scheduled</td><td>Hot sale items</td></tr>
+      </table>
+      <p>With good caching, the DB should handle only 1-5% of total traffic.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Read-heavy, tolerate brief staleness? → Cache-Aside</p>
+      <p>Must never be stale (inventory)? → Write-Through</p>
+      <p>High-frequency, loss-tolerant (counters)? → Write-Behind</p>
+      <p>Predictably hot (sale items)? → Refresh-Ahead</p>
+      <div class="quote-box">
+        "I layer caching: CDN for static assets, Redis for shared application data, Caffeine local cache for the hottest items. Cache-aside for catalogs, write-through for inventory, write-behind for counters. The most dangerous failure mode is cache stampede — fix with TTL jitter, mutex locks, or Caffeine's refreshAfterWrite. Cache penetration is fixed by caching null results or a Bloom filter."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

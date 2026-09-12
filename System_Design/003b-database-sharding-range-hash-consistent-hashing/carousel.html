@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Database Sharding Strategies — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 21px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13.5px; line-height: 1.5; }
+  .row { display: flex; gap: 14px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .db-icon { width: 56px; height: 62px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 56px; height: 16px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 56px; height: 34px; position: absolute; top: 12px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 56px; height: 16px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .server-box {
+    width: 60px; height: 52px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .ring { width: 180px; height: 180px; border: 3px dashed var(--muted); border-radius: 50%; margin: 10px auto; position: relative; }
+  .ring .node { position: absolute; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; color: #fff; }
+  .arrow { font-size: 22px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Database Sharding Strategies</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">75%</div>
+      <p>One line of code — <code>%3</code> becomes <code>%4</code> — and your ENTIRE dataset needs to migrate. This is what plain hash sharding does when you add a shard.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>10M Books, One Sagging Shelf</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Shard</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Shard</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Shard</div>
+      </div>
+      <p style="text-align:center">Sharding = horizontal partitioning. Which ROW goes on which server? The <b>shard key</b> decides — pick wrong and you can't change it without migrating everything.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Range Sharding</h1>
+    <h2>Strategy 1</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>1-2M</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>2-4M</div>
+        <div class="col"><div class="db-icon db-red"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>4-6M<br>ALL NEW</div>
+      </div>
+      <p><span class="check-mark">✓</span> Range queries hit one shard &nbsp; <span class="x-mark">✕</span> New rows always → newest shard = hot shard</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Hash Sharding</h1>
+    <h2>Strategy 2</h2>
+    <div class="body">
+      <p><code>shard = hash(key) % N</code></p>
+      <div class="row">
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>~33%</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>~33%</div>
+        <div class="col"><div class="db-icon db-yellow"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>~33%</div>
+      </div>
+      <p><span class="check-mark">✓</span> Even distribution &nbsp; <span class="x-mark">✕</span> Adding a shard changes N → ~75-90% of data must migrate</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Consistent Hashing Ring</h1>
+    <h2>Strategy 3 — The Fix</h2>
+    <div class="body">
+      <div class="ring">
+        <div class="node" style="background:#336791; top:0; left:70px;">A</div>
+        <div class="node" style="background:#e0b400; top:70px; left:140px;">B</div>
+        <div class="node" style="background:#00bfa5; top:140px; left:70px;">C</div>
+      </div>
+      <p style="text-align:center">Keys route clockwise to the nearest node. Adding node D only remaps the small arc near it — roughly <b>1/N</b> of data, not everything.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Virtual Nodes</h1>
+    <h2>Keeping Load Proportional</h2>
+    <div class="body">
+      <p>Each physical shard gets many ring positions (Cassandra default: <b>150 vnodes</b> per node).</p>
+      <p>A high-capacity node gets more vnodes → more of the ring → proportionally more load, even if the physical node itself sits in an unlucky part of the ring.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Choosing a Shard Key</h1>
+    <h2>4 Required Criteria</h2>
+    <div class="body">
+      <p><span class="check-mark">✓</span> High cardinality — not <code>country_code</code> (only ~200 values)</p>
+      <p><span class="check-mark">✓</span> Even distribution — not skewed by a few huge tenants</p>
+      <p><span class="check-mark">✓</span> Present in most queries — avoids scatter-gather</p>
+      <p><span class="check-mark">✓</span> Immutable — not <code>email</code> (mutable = row must migrate on change)</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cross-Shard JOINs Don't Work</h1>
+    <h2>The Trap</h2>
+    <div class="body">
+      <p>Users on Shard 1, Orders on Shard 3 — no SQL JOIN across shards.</p>
+      <p><b>Fixes:</b> co-locate related tables by the same key, application-level join (expensive), or denormalize (embed the join data — the production pattern at scale).</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Strategy Comparison</h1>
+    <h2>Which One, Which Job</h2>
+    <div class="body">
+      <table>
+        <tr><th>Strategy</th><th>Distribution</th><th>Range Queries</th><th>Resharding Cost</th></tr>
+        <tr><td>Range</td><td>Poor (hotspots)</td><td>Excellent</td><td>Medium</td></tr>
+        <tr><td>Hash</td><td>Good</td><td>Poor (fan-out)</td><td>Very high</td></tr>
+        <tr><td>Consistent Hash</td><td>Good</td><td>Poor (fan-out)</td><td>Low (~1/N)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Need range queries? → Range sharding. Fixed cluster size forever? → Hash sharding. Cluster size will change? → Consistent hashing.</p>
+      <div class="quote-box">
+        "Sharding is a last resort — exhaust read replicas, caching, and vertical scaling first, because once you shard, JOINs die and every distributed transaction becomes a saga."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

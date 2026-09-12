@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>UUID as Primary Key: Why It's Bad — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #22223a;
+    --panel2: #26264a;
+    --text: #eaeaf5;
+    --muted: #9a9ac0;
+    --accent: #ff5566;
+    --accent2: #4ecdc4;
+    --gold: #ffd166;
+    --blue: #4d96ff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .deck {
+    width: 540px;
+    height: 540px;
+    margin: 30px auto;
+    position: relative;
+    background: var(--bg);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide {
+    display: none;
+    width: 540px;
+    height: 540px;
+    padding: 26px 28px;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .slide.active { display: flex; flex-direction: column; }
+  .slide h1 {
+    font-size: 22px;
+    margin: 0 0 8px 0;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+  }
+  .slide h2 {
+    font-size: 15px;
+    margin: 0 0 14px 0;
+    color: var(--accent2);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .slide p {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text);
+    margin: 4px 0;
+  }
+  .muted { color: var(--muted); font-size: 11px; }
+  .tag {
+    display: inline-block;
+    background: var(--accent);
+    color: #1a1a2e;
+    font-weight: 700;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    letter-spacing: 0.5px;
+  }
+  .body-area { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+
+  /* ---------- Cylinder (database icon) ---------- */
+  .cylinder {
+    width: 90px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .cyl-top {
+    width: 90px; height: 22px;
+    border-radius: 50%;
+    background: var(--blue);
+    border: 2px solid #dfe;
+  }
+  .cyl-body {
+    width: 86px; height: 60px;
+    margin: -11px auto 0 auto;
+    background: linear-gradient(180deg, var(--blue), #2f6fd6);
+    border-left: 2px solid #dfe;
+    border-right: 2px solid #dfe;
+  }
+  .cyl-bottom {
+    width: 90px; height: 22px;
+    border-radius: 50%;
+    background: #2f6fd6;
+    border: 2px solid #dfe;
+    margin-top: -11px;
+  }
+  .cyl-label {
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* ---------- Redis-like circular icon (used generically for cache/RAM) ---------- */
+  .redis-circle {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: #d82c20;
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 20px;
+    margin: 0 auto;
+    border: 2px solid #7a0000;
+  }
+
+  /* ---------- Server / page boxes ---------- */
+  .server-box {
+    background: var(--panel);
+    border: 1px solid #3a3a5e;
+    border-radius: 6px;
+    padding: 8px;
+  }
+  .server-box .line { height: 4px; background: #3a3a5e; border-radius: 2px; margin: 4px 0; }
+
+  .row { display: flex; gap: 10px; align-items: flex-end; justify-content: center; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+
+  .page-block {
+    width: 74px;
+    border-radius: 4px;
+    border: 2px solid #3a3a5e;
+    display: flex; align-items: flex-end; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #0d0d17;
+    overflow: hidden;
+  }
+  .fill-blue { background: var(--blue); }
+  .fill-red { background: var(--accent); }
+  .fill-gold { background: var(--gold); }
+
+  .arrow-right {
+    font-size: 20px;
+    color: var(--accent2);
+    align-self: center;
+  }
+  .arrow-down {
+    font-size: 18px;
+    color: var(--accent);
+    text-align: center;
+  }
+
+  code, .code {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    background: #12121f;
+    color: var(--accent2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11.5px;
+  }
+
+  .bullet-list { list-style: none; padding: 0; margin: 0; }
+  .bullet-list li {
+    font-size: 12px;
+    padding: 5px 0 5px 18px;
+    position: relative;
+    line-height: 1.4;
+  }
+  .bullet-list li::before {
+    content: "▸";
+    position: absolute;
+    left: 0;
+    color: var(--accent2);
+  }
+
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10.5px;
+  }
+  table.cmp th, table.cmp td {
+    border: 1px solid #3a3a5e;
+    padding: 5px 6px;
+    text-align: center;
+  }
+  table.cmp th {
+    background: var(--panel2);
+    color: var(--accent2);
+  }
+  table.cmp td.good { color: #6fdc8c; font-weight: 700; }
+  table.cmp td.bad { color: var(--accent); font-weight: 700; }
+
+  .quote-box {
+    background: var(--panel);
+    border-left: 4px solid var(--gold);
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .decision-node {
+    background: var(--panel2);
+    border: 1px solid var(--accent2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    text-align: center;
+  }
+  .decision-answer {
+    background: #12121f;
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 11px;
+    text-align: center;
+    color: var(--accent2);
+  }
+
+  .footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 8px;
+    border-top: 1px solid #2a2a44;
+  }
+  .counter {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .nav-controls {
+    width: 540px;
+    margin: 0 auto 40px auto;
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+  }
+  .nav-controls button {
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--accent2);
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .nav-controls button:hover { background: var(--accent2); color: #12121f; }
+  .hint { text-align: center; color: var(--muted); font-size: 11px; margin-bottom: 10px; }
+
+  @media print {
+    body { background: #1a1a2e; }
+    .nav-controls, .hint { display: none !important; }
+    .deck { box-shadow: none; margin: 0; }
+    @page { size: 540px 540px; margin: 0; }
+    .slide { display: none; page-break-after: always; }
+    .slide.active { display: flex; }
+    .slide { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hint">Use ← / → arrow keys or the buttons below to navigate</div>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1 : HOOK -->
+  <div class="slide active">
+    <span class="tag">EP. 41 · SYSTEM DESIGN</span>
+    <h1>Your Primary Key Is Wasting 48% of Your Disk</h1>
+    <div class="body-area">
+      <div class="row">
+        <div class="cylinder">
+          <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+          <div class="cyl-label">MySQL InnoDB</div>
+        </div>
+      </div>
+      <p style="text-align:center; font-size:34px; font-weight:800; color:var(--accent); margin:10px 0;">~48%</p>
+      <p style="text-align:center;">average page fill-factor after 6 months of <span class="code">UUID</span> primary key inserts — vs. <span style="color:var(--accent2); font-weight:700;">90–95%</span> for AUTO_INCREMENT</p>
+      <p class="muted" style="text-align:center;">At 10,000 inserts/sec, that's thousands of B-tree page splits — every single second.</p>
+    </div>
+    <div class="footer-row"><span class="counter">HOOK</span><span class="counter">1 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 2 : THE PROBLEM -->
+  <div class="slide">
+    <span class="tag">THE PROBLEM</span>
+    <h1>The Clustered Index Bottleneck</h1>
+    <div class="body-area">
+      <p>InnoDB's primary key isn't just an index — it's the <b>physical sort order</b> of rows on disk (a <span class="code">clustered index</span>).</p>
+      <div class="row">
+        <div class="col">
+          <div class="page-block fill-blue" style="height:60px;">id=1..1000</div>
+          <span class="muted">sequential PK</span>
+        </div>
+        <div class="arrow-right">vs</div>
+        <div class="col">
+          <div class="page-block fill-red" style="height:60px;">a1f..93c</div>
+          <span class="muted">random UUID PK</span>
+        </div>
+      </div>
+      <p class="muted" style="text-align:center;">Sequential PK → new rows append to the end.<br>Random UUID PK → new rows land anywhere → forces reorganization.</p>
+    </div>
+    <div class="footer-row"><span class="counter">PROBLEM</span><span class="counter">2 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 3 : Filing cabinet analogy -->
+  <div class="slide">
+    <span class="tag">MENTAL MODEL</span>
+    <h1>The Filing Cabinet Analogy</h1>
+    <div class="body-area">
+      <div class="server-box">
+        <p><b>Drawer holds papers 1–100, sorted.</b></p>
+        <div class="line"></div><div class="line"></div><div class="line"></div>
+      </div>
+      <p>Paper #47 arrives → goes straight to its spot in drawer 1. Predictable work.</p>
+      <div class="arrow-down">▼</div>
+      <p>Paper <span class="code">7a3f-91bc</span> (random UUID) arrives → you don't know which drawer, it's already full → the <b>drawer splits into two</b>. Now do that 1,000×/sec.</p>
+    </div>
+    <div class="footer-row"><span class="counter">ANALOGY</span><span class="counter">3 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 4 : AUTO_INCREMENT sequential insert diagram -->
+  <div class="slide">
+    <span class="tag">HOW SEQUENTIAL INSERTS WORK</span>
+    <h1>AUTO_INCREMENT: Append-Only Writes</h1>
+    <div class="body-area">
+      <div class="row">
+        <div class="col"><div class="page-block fill-blue" style="height:70px;">Page 1<br>id 1-1000</div><span class="muted">FULL</span></div>
+        <div class="col"><div class="page-block fill-blue" style="height:70px;">Page 2<br>id 1001-2000</div><span class="muted">FULL</span></div>
+        <div class="col"><div class="page-block fill-gold" style="height:40px;">Page 3<br>id 2001-3000</div><span class="muted">has space</span></div>
+      </div>
+      <p style="text-align:center;">New insert <span class="code">id=3001</span> → appends to Page 3.</p>
+      <p class="muted" style="text-align:center;">No reorganization. No cascading updates. O(1) page write — every time.</p>
+    </div>
+    <div class="footer-row"><span class="counter">SOLUTION SHAPE</span><span class="counter">4 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 5 : UUID page split diagram -->
+  <div class="slide">
+    <span class="tag">HOW RANDOM INSERTS WORK</span>
+    <h1>UUID: The Page Split Cascade</h1>
+    <div class="body-area">
+      <div class="row">
+        <div class="col"><div class="page-block fill-red" style="height:70px;">Page 1<br>1a2b..1c2d</div><span class="muted">FULL</span></div>
+      </div>
+      <p style="text-align:center;">Insert <span class="code">2b3c4d5e-...</span> sorts <b>inside</b> Page 1 (already full).</p>
+      <div class="arrow-down">▼ PAGE SPLIT ▼</div>
+      <div class="row">
+        <div class="col"><div class="page-block fill-red" style="height:45px;">1a2b..</div></div>
+        <div class="col"><div class="page-block fill-red" style="height:45px;">2b3c.. (new)</div></div>
+      </div>
+      <p class="muted" style="text-align:center;">Parent B-tree node updates to point at both. If parent is full too → split cascades upward. At 10K inserts/sec: thousands of splits/sec.</p>
+    </div>
+    <div class="footer-row"><span class="counter">SOLUTION SHAPE</span><span class="counter">5 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 6 : Fragmentation comparison after 6 months -->
+  <div class="slide">
+    <span class="tag">6 MONTHS LATER</span>
+    <h1>Fragmentation: The Long-Term Cost</h1>
+    <div class="body-area">
+      <p class="muted">UUID PK — average fill ~48%</p>
+      <div class="row">
+        <div class="page-block fill-red" style="height:40px; width:44px;">40%</div>
+        <div class="page-block fill-red" style="height:55px; width:44px;">55%</div>
+        <div class="page-block fill-red" style="height:38px; width:44px;">38%</div>
+        <div class="page-block fill-red" style="height:61px; width:44px;">61%</div>
+        <div class="page-block fill-red" style="height:42px; width:44px;">42%</div>
+      </div>
+      <p class="muted" style="margin-top:10px;">AUTO_INCREMENT PK — average fill ~93%</p>
+      <div class="row">
+        <div class="page-block fill-blue" style="height:76px; width:44px;">95%</div>
+        <div class="page-block fill-blue" style="height:76px; width:44px;">95%</div>
+        <div class="page-block fill-blue" style="height:76px; width:44px;">95%</div>
+        <div class="page-block fill-blue" style="height:76px; width:44px;">95%</div>
+        <div class="page-block fill-gold" style="height:48px; width:44px;">60%</div>
+      </div>
+      <p class="muted" style="text-align:center; margin-top:6px;">2x disk space · 2x pages per table scan · buffer pool wastes RAM on half-empty pages</p>
+    </div>
+    <div class="footer-row"><span class="counter">FRAGMENTATION</span><span class="counter">6 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 7 : Solutions -->
+  <div class="slide">
+    <span class="tag">THE FIX</span>
+    <h1>Three Ways to Fix This</h1>
+    <div class="body-area" style="gap:10px;">
+      <div class="server-box">
+        <p><b>1. AUTO_INCREMENT BIGINT</b> — clustered PK for internal use. <span class="code">public_id UUID</span> column (unique index) for external/API exposure.</p>
+      </div>
+      <div class="server-box">
+        <p><b>2. ULID</b> — <span class="code">01ARZ3NDEK</span><span style="color:var(--muted)">TSV4RRFFQ69G5FAV</span>. First part = timestamp (sorted), rest = randomness (unique). Inserts land near the end → minimal splits.</p>
+      </div>
+      <div class="server-box">
+        <p><b>3. UUID v7</b> — first 48 bits = millisecond timestamp. Drop-in for UUID v4, no page-split problem. Native in PostgreSQL 17, MySQL 9.0+.</p>
+      </div>
+    </div>
+    <div class="footer-row"><span class="counter">SOLUTIONS</span><span class="counter">7 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 8 : When UUID is fine + Real world -->
+  <div class="slide">
+    <span class="tag">WHEN IT'S OK · REAL WORLD</span>
+    <h1>Not Always Bad — Context Matters</h1>
+    <div class="body-area">
+      <ul class="bullet-list">
+        <li>✓ PostgreSQL heap storage (not clustered by PK by default)</li>
+        <li>✓ Low write volume &lt; 1K inserts/sec</li>
+        <li>✓ Used as a secondary key, not the clustered PK</li>
+        <li>✓ Distributed ID generation (CockroachDB/Spanner handle it internally)</li>
+      </ul>
+      <p style="margin-top:6px;"><b>Real world:</b> Swiggy/Zomato-style order tables use BIGINT PK + public_id UUID during lunch-rush write spikes. A Flipkart-style flash sale pushing <b>10K+ orders/sec</b> stays at zero fragmentation on sequential BIGINT PKs — UUID PKs would scatter every insert across the whole tree. PhonePe/UPI-style ledgers use sequential/ULID trade IDs to keep the buffer pool hit rate high under microsecond-level trade inserts.</p>
+    </div>
+    <div class="footer-row"><span class="counter">CONTEXT</span><span class="counter">8 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 9 : Comparison table (second-to-last) -->
+  <div class="slide">
+    <span class="tag">CHEAT SHEET</span>
+    <h1>AUTO_INCREMENT vs ULID vs UUID v4</h1>
+    <div class="body-area">
+      <table class="cmp">
+        <tr><th></th><th>AUTO_INCREMENT</th><th>ULID</th><th>UUID v4</th></tr>
+        <tr><td>Insert pattern</td><td class="good">Sequential</td><td class="good">Sequential</td><td class="bad">Random</td></tr>
+        <tr><td>Page splits</td><td class="good">Almost never</td><td class="good">Almost never</td><td class="bad">Constant</td></tr>
+        <tr><td>Fragmentation</td><td class="good">Minimal</td><td class="good">Minimal</td><td class="bad">High (40-50%)</td></tr>
+        <tr><td>Global unique</td><td class="bad">No (per DB)</td><td class="good">Yes</td><td class="good">Yes</td></tr>
+        <tr><td>Expose in URL</td><td class="bad">No (guessable)</td><td class="good">Yes</td><td class="good">Yes</td></tr>
+        <tr><td>Sortable by time</td><td class="good">Yes</td><td class="good">Yes</td><td class="bad">No</td></tr>
+        <tr><td>DB support</td><td class="good">All</td><td>App-generated</td><td class="good">All</td></tr>
+      </table>
+    </div>
+    <div class="footer-row"><span class="counter">CHEAT SHEET</span><span class="counter">9 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 10 : Decision tree + interview quote (last) -->
+  <div class="slide">
+    <span class="tag">DECISION TREE</span>
+    <h1>What Should Your PK Actually Be?</h1>
+    <div class="body-area">
+      <div class="col" style="gap:6px;">
+        <div class="decision-node">ID never exposed to clients?</div>
+        <div class="arrow-down">▼ yes</div>
+        <div class="decision-answer">AUTO_INCREMENT BIGINT</div>
+        <div class="arrow-down">▼ no — needs external exposure / distributed gen</div>
+        <div class="decision-answer">ULID or UUID v7</div>
+        <div class="arrow-down">▼ never — random UUID v4 as MySQL clustered PK at scale</div>
+      </div>
+      <div class="quote-box" style="margin-top:8px;">
+        "UUID v4 as a clustered primary key trades write locality for global uniqueness — at 10K inserts/second that tradeoff costs you 40% index fragmentation; use a sequential BIGINT PK and expose UUID only at the API boundary."
+      </div>
+    </div>
+    <div class="footer-row"><span class="counter">INTERVIEW QUOTE</span><span class="counter">10 / 10</span></div>
+  </div>
+
+</div>
+
+<div class="nav-controls">
+  <button id="prevBtn" onclick="changeSlide(-1)">◀ Prev</button>
+  <button id="nextBtn" onclick="changeSlide(1)">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var current = 0;
+
+  function showSlide(index) {
+    if (index < 0) index = 0;
+    if (index >= slides.length) index = slides.length - 1;
+    slides.forEach(function(s) { s.classList.remove('active'); });
+    slides[index].classList.add('active');
+    current = index;
+  }
+
+  function changeSlide(delta) {
+    showSlide(current + delta);
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') changeSlide(1);
+    if (e.key === 'ArrowLeft') changeSlide(-1);
+  });
+
+  showSlide(0);
+</script>
+
+</body>
+</html>

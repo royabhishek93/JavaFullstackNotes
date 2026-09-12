@@ -1,6 +1,8 @@
 # 📁 File System - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -335,6 +337,39 @@ Real file systems (ext4, NTFS) maintain size metadata incrementally rather than 
 ## 9. Technology Choices
 
 **You**: "**Object storage (S3)** for actual file content (blobs), **PostgreSQL/DynamoDB** for the hierarchical metadata (directory tree structure). Never store large binary file content directly in relational DB rows - use blob storage + reference."
+
+---
+
+## 🔥 Real-World Production Issue: The Recursive `getSize()` That Caused a Stack Overflow
+
+*In plain English: recursion depth controlled by user data (like folder nesting) can be abused to crash the service.*
+
+**The war story:**
+
+"A cloud file-sync product used the Composite Pattern's natural recursive `getSize()` (directory sums children's sizes recursively) exactly as this guide describes. It worked flawlessly for years — until a customer with a deeply nested build-tool cache directory (think `node_modules`-style nesting, 8,000+ levels deep due to a symlink misconfiguration on their end) synced their folder."
+
+```
+getSize() call stack for the misbehaving directory:
+
+Directory.getSize()
+  -> child Directory.getSize()
+       -> child Directory.getSize()
+            -> child Directory.getSize()
+                 ... 8,000+ levels of recursion ...
+                      -> StackOverflowError
+
+Every size-check request for this customer's account crashed the
+file-indexing service worker handling it -> and since MULTIPLE
+customers' requests were processed on shared worker threads,
+one customer's pathological directory structure degraded
+size-check latency for OTHER customers on the same worker pool
+```
+
+**Root cause:** recursion depth in the Composite Pattern's traversal is bounded only by the ACTUAL data (directory nesting depth), which is attacker/user-controlled input in a multi-tenant system — nobody had put an explicit depth limit or converted the recursion to an iterative, heap-allocated stack-based traversal.
+
+**The fix:** converted `getSize()`/`ls()` traversal from language-level recursion (which uses the limited JVM call stack) to an explicit iterative traversal using a `Deque` as an explicit stack (heap-allocated, effectively unbounded by depth), PLUS added a configurable max-depth safety limit that rejects/flags pathologically deep directory structures at upload/sync time.
+
+**Lesson for a new developer:** "The Composite Pattern's recursive traversal is elegant and simple to write — but recursion depth is bounded by the CALL STACK, and if the depth is driven by user-controlled/external data (folder nesting, JSON nesting, org-chart depth), a sufficiently deep structure becomes a denial-of-service vector. For any Composite traversal exposed to external/untrusted data, either enforce a max-depth limit or use an explicit iterative traversal instead of language-level recursion."
 
 ---
 

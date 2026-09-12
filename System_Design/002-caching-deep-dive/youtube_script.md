@@ -1,0 +1,32 @@
+# Caching Deep Dive — YouTube Script
+Duration: ~10 min | Target: Engineers 3–10 YOE | Episode: 2 of 20
+
+## HOOK (0:00–0:30)
+"A flash sale starts at exactly midnight. Fifty thousand people hit 'buy' on the same product in the same second. The cache entry for that product expires at 12:05:00.001 — and fifty thousand requests slam the database at the exact same instant. The database's CPU hits 100%, query latency goes past 10 seconds, and the whole site goes down. This is called a cache stampede, and today I'm showing you exactly how to prevent it — plus the four caching patterns every senior engineer needs to know cold."
+
+[Screen cue: Countdown timer hitting 00:00, then a graph spiking to "100% CPU" in red.]
+
+## THE PROBLEM (0:30–2:00)
+"Think about it this way — your product page queries eight database tables and takes two seconds to load. That's fine for one user. But a thousand users requesting the same page means your database runs that exact same expensive query a thousand times. A cache is just a fast temporary store close to the reader — first user pays the two-second cost, stores the result in Redis, and the next nine hundred ninety-nine users get it back in one millisecond instead. Cache hit means found and fast. Cache miss means not found, go to the database, and store it for next time. And every cached value needs a TTL — time to live — because if the admin changes the price and your cache doesn't know, users see the wrong price until it expires."
+
+[Screen cue: Draw the request path — Browser → CDN → App → Redis → Database — with response times labeled at each hop.]
+
+## THE SOLUTION (2:00–5:00)
+"Now watch what happens when we pick the right caching pattern for the job. Cache-aside is the most common — the application checks the cache first, and on a miss, loads from the database and stores it with a TTL, say five minutes for a product page. Write-through is different — every write goes to the database AND the cache at the same time, so it's always fresh, which is exactly what you want for inventory counts where staleness could mean overselling. Write-behind is the opposite extreme — writes go to the cache only, and a background job flushes to the database every few seconds. That's perfect for view counters and like counts, where losing ten seconds of data if Redis crashes is totally acceptable, but ultra-fast writes matter more. And refresh-ahead is the proactive pattern — before a cache entry actually expires, a background job quietly refreshes it, so your hottest ten thousand products during a sale never actually go stale, and the database load becomes predictable instead of spiky."
+
+[Screen cue: Draw four labeled boxes — Cache-Aside, Write-Through, Write-Behind, Refresh-Ahead — each with a one-line use case underneath.]
+
+## DEEP DIVE — WHERE ENGINEERS GET IT WRONG (5:00–8:00)
+"Here's the trap that takes down real production systems: cache stampede, also called thundering herd. When a popular cache key expires under heavy load, every single request in that instant gets a cache miss simultaneously, and they all hammer the database at once. I've described the fifty-thousand-user flash sale scenario — here's how you actually prevent it. Fix one: probabilistic early expiry — instead of a hard three-hundred-second TTL, you randomize it between two-seventy and three-thirty seconds. Now different users' cache entries expire at different times, spreading the stampede over sixty seconds instead of hitting all at once. Fix two: a mutex lock — when a cache miss happens, only ONE thread acquires a distributed lock and actually queries the database; everyone else waits fifty milliseconds and then reads the now-fresh cache. Fix three, and this is the elegant one: Caffeine's refreshAfterWrite — a local cache that serves the stale value immediately while a background thread refreshes it, so you get zero cache misses and zero stampede for your hottest data. There's also cache penetration — attackers spamming your API with a million non-existent product IDs. Every single one is a guaranteed cache miss because it was never cached, so every single one hits your database. The fix: cache the NULL result too, or better, use a Bloom filter at the entry point that instantly says 'this ID definitely doesn't exist' before it even touches Redis or the database. And don't forget the CDN trap — if your product page includes a 'Welcome back, Abhishek' header and the CDN caches that whole page, the next visitor sees Abhishek's name and Abhishek's cart. That's a privacy bug hiding inside a performance optimization."
+
+[Screen cue: Side-by-side state diagram — cache key lifecycle with jitter, then a "Cache MISS Flood" diagram with a padlock icon representing the mutex.]
+
+## REAL WORLD (8:00–9:30)
+"Let's ground this. Flipkart's product catalog uses cache-aside with Redis — most product page traffic never touches the database at all, and with good caching the database handles roughly one to five percent of total requests. Think about Swiggy or Zomato during lunch rush — the top restaurants in a city get hammered by thousands of simultaneous requests, and without stampede protection, a single popular restaurant's menu cache expiring could take down the database for that whole city. And a ticket-booking platform like BookMyShow has to be extremely careful about CDN caching — a seat-availability page is dynamic and user-specific, so it cannot be cached at the edge the same way a static movie poster image can; mixing those two up is exactly how you leak one user's booking session into another user's browser."
+
+[Screen cue: Three logo-style cards — "Flipkart: 1-5% DB load with caching", "Swiggy/Zomato: lunch-rush stampede risk", "BookMyShow: dynamic seat page ≠ CDN cache".]
+
+## OUTRO + NEXT EPISODE (9:30–10:00)
+"So remember: pick your caching pattern per use case — cache-aside for catalogs, write-through for inventory, write-behind for counters, refresh-ahead for your hottest items — and always protect against stampede with jitter, mutex locks, or Caffeine's refresh-ahead. Subscribe for Episode 3, where we go deep on Database Scaling and Sharding — including the exact moment a five-hundred-million-row orders table forces you to choose between hash sharding and range sharding, and why picking wrong creates a hot shard that no amount of hardware can fix."
+
+[Screen cue: "NEXT: Episode 3 — Database Scaling & Sharding" title card with subscribe animation.]

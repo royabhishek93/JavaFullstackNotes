@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Redlock — Distributed Locking with Redis</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; background: #0f0f1e; color: #e8e8f0;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  .deck {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 20px 0 90px 0; min-height: 100vh;
+  }
+  .slide {
+    display: none; flex-direction: column;
+    width: 540px; height: 540px;
+    background: #1a1a2e;
+    border: 1px solid #33334d;
+    border-radius: 10px;
+    padding: 18px 22px;
+    overflow: hidden;
+    position: relative;
+  }
+  .slide.active { display: flex; }
+  .slide h1 {
+    font-size: 19px; margin: 0 0 4px 0; color: #ff8c42;
+    border-bottom: 2px solid #33334d; padding-bottom: 6px;
+  }
+  .slide h2 { font-size: 13px; margin: 8px 0 4px 0; color: #6cc6ff; }
+  .slide p, .slide li { font-size: 11px; line-height: 1.4; margin: 2px 0; color: #cfcfe0; }
+  .tag {
+    display: inline-block; font-size: 9px; letter-spacing: 1px;
+    color: #ff8c42; text-transform: uppercase; margin-bottom: 2px;
+  }
+  .note {
+    font-size: 10px; color: #a0a0c0; background: #232342;
+    border-left: 3px solid #6cc6ff; padding: 5px 8px; margin: 5px 0; border-radius: 3px;
+  }
+  .warn {
+    font-size: 10px; color: #ffd1d1; background: #3a1e28;
+    border-left: 3px solid #ff4d6d; padding: 5px 8px; margin: 5px 0; border-radius: 3px;
+  }
+  .safe {
+    font-size: 10px; color: #d1ffe0; background: #17331f;
+    border-left: 3px solid #2ecc71; padding: 5px 8px; margin: 5px 0; border-radius: 3px;
+  }
+
+  /* ---- Vault / Redis node row ---- */
+  .vault-row { display: flex; gap: 10px; justify-content: center; margin: 8px 0; }
+  .vault {
+    width: 84px; border: 2px solid #454568; border-radius: 8px;
+    padding: 6px 4px; text-align: center; background: #202038;
+  }
+  .vault.majority {
+    border-color: #2ecc71; background: #16321f;
+    box-shadow: 0 0 10px rgba(46,204,113,0.55);
+  }
+  .redis-icon {
+    width: 34px; height: 34px; border-radius: 50%; background: #d82c20;
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 4px auto; font-weight: bold; font-size: 15px;
+    border: 2px solid #7a1a12;
+  }
+  .vault .vlabel { font-size: 9px; color: #b8b8d8; }
+  .vault.majority .vlabel { color: #b6ffce; font-weight: bold; }
+  .vault .vstate { font-size: 8px; color: #7a7aa0; }
+  .vault.majority .vstate { color: #2ecc71; }
+
+  /* ---- server / process boxes ---- */
+  .server-box {
+    border: 2px solid #6c8ebf; background: #1c2a40;
+    padding: 5px 10px; border-radius: 6px; display: inline-block;
+    font-size: 10px; color: #cfe3ff;
+  }
+  .server-box.b { border-color: #d99a3d; background: #302315; color: #ffe3b8; }
+  .server-box.c { border-color: #b06cd9; background: #241530; color: #ecd1ff; }
+  .server-box.storage { border-color: #2ecc71; background: #142a1c; color: #c9ffdc; }
+
+  .arrow-down { text-align:center; font-size:14px; color:#6cc6ff; margin: 2px 0; }
+  .arrow-right { font-size:13px; color:#ff8c42; margin: 0 4px; }
+
+  /* ---- Timeline / sequence diagram ---- */
+  .timeline { margin-top: 4px; }
+  .tl-head { display: grid; gap: 4px; margin-bottom: 4px; }
+  .tl-head-2 { grid-template-columns: 46px 1fr 1fr; }
+  .tl-head-3 { grid-template-columns: 40px 1fr 1fr 1fr; }
+  .tl-lane-label {
+    text-align: center; font-size: 10px; font-weight: bold; padding: 3px 0;
+    border-radius: 4px; border: 2px solid;
+  }
+  .tl-lane-label.a { border-color: #6c8ebf; background: #1c2a40; color: #cfe3ff; }
+  .tl-lane-label.b { border-color: #d99a3d; background: #302315; color: #ffe3b8; }
+  .tl-lane-label.c { border-color: #b06cd9; background: #241530; color: #ecd1ff; }
+  .tl-row { display: grid; gap: 4px; align-items: stretch; margin-bottom: 3px; }
+  .tl-row.r2 { grid-template-columns: 46px 1fr 1fr; }
+  .tl-row.r3 { grid-template-columns: 40px 1fr 1fr 1fr; }
+  .tl-time {
+    font-size: 9px; color: #7a7aa0; align-self: center; text-align: right; padding-right: 4px;
+    border-right: 2px solid #33334d;
+  }
+  .tl-event {
+    font-size: 9px; padding: 3px 5px; border-radius: 4px; border-left: 3px solid transparent;
+    background: transparent; color: #6a6a90; min-height: 14px;
+  }
+  .tl-event.a { border-left-color: #6c8ebf; background: #1c2a40; color: #cfe3ff; }
+  .tl-event.b { border-left-color: #d99a3d; background: #302315; color: #ffe3b8; }
+  .tl-event.c { border-left-color: #b06cd9; background: #241530; color: #ecd1ff; }
+  .tl-event.danger { outline: 1px solid #ff4d6d; }
+  .tl-event.ok { outline: 1px solid #2ecc71; }
+
+  pre.code {
+    background: #0d0d1a; border: 1px solid #33334d; border-radius: 5px;
+    padding: 6px 8px; font-size: 8.6px; line-height: 1.3; color: #b6f2c8;
+    overflow: hidden; white-space: pre-wrap; margin: 4px 0;
+  }
+  table.cmp { width: 100%; border-collapse: collapse; font-size: 8.6px; margin-top: 4px; }
+  table.cmp th, table.cmp td { border: 1px solid #33334d; padding: 3px 4px; text-align: left; color: #cfcfe0; }
+  table.cmp th { background: #232342; color: #6cc6ff; }
+  table.cmp td.good { color: #2ecc71; }
+  table.cmp td.bad { color: #ff6b81; }
+
+  /* ---- decision tree ---- */
+  .dt-box {
+    border: 2px solid #454568; background: #202038; border-radius: 6px;
+    padding: 4px 8px; font-size: 9.5px; text-align: center; color: #dcdcf0; margin: 2px auto;
+  }
+  .dt-yn { text-align: center; font-size: 8.5px; color: #7a7aa0; }
+  .dt-result {
+    border: 2px solid #2ecc71; background: #16321f; color: #b6ffce;
+    border-radius: 6px; padding: 4px 8px; font-size: 9.5px; text-align: center; margin: 2px auto;
+  }
+
+  /* ---- cards for real world examples ---- */
+  .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+  .card {
+    border: 2px solid #454568; background: #202038; border-radius: 6px; padding: 6px 8px;
+  }
+  .card .ctitle { font-size: 10px; font-weight: bold; color: #ff8c42; }
+  .card .cbody { font-size: 9px; color: #cfcfe0; margin-top: 2px; }
+
+  .quote {
+    margin-top: 8px; border-left: 3px solid #ff8c42; padding: 6px 10px;
+    font-style: italic; font-size: 10.5px; color: #ffd9b8; background: #241a10; border-radius: 4px;
+  }
+
+  /* ---- nav controls ---- */
+  .nav {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 14px; background: #202038;
+    padding: 8px 18px; border-radius: 30px; border: 1px solid #454568;
+  }
+  .nav button {
+    background: #ff8c42; color: #1a1a2e; border: none; border-radius: 16px;
+    padding: 6px 14px; font-size: 12px; font-weight: bold; cursor: pointer;
+  }
+  .nav button:hover { background: #ffa666; }
+  .nav .counter { font-size: 12px; color: #cfcfe0; min-width: 44px; text-align: center; }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body, html { background: #1a1a2e; }
+    .nav { display: none; }
+    .deck { padding: 0; }
+    .slide {
+      display: flex !important;
+      page-break-after: always;
+      border-radius: 0;
+      border: none;
+    }
+    * {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active">
+    <span class="tag">Hook</span>
+    <h1>5 Bank Vaults — The Redlock Analogy</h1>
+    <p>Imagine 5 bank vaults (Redis nodes). To claim a lock, you must physically lock at least <b>3 of 5</b> (majority). Vaults 4 &amp; 5 can crash — you still hold majority, lock stays valid.</p>
+    <div class="vault-row">
+      <div class="vault majority"><div class="redis-icon">R</div><div class="vlabel">Vault 1</div><div class="vstate">LOCKED ✓</div></div>
+      <div class="vault majority"><div class="redis-icon">R</div><div class="vlabel">Vault 2</div><div class="vstate">LOCKED ✓</div></div>
+      <div class="vault majority"><div class="redis-icon">R</div><div class="vlabel">Vault 3</div><div class="vstate">LOCKED ✓</div></div>
+      <div class="vault"><div class="redis-icon">R</div><div class="vlabel">Vault 4</div><div class="vstate">crashed</div></div>
+      <div class="vault"><div class="redis-icon">R</div><div class="vlabel">Vault 5</div><div class="vstate">crashed</div></div>
+    </div>
+    <div class="arrow-down">▼</div>
+    <div class="safe">Majority = 3 of 5 locked → <b>LOCK ACQUIRED</b> (survives 2 node failures)</div>
+    <h2>Why not just lock ONE vault (simple Redis SETNX)?</h2>
+    <p>If that single Redis node crashes while you hold the lock: either everything gets stuck, or the lock vanishes and another process grabs it — two processes now run the "exclusive" operation simultaneously.</p>
+    <div class="note">Even Redlock isn't bulletproof: if your process pauses longer than the TTL (GC pause), the lock expires and someone else takes it. The defense is a <b>fencing token</b> — covered later in this deck.</div>
+  </section>
+
+  <!-- SLIDE 2: PROBLEM 1 - GC PAUSE -->
+  <section class="slide">
+    <span class="tag">The Problem</span>
+    <h1>Simple SETNX Lock — Problem 1: GC Pause</h1>
+    <pre class="code">SET lock:payment "client_A" EX 30 NX   <span style="color:#7a7aa0">// acquire, TTL=30s</span>
+...process payment...
+DEL lock:payment                        <span style="color:#7a7aa0">// release</span></pre>
+    <div class="timeline">
+      <div class="tl-head tl-head-2">
+        <div></div>
+        <div class="tl-lane-label a">Client A</div>
+        <div class="tl-lane-label b">Client B</div>
+      </div>
+      <div class="tl-row r2"><div class="tl-time">t=0</div><div class="tl-event a">Acquires lock (TTL=30s)</div><div class="tl-event"></div></div>
+      <div class="tl-row r2"><div class="tl-time">t=5</div><div class="tl-event a">Starts processing</div><div class="tl-event"></div></div>
+      <div class="tl-row r2"><div class="tl-time">t=6</div><div class="tl-event a danger">JVM GC pause begins</div><div class="tl-event"></div></div>
+      <div class="tl-row r2"><div class="tl-time">t=36</div><div class="tl-event a danger">Lock expires (TTL elapsed)</div><div class="tl-event b">Acquires lock (free!)</div></div>
+      <div class="tl-row r2"><div class="tl-time">t=38</div><div class="tl-event a danger">Resumes — still thinks it holds lock</div><div class="tl-event b danger">Still inside exclusive section</div></div>
+    </div>
+    <div class="warn">Both A and B are now inside the "exclusive" section simultaneously!</div>
+  </section>
+
+  <!-- SLIDE 3: PROBLEM 2 - DELETE + LUA FIX -->
+  <section class="slide">
+    <span class="tag">The Problem (cont.)</span>
+    <h1>Problem 2: Deleting Someone Else's Lock</h1>
+    <div class="timeline">
+      <div class="tl-head tl-head-3">
+        <div></div>
+        <div class="tl-lane-label a">Client A</div>
+        <div class="tl-lane-label b">Client B</div>
+        <div class="tl-lane-label c">Client C</div>
+      </div>
+      <div class="tl-row r3"><div class="tl-time">t=0</div><div class="tl-event a">Acquires lock</div><div class="tl-event"></div><div class="tl-event"></div></div>
+      <div class="tl-row r3"><div class="tl-time">t=31</div><div class="tl-event a danger">Lock expires (A slow)</div><div class="tl-event b">Acquires lock</div><div class="tl-event"></div></div>
+      <div class="tl-row r3"><div class="tl-time">t=32</div><div class="tl-event a danger">Wakes, runs DEL → deletes B's lock!</div><div class="tl-event b danger">Lock deleted by A</div><div class="tl-event c">Acquires lock</div></div>
+    </div>
+    <div class="warn">Now 2 concurrent holders: Client B (thinks it still holds) and Client C.</div>
+    <h2>Fix — Lua Script Atomic Check-and-Delete</h2>
+    <pre class="code">SET lock:payment "random_token_A" EX 30 NX
+
+-- Lua (atomic):
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("DEL", KEYS[1])
+else
+  return 0
+end
+<span style="color:#7a7aa0">-- Only deletes if token matches: you only delete YOUR lock</span></pre>
+  </section>
+
+  <!-- SLIDE 4: REDLOCK ALGORITHM -->
+  <section class="slide">
+    <span class="tag">The Algorithm</span>
+    <h1>Redlock: 5 Independent Redis Nodes</h1>
+    <div class="vault-row">
+      <div class="vault majority"><div class="redis-icon">R</div><div class="vlabel">Node 1</div><div class="vstate">SET ok</div></div>
+      <div class="vault majority"><div class="redis-icon">R</div><div class="vlabel">Node 2</div><div class="vstate">SET ok</div></div>
+      <div class="vault majority"><div class="redis-icon">R</div><div class="vlabel">Node 3</div><div class="vstate">SET ok</div></div>
+      <div class="vault"><div class="redis-icon">R</div><div class="vlabel">Node 4</div><div class="vstate">timeout</div></div>
+      <div class="vault"><div class="redis-icon">R</div><div class="vlabel">Node 5</div><div class="vstate">timeout</div></div>
+    </div>
+    <pre class="code">1. t_start = now_ms()
+2. for each of 5 nodes (parallel):
+     SET lock:key &lt;token&gt; PX 10000 NX   (~50ms timeout/node)
+3. acquired_count = successful SETs
+4. elapsed = now_ms() - t_start
+   clock_drift = max(2ms, elapsed * 0.01)     <span style="color:#7a7aa0"># 1% + 2ms</span>
+   remaining_validity = 10000 - elapsed - clock_drift
+   if acquired_count &gt;= 3 AND remaining_validity &gt; 0:
+       LOCK ACQUIRED — valid for remaining_validity ms
+   else:
+       release partial locks (Lua), random backoff, retry
+5. Release: Lua check-and-delete on all 5 nodes</pre>
+    <div class="safe">Majority rule: need ⌊N/2⌋ + 1 = 3 of 5 successful SETs, AND remaining_validity &gt; 0.</div>
+  </section>
+
+  <!-- SLIDE 5: FENCING TOKENS -->
+  <section class="slide">
+    <span class="tag">Fencing Tokens</span>
+    <h1>Fencing Tokens — Rejecting Stale Writes</h1>
+    <div class="timeline">
+      <div class="tl-head tl-head-2">
+        <div></div>
+        <div class="tl-lane-label a">Client A</div>
+        <div class="tl-lane-label b">Client B</div>
+      </div>
+      <div class="tl-row r2"><div class="tl-time">t=0</div><div class="tl-event a">Acquires Redlock (validity 9800ms)</div><div class="tl-event"></div></div>
+      <div class="tl-row r2"><div class="tl-time">t=1</div><div class="tl-event a ok">Writes storage token=33 (accepted)</div><div class="tl-event"></div></div>
+      <div class="tl-row r2"><div class="tl-time">t=2</div><div class="tl-event a danger">Pauses 12s (GC / VM preempt)</div><div class="tl-event"></div></div>
+      <div class="tl-row r2"><div class="tl-time">t=10</div><div class="tl-event a danger">Lock expired</div><div class="tl-event b">Acquires Redlock, token=34</div></div>
+      <div class="tl-row r2"><div class="tl-time">t=10</div><div class="tl-event"></div><div class="tl-event b ok">Writes storage token=34 (accepted)</div></div>
+      <div class="tl-row r2"><div class="tl-time">t=14</div><div class="tl-event a danger">Resumes, writes token=33</div><div class="tl-event"></div></div>
+    </div>
+    <div class="arrow-down">▼</div>
+    <div class="server-box storage" style="display:block;text-align:center;">Storage: last_seen_token=34 → 33 &lt; 34 → <b>REJECTED [SAFE!]</b></div>
+    <div class="note">Fencing token = monotonically increasing integer from the lock service. Storage rejects any write where token &lt; highest_seen_token. ZooKeeper: <b>zxid</b>. etcd: <b>lease revision</b>. Redlock does NOT provide fencing tokens natively — must add externally (e.g. Redis INCR).</div>
+  </section>
+
+  <!-- SLIDE 6: FAILURE SCENARIOS TABLE -->
+  <section class="slide">
+    <span class="tag">Comparison</span>
+    <h1>Failure Scenarios: SETNX vs Redlock vs ZooKeeper</h1>
+    <table class="cmp">
+      <tr><th>Scenario</th><th>SETNX (single)</th><th>Redlock (5-node)</th><th>ZooKeeper</th></tr>
+      <tr><td>Single Redis crash</td><td class="bad">Lock lost / stuck</td><td class="good">2/4 remain → OK</td><td class="good">Leader reelected</td></tr>
+      <tr><td>2 Redis crash</td><td>N/A (single)</td><td class="good">2/5 remain → fails safe</td><td class="bad">Quorum lost if &gt; half down</td></tr>
+      <tr><td>GC pause &gt; TTL</td><td class="bad">Dual holders</td><td class="bad">Dual holders (same problem)</td><td class="bad">Dual holders (same problem)</td></tr>
+      <tr><td>GC pause + fencing token</td><td class="bad">No protection</td><td class="bad">No protection</td><td class="good">PROTECTED (zxid ordering)</td></tr>
+      <tr><td>Network partition</td><td class="bad">Split brain</td><td class="good">Minority cannot acquire</td><td class="good">No split brain (quorum write)</td></tr>
+    </table>
+    <div class="note" style="margin-top:10px;">Key takeaway: Redlock survives node crashes but shares the same GC-pause weakness as plain SETNX unless paired with a fencing token. ZooKeeper is the only one here with native fencing (zxid).</div>
+  </section>
+
+  <!-- SLIDE 7: PRODUCTION PATTERNS -->
+  <section class="slide">
+    <span class="tag">Production Patterns</span>
+    <h1>Redisson · ShedLock · PostgreSQL Advisory</h1>
+    <h2>Redisson RedissonRedLock (Java)</h2>
+    <pre class="code">RedissonRedLock redLock = new RedissonRedLock(lock1,lock2,lock3,lock4,lock5);
+boolean ok = redLock.tryLock(200, 30_000, TimeUnit.MILLISECONDS);
+if (ok) { try { runBillingJob(); } finally { redLock.unlock(); } }</pre>
+    <h2>ShedLock (Spring @SchedulerLock)</h2>
+    <pre class="code">@Scheduled(cron = "0 0 * * * *")
+@SchedulerLock(name="billing_job", lockAtMostFor="PT30M", lockAtLeastFor="PT5M")
+public void runBillingJob() { billingService.processAllPendingInvoices(); }</pre>
+    <h2>PostgreSQL Advisory Lock</h2>
+    <pre class="code">@Transactional
+public void processPayment(long id){
+  jdbc.execute("SELECT pg_advisory_xact_lock(" + id + ")");
+  // ... process ... auto-released on commit/rollback
+}
+// non-blocking: pg_try_advisory_xact_lock(id) -> true/false</pre>
+  </section>
+
+  <!-- SLIDE 8: HEARTBEAT + TTL GUIDELINES -->
+  <section class="slide">
+    <span class="tag">Heartbeat Pattern</span>
+    <h1>Extending TTL for Long-Running Jobs</h1>
+    <div class="server-box" style="display:block;">Lock TTL = 30s. Heartbeat thread resets TTL every 10s (1/3 interval).</div>
+    <pre class="code">boolean acquired = redis.set(key, token, nx().px(30000));
+if (acquired) {
+  heartbeat.scheduleAtFixedRate(() -> {
+    if (token.equals(redis.get(key))) redis.pexpire(key, 30000);
+  }, 10, 10, SECONDS);
+  try { runLongDataExport(); }        <span style="color:#7a7aa0">// may take 5 min</span>
+  finally { heartbeatTask.cancel(false); /* Lua release */ }
+}</pre>
+    <div class="arrow-down">t=0 ──▶ t=10 (renew) ──▶ t=20 (renew) ──▶ t=30 (renew) ──▶ job done, release</div>
+    <h2>Real-World TTL Guidelines</h2>
+    <table class="cmp">
+      <tr><th>Job type</th><th>Recommended TTL</th><th>Notes</th></tr>
+      <tr><td>Cron job (seconds)</td><td>30s – 5m</td><td>Must be &gt; max expected duration</td></tr>
+      <tr><td>Cron job (minutes)</td><td>10m + 20% buffer</td><td>Heartbeat if job &gt; 5 min</td></tr>
+      <tr><td>Booking hold (seat/ticket)</td><td>10m</td><td>Expires if user abandons checkout</td></tr>
+      <tr><td>Flash sale inventory lock</td><td>5–10s</td><td>Very short; aggressive retry OK</td></tr>
+      <tr><td>Payment processing</td><td>30s</td><td>Heartbeat if async calls involved</td></tr>
+      <tr><td>Idempotency key</td><td>24h</td><td>Deduplicate retries, not a mutex</td></tr>
+    </table>
+  </section>
+
+  <!-- SLIDE 9: DECISION TREE + COMPARISON TABLE -->
+  <section class="slide">
+    <span class="tag">Decision Framework</span>
+    <h1>Which Locking Mechanism to Use</h1>
+    <div class="dt-box">Single service + single DB?</div>
+    <div class="dt-yn">YES ▼</div>
+    <div class="dt-result">PostgreSQL advisory lock</div>
+    <div class="dt-yn">NO ▼</div>
+    <div class="dt-box">Time-bounded &lt; 30 minutes?</div>
+    <div class="dt-yn">NO → heartbeat + reconsider · YES ▼</div>
+    <div class="dt-box">Need fencing tokens (no double-exec)?</div>
+    <div class="dt-yn">YES ▼</div>
+    <div class="dt-result">ZooKeeper / etcd ephemeral nodes</div>
+    <div class="dt-yn">NO ▼</div>
+    <div class="dt-box">Already running Redis?</div>
+    <div class="dt-yn">YES → Redlock (3-5 nodes) &nbsp;|&nbsp; NO ▼</div>
+    <div class="dt-result">ShedLock with existing DB</div>
+  </section>
+
+  <!-- SLIDE 10: REAL-WORLD EXAMPLES + QUOTE -->
+  <section class="slide">
+    <span class="tag">Real-World Examples</span>
+    <h1>Who Uses What in Production</h1>
+    <div class="card-grid">
+      <div class="card"><div class="ctitle">Payment System</div><div class="cbody">PostgreSQL advisory lock — single DB, strong consistency</div></div>
+      <div class="card"><div class="ctitle">Ticket Booking</div><div class="cbody">Redlock, TTL = 10 min for booking window</div></div>
+      <div class="card"><div class="ctitle">Job Scheduler</div><div class="cbody">ShedLock @SchedulerLock across 10 pods</div></div>
+      <div class="card"><div class="ctitle">E-Commerce Flash Sale</div><div class="cbody">Redlock, TTL = 5s, aggressive retry</div></div>
+      <div class="card"><div class="ctitle">Stock Broker</div><div class="cbody">PostgreSQL advisory lock per account/order</div></div>
+    </div>
+    <table class="cmp" style="margin-top:8px;">
+      <tr><th>Mechanism</th><th>Consistency</th><th>Fencing</th><th>Best For</th></tr>
+      <tr><td>SETNX single</td><td class="bad">Weak</td><td class="bad">No</td><td>Dev/testing only</td></tr>
+      <tr><td>Redlock (5 nodes)</td><td>Good</td><td class="bad">No (add externally)</td><td>Cross-service jobs, booking</td></tr>
+      <tr><td>ShedLock (DB)</td><td class="good">Strong</td><td class="bad">No</td><td>Cron jobs w/ existing DB</td></tr>
+      <tr><td>PostgreSQL advisory</td><td class="good">Strong</td><td class="bad">No</td><td>Single-DB mutual exclusion</td></tr>
+      <tr><td>ZooKeeper ephemeral</td><td class="good">Strongest</td><td class="good">Yes (zxid)</td><td>Financial, exactly-once</td></tr>
+    </table>
+    <div class="quote">"Redlock acquires a majority lock across 3+ Redis nodes — safe against single-node failure, but for absolute correctness use a fencing token from ZooKeeper or a PostgreSQL advisory lock."</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">◀ Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var idx = 0;
+
+  function render() {
+    for (var i = 0; i < total; i++) {
+      slides[i].classList.toggle('active', i === idx);
+    }
+    document.getElementById('counter').textContent = (idx + 1) + ' / ' + total;
+  }
+
+  function go(delta) {
+    idx = Math.max(0, Math.min(total - 1, idx + delta));
+    render();
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', function () { go(-1); });
+  document.getElementById('nextBtn').addEventListener('click', function () { go(1); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft') go(-1);
+    else if (e.key === 'ArrowRight') go(1);
+  });
+
+  render();
+</script>
+</body>
+</html>

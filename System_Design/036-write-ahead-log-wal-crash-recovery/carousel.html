@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WAL & Crash Recovery — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e;
+    --panel: #16213e;
+    --accent: #0f3460;
+    --gold: #e94560;
+    --wal-green: #2ecc71;
+    --disk-blue: #3498db;
+    --redis-red: #d82c20;
+    --text: #eaeaf0;
+    --muted: #9a9ab0;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body {
+    margin: 0; padding: 0; background: var(--bg); color: var(--text);
+    font-family: 'Trebuchet MS', 'Segoe UI', Arial, sans-serif;
+    height: 100%;
+  }
+  .deck {
+    width: 540px; height: 540px; margin: 40px auto; position: relative;
+    background: var(--bg);
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+  }
+  .slide {
+    display: none;
+    width: 540px; height: 540px;
+    padding: 34px 32px 28px 32px;
+    position: relative;
+    background: var(--bg);
+  }
+  .slide.active { display: block; }
+  .slide h1 {
+    font-size: 26px; margin: 0 0 6px 0; color: var(--gold); letter-spacing: 0.5px;
+  }
+  .slide h2 {
+    font-size: 15px; margin: 0 0 16px 0; color: var(--muted); font-weight: normal; text-transform: uppercase; letter-spacing: 1.5px;
+  }
+  .tag {
+    display: inline-block; font-size: 11px; color: var(--wal-green);
+    border: 1px solid var(--wal-green); border-radius: 20px; padding: 2px 10px;
+    margin-bottom: 10px; letter-spacing: 1px;
+  }
+  .counter {
+    position: absolute; top: 14px; right: 20px; font-size: 13px; color: var(--muted);
+  }
+  .body-text { font-size: 14.5px; line-height: 1.55; color: var(--text); }
+  .body-text ul { margin: 6px 0 0 18px; padding: 0; }
+  .body-text li { margin-bottom: 7px; }
+  .big-stat {
+    font-size: 54px; font-weight: bold; color: var(--gold); line-height: 1;
+  }
+  .stat-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  /* ---------- Disk Cylinder (CSS-drawn) ---------- */
+  .cylinder-wrap { display: flex; align-items: flex-end; gap: 26px; margin-top: 10px; }
+  .cylinder {
+    width: 90px;
+  }
+  .cyl-top {
+    width: 90px; height: 26px; border-radius: 50%;
+    background: var(--disk-blue);
+    border: 2px solid #1c6ea4;
+  }
+  .cyl-body {
+    width: 90px; height: 70px; background: linear-gradient(180deg, #3498db, #1c6ea4);
+    border-left: 2px solid #1c6ea4; border-right: 2px solid #1c6ea4;
+    margin-top: -13px;
+  }
+  .cyl-bottom {
+    width: 90px; height: 26px; border-radius: 50%;
+    background: #1c6ea4; border: 2px solid #144e75; margin-top: -13px;
+  }
+  .cylinder.corrupt .cyl-body {
+    background: repeating-linear-gradient(45deg, #b23a48, #b23a48 6px, #7a1f2b 6px, #7a1f2b 12px);
+  }
+  .cylinder.corrupt .cyl-top { background: #b23a48; border-color: #7a1f2b; }
+  .cylinder.corrupt .cyl-bottom { background: #7a1f2b; border-color: #591019; }
+  .cyl-label { text-align: center; font-size: 11px; margin-top: 6px; color: var(--muted); }
+
+  /* ---------- Append-only Log Strip ---------- */
+  .log-strip {
+    display: flex; margin-top: 14px; border-radius: 6px; overflow: hidden;
+    border: 2px solid var(--wal-green);
+  }
+  .log-cell {
+    flex: 1; background: #0d2b1f; color: var(--wal-green); font-size: 10px;
+    padding: 8px 4px; text-align: center; border-right: 1px solid #124a34;
+    font-family: monospace;
+  }
+  .log-cell:last-child { border-right: none; }
+  .log-cell.new { background: #123a27; animation: none; border-left: 2px dashed var(--wal-green); }
+
+  /* ---------- Server / component box ---------- */
+  .box {
+    border: 2px solid var(--accent); background: #14213a; border-radius: 8px;
+    padding: 10px 14px; font-size: 12px; color: var(--text); position: relative;
+  }
+  .box .line { height: 1px; background: #2a3f66; margin: 6px 0; }
+  .box-title { font-size: 12px; font-weight: bold; color: var(--wal-green); margin-bottom: 4px; }
+
+  /* ---------- Arrows ---------- */
+  .arrow-row { display: flex; align-items: center; gap: 8px; margin: 14px 0; }
+  .arrow-text {
+    flex: 1; text-align: center; font-size: 11px; color: var(--muted); position: relative;
+  }
+  .arrow-text::after {
+    content: "\2192"; /* → */
+    display: block; font-size: 20px; color: var(--gold);
+  }
+  .arrow-down::after { content: "\2193"; } /* ↓ */
+
+  /* ---------- Redis-style circular icon (used where relevant: async buffer) ---------- */
+  .redis-circle {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--redis-red);
+    color: white; display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 20px; border: 2px solid #8f1c14;
+  }
+
+  /* ---------- Lightning bolt (crash marker) ---------- */
+  .bolt {
+    width: 26px; height: 46px; position: relative; margin: 0 auto;
+  }
+  .bolt::before {
+    content: "";
+    position: absolute; left: 0; top: 0;
+    width: 0; height: 0;
+    border-left: 14px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 26px solid #ffcc00;
+  }
+  .bolt::after {
+    content: "";
+    position: absolute; left: 6px; top: 20px;
+    width: 0; height: 0;
+    border-left: 4px solid transparent;
+    border-right: 14px solid transparent;
+    border-top: 26px solid #ffcc00;
+  }
+
+  /* ---------- Timeline ---------- */
+  .timeline { display: flex; align-items: center; margin-top: 18px; position: relative; }
+  .tl-point {
+    flex: 1; text-align: center; position: relative;
+  }
+  .tl-dot {
+    width: 14px; height: 14px; border-radius: 50%; background: var(--disk-blue);
+    margin: 0 auto 6px auto; border: 2px solid #1c6ea4;
+  }
+  .tl-point.crash .tl-dot { background: var(--gold); border-color: #a11c31; }
+  .tl-point.recover .tl-dot { background: var(--wal-green); border-color: #1e8449; }
+  .tl-line { position: absolute; top: 6px; left: -50%; width: 100%; height: 2px; background: #2a3f66; z-index: -1; }
+  .tl-label { font-size: 10px; color: var(--muted); }
+
+  /* ---------- Comparison table ---------- */
+  table.cmp { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 12px; }
+  table.cmp th { background: var(--accent); color: var(--text); padding: 7px 6px; text-align: left; }
+  table.cmp td { padding: 7px 6px; border-bottom: 1px solid #2a3f66; color: var(--text); }
+  table.cmp tr:nth-child(even) td { background: #182a4a; }
+  .ok { color: var(--wal-green); font-weight: bold; }
+  .bad { color: var(--gold); font-weight: bold; }
+
+  /* ---------- Decision tree ---------- */
+  .tree { display: flex; flex-direction: column; align-items: center; margin-top: 10px; }
+  .tree-node {
+    background: #14213a; border: 2px solid var(--accent); border-radius: 8px;
+    padding: 8px 12px; font-size: 12px; margin-bottom: 4px; text-align: center;
+  }
+  .tree-branch { display: flex; gap: 20px; margin-top: 4px; }
+  .tree-node.leaf-yes { border-color: var(--wal-green); color: var(--wal-green); }
+  .tree-node.leaf-no { border-color: var(--gold); color: var(--gold); }
+
+  .quote-box {
+    margin-top: 16px; padding: 14px 16px; background: #14213a;
+    border-left: 4px solid var(--gold); font-style: italic; font-size: 13px; line-height: 1.5;
+  }
+
+  /* ---------- Nav ---------- */
+  .nav {
+    width: 540px; margin: 12px auto; display: flex; justify-content: center; gap: 14px;
+  }
+  .nav button {
+    background: var(--accent); color: var(--text); border: none; border-radius: 6px;
+    padding: 8px 18px; font-size: 13px; cursor: pointer;
+  }
+  .nav button:hover { background: var(--gold); }
+  .hint { text-align: center; color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  @media print {
+    @page { size: 540px 540px; margin: 0; }
+    body { background: var(--bg); }
+    .nav, .hint { display: none; }
+    .deck { margin: 0; box-shadow: none; }
+    .slide { display: block !important; page-break-after: always; }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- Slide 1: HOOK -->
+  <div class="slide active">
+    <div class="counter">1 / 10</div>
+    <div class="tag">EPISODE 36</div>
+    <h1>The Crash That Should Corrupt Everything</h1>
+    <h2>...but doesn't</h2>
+    <div class="body-text">
+      A payments DB loses power mid-write to a data page. Restart 30s later:
+    </div>
+    <div class="big-stat">0 bytes</div>
+    <div class="stat-sub">of committed data lost — because of ONE rule every production database follows.</div>
+    <div class="cylinder-wrap" style="margin-top:22px;">
+      <div>
+        <div class="cylinder corrupt">
+          <div class="cyl-top"></div>
+          <div class="cyl-body"></div>
+          <div class="cyl-bottom"></div>
+        </div>
+        <div class="cyl-label">data page (no WAL)</div>
+      </div>
+      <div class="bolt"></div>
+      <div>
+        <div class="log-strip" style="width:120px;">
+          <div class="log-cell">LSN 1</div>
+          <div class="log-cell new">LSN 2</div>
+        </div>
+        <div class="cyl-label">WAL log (safe)</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 2: THE PROBLEM -->
+  <div class="slide">
+    <div class="counter">2 / 10</div>
+    <div class="tag">THE PROBLEM</div>
+    <h1>Writing Directly to a Data Page Is Dangerous</h1>
+    <div class="body-text">
+      <code>UPDATE accounts SET balance=900</code> overwrites bytes in-place on page 5.
+      A crash mid-write leaves a page that is neither the old value nor the new one.
+    </div>
+    <div class="cylinder-wrap" style="margin-top: 26px; justify-content: center;">
+      <div>
+        <div class="cyl-label" style="margin-bottom:6px;">1000 → writing → 900</div>
+        <div class="cylinder corrupt">
+          <div class="cyl-top"></div>
+          <div class="cyl-body"></div>
+          <div class="cyl-bottom"></div>
+        </div>
+        <div class="cyl-label">CRASH mid-write = "19_0" garbage</div>
+      </div>
+    </div>
+    <div class="body-text" style="margin-top:18px;">
+      <ul>
+        <li>No way to tell if it should say 900 or 1900 or something else</li>
+        <li>At thousands of random-page writes/sec, this happens constantly</li>
+        <li>Unacceptable for money, orders, or file metadata</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Slide 3: THE SOLUTION -->
+  <div class="slide">
+    <div class="counter">3 / 10</div>
+    <div class="tag">THE SOLUTION</div>
+    <h1>Log First. Data Page Second.</h1>
+    <div class="body-text">Write-Ahead Log: append the change, fsync it, THEN return success.</div>
+    <div class="box" style="margin-top:16px;">
+      <div class="box-title">Transaction: balance 1000 → 900</div>
+      <div class="line"></div>
+      1. Append WAL: <code>LSN=1234, txn=567, 1000→900</code>
+      <div class="line"></div>
+      2. fsync WAL to disk (durable)
+      <div class="line"></div>
+      3. Return "commit successful" to client
+    </div>
+    <div class="arrow-row"><div class="arrow-text arrow-down">async, later</div></div>
+    <div class="cylinder-wrap" style="justify-content:center;">
+      <div>
+        <div class="cylinder">
+          <div class="cyl-top"></div>
+          <div class="cyl-body"></div>
+          <div class="cyl-bottom"></div>
+        </div>
+        <div class="cyl-label">data page updated lazily</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 4: WAL RECORD STRUCTURE -->
+  <div class="slide">
+    <div class="counter">4 / 10</div>
+    <div class="tag">STRUCTURE</div>
+    <h1>What's Inside a WAL Record</h1>
+    <div class="log-strip" style="margin-top:16px;">
+      <div class="log-cell">LSN<br>0/1A23B450</div>
+      <div class="log-cell">txn<br>12345</div>
+      <div class="log-cell">op<br>HEAP_UPDATE</div>
+      <div class="log-cell">block<br>5</div>
+      <div class="log-cell new">old→new<br>1000→900</div>
+    </div>
+    <div class="body-text" style="margin-top:18px;">
+      <ul>
+        <li><b>LSN</b> — Log Sequence Number, monotonically increasing position in the WAL stream</li>
+        <li>PostgreSQL splits WAL into 16MB segment files under <code>pg_wal/</code></li>
+        <li>A <b>checkpoint</b> (default every 5 min) flushes dirty pages — WAL before that LSN is safe to delete</li>
+        <li>Recovery only needs to replay from the last checkpoint forward, not from the beginning</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Slide 5: RECOVERY FLOW -->
+  <div class="slide">
+    <div class="counter">5 / 10</div>
+    <div class="tag">RECOVERY</div>
+    <h1>Restart After a Crash: REDO / UNDO</h1>
+    <div class="timeline">
+      <div class="tl-point"><div class="tl-dot"></div><div class="tl-label">checkpoint<br>LSN found</div></div>
+      <div class="tl-point"><div class="tl-line"></div><div class="tl-dot"></div><div class="tl-label">replay WAL<br>forward</div></div>
+      <div class="tl-point crash"><div class="tl-line"></div><div class="tl-dot"></div><div class="tl-label">COMMIT found?<br>REDO</div></div>
+      <div class="tl-point recover"><div class="tl-line"></div><div class="tl-dot"></div><div class="tl-label">no COMMIT?<br>UNDO</div></div>
+    </div>
+    <div class="body-text" style="margin-top:22px;">
+      <ul>
+        <li>Read <code>pg_control</code> → find last checkpoint LSN</li>
+        <li>COMMIT record exists for a txn? → re-apply all its writes (REDO)</li>
+        <li>No COMMIT record (in-flight at crash)? → roll back via before-images (UNDO)</li>
+        <li>Typical recovery: 5–10s light load, 30–60s heavy OLTP, 2–5 min if <code>max_wal_size=4GB</code> delays checkpoints</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Slide 6: CDC / DEBEZIUM -->
+  <div class="slide">
+    <div class="counter">6 / 10</div>
+    <div class="tag">CDC BONUS</div>
+    <h1>Debezium Reads the Same Log — For Free</h1>
+    <div class="box">
+      <div class="box-title">PostgreSQL Primary</div>
+      WAL (wal_level = logical)
+      <div class="line"></div>
+      logical replication slot: <code>debezium</code>
+    </div>
+    <div class="arrow-row"><div class="arrow-text">streams decoded WAL records</div></div>
+    <div class="box">
+      <div class="box-title">Debezium Connector</div>
+      converts WAL → Kafka messages
+      <div class="line"></div>
+      <div class="redis-circle" style="margin-top:6px;">K</div>
+    </div>
+    <div class="body-text" style="margin-top:14px;">
+      No second write path. CDC just tails the log crash-recovery already writes — near-zero overhead.
+    </div>
+  </div>
+
+  <!-- Slide 7: TRAP — synchronous_commit -->
+  <div class="slide">
+    <div class="counter">7 / 10</div>
+    <div class="tag">TRAP #1</div>
+    <h1>synchronous_commit = off Is Not Free</h1>
+    <div class="body-text">
+      Skips fsync-before-commit. ~40% faster writes. But opens a data-loss window.
+    </div>
+    <div class="big-stat">0.6s</div>
+    <div class="stat-sub">max loss window (wal_writer_delay 200ms × 3) if OS crashes before flush.</div>
+    <div class="body-text" style="margin-top:14px;">
+      <ul>
+        <li>Fine for: session data, analytics events, audit logs</li>
+        <li><span class="bad">NEVER for:</span> payments, orders, file-metadata mappings</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Slide 8: TRAP — replication slot lag -->
+  <div class="slide">
+    <div class="counter">8 / 10</div>
+    <div class="tag">TRAP #2</div>
+    <h1>Replication Slot Lag Fills the Disk</h1>
+    <div class="body-text">
+      A slot tells Postgres "don't delete WAL until I've consumed it." If Kafka goes down, the slot stalls.
+    </div>
+    <div class="log-strip" style="margin-top:16px;">
+      <div class="log-cell">kept</div>
+      <div class="log-cell">kept</div>
+      <div class="log-cell new">kept</div>
+      <div class="log-cell new">kept</div>
+      <div class="log-cell new">unconsumed…</div>
+    </div>
+    <div class="body-text" style="margin-top:14px;">
+      <ul>
+        <li><code>pg_wal</code> grows unbounded past checkpoint LSN</li>
+        <li>Disk fills → PostgreSQL primary can crash</li>
+        <li>Monitor: <code>pg_wal_lsn_diff(pg_current_wal_lsn(), restart_lsn)</code></li>
+        <li>Alert at 5GB lag / 10GB <code>pg_wal</code> directory size</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Slide 9: COMPARISON TABLE -->
+  <div class="slide">
+    <div class="counter">9 / 10</div>
+    <div class="tag">COMPARISON</div>
+    <h1>Settings That Decide Durability</h1>
+    <table class="cmp">
+      <tr><th>Setting</th><th>Behavior</th><th>Use For</th></tr>
+      <tr><td>sync_commit=<b>on</b></td><td class="ok">fsync before ack, 0 loss</td><td>Payments, orders</td></tr>
+      <tr><td>sync_commit=<b>off</b></td><td class="bad">~0.6s loss, 40% faster</td><td>Sessions, analytics</td></tr>
+      <tr><td>remote_write</td><td>waits for standby receipt</td><td>HA read replicas</td></tr>
+      <tr><td>wal_level=minimal</td><td>crash recovery only</td><td>Single node, no CDC</td></tr>
+      <tr><td>wal_level=replica</td><td>+ streaming replication</td><td>Primary + standbys</td></tr>
+      <tr><td>wal_level=logical</td><td>+ logical decoding</td><td>Debezium / CDC</td></tr>
+    </table>
+  </div>
+
+  <!-- Slide 10: DECISION TREE + INTERVIEW QUOTE -->
+  <div class="slide">
+    <div class="counter">10 / 10</div>
+    <div class="tag">CHEAT SHEET</div>
+    <h1>Decision Tree: Which synchronous_commit?</h1>
+    <div class="tree">
+      <div class="tree-node">Can you afford to lose ~0.6s of this data on crash?</div>
+      <div class="tree-branch">
+        <div>
+          <div class="tree-node leaf-no">NO (money, orders)</div>
+          <div class="tree-node">→ synchronous_commit = on</div>
+        </div>
+        <div>
+          <div class="tree-node leaf-yes">YES (sessions, analytics)</div>
+          <div class="tree-node">→ synchronous_commit = off</div>
+        </div>
+      </div>
+    </div>
+    <div class="quote-box">
+      "WAL writes the change to a log before applying it to data pages — crash recovery replays the log,
+      making committed transactions permanent and incomplete ones disappear."
+    </div>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button onclick="go(-1)">◀ Prev</button>
+  <button onclick="go(1)">Next ▶</button>
+</div>
+<div class="hint">Use ← → arrow keys to navigate</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var idx = 0;
+  function render() {
+    slides.forEach(function(s, i) { s.classList.toggle('active', i === idx); });
+  }
+  function go(delta) {
+    idx = (idx + delta + slides.length) % slides.length;
+    render();
+  }
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight') go(1);
+    if (e.key === 'ArrowLeft') go(-1);
+  });
+  render();
+</script>
+
+</body>
+</html>

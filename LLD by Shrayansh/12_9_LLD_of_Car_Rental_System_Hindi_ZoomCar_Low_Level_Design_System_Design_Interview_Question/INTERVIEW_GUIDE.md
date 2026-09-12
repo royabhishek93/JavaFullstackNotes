@@ -1,6 +1,8 @@
 # 🚗 Car Rental System - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -293,6 +295,36 @@ if (!hasOverlap(vehicleId, startDate, endDate)) {
 ## 9. Technology Choices
 
 **You**: "**PostgreSQL** over MySQL specifically for this use case - native `daterange` type and `EXCLUDE USING gist` constraint. MySQL would require manual overlap-checking with `SELECT FOR UPDATE`, which is more error-prone."
+
+---
+
+## 🔥 Real-World Production Issue: Double-Booked Cars From an App-Level-Only Overlap Check
+
+*In plain English: checking availability and booking as two separate steps — instead of one atomic step — lets two customers book the same car at once.*
+
+**The war story:**
+
+"A car-rental startup launched with exactly the TOCTOU bug this guide warns about: `checkAvailability()` then `createReservation()` as two separate app-level calls, no DB constraint. It worked fine in QA (single user, no concurrency) and passed load testing (load tests hit DIFFERENT cars, never contended for the SAME car). It broke spectacularly during a flash promo."
+
+```
+Flash sale: 40% off SUV rentals for the next hour, pushed via app notification
+
+Thread A (user 1): checkAvailability(carX, days 5-7) -> AVAILABLE
+Thread B (user 2): checkAvailability(carX, days 5-7) -> AVAILABLE (same window!)
+         both checks ran BEFORE either INSERT happened
+Thread A: createReservation(carX, days 5-7) -> success
+Thread B: createReservation(carX, days 5-7) -> success  <- DOUBLE BOOKED
+
+Result: car X physically cannot be in two cities at once.
+One customer showed up to an empty parking spot -> refund + reputation damage
+         (this happened ~200 times during the one-hour flash promo)
+```
+
+**Root cause:** exactly the TOCTOU race the transcript calls out — the availability check and the reservation insert were not atomic, and under real concurrent load (not load-tested against the SAME resource), the gap between check and insert was wide enough for two threads to both succeed.
+
+**The fix:** migrated to PostgreSQL's `EXCLUDE USING gist (car_id WITH =, reservation_range WITH &&)` constraint — the database itself now REJECTS the second overlapping insert at the storage layer, no application-level race window possible at all.
+
+**Lesson for a new developer:** "Load testing that only exercises DIFFERENT resources per thread will never catch a TOCTOU race on a SHARED resource. When testing concurrency-sensitive booking/reservation code, deliberately hammer the SAME resource from many threads — that's the only way to reproduce this class of bug before customers do."
 
 ---
 

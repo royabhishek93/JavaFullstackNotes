@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>UPI Payment Routing — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#22223a;
+    --amber:#f5a623;
+    --teal:#2ec4b6;
+    --red:#e63946;
+    --purple:#7b61ff;
+    --blue:#4d96ff;
+    --text:#eaeaf5;
+    --muted:#9a9ac0;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    height:100%;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .deck{
+    width:100%;
+    height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+  }
+  .slide{
+    display:none;
+    width:540px;
+    height:540px;
+    background:linear-gradient(160deg,#1a1a2e 0%,#22223a 100%);
+    border-radius:18px;
+    padding:34px 38px;
+    position:relative;
+    box-shadow:0 0 0 1px #33335a;
+    -webkit-print-color-adjust:exact;
+    print-color-adjust:exact;
+  }
+  .slide.active{display:flex;flex-direction:column;}
+  .eyebrow{
+    font-size:12px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--amber);
+    font-weight:700;
+    margin-bottom:6px;
+  }
+  h1{
+    font-size:26px;
+    margin:0 0 10px 0;
+    line-height:1.25;
+    color:var(--text);
+  }
+  h2{
+    font-size:20px;
+    margin:0 0 8px 0;
+    color:var(--text);
+  }
+  p, li{
+    font-size:14.5px;
+    line-height:1.5;
+    color:var(--muted);
+  }
+  .stage{
+    flex:1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    position:relative;
+  }
+  .footer-note{
+    font-size:12px;
+    color:var(--muted);
+    text-align:center;
+    margin-top:auto;
+  }
+
+  /* ---------- ICONS (CSS-drawn) ---------- */
+
+  /* Phone / PSP App icon */
+  .phone{
+    width:64px;height:112px;
+    background:#2a2a4a;
+    border:2px solid var(--blue);
+    border-radius:12px;
+    position:relative;
+  }
+  .phone::before{ /* screen */
+    content:"";
+    position:absolute;
+    top:10px;left:8px;right:8px;bottom:16px;
+    background:#12122a;
+    border-radius:4px;
+  }
+  .phone::after{ /* home button */
+    content:"";
+    position:absolute;
+    bottom:6px;left:50%;
+    width:16px;height:3px;
+    background:var(--blue);
+    border-radius:2px;
+    transform:translateX(-50%);
+  }
+  .phone .glyph{
+    position:absolute;top:36px;left:0;right:0;
+    text-align:center;font-size:22px;color:var(--teal);
+  }
+
+  /* Bank building icon */
+  .bank{
+    width:96px;height:78px;
+    position:relative;
+  }
+  .bank .roof{
+    width:0;height:0;
+    border-left:48px solid transparent;
+    border-right:48px solid transparent;
+    border-bottom:24px solid var(--amber);
+    margin:0 auto;
+  }
+  .bank .body{
+    width:96px;height:46px;
+    background:#2a2a4a;
+    border:2px solid var(--amber);
+    border-top:none;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-evenly;
+    padding-bottom:4px;
+  }
+  .bank .col{
+    width:8px;height:32px;
+    background:var(--amber);
+    opacity:.85;
+    border-radius:1px;
+  }
+
+  /* NPCI Switch hub icon (central router) */
+  .hub{
+    width:70px;height:70px;
+    border-radius:50%;
+    background:#2a2a4a;
+    border:3px solid var(--purple);
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:800;color:var(--purple);
+    text-align:center;
+    line-height:1.1;
+  }
+  .hub .spoke{
+    position:absolute;
+    background:var(--purple);
+    opacity:.7;
+  }
+  .hub .spoke.n{top:-16px;left:50%;width:3px;height:16px;transform:translateX(-50%);}
+  .hub .spoke.s{bottom:-16px;left:50%;width:3px;height:16px;transform:translateX(-50%);}
+  .hub .spoke.e{right:-16px;top:50%;height:3px;width:16px;transform:translateY(-50%);}
+  .hub .spoke.w{left:-16px;top:50%;height:3px;width:16px;transform:translateY(-50%);}
+
+  /* Database / ledger cylinder */
+  .cylinder{
+    width:78px;
+    position:relative;
+    margin:0 auto;
+  }
+  .cylinder .top{
+    width:78px;height:22px;
+    background:var(--teal);
+    border-radius:50%;
+    opacity:.9;
+  }
+  .cylinder .mid{
+    width:78px;height:54px;
+    background:#1c3a3a;
+    border-left:3px solid var(--teal);
+    border-right:3px solid var(--teal);
+    margin-top:-11px;
+  }
+  .cylinder .bottom{
+    width:78px;height:22px;
+    background:var(--teal);
+    border-radius:50%;
+    opacity:.9;
+    margin-top:-11px;
+  }
+  .cylinder .label{
+    position:absolute;
+    top:26px;left:0;right:0;
+    text-align:center;
+    font-size:9px;font-weight:800;
+    color:#0d1f1f;
+  }
+
+  /* generic labeled colored square */
+  .chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:4px 10px;
+    border-radius:6px;
+    font-size:12px;
+    font-weight:700;
+  }
+  .chip .sq{width:10px;height:10px;border-radius:2px;display:inline-block;}
+
+  /* arrows */
+  .arrow-row{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .arrow{
+    font-size:22px;
+    color:var(--teal);
+    font-weight:700;
+  }
+  .arrow.fail{color:var(--red);}
+  .arrow-label{
+    font-size:10px;
+    color:var(--muted);
+    text-align:center;
+  }
+
+  .flow-col{
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+  }
+  .flow-row{
+    display:flex;align-items:flex-start;justify-content:space-between;width:100%;gap:4px;
+  }
+  .name-tag{font-size:10.5px;color:var(--text);font-weight:700;text-align:center;}
+  .sub-tag{font-size:9.5px;color:var(--muted);text-align:center;}
+
+  .big-num{
+    font-size:64px;
+    font-weight:800;
+    color:var(--amber);
+    line-height:1;
+  }
+  .big-num-sub{font-size:14px;color:var(--muted);margin-top:6px;}
+
+  .warn-box{
+    border:2px dashed var(--red);
+    border-radius:10px;
+    padding:10px 14px;
+    font-size:12px;
+    color:var(--red);
+    font-weight:700;
+    text-align:center;
+  }
+  .ok-box{
+    border:2px solid var(--teal);
+    border-radius:10px;
+    padding:8px 14px;
+    font-size:12px;
+    color:var(--teal);
+    font-weight:700;
+    text-align:center;
+  }
+
+  ul.tight{margin:6px 0 0 0;padding-left:18px;}
+  ul.tight li{margin-bottom:5px;}
+
+  table.cmp{
+    width:100%;
+    border-collapse:collapse;
+    font-size:10.5px;
+  }
+  table.cmp th{
+    background:#2a2a4a;
+    color:var(--amber);
+    padding:5px 6px;
+    text-align:left;
+    border:1px solid #3a3a5c;
+  }
+  table.cmp td{
+    padding:5px 6px;
+    border:1px solid #3a3a5c;
+    color:var(--muted);
+    vertical-align:top;
+  }
+  table.cmp tr.highlight td{
+    background:#1c3a3a;
+    color:var(--text);
+  }
+
+  .counter{
+    position:absolute;
+    bottom:14px;
+    right:20px;
+    font-size:12px;
+    color:var(--muted);
+  }
+
+  .nav{
+    position:fixed;
+    bottom:18px;left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:14px;
+    z-index:10;
+  }
+  .nav button{
+    background:#2a2a4a;
+    color:var(--text);
+    border:1px solid var(--purple);
+    border-radius:8px;
+    padding:8px 18px;
+    font-size:13px;
+    cursor:pointer;
+  }
+  .nav button:hover{background:var(--purple);}
+
+  .lock{
+    display:inline-block;
+    width:16px;height:14px;
+    background:#2a2a4a;
+    border:2px solid var(--red);
+    border-radius:2px;
+    position:relative;
+  }
+  .lock::before{
+    content:"";
+    position:absolute;
+    top:-9px;left:2px;
+    width:8px;height:8px;
+    border:2px solid var(--red);
+    border-bottom:none;
+    border-radius:6px 6px 0 0;
+  }
+
+  @media print{
+    @page{ size:540px 540px; margin:0; }
+    .nav{display:none;}
+    .deck{height:auto;display:block;}
+    .slide{
+      display:flex !important;
+      flex-direction:column;
+      page-break-after:always;
+      box-shadow:none;
+      -webkit-print-color-adjust:exact;
+      print-color-adjust:exact;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active" data-slide="1">
+    <div class="eyebrow">System Design · UPI</div>
+    <h1>12–14 BILLION transactions a month.<br>GPay never sees the bank account.</h1>
+    <div class="stage">
+      <div style="text-align:center;">
+        <div class="big-num">12–14B</div>
+        <div class="big-num-sub">UPI transactions / month (NPCI, 2024)</div>
+        <div style="margin-top:22px;display:flex;align-items:center;justify-content:center;gap:18px;">
+          <div class="phone"><div class="glyph">📱</div></div>
+          <div style="font-size:26px;color:var(--red);font-weight:800;">✕</div>
+          <div class="bank"><div class="roof"></div><div class="body">
+            <div class="col"></div><div class="col"></div><div class="col"></div>
+          </div></div>
+        </div>
+        <div style="margin-top:10px;font-size:11px;color:var(--muted);">The app has NO direct line to the real account</div>
+      </div>
+    </div>
+    <div class="footer-note">This is the fintech system design question every Indian tech interview asks</div>
+    <div class="counter">1 / 10</div>
+  </section>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <section class="slide" data-slide="2">
+    <div class="eyebrow">The Problem</div>
+    <h1>Two ways to move money — both broken</h1>
+    <div class="stage">
+      <div style="display:flex;flex-direction:column;gap:16px;width:100%;">
+        <div class="warn-box">CREDIT FIRST → money created before debit confirmed = money that never existed</div>
+        <div class="arrow-row"><span class="arrow-label">vs.</span></div>
+        <div class="warn-box">DEBIT FIRST, CREDIT FAILS → payer's money stuck in limbo, going nowhere</div>
+      </div>
+    </div>
+    <div class="footer-note">UPI needs a mechanism that guarantees neither of these can happen — permanently</div>
+    <div class="counter">2 / 10</div>
+  </section>
+
+  <!-- SLIDE 3: VPA RESOLUTION -->
+  <section class="slide" data-slide="3">
+    <div class="eyebrow">Concept 1 · VPA Resolution</div>
+    <h1>alice@okhdfcbank never becomes a number Bob's app can see</h1>
+    <div class="stage">
+      <div style="width:100%;">
+        <div class="flow-row">
+          <div class="flow-col"><div class="phone"><div class="glyph">📱</div></div><div class="name-tag">Bob's App</div></div>
+          <div class="flow-col"><div class="arrow">→</div><div class="arrow-label">"alice@<br>okhdfcbank"</div></div>
+          <div class="flow-col">
+            <div class="hub"><div class="spoke n"></div><div class="spoke s"></div><div class="spoke e"></div><div class="spoke w"></div>NPCI<br>MAPPER</div>
+            <div class="name-tag">Central Router</div>
+          </div>
+          <div class="flow-col"><div class="arrow">→</div><div class="arrow-label">resolves</div></div>
+          <div class="flow-col">
+            <div class="lock"></div>
+            <div class="sub-tag">XXXX1234<br>HDFC0001</div>
+          </div>
+        </div>
+        <div style="margin-top:20px;" class="ok-box">Only NPCI's mapper + Alice's own sponsor bank ever see the real account</div>
+      </div>
+    </div>
+    <div class="footer-note">Bob's app receives only: resolution succeeded + payee display name</div>
+    <div class="counter">3 / 10</div>
+  </section>
+
+  <!-- SLIDE 4: SPONSOR BANK -->
+  <section class="slide" data-slide="4">
+    <div class="eyebrow">Concept 2 · Sponsor Bank</div>
+    <h1>GPay is the booking site. ICICI is the airline.</h1>
+    <div class="stage">
+      <div style="width:100%;">
+        <div class="flow-row">
+          <div class="flow-col"><div class="phone"><div class="glyph">📱</div></div><div class="name-tag">GPay / PhonePe</div><div class="sub-tag">not a bank<br>no license</div></div>
+          <div class="flow-col">
+            <div class="arrow fail">✕</div>
+            <div class="arrow-label" style="color:var(--red)">no direct<br>connection</div>
+          </div>
+          <div class="flow-col">
+            <div class="hub"><div class="spoke n"></div><div class="spoke s"></div><div class="spoke e"></div><div class="spoke w"></div>NPCI</div>
+          </div>
+        </div>
+        <div style="text-align:center;margin:14px 0;font-size:20px;color:var(--muted);">↑ instead, routes through ↑</div>
+        <div style="display:flex;justify-content:center;">
+          <div class="flow-col">
+            <div class="bank"><div class="roof"></div><div class="body"><div class="col"></div><div class="col"></div><div class="col"></div></div></div>
+            <div class="name-tag">Sponsor Bank<br>(ICICI / HDFC / Axis)</div>
+            <div class="sub-tag">licensed, plugged into NPCI</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note">PSP apps = UX layer. Sponsor banks = the regulated entity that touches the ledger.</div>
+    <div class="counter">4 / 10</div>
+  </section>
+
+  <!-- SLIDE 5: TWO-PHASE FLOW -->
+  <section class="slide" data-slide="5">
+    <div class="eyebrow">Concept 3 · Two-Phase Flow</div>
+    <h1>Debit confirmed first. Credit second. Never reversed.</h1>
+    <div class="stage">
+      <div style="width:100%;">
+        <div class="flow-row">
+          <div class="flow-col">
+            <div class="bank"><div class="roof"></div><div class="body"><div class="col"></div><div class="col"></div><div class="col"></div></div></div>
+            <div class="name-tag">ICICI (payer)</div>
+            <div class="sub-tag">DEBIT_SUCCESS<br>~800ms</div>
+          </div>
+          <div class="flow-col"><div class="arrow">①→</div></div>
+          <div class="flow-col">
+            <div class="hub"><div class="spoke n"></div><div class="spoke s"></div><div class="spoke e"></div><div class="spoke w"></div>NPCI</div>
+            <div class="sub-tag">RRN 425678901234</div>
+          </div>
+          <div class="flow-col"><div class="arrow">→②</div></div>
+          <div class="flow-col">
+            <div class="bank"><div class="roof"></div><div class="body"><div class="col"></div><div class="col"></div><div class="col"></div></div></div>
+            <div class="name-tag">HDFC (payee)</div>
+            <div class="sub-tag">CREDIT_SUCCESS<br>~1400ms</div>
+          </div>
+        </div>
+        <div style="margin-top:18px;" class="ok-box">Total round trip: ~1.4–2.5s · SLA: well under 10s/leg · hard ceiling ~15–30s</div>
+      </div>
+    </div>
+    <div class="footer-note">Credit only ever begins AFTER debit is confirmed — never simultaneously</div>
+    <div class="counter">5 / 10</div>
+  </section>
+
+  <!-- SLIDE 6: AUTO-REVERSAL -->
+  <section class="slide" data-slide="6">
+    <div class="eyebrow">Edge Case · Auto-Reversal</div>
+    <h1>Credit fails after debit succeeds → the dangerous middle state</h1>
+    <div class="stage">
+      <div style="width:100%;">
+        <div class="flow-row">
+          <div class="flow-col">
+            <div class="bank"><div class="roof"></div><div class="body"><div class="col"></div><div class="col"></div><div class="col"></div></div></div>
+            <div class="name-tag">ICICI</div>
+            <div class="sub-tag" style="color:var(--teal)">DEBIT ✓</div>
+          </div>
+          <div class="flow-col"><div class="arrow">→</div></div>
+          <div class="flow-col">
+            <div class="hub"><div class="spoke n"></div><div class="spoke s"></div><div class="spoke e"></div><div class="spoke w"></div>NPCI</div>
+          </div>
+          <div class="flow-col"><div class="arrow fail">✕→</div></div>
+          <div class="flow-col">
+            <div class="bank"><div class="roof"></div><div class="body"><div class="col"></div><div class="col"></div><div class="col"></div></div></div>
+            <div class="name-tag">HDFC</div>
+            <div class="sub-tag" style="color:var(--red)">TIMEOUT / frozen</div>
+          </div>
+        </div>
+        <div class="warn-box" style="margin-top:14px;">DEBIT CONFIRMED, CREDIT UNCONFIRMED — must never stay stuck</div>
+        <div class="ok-box" style="margin-top:10px;">AUTO-REVERSAL → linked RRN → credit back to Bob<br>SLA ceiling: T+1 working day · typically minutes–hours</div>
+      </div>
+    </div>
+    <div class="footer-note">Marked FAILED_REVERSED — never left "pending" forever</div>
+    <div class="counter">6 / 10</div>
+  </section>
+
+  <!-- SLIDE 7: IDEMPOTENCY / RRN -->
+  <section class="slide" data-slide="7">
+    <div class="eyebrow">Concept 4 · Idempotency</div>
+    <h1>3 retries from a flaky network. Still only ONE debit.</h1>
+    <div class="stage">
+      <div style="width:100%;text-align:center;">
+        <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;">
+          <div class="chip" style="background:#2a2a4a;color:var(--muted);">RRN retry 1</div>
+          <div class="chip" style="background:#2a2a4a;color:var(--muted);">RRN retry 2</div>
+          <div class="chip" style="background:#2a2a4a;color:var(--muted);">RRN retry 3</div>
+        </div>
+        <div style="font-size:20px;color:var(--muted);">↓ all collapse into ↓</div>
+        <div style="margin-top:14px;">
+          <div class="cylinder"><div class="top"></div><div class="label">UNIQUE<br>(rrn)</div><div class="mid"></div><div class="bottom"></div></div>
+          <div class="name-tag" style="margin-top:6px;">transactions table</div>
+        </div>
+        <div class="warn-box" style="margin-top:16px;">App-level "does RRN exist?" check alone is NOT enough — racing retries can both pass it</div>
+        <div class="ok-box" style="margin-top:10px;">Real guarantee = DB-level UNIQUE(rrn) constraint. Loser catches DataIntegrityViolationException → reads winner's row.</div>
+      </div>
+    </div>
+    <div class="footer-note">RRN plays the exact role of an idempotency key at every hop in the chain</div>
+    <div class="counter">7 / 10</div>
+  </section>
+
+  <!-- SLIDE 8: INTERVIEW INSIGHT -->
+  <section class="slide" data-slide="8">
+    <div class="eyebrow">Interview Insight</div>
+    <h1>Two different failure classes. Two different mechanisms.</h1>
+    <div class="stage">
+      <div style="display:flex;gap:14px;width:100%;">
+        <div style="flex:1;border:1px solid var(--blue);border-radius:10px;padding:12px;">
+          <h2 style="color:var(--blue);font-size:15px;">Retry Problem</h2>
+          <p style="font-size:12px;">Same client resending the same logical payment. Fixed by RRN dedup + UNIQUE(rrn) at the DB.</p>
+        </div>
+        <div style="flex:1;border:1px solid var(--red);border-radius:10px;padding:12px;">
+          <h2 style="color:var(--red);font-size:15px;">Consistency Problem</h2>
+          <p style="font-size:12px;">Debit succeeds, credit fails. Fixed by auto-reversal — which itself needs its OWN linked, idempotent RRN so the reversal can't double-credit either.</p>
+        </div>
+      </div>
+    </div>
+    <div class="footer-note">"Two different failure classes that need two different mechanisms — it's important not to conflate them."</div>
+    <div class="counter">8 / 10</div>
+  </section>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <section class="slide" data-slide="9">
+    <div class="eyebrow">Approach Comparison</div>
+    <h1>UPI switch vs. every other payment rail pattern</h1>
+    <div class="stage" style="align-items:flex-start;">
+      <table class="cmp">
+        <tr><th>Approach</th><th>Latency</th><th>When It Fails</th></tr>
+        <tr class="highlight"><td>UPI / NPCI switch (2-phase)</td><td>~1–3s</td><td>Reversal delayed if payer bank also down</td></tr>
+        <tr><td>Card auth + capture</td><td>Auth ~1–2s, capture hrs–days</td><td>Auth expires ~7 days → re-auth needed</td></tr>
+        <tr><td>Batch ACH / NEFT</td><td>Minutes–hours</td><td>Failed item → manual reconciliation</td></tr>
+        <tr><td>RTGS (gross settlement)</td><td>Seconds–2 min</td><td>Too much overhead for small payments</td></tr>
+        <tr><td>Blockchain / DLT</td><td>Seconds–minutes</td><td>No built-in reversal — often irreversible</td></tr>
+      </table>
+    </div>
+    <div class="footer-note">UPI wins when: real-time confirmation + cross-bank interop + retries expected at every hop</div>
+    <div class="counter">9 / 10</div>
+  </section>
+
+  <!-- SLIDE 10: DECISION TREE + CHEAT SHEET -->
+  <section class="slide" data-slide="10">
+    <div class="eyebrow">Cheat Sheet</div>
+    <h1>Use it when. Skip it when.</h1>
+    <div class="stage">
+      <div style="width:100%;">
+        <div class="ok-box" style="text-align:left;">
+          USE two-phase + auto-reversal when:<br>
+          ✓ real-time (seconds) confirmation needed<br>
+          ✓ multiple banks must interoperate via one router<br>
+          ✓ money can never be created early or lost silently<br>
+          ✓ retries expected at every hop
+        </div>
+        <div class="warn-box" style="text-align:left;margin-top:12px;color:var(--muted);border-color:var(--muted);">
+          SKIP it (use batch / RTGS) when:<br>
+          ✗ low volume → batch netting is fine (B2B payroll)<br>
+          ✗ high-value transfers justify RTGS overhead<br>
+          ✗ single bank's own ledger — no switch needed at all
+        </div>
+      </div>
+    </div>
+    <div class="footer-note">"The guarantee has to live in the database constraint." — the interview answer that separates senior from mid-level</div>
+    <div class="counter">10 / 10</div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="changeSlide(-1)">◀ Prev</button>
+  <button id="nextBtn" onclick="changeSlide(1)">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  function showSlide(idx){
+    if(idx < 0) idx = 0;
+    if(idx >= total) idx = total - 1;
+    slides[current].classList.remove('active');
+    current = idx;
+    slides[current].classList.add('active');
+  }
+
+  function changeSlide(delta){
+    showSlide(current + delta);
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight'){ changeSlide(1); }
+    else if(e.key === 'ArrowLeft'){ changeSlide(-1); }
+  });
+
+  showSlide(0);
+</script>
+
+</body>
+</html>

@@ -1,6 +1,8 @@
 # 🔌 Adapter Design Pattern - Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📗 Difficulty: Beginner** — ideal starting point for a new developer; read this before tackling applied system-design questions.
+
 ---
 
 **Interviewer**: "Explain the Adapter Design Pattern with a real-world scenario."
@@ -129,6 +131,42 @@ class StripeAdapter extends LegacyStripeSDK implements PaymentProcessor {
 ## 7. Technology Choices
 
 **You**: "**JDBC** is a massive real-world Adapter Pattern example - `Connection`, `Statement`, `ResultSet` are all standard interfaces, and each database vendor (MySQL, PostgreSQL, Oracle) provides a JDBC DRIVER that adapts their proprietary wire protocol to this common interface. Your Java code writes `SELECT * FROM users` through the same `Statement` interface regardless of underlying database."
+
+---
+
+## 🔥 Real-World Production Issue: The Adapter That Silently Swallowed a Provider's Breaking Change
+
+*In plain English: a third-party vendor can silently change what a status code MEANS, and your adapter won't notice unless you specifically test for it.*
+
+**The war story:**
+
+"A payments platform used a `PaymentGatewayAdapter` wrapping a third-party provider's SDK (exactly this guide's recommended pattern) so the rest of the codebase depended only on the platform's OWN `PaymentProcessor` interface. The provider shipped a 'minor' SDK upgrade that silently changed a response field's meaning (a status code that used to mean 'pending' started also being returned for 'failed, retry later' cases)."
+
+```
+OLD provider SDK: status="PENDING" only meant "processing normally"
+NEW provider SDK: status="PENDING" ALSO used for "failed, will retry internally"
+
+Our Adapter (unchanged since it wasn't touched during the SDK bump):
+class StripeAdapter implements PaymentProcessor {
+    PaymentStatus process(...) {
+        String status = stripeSdk.charge(...).getStatus();
+        return status.equals("PENDING") ? PaymentStatus.PENDING : ...;
+            // <- still mapped PENDING -> PENDING, missing the NEW
+            //     failure semantics the vendor silently introduced
+    }
+}
+
+Result: orders that had actually FAILED were shown to customers as
+"payment processing", and inventory was held/reserved indefinitely
+for orders that would never complete -- discovered only when
+finance reconciliation found a growing backlog of stuck orders
+```
+
+**Root cause:** the Adapter Pattern successfully isolated the REST of the codebase from the vendor SDK's shape (exactly as intended) — but that isolation ALSO meant the vendor's silent semantic change was invisible outside the one Adapter class, and nobody had a contract test verifying the Adapter's mapping logic against the vendor's actual current behavior.
+
+**The fix:** added a suite of contract tests that run against the vendor's SANDBOX API on every SDK version bump, asserting the Adapter's status-mapping produces the expected `PaymentStatus` for each of the vendor's documented status codes — these tests would have caught the meaning-drift immediately instead of it surfacing weeks later via a stuck-order backlog.
+
+**Lesson for a new developer:** "Adapter Pattern isolates you from a vendor's API SHAPE (method signatures, field names) — but it does NOT automatically protect you from the vendor silently changing the MEANING of values within that same shape. Any time you bump a third-party SDK version wrapped by an Adapter, run contract tests against the adapter's mapping logic, not just a compile-check that the code still builds."
 
 ---
 

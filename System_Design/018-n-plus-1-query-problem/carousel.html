@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The N+1 Query Problem — Slide Deck</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#16213e;
+    --panel2:#0f3460;
+    --accent:#9d4edd;
+    --good:#06d6a0;
+    --good-dark:#049c78;
+    --bad:#e63946;
+    --bad-dark:#a4222c;
+    --warn:#f77f00;
+    --db-color:#4cc9f0;
+    --text:#eaeaf5;
+    --muted:#a0a0c0;
+    --code-bg:#0c1524;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI', Helvetica, Arial, sans-serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .deck{position:relative; width:100%; min-height:100vh;}
+  .slide{
+    display:none;
+    width:100%; min-height:100vh;
+    padding:30px 52px 90px 52px;
+    flex-direction:column;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .slide.active{display:flex;}
+  .slide h1{
+    font-size:26px; margin:0 0 4px 0; color:#fff;
+    border-bottom:3px solid var(--accent); padding-bottom:10px;
+  }
+  .slide h2.sub{font-size:14px; color:var(--muted); margin:0 0 16px 0; font-weight:normal;}
+  .tag{
+    display:inline-block; font-size:11px; letter-spacing:1px; font-weight:700;
+    color:var(--bg); background:var(--accent); padding:3px 10px; border-radius:12px;
+    margin-bottom:10px; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .content{flex:1; display:flex; flex-direction:column; gap:14px; justify-content:center;}
+  .row{display:flex; gap:20px; align-items:flex-start; justify-content:center; flex-wrap:wrap;}
+  .col{flex:1; min-width:250px;}
+
+  /* ---------- panel / card ---------- */
+  .panel{
+    background:var(--panel); border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px; padding:14px 16px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .panel.bad-border{border:2px solid var(--bad);}
+  .panel.good-border{border:2px solid var(--good);}
+  .panel.warn-border{border:2px solid var(--warn);}
+  .panel-title{font-weight:700; font-size:13px; margin-bottom:8px; color:#fff;}
+
+  /* ---------- code block ---------- */
+  .code{
+    background:var(--code-bg); border:1px solid rgba(255,255,255,0.08); border-radius:8px;
+    padding:9px 13px; font-family:'Courier New', monospace; font-size:11.5px;
+    color:#9be9a8; white-space:pre; overflow-x:auto; line-height:1.5;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .code .kw{color:#7cb7ff;}
+  .code .cm{color:#7a8595;}
+  .code .num{color:#f7c948;}
+  .code .an{color:#ff9f68;}
+
+  /* ---------- DB cylinder ---------- */
+  .cylinder-wrap{display:flex; flex-direction:column; align-items:center;}
+  .cylinder{width:100px;}
+  .cyl-top{
+    height:18px; border-radius:50%; background:var(--db-color);
+    border:2px solid rgba(255,255,255,0.4);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .cyl-body{
+    height:48px; margin-top:-9px; background:var(--db-color); opacity:0.82;
+    border-left:2px solid rgba(255,255,255,0.4); border-right:2px solid rgba(255,255,255,0.4);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .cyl-bottom{
+    height:18px; margin-top:-9px; border-radius:50%; background:var(--db-color);
+    border:2px solid rgba(255,255,255,0.4);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .cylinder.small{width:44px;}
+  .cylinder.small .cyl-top{height:10px;}
+  .cylinder.small .cyl-body{height:22px; margin-top:-5px;}
+  .cylinder.small .cyl-bottom{height:10px; margin-top:-5px;}
+  .cyl-label{margin-top:7px; font-size:11px; color:var(--muted); text-align:center; max-width:150px;}
+
+  /* ---------- app server box ---------- */
+  .appserver{
+    width:120px; background:var(--panel2); border:2px solid var(--accent); border-radius:8px;
+    padding:9px 8px; text-align:center;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .appserver .title{font-size:11px; font-weight:700; color:#fff; margin-bottom:6px;}
+  .appserver .ln{height:3px; background:var(--accent); opacity:0.55; border-radius:1px; margin:4px 0;}
+  .appserver.small{width:60px; padding:5px 4px;}
+  .appserver.small .title{font-size:9px; margin-bottom:3px;}
+
+  /* ---------- arrows ---------- */
+  .arrow-down{text-align:center; color:var(--accent); font-size:20px; line-height:1; margin:2px 0;}
+  .arrow-row{display:flex; align-items:center; justify-content:center; gap:6px;}
+  .arrow-label{font-size:11px; color:var(--muted);}
+
+  /* ---------- sequence-diagram-like flow ---------- */
+  .flowpanel{display:flex; flex-direction:column; align-items:center; gap:6px;}
+  .flow-heads{display:flex; justify-content:space-between; width:100%; padding:0 6px;}
+  .seqrow{display:flex; align-items:center; gap:6px; width:100%; font-size:10px; color:var(--muted);}
+  .seqrow .mini-server{
+    flex:0 0 auto; width:20px; height:14px; background:var(--panel2); border:1px solid var(--accent);
+    border-radius:2px; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .seqrow .mini-db{
+    flex:0 0 auto; width:14px; height:16px; border-radius:50%/35%; background:var(--db-color);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .seqrow .arrows{flex:1; text-align:center; font-family:'Courier New',monospace; font-size:12px; font-weight:700; letter-spacing:1px;}
+  .seqrow.bad .arrows{color:var(--bad);}
+  .seqrow.good .arrows{color:var(--good);}
+  .seqrow .lbl{flex:0 0 auto; font-size:9.5px; color:var(--muted); min-width:110px; text-align:left;}
+  .ellipsis-row{text-align:center; color:var(--muted); font-size:11px; letter-spacing:2px;}
+
+  /* repeated round-trip storm strip */
+  .pulse-strip{display:flex; flex-wrap:wrap; gap:2px; max-width:360px; justify-content:center;}
+  .pulse{font-size:11px; color:var(--bad); opacity:0.85; font-family:'Courier New',monospace;}
+  .pulse.good{color:var(--good);}
+
+  /* ---------- stat callout ---------- */
+  .stat-callout{
+    background:linear-gradient(135deg, var(--panel2), var(--panel));
+    border:2px solid var(--bad); border-radius:10px; padding:12px 18px; text-align:center;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .stat-callout.good{border-color:var(--good);}
+  .stat-callout .big{font-size:23px; font-weight:800; color:var(--bad);}
+  .stat-callout.good .big{color:var(--good);}
+  .stat-callout .small{font-size:11.5px; color:var(--muted); margin-top:3px;}
+
+  /* ---------- batch group visual ---------- */
+  .batch-groups{display:flex; gap:10px; justify-content:center; flex-wrap:wrap;}
+  .batch-group{
+    display:flex; flex-direction:column; align-items:center; gap:4px; background:var(--panel2);
+    border:1px solid var(--good); border-radius:6px; padding:6px 8px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .batch-group .glabel{font-size:9.5px; color:var(--good); font-weight:700;}
+  .batch-group .ids{font-size:9px; color:var(--muted); font-family:'Courier New',monospace;}
+
+  /* ---------- table ---------- */
+  table.reftable{width:100%; border-collapse:collapse; font-size:12px;}
+  table.reftable th, table.reftable td{border:1px solid rgba(255,255,255,0.1); padding:7px 9px; text-align:left;}
+  table.reftable th{background:var(--panel2); color:#fff;}
+  table.reftable td.badcol{color:#ff8a94;}
+  table.reftable td.goodcol{color:var(--good);}
+  table.reftable tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+  table.reftable tr.never-row td{background:rgba(230,57,70,0.12);}
+
+  /* ---------- checklist ---------- */
+  .checklist{list-style:none; padding:0; margin:0; font-size:12.5px; line-height:1.8;}
+  .checklist li{display:flex; align-items:flex-start; gap:8px;}
+  .mark{
+    flex:0 0 18px; height:18px; width:18px; border-radius:4px; margin-top:2px;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#08111e;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .mark.yes{background:var(--good);}
+  .mark.no{background:var(--bad);}
+  .mark.warn{background:var(--warn);}
+
+  /* ---------- example cards (css-drawn icons) ---------- */
+  .example-card{
+    background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:10px;
+    padding:13px; width:195px; text-align:center;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .icon{width:54px; height:42px; margin:0 auto 8px auto; position:relative;}
+  .icon-feed .bar{height:7px; background:var(--accent); border-radius:3px; margin-bottom:5px;}
+  .icon-feed .bar:nth-child(2){width:70%;}
+  .icon-feed .bar:nth-child(3){width:85%;}
+  .icon-plate{border:3px solid var(--warn); border-radius:50%; width:40px; height:40px; margin:2px auto; position:relative;}
+  .icon-plate::before{content:""; position:absolute; top:50%; left:50%; width:16px; height:16px; margin:-8px 0 0 -8px; border-radius:50%; background:var(--warn); opacity:0.4;}
+  .icon-cart{border:3px solid var(--good); border-top:none; height:24px; width:42px; margin:10px auto 0 auto; border-radius:0 0 6px 6px; position:relative;}
+  .icon-cart::before, .icon-cart::after{content:""; position:absolute; bottom:-10px; width:10px; height:10px; border-radius:50%; background:var(--good);}
+  .icon-cart::before{left:2px;} .icon-cart::after{right:2px;}
+
+  /* ---------- quote slide ---------- */
+  .quote-block{
+    background:var(--panel2); border-left:5px solid var(--accent); border-radius:8px;
+    padding:20px 24px; font-size:16px; font-style:italic; color:#fff; line-height:1.6;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:fixed; bottom:0; left:0; right:0; height:60px; background:#10101f;
+    display:flex; align-items:center; justify-content:center; gap:20px; border-top:1px solid rgba(255,255,255,0.1);
+    z-index:10;
+  }
+  .nav button{
+    background:var(--accent); color:#fff; border:none; padding:9px 20px; border-radius:6px;
+    font-size:14px; cursor:pointer; font-weight:600;
+  }
+  .nav button:disabled{background:#3d3d5c; cursor:default;}
+  .counter{font-size:14px; color:var(--muted); min-width:60px; text-align:center;}
+
+  small.footnote{color:var(--muted); font-size:11px;}
+
+  /* ---------- print ---------- */
+  @media print{
+    .nav{display:none;}
+    .slide{
+      display:flex !important; page-break-after:always; min-height:540px; width:540px;
+      padding:14px 18px 18px 18px; margin:0 auto;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    .slide h1{font-size:17px;}
+    .code{font-size:9px;}
+    body{background:var(--bg);}
+    @page{ size:540px 540px; margin:0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active" id="s1">
+    <span class="tag">HOOK</span>
+    <h1>The Waiter Who Made 11 Trips Instead of 2</h1>
+    <h2 class="sub">Same table, same order — one waiter runs to the kitchen 10 extra times.</h2>
+    <div class="content">
+      <div class="row">
+        <div class="col panel bad-border">
+          <div class="panel-title" style="color:var(--bad-dark)">N+1 Waiter — 11 trips</div>
+          <div class="flowpanel">
+            <div class="appserver small"><div class="title">Table<br>(10 guests)</div></div>
+            <div class="pulse-strip">
+              <span class="pulse">↔</span><span class="pulse">↔</span><span class="pulse">↔</span>
+              <span class="pulse">↔</span><span class="pulse">↔</span><span class="pulse">↔</span>
+              <span class="pulse">↔</span><span class="pulse">↔</span><span class="pulse">↔</span>
+              <span class="pulse">↔</span>
+            </div>
+            <div class="cylinder small"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+            <div class="cyl-label">Kitchen — asked once per guest</div>
+          </div>
+        </div>
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Smart Waiter — 2 trips</div>
+          <div class="flowpanel">
+            <div class="appserver small"><div class="title">Table<br>(10 guests)</div></div>
+            <div class="pulse-strip">
+              <span class="pulse good">↔</span><span class="pulse good">↔</span>
+            </div>
+            <div class="cylinder small"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+            <div class="cyl-label">Kitchen — all 10 orders taken at once</div>
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="stat-callout">
+          <div class="big">101 queries · 202ms</div>
+          <div class="small">1 query for orders + 100 queries for each order's items — the N+1 pattern</div>
+        </div>
+        <div class="stat-callout good">
+          <div class="big">1 query · 5ms</div>
+          <div class="small">Same data, fetched with a single JOIN</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <section class="slide" id="s2">
+    <span class="tag">THE PROBLEM</span>
+    <h1>One Line Hides 100 Extra Queries</h1>
+    <h2 class="sub">JPA/Hibernate LAZY entity + an innocent-looking loop</h2>
+    <div class="content">
+      <div class="row">
+        <div class="col panel">
+          <div class="panel-title">Entity + the buggy loop</div>
+          <div class="code"><span class="kw">@Entity</span>
+<span class="kw">class</span> Order {
+  <span class="an">@OneToMany</span>(fetch = FetchType.<span class="num">LAZY</span>)
+  List&lt;OrderItem&gt; items; <span class="cm">// not loaded yet</span>
+}
+
+List&lt;Order&gt; orders = repo.findAll();     <span class="cm">// Query 1</span>
+<span class="kw">for</span> (Order o : orders) {
+  print(o.getItems());                    <span class="cm">// Query 2..101</span>
+}</div>
+        </div>
+        <div class="col panel bad-border">
+          <div class="panel-title" style="color:var(--bad-dark)">Generated SQL</div>
+          <div class="code"><span class="cm">-- Query 1</span>
+SELECT * FROM orders;              <span class="cm">-- 100 rows</span>
+
+<span class="cm">-- Query 2 (order_id=1)</span>
+SELECT * FROM order_items WHERE order_id = <span class="num">1</span>;
+<span class="cm">-- Query 3 (order_id=2)</span>
+SELECT * FROM order_items WHERE order_id = <span class="num">2</span>;
+<span class="cm">-- ... 97 more queries ...</span>
+<span class="cm">-- Query 101 (order_id=100)</span>
+SELECT * FROM order_items WHERE order_id = <span class="num">100</span>;</div>
+        </div>
+      </div>
+      <div class="stat-callout">
+        <div class="big">101 queries total — 2ms each = 202ms</div>
+        <div class="small">A single JOIN would return the same data in ~5ms</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3: EXECUTION FLOW DIAGRAM -->
+  <section class="slide" id="s3">
+    <span class="tag">EXECUTION FLOW</span>
+    <h1>101 Round Trips vs 1 Round Trip</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col panel bad-border">
+          <div class="panel-title" style="color:var(--bad-dark)">N+1 flow (findAll + loop)</div>
+          <div class="flowpanel">
+            <div class="flow-heads"><span class="lbl" style="color:#fff;font-weight:700;">App Server</span><span class="lbl" style="color:#fff;font-weight:700;">Database</span></div>
+            <div class="seqrow bad"><div class="mini-server"></div><div class="arrows">──►◄──</div><div class="mini-db"></div><div class="lbl">SELECT * FROM orders</div></div>
+            <div class="seqrow bad"><div class="mini-server"></div><div class="arrows">──►◄──</div><div class="mini-db"></div><div class="lbl">...items WHERE order_id=1</div></div>
+            <div class="seqrow bad"><div class="mini-server"></div><div class="arrows">──►◄──</div><div class="mini-db"></div><div class="lbl">...items WHERE order_id=2</div></div>
+            <div class="ellipsis-row">⋮ 97 more round trips ⋮</div>
+            <div class="seqrow bad"><div class="mini-server"></div><div class="arrows">──►◄──</div><div class="mini-db"></div><div class="lbl">...items WHERE order_id=100</div></div>
+          </div>
+          <div class="stat-callout" style="margin-top:8px;"><div class="big">101 round trips</div><div class="small">≈ 202ms total (2ms each)</div></div>
+        </div>
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Fixed flow (JOIN FETCH)</div>
+          <div class="flowpanel">
+            <div class="flow-heads"><span class="lbl" style="color:#fff;font-weight:700;">App Server</span><span class="lbl" style="color:#fff;font-weight:700;">Database</span></div>
+            <div class="seqrow good"><div class="mini-server"></div><div class="arrows">──────►◄──────</div><div class="mini-db"></div><div class="lbl">o JOIN oi ON oi.order_id=o.id</div></div>
+          </div>
+          <div class="stat-callout good" style="margin-top:8px;"><div class="big">1 round trip</div><div class="small">≈ 5ms total — all rows in one result set</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4: FIX 1 & 2 -->
+  <section class="slide" id="s4">
+    <span class="tag">FIX 1 &amp; 2</span>
+    <h1>JOIN FETCH and @EntityGraph — Both Give 1 Query</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Fix 1 — JOIN FETCH (JPQL)</div>
+          <div class="code"><span class="an">@Query</span>(<span class="cm">"SELECT o FROM Order o JOIN FETCH o.items"</span>)
+List&lt;Order&gt; findAllWithItems();
+
+<span class="cm">-- Generated SQL:</span>
+<span class="cm">-- SELECT o.*, oi.*</span>
+<span class="cm">-- FROM orders o INNER JOIN order_items oi</span>
+<span class="cm">--   ON oi.order_id = o.id</span></div>
+        </div>
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Fix 2 — @EntityGraph (Spring Data)</div>
+          <div class="code"><span class="kw">interface</span> OrderRepository
+    <span class="kw">extends</span> JpaRepository&lt;Order, Long&gt; {
+
+  <span class="an">@EntityGraph</span>(attributePaths = {<span class="cm">"items"</span>})
+  List&lt;Order&gt; findAll();
+  <span class="cm">// Hibernate generates a LEFT JOIN</span>
+}</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="stat-callout good"><div class="big">→ 1 query</div><div class="small">Always-needed relations, single round trip</div></div>
+        <div class="stat-callout good"><div class="big">→ 1 query</div><div class="small">Cleaner syntax, same LEFT JOIN result</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5: FIX 3 -->
+  <section class="slide" id="s5">
+    <span class="tag">FIX 3</span>
+    <h1>@BatchSize — Batch Loading (100 → 4 Queries)</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col panel">
+          <div class="panel-title">Annotation</div>
+          <div class="code"><span class="an">@OneToMany</span>(mappedBy = <span class="cm">"order"</span>, fetch = FetchType.<span class="num">LAZY</span>)
+<span class="an">@BatchSize</span>(size = <span class="num">25</span>)
+List&lt;OrderItem&gt; items;</div>
+        </div>
+        <div class="col panel warn-border">
+          <div class="panel-title" style="color:var(--warn)">Generated SQL — 4 batches</div>
+          <div class="code">WHERE order_id IN (<span class="num">1</span>...<span class="num">25</span>)   <span class="cm">-- query 1</span>
+WHERE order_id IN (<span class="num">26</span>...<span class="num">50</span>)  <span class="cm">-- query 2</span>
+WHERE order_id IN (<span class="num">51</span>...<span class="num">75</span>)  <span class="cm">-- query 3</span>
+WHERE order_id IN (<span class="num">76</span>...<span class="num">100</span>) <span class="cm">-- query 4</span></div>
+        </div>
+      </div>
+      <div class="batch-groups">
+        <div class="batch-group"><div class="glabel">Batch 1</div><div class="ids">id 1–25</div></div>
+        <div class="batch-group"><div class="glabel">Batch 2</div><div class="ids">id 26–50</div></div>
+        <div class="batch-group"><div class="glabel">Batch 3</div><div class="ids">id 51–75</div></div>
+        <div class="batch-group"><div class="glabel">Batch 4</div><div class="ids">id 76–100</div></div>
+      </div>
+      <div class="stat-callout warn" style="border-color:var(--warn);"><div class="big" style="color:var(--warn);">100 queries → 4 queries</div><div class="small">Still not ideal — but a huge improvement, and safe with pagination</div></div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6: FIX 4 -->
+  <section class="slide" id="s6">
+    <span class="tag">FIX 4</span>
+    <h1>DTO Projection — Most Performant, Read-Only</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Flat DTO + query</div>
+          <div class="code"><span class="kw">record</span> OrderWithItemsDTO(
+  Long orderId, String status,
+  Long itemId, String productName, Integer quantity) {}
+
+<span class="an">@Query</span>(<span class="cm">"""</span>
+  <span class="cm">SELECT new ...OrderWithItemsDTO(</span>
+  <span class="cm">  o.id, o.status, oi.id, oi.productName, oi.quantity)</span>
+  <span class="cm">FROM Order o JOIN o.items oi</span>
+  <span class="cm">"""</span>)
+List&lt;OrderWithItemsDTO&gt; findOrdersWithItems();</div>
+        </div>
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Group back in Java</div>
+          <div class="code">Map&lt;Long, List&lt;OrderWithItemsDTO&gt;&gt; grouped =
+  results.stream()
+    .collect(groupingBy(
+        OrderWithItemsDTO::orderId));</div>
+        </div>
+      </div>
+      <div class="stat-callout good"><div class="big">→ 1 query, no entity overhead</div><div class="small">Best for read-only endpoints — no lazy proxies, no cartesian bloat if selected columns are flat</div></div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7: OTHER FRAMEWORKS -->
+  <section class="slide" id="s7">
+    <span class="tag">OTHER FRAMEWORKS</span>
+    <h1>N+1 Isn't Just a Java Problem</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col panel">
+          <div class="panel-title">Django ORM (Python)</div>
+          <div class="code"><span class="cm"># N+1:</span>
+<span class="kw">for</span> o <span class="kw">in</span> Order.objects.all():
+    print(o.items.all())    <span class="cm"># N queries</span>
+
+<span class="cm"># Fix:</span>
+Order.objects.prefetch_related(<span class="cm">'items'</span>)
+<span class="cm"># 2 queries total</span></div>
+        </div>
+        <div class="col panel">
+          <div class="panel-title">ActiveRecord (Rails)</div>
+          <div class="code"><span class="cm"># N+1:</span>
+Order.all.each { |o| puts o.items }
+
+<span class="cm"># Fix: includes</span>
+Order.includes(:items).all
+<span class="cm"># 2 queries total</span></div>
+        </div>
+        <div class="col panel">
+          <div class="panel-title">TypeORM (Node/TS)</div>
+          <div class="code"><span class="cm">// N+1:</span>
+<span class="kw">for</span> (<span class="kw">const</span> o <span class="kw">of</span> orders)
+  <span class="kw">await</span> o.items;
+
+<span class="cm">// Fix: relations</span>
+orderRepo.find({ relations: [<span class="cm">'items'</span>] });</div>
+        </div>
+      </div>
+      <div class="stat-callout good"><div class="big">Same fix, every ORM</div><div class="small">Tell the query layer upfront what related data you need — eager-load with a JOIN instead of lazily fetching per row</div></div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8: CARTESIAN PRODUCT TRAP -->
+  <section class="slide" id="s8">
+    <span class="tag">THE TRAP</span>
+    <h1>JOIN FETCH's Hidden Cost: The Cartesian Product</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col panel bad-border">
+          <div class="panel-title" style="color:var(--bad-dark)">2 orders → 7 rows returned</div>
+          <table class="reftable">
+            <tr><th>order_id</th><th>item_id</th></tr>
+            <tr><td class="badcol">1</td><td>item-A</td></tr>
+            <tr><td class="badcol">1</td><td>item-B</td></tr>
+            <tr><td class="badcol">1</td><td>item-C</td></tr>
+            <tr><td class="badcol">2</td><td>item-D</td></tr>
+            <tr><td class="badcol">2</td><td>item-E</td></tr>
+            <tr><td class="badcol">2</td><td>item-F</td></tr>
+            <tr><td class="badcol">2</td><td>item-G</td></tr>
+          </table>
+        </div>
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Fix: DISTINCT</div>
+          <div class="code"><span class="an">@Query</span>(<span class="cm">"SELECT DISTINCT o FROM Order o</span>
+<span class="cm">           JOIN FETCH o.items"</span>)</div>
+          <div class="panel warn-border" style="margin-top:10px;">
+            <div class="panel-title" style="color:var(--warn);font-size:12px;">⚠ Pagination warning</div>
+            <div style="font-size:11.5px;color:var(--muted);">JOIN FETCH + LIMIT fetches <b>all</b> rows then paginates in memory (Hibernate warning <code>HHH90003004</code>). Use <b>@BatchSize</b> instead of JOIN FETCH when paginating.</div>
+          </div>
+        </div>
+      </div>
+      <div class="stat-callout"><div class="big">100 orders × 10 items avg = 1000 rows transferred</div><div class="small">...not 100 — row duplication grows with the JOIN fan-out</div></div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9: QUICK REFERENCE CARD -->
+  <section class="slide" id="s9">
+    <span class="tag">QUICK REFERENCE</span>
+    <h1>Pick the Right Fix</h1>
+    <div class="content">
+      <table class="reftable">
+        <tr><th>Fix</th><th>Queries</th><th>Best for</th></tr>
+        <tr><td>JOIN FETCH (JPQL)</td><td class="goodcol">1</td><td>Always-needed relations</td></tr>
+        <tr><td>@EntityGraph</td><td class="goodcol">1</td><td>Cleaner syntax</td></tr>
+        <tr><td>@BatchSize</td><td>N / batchSize</td><td>Pagination, large sets</td></tr>
+        <tr><td>DTO Projection</td><td class="goodcol">1</td><td>Read-only, max perf</td></tr>
+        <tr class="never-row"><td>FetchType.EAGER</td><td class="badcol">1</td><td>Never (loads always)</td></tr>
+      </table>
+      <div class="row">
+        <div class="col panel">
+          <div class="panel-title">Diagnostic rule of thumb</div>
+          <ul class="checklist">
+            <li><span class="mark no">✕</span>Response time grows <b>linearly</b> with result size → N+1</li>
+            <li><span class="mark warn">!</span>Grows <b>logarithmically</b> → probably an index issue</li>
+            <li><span class="mark yes">✓</span><b>Flat</b> regardless of N → you're good</li>
+          </ul>
+        </div>
+        <div class="col panel">
+          <div class="panel-title">Interview debug playbook (/orders slow at 500ms)</div>
+          <div style="font-size:11.5px;color:var(--muted);line-height:1.6;">
+          Enable <code>spring.jpa.show-sql=true</code> + Hibernate SQL debug logging — 101 queries logged for 100 rows confirms N+1.
+          Fix depends on access pattern: JOIN FETCH/@EntityGraph if items always needed, else keep LAZY + a separate projection endpoint.
+          In prod, track <b>queries-per-request</b> via APM (Datadog/Micrometer) as a KPI, not just latency.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 10: REAL WORLD + QUOTE -->
+  <section class="slide" id="s10">
+    <span class="tag">REAL WORLD · THE ONE-LINER</span>
+    <h1>Where This Breaks Production</h1>
+    <div class="content">
+      <div class="row">
+        <div class="example-card">
+          <div class="icon icon-feed"><div class="bar" style="width:100%"></div><div class="bar"></div><div class="bar"></div></div>
+          <b>Social Media Feed</b>
+          <div class="cyl-label">20 posts → 21 queries per feed load. At 1M concurrent users: 21M queries/sec. Fix: JOIN FETCH on post-author.</div>
+        </div>
+        <div class="example-card">
+          <div class="icon icon-plate"></div>
+          <b>Food Delivery Listing</b>
+          <div class="cyl-label">50 restaurants → 51 queries per page. Fix: @EntityGraph on restaurant-categories → 1 JOIN query.</div>
+        </div>
+        <div class="example-card">
+          <div class="icon icon-cart"></div>
+          <b>E-Commerce Product Search</b>
+          <div class="cyl-label">40 products → 81 queries (seller + rating per row). Fix: DTO projection with explicit JOIN, 1 round trip.</div>
+        </div>
+      </div>
+      <div class="quote-block">
+        "N+1 happens when you let your ORM drive — the fix is to tell the DB what you need upfront
+        with a JOIN, not ask it 'what's this entity's related data?' one row at a time."
+      </div>
+      <small class="footnote">Source: 018 — The N+1 Query Problem</small>
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="go(-1)">◀ Prev</button>
+  <div class="counter"><span id="cur">1</span> / <span id="tot">10</span></div>
+  <button id="nextBtn" onclick="go(1)">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var idx = 0;
+  document.getElementById('tot').textContent = slides.length;
+
+  function render(){
+    slides.forEach(function(s, i){ s.classList.toggle('active', i === idx); });
+    document.getElementById('cur').textContent = idx + 1;
+    document.getElementById('prevBtn').disabled = idx === 0;
+    document.getElementById('nextBtn').disabled = idx === slides.length - 1;
+  }
+
+  function go(delta){
+    var next = idx + delta;
+    if(next < 0 || next >= slides.length) return;
+    idx = next;
+    render();
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight') go(1);
+    if(e.key === 'ArrowLeft') go(-1);
+  });
+
+  render();
+</script>
+</body>
+</html>

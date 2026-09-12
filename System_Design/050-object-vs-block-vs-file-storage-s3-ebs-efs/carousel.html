@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Object vs Block vs File Storage — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+
+  /* Block storage: disk/cylinder icon */
+  .disk-icon { width: 64px; height: 70px; position: relative; margin: 0 auto; }
+  .disk-icon .disk-top { width: 64px; height: 18px; border-radius: 50%; position: absolute; top: 0; }
+  .disk-icon .disk-body { width: 64px; height: 38px; position: absolute; top: 14px; opacity: 0.85; }
+  .disk-icon .disk-bottom { width: 64px; height: 18px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .disk-blue .disk-top, .disk-blue .disk-body, .disk-blue .disk-bottom { background: var(--blue); }
+  .disk-red .disk-top, .disk-red .disk-body, .disk-red .disk-bottom { background: var(--redis); }
+
+  /* Object storage: shipped package / cube icon */
+  .pkg-icon { width: 70px; height: 60px; position: relative; margin: 0 auto; border-radius: 6px; }
+  .pkg-icon .pkg-box { position: absolute; inset: 0; border-radius: 6px; }
+  .pkg-icon .pkg-tape-v { position: absolute; left: 33px; top: 0; width: 4px; height: 60px; background: rgba(0,0,0,0.28); }
+  .pkg-icon .pkg-tape-h { position: absolute; left: 0; top: 28px; width: 70px; height: 4px; background: rgba(0,0,0,0.28); }
+  .pkg-icon .pkg-label { position: absolute; right: 5px; top: 5px; width: 22px; height: 15px; background: #fff; border-radius: 2px; opacity: 0.9; }
+  .pkg-accent .pkg-box { background: var(--accent); }
+  .pkg-green .pkg-box { background: var(--green); }
+
+  /* File storage: folder-tree icon */
+  .folder-icon { width: 70px; height: 56px; position: relative; margin: 0 auto; }
+  .folder-icon .folder-tab { position: absolute; top: 0; left: 6px; width: 28px; height: 9px; border-radius: 4px 4px 0 0; }
+  .folder-icon .folder-body { position: absolute; top: 8px; left: 0; width: 70px; height: 48px; border-radius: 5px; opacity: 0.9; }
+  .folder-icon .folder-line { position: absolute; left: 10px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.45); }
+  .folder-green .folder-tab, .folder-green .folder-body { background: var(--green); }
+  .folder-green .folder-line { background: rgba(0,0,0,0.25); }
+
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Storage Is Not One Thing</h1>
+    <h2>Slide 1 / 10 — The Hook</h2>
+    <div class="body">
+      <div class="stat">13x</div>
+      <p>EFS costs <b>13 times more</b> than S3 for the exact same gigabyte. Store user photos as BLOBs in Postgres instead, and your 20-minute backup becomes a 14-hour one. Pick the wrong storage type and you don't just overpay — you break backups.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Object Storage (S3)</h1>
+    <h2>The Postal Warehouse</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col">
+          <div class="pkg-icon pkg-accent"><div class="pkg-box"></div><div class="pkg-tape-v"></div><div class="pkg-tape-h"></div><div class="pkg-label"></div></div>
+          key → blob
+        </div>
+      </div>
+      <p>Ship a package, get a tracking number, retrieve the whole thing by key over HTTP. No partial writes. Replicated across 3+ AZs, 11 nines durability, $0.023/GB/month.</p>
+      <p><b>Best for:</b> user uploads, videos, images, backups, data lake, CDN origin.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Block Storage (EBS)</h1>
+    <h2>The Laptop Hard Drive</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="disk-icon disk-blue"><div class="disk-top"></div><div class="disk-body"></div><div class="disk-bottom"></div></div>1 EC2 instance</div>
+      </div>
+      <p>Network-attached SSD that behaves like a local disk — fseek, fwrite, partial writes, POSIX filesystem. Sub-millisecond latency, up to 64,000 IOPS (io2), snapshots to S3.</p>
+      <p><b>Best for:</b> MySQL/Postgres data files, OS root volumes, transactional workloads on one machine.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>File Storage (EFS / NFS)</h1>
+    <h2>The Shared Network Drive</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>EC2 #1</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>EC2 #2</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="folder-icon folder-green"><div class="folder-tab"></div><div class="folder-body"></div><div class="folder-line" style="top:22px;width:40px;"></div><div class="folder-line" style="top:32px;width:30px;"></div><div class="folder-line" style="top:42px;width:36px;"></div></div>/app/data</div>
+      </div>
+      <p>Multiple servers mount the SAME directory at the SAME time over NFS. Changes are instantly visible to every mounted instance. $0.30/GB/month.</p>
+      <p><b>Best for:</b> shared configs, ML training data, WordPress media, CI/CD artifacts.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Trap 1: Blobs in the Database</h1>
+    <h2>The #1 Junior Mistake</h2>
+    <div class="body">
+      <p><span class="x-mark">✕</span> Storing photos/PDFs/attachments as BYTEA/BLOB columns in Postgres or MySQL — every backup and every replica now has to move that binary data too.</p>
+      <p><span class="check-mark">✓</span> Fix: store bytes in S3, store the URL/key in the database row.</p>
+      <div class="quote-box">"S3 holds the bytes, the database holds the address — never store binary files in a relational database."</div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Trap 2: Wrong Tool for the Scale</h1>
+    <h2>EBS for Video, EFS Instead of S3</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="disk-icon disk-red"><div class="disk-top"></div><div class="disk-body"></div><div class="disk-bottom"></div></div>1 EBS volume</div>
+        <div class="arrow">✕</div>
+        <div class="col"><div class="server-box hot"><span></span><span></span><span></span></div>100K viewers</div>
+      </div>
+      <p>EBS is attached to ONE instance — it cannot fan out to thousands of concurrent video viewers. And reaching for EFS when you just need "store + fetch by key" costs 13x what S3 would.</p>
+      <p><b>Fix:</b> pre-signed URL uploads straight to S3 — your backend never proxies file bytes.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Interview Scenario: OTT Video Platform</h1>
+    <h2>Architect's Answer</h2>
+    <div class="body">
+      <p>Client uploads via a pre-signed URL → lands in S3 → event → transcoding job produces HLS segments (480p/720p/1080p) → also stored in S3 → CloudFront (CDN) serves from S3 origin.</p>
+      <p>User accounts, subscriptions, view history → Postgres on EBS (fast random reads, single-machine transactional workload).</p>
+      <p><span class="x-mark">✕</span> Never EBS for video bytes &nbsp; <span class="x-mark">✕</span> Never EFS — 10x the cost, no benefit here.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Where This Pattern Appears</h1>
+    <h2>Real Systems</h2>
+    <div class="body">
+      <table>
+        <tr><th>System</th><th>Pattern</th></tr>
+        <tr><td>Cloud Storage (Drive/Dropbox)</td><td>S3 for file bytes, Postgres/EBS for metadata tree</td></tr>
+        <tr><td>OTT (Netflix/Hotstar)</td><td>S3 + CDN for video/HLS, EBS-backed DB for accounts</td></tr>
+        <tr><td>Email (Gmail/Outlook)</td><td>S3 for attachments, EBS-backed DB for headers/search index</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>S3 vs EBS vs EFS</h1>
+    <h2>Comparison Table</h2>
+    <div class="body">
+      <table>
+        <tr><th></th><th>Object (S3)</th><th>Block (EBS)</th><th>File (EFS)</th></tr>
+        <tr><td>Access via</td><td>HTTP</td><td>OS filesystem</td><td>NFS mount</td></tr>
+        <tr><td>Attached to</td><td>Any client</td><td>Single EC2</td><td>Multiple EC2</td></tr>
+        <tr><td>Latency</td><td>50–200ms</td><td>&lt;1ms</td><td>1–10ms</td></tr>
+        <tr><td>Cost/GB/mo</td><td>$0.023</td><td>$0.08–0.10</td><td>$0.30</td></tr>
+        <tr><td>Durability</td><td>11 nines</td><td>5 nines</td><td>11 nines</td></tr>
+        <tr><td>Partial writes</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Fetched by URL, no partial writes, cost-sensitive? → <b>S3.</b> Database data files, single machine, low latency? → <b>EBS.</b> Multiple servers need the SAME filesystem live? → <b>EFS.</b></p>
+      <div class="quote-box">
+        "Object storage is for files you access by URL — S3 is cheap, unlimited, HTTP. Block storage is for databases — attached to one machine, fast random I/O. File storage is for shared filesystems — multiple servers, same directory. For user uploads and videos: always S3."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

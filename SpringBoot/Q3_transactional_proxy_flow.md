@@ -79,6 +79,24 @@ CGLIB works by **overriding** your methods in the generated subclass. Java deter
 
 ### Part 3 — Step by Step: @Transactional in action
 
+### Sequence Diagram (ASCII)
+
+```
+Lanes: Caller | Proxy = OrderService$$CGLIB (proxy) | Pool = Connection Pool | Real = OrderService (real) | DB
+
+1)  Caller ──> Proxy : placeOrder(order)
+2)  Proxy  ──> Pool  : borrow connection
+3)  Pool   ──> Proxy : conn1
+4)  Proxy (self)     : conn1.setAutoCommit(false)
+5)  Proxy  ──> Real  : super.placeOrder(order)
+6)  Real   ──> DB    : INSERT INTO orders (conn1)
+7)  Real   ──> DB    : INSERT INTO payments (conn1)
+8)  Real   ──> Proxy : returns
+9)  Proxy  ──> DB    : conn1.commit()
+10) Proxy  ──> Caller: result
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 Say you have this code:
 
 ```java

@@ -1,0 +1,216 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="1020" style="background:#fffdf5;font-family:'Segoe UI',Arial,sans-serif">
+  <!-- Paper texture border -->
+  <rect x="10" y="10" width="1080" height="1000" rx="4" fill="#fffdf5" stroke="#c8b89a" stroke-width="2"/>
+
+  <!-- Title -->
+  <text x="550" y="45" text-anchor="middle" font-size="22" font-weight="bold" fill="#2d2d2d">WhatsApp Chat System — Napkin Sketch</text>
+  <line x1="230" y1="56" x2="870" y2="56" stroke="#c8b89a" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+  <!-- ══════════════ SECTION A: REAL-TIME FLOW ══════════════ -->
+  <text x="40" y="80" font-size="14" font-weight="bold" fill="#2d2d2d">① Real-Time Message Flow (Both Users Online)</text>
+
+  <rect x="40" y="95" width="100" height="50" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="90" y="115" text-anchor="middle" font-size="12" fill="#1a4a7a" font-weight="bold">Client A</text>
+  <text x="90" y="130" text-anchor="middle" font-size="9" fill="#1a4a7a">sender</text>
+
+  <rect x="175" y="95" width="150" height="50" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="250" y="112" text-anchor="middle" font-size="11" fill="#1a4a7a" font-weight="bold">WS Gateway A</text>
+  <text x="250" y="127" text-anchor="middle" font-size="9" fill="#1a4a7a">sticky (consistent hash)</text>
+  <text x="250" y="139" text-anchor="middle" font-size="9" fill="#1a4a7a">stateless behind LB</text>
+
+  <rect x="360" y="95" width="140" height="50" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="2.5"/>
+  <text x="430" y="115" text-anchor="middle" font-size="12" fill="#7a4a00" font-weight="bold">Chat Service</text>
+  <text x="430" y="130" text-anchor="middle" font-size="9" fill="#7a4a00">validate + sequence ID</text>
+
+  <rect x="535" y="95" width="130" height="50" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="2"/>
+  <text x="600" y="115" text-anchor="middle" font-size="12" fill="#4a0a7a" font-weight="bold">Redis Streams</text>
+  <text x="600" y="130" text-anchor="middle" font-size="9" fill="#4a0a7a">hot delivery path</text>
+
+  <rect x="700" y="95" width="150" height="50" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="2"/>
+  <text x="775" y="112" text-anchor="middle" font-size="11" fill="#1a4a7a" font-weight="bold">WS Gateway B</text>
+  <text x="775" y="127" text-anchor="middle" font-size="9" fill="#1a4a7a">owns recipient conn.</text>
+  <text x="775" y="139" text-anchor="middle" font-size="9" fill="#1a4a7a">(consumer group)</text>
+
+  <rect x="885" y="95" width="100" height="50" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="2"/>
+  <text x="935" y="115" text-anchor="middle" font-size="12" fill="#1a5e20" font-weight="bold">Client B</text>
+  <text x="935" y="130" text-anchor="middle" font-size="9" fill="#1a5e20">recipient</text>
+
+  <line x1="140" y1="120" x2="175" y2="120" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="325" y1="120" x2="360" y2="120" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="500" y1="120" x2="535" y2="120" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="665" y1="120" x2="700" y2="120" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <line x1="850" y1="120" x2="885" y2="120" stroke="#27ae60" stroke-width="2" marker-end="url(#arrGreen)"/>
+
+  <!-- Cassandra durable write, below Chat Service -->
+  <line x1="430" y1="145" x2="430" y2="200" stroke="#888" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="445" y="175" font-size="9" fill="#888">persist (source of truth)</text>
+  <rect x="360" y="200" width="140" height="48" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="2"/>
+  <text x="430" y="219" text-anchor="middle" font-size="12" fill="#7a0000" font-weight="bold">Cassandra</text>
+  <text x="430" y="234" text-anchor="middle" font-size="9" fill="#7a0000">status: SENT → PENDING</text>
+
+  <text x="40" y="272" font-size="10" fill="#888" font-style="italic">ACK flows back along the same path: single tick (server) → double tick (device) → blue tick (read). See ③.</text>
+
+  <!-- ══════════════ SECTION B: OFFLINE FLOW ══════════════ -->
+  <text x="40" y="302" font-size="14" font-weight="bold" fill="#2d2d2d">② Offline Delivery Flow</text>
+  <rect x="40" y="312" width="480" height="148" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+
+  <rect x="55" y="330" width="140" height="42" rx="5" fill="#fff3cd" stroke="#e6a817" stroke-width="1.5"/>
+  <text x="125" y="347" text-anchor="middle" font-size="10" fill="#7a4a00" font-weight="bold">Chat Service</text>
+  <text x="125" y="360" text-anchor="middle" font-size="8" fill="#7a4a00">checks WS registry → no entry</text>
+
+  <line x1="195" y1="351" x2="220" y2="351" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <rect x="220" y="330" width="130" height="42" rx="5" fill="#fde8e8" stroke="#e74c3c" stroke-width="1.5"/>
+  <text x="285" y="347" text-anchor="middle" font-size="10" fill="#7a0000" font-weight="bold">Cassandra</text>
+  <text x="285" y="360" text-anchor="middle" font-size="8" fill="#7a0000">status = PENDING</text>
+
+  <line x1="350" y1="351" x2="375" y2="351" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <rect x="375" y="330" width="130" height="42" rx="5" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="440" y="347" text-anchor="middle" font-size="10" fill="#1a4a7a" font-weight="bold">FCM / APNs</text>
+  <text x="440" y="360" text-anchor="middle" font-size="8" fill="#1a4a7a">wake device (killed app)</text>
+
+  <rect x="55" y="395" width="180" height="42" rx="5" fill="#e8f5e9" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="145" y="412" text-anchor="middle" font-size="10" fill="#1a5e20" font-weight="bold">Client B reconnects</text>
+  <text x="145" y="425" text-anchor="middle" font-size="8" fill="#1a5e20">consistent hash → WS server</text>
+
+  <line x1="235" y1="416" x2="260" y2="416" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+
+  <rect x="260" y="395" width="245" height="42" rx="5" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="382" y="412" text-anchor="middle" font-size="10" fill="#1a4a7a" font-weight="bold">Fetch PENDING from Cassandra</text>
+  <text x="382" y="425" text-anchor="middle" font-size="8" fill="#1a4a7a">deliver in order → client ACKs</text>
+
+  <!-- ══════════════ SECTION C: DELIVERY RECEIPTS ══════════════ -->
+  <text x="560" y="302" font-size="14" font-weight="bold" fill="#2d2d2d">③ Delivery Receipts</text>
+  <rect x="560" y="312" width="500" height="148" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+
+  <text x="580" y="340" font-size="16" fill="#888" font-weight="bold">✓</text>
+  <text x="610" y="335" font-size="10" fill="#2d2d2d" font-weight="bold">Single tick</text>
+  <text x="610" y="349" font-size="9" fill="#555">Server received &amp; persisted the message</text>
+
+  <text x="580" y="375" font-size="16" fill="#888" font-weight="bold">✓✓</text>
+  <text x="620" y="370" font-size="10" fill="#2d2d2d" font-weight="bold">Double tick</text>
+  <text x="620" y="384" font-size="9" fill="#555">Recipient's device received it</text>
+
+  <text x="580" y="410" font-size="16" fill="#4a90d9" font-weight="bold">✓✓</text>
+  <text x="620" y="405" font-size="10" fill="#1a4a7a" font-weight="bold">Blue tick (read)</text>
+  <text x="620" y="419" font-size="9" fill="#555">Recipient opened the conversation</text>
+
+  <text x="580" y="445" font-size="9" fill="#888" font-style="italic">Like postal tracking: scanned (①) → mailbox (②) → opened (③, blue).</text>
+
+  <!-- ══════════════ SECTION D: CORE COMPONENTS ══════════════ -->
+  <text x="40" y="490" font-size="14" font-weight="bold" fill="#2d2d2d">④ Core Components</text>
+
+  <rect x="40" y="505" width="330" height="78" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="205" y="524" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">WebSocket Gateway</text>
+  <text x="55" y="542" font-size="9" fill="#333">Stateless; consistent hashing → sticky routing</text>
+  <text x="55" y="556" font-size="9" fill="#333">Holds the persistent client connection</text>
+  <text x="55" y="573" font-size="9" fill="#888">Use: same user always hits same node</text>
+
+  <rect x="390" y="505" width="330" height="78" rx="6" fill="#fff3cd" stroke="#e6a817" stroke-width="1.5"/>
+  <text x="555" y="524" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a4a00">Chat Service</text>
+  <text x="405" y="542" font-size="9" fill="#333">Validates, persists, assigns sequence IDs</text>
+  <text x="405" y="556" font-size="9" fill="#333">Publishes to Redis Streams for hot delivery</text>
+  <text x="405" y="573" font-size="9" fill="#888">Use: single point deciding online/offline</text>
+
+  <rect x="740" y="505" width="330" height="78" rx="6" fill="#f5f0ff" stroke="#8e44ad" stroke-width="1.5"/>
+  <text x="905" y="524" text-anchor="middle" font-size="12" font-weight="bold" fill="#4a0a7a">Redis Streams</text>
+  <text x="755" y="542" font-size="9" fill="#333">Consumer groups + pending-entry retries</text>
+  <text x="755" y="556" font-size="9" fill="#333">1 stream per WS server, not per user</text>
+  <text x="755" y="573" font-size="9" fill="#888">Kafka kept for search/analytics/CDC replay</text>
+
+  <rect x="40" y="598" width="330" height="78" rx="6" fill="#fde8e8" stroke="#e74c3c" stroke-width="1.5"/>
+  <text x="205" y="617" text-anchor="middle" font-size="12" font-weight="bold" fill="#7a0000">Cassandra</text>
+  <text x="55" y="635" font-size="9" fill="#333">Wide row per conversation, append-only</text>
+  <text x="55" y="649" font-size="9" fill="#333">Range query on (conv_id, timestamp)</text>
+  <text x="55" y="666" font-size="9" fill="#888">TTL auto-purges old PENDING data</text>
+
+  <rect x="390" y="598" width="330" height="78" rx="6" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="555" y="617" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a4a7a">Presence (Redis Pub/Sub)</text>
+  <text x="405" y="635" font-size="9" fill="#333">Online = entry exists in WS registry (TTL)</text>
+  <text x="405" y="649" font-size="9" fill="#333">Heartbeat every ~30s refreshes TTL</text>
+  <text x="405" y="666" font-size="9" fill="#888">&lt;1ms propagation to active chat screens</text>
+
+  <rect x="740" y="598" width="330" height="78" rx="6" fill="#e8f5e9" stroke="#27ae60" stroke-width="1.5"/>
+  <text x="905" y="617" text-anchor="middle" font-size="12" font-weight="bold" fill="#1a5e20">Media (S3 + CDN)</text>
+  <text x="755" y="635" font-size="9" fill="#333">Two-step upload: pre-signed URL → S3 direct</text>
+  <text x="755" y="649" font-size="9" fill="#333">CDN edge cache for shared stickers/GIFs</text>
+  <text x="755" y="666" font-size="9" fill="#888">~95%+ cache hit ratio for shared media</text>
+
+  <!-- ══════════════ SECTION E: GROUP FANOUT ══════════════ -->
+  <text x="40" y="705" font-size="14" font-weight="bold" fill="#2d2d2d">⑤ Group Chat Fanout (up to 256 members)</text>
+  <rect x="40" y="715" width="480" height="145" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+
+  <rect x="60" y="740" width="90" height="40" rx="5" fill="#fff3cd" stroke="#e6a817" stroke-width="1.5"/>
+  <text x="105" y="765" text-anchor="middle" font-size="10" fill="#7a4a00" font-weight="bold">Sender</text>
+
+  <line x1="150" y1="760" x2="185" y2="742" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+  <line x1="150" y1="760" x2="185" y2="760" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+  <line x1="150" y1="760" x2="185" y2="778" stroke="#8e44ad" stroke-width="1.5" marker-end="url(#arrPurple)"/>
+
+  <rect x="190" y="732" width="46" height="20" rx="3" fill="#f5f0ff" stroke="#8e44ad" stroke-width="1"/>
+  <rect x="190" y="754" width="46" height="20" rx="3" fill="#f5f0ff" stroke="#8e44ad" stroke-width="1"/>
+  <rect x="190" y="776" width="46" height="20" rx="3" fill="#f5f0ff" stroke="#8e44ad" stroke-width="1"/>
+  <text x="250" y="767" font-size="16" fill="#8e44ad">···</text>
+  <text x="280" y="748" font-size="9" fill="#555">member 1..N</text>
+  <text x="280" y="768" font-size="9" fill="#555">each gets own</text>
+  <text x="280" y="784" font-size="9" fill="#555">queue write</text>
+
+  <text x="60" y="815" font-size="9" fill="#7a0000" font-weight="bold">Trade-off:</text>
+  <text x="60" y="828" font-size="9" fill="#555">Fan-out-on-write = simple, N writes/msg (chosen here).</text>
+  <text x="60" y="841" font-size="9" fill="#555">Pull-on-read = 1 write, N reads, more read latency.</text>
+
+  <!-- ══════════════ SECTION F: STICKY ROUTING ══════════════ -->
+  <text x="560" y="705" font-size="14" font-weight="bold" fill="#2d2d2d">⑥ Sticky Routing (Consistent Hashing)</text>
+  <rect x="560" y="715" width="500" height="145" rx="6" fill="#f9f9f9" stroke="#888" stroke-width="1.5" stroke-dasharray="6,3"/>
+
+  <rect x="580" y="745" width="110" height="42" rx="5" fill="#e8f4fd" stroke="#4a90d9" stroke-width="1.5"/>
+  <text x="635" y="763" text-anchor="middle" font-size="10" fill="#1a4a7a" font-weight="bold">user_id</text>
+  <text x="635" y="777" text-anchor="middle" font-size="8" fill="#1a4a7a">e.g. "1001"</text>
+
+  <line x1="690" y1="766" x2="725" y2="766" stroke="#555" stroke-width="2" marker-end="url(#arr)"/>
+  <text x="700" y="758" font-size="9" fill="#888">hash()</text>
+
+  <circle cx="800" cy="766" r="42" fill="none" stroke="#8e44ad" stroke-width="2" stroke-dasharray="3,2"/>
+  <text x="800" y="746" text-anchor="middle" font-size="8" fill="#4a0a7a">ring</text>
+  <circle cx="800" cy="724" r="4" fill="#8e44ad"/>
+  <circle cx="838" cy="766" r="4" fill="#8e44ad"/>
+  <circle cx="800" cy="808" r="4" fill="#e6a817"/>
+  <circle cx="762" cy="766" r="4" fill="#8e44ad"/>
+
+  <line x1="842" y1="766" x2="880" y2="766" stroke="#e6a817" stroke-width="2" marker-end="url(#arrOrange)"/>
+
+  <rect x="885" y="745" width="150" height="42" rx="5" fill="#fff3cd" stroke="#e6a817" stroke-width="1.5"/>
+  <text x="960" y="763" text-anchor="middle" font-size="10" fill="#7a4a00" font-weight="bold">ws-server-3</text>
+  <text x="960" y="777" text-anchor="middle" font-size="8" fill="#7a4a00">always this node</text>
+
+  <text x="580" y="825" font-size="9" fill="#555">Same user_id → same node every time, until it dies</text>
+  <text x="580" y="838" font-size="9" fill="#555">→ ring rebalances only the affected slice, not everyone.</text>
+
+  <!-- ══════════════ KEY NUMBERS STRIP ══════════════ -->
+  <rect x="40" y="880" width="1020" height="52" rx="4" fill="#2d2d2d"/>
+  <text x="550" y="901" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">P99 delivery &lt; 100ms  |  media upload P95 &lt; 500ms  |  presence update &lt; 1s  |  WS reconnect &lt; 2s</text>
+  <text x="550" y="920" text-anchor="middle" font-size="11" fill="#f8f8f2" font-family="monospace">peak throughput ≈ 100K messages/sec  |  message retention default: 7 days</text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#555"/>
+    </marker>
+    <marker id="arrGreen" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#27ae60"/>
+    </marker>
+    <marker id="arrRed" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#e74c3c"/>
+    </marker>
+    <marker id="arrPurple" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#8e44ad"/>
+    </marker>
+    <marker id="arrOrange" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#e6a817"/>
+    </marker>
+  </defs>
+
+  <!-- Footer -->
+  <text x="550" y="995" text-anchor="middle" font-size="10" fill="#aaa">WhatsApp Chat System HLD • Interview Napkin • Grounded in WhatsApp_Chat_System_Design_Interview_Guide.md</text>
+</svg>

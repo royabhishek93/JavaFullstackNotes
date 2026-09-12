@@ -1,6 +1,8 @@
 # 🐍 Snake and Ladder - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📘 Difficulty: Intermediate** — assumes you already know the core patterns; focuses on applying them to a real, moderately complex system.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -296,6 +298,38 @@ class Game {
 ## 9. Technology Choices
 
 **You**: "For multiplayer online version: **WebSocket** for real-time dice rolls and position updates, **Redis** for game state (fast, ephemeral - game state doesn't need to survive server restart long-term)."
+
+---
+
+## 🔥 Real-World Production Issue: The Setup-Validation Gap That Created an Unwinnable Game
+
+*In plain English: an O(1) lookup optimization doesn't automatically stop a bad board configuration from creating an infinite loop.*
+
+**The war story:**
+
+"This guide's Final Tips mention 'Setup Validation: No overlapping snake heads/ladder bottoms' as a bullet point — we learned WHY that bullet exists the hard way. A board-configuration admin tool let a non-engineer content team member configure custom boards for a themed event, with no server-side validation."
+
+```
+Misconfigured board (two overlapping jump-points):
+
+Square 47: Ladder bottom -> jumps to square 68
+Square 47: ALSO configured as a Snake head -> jumps to square 12
+           (both stored in the same HashMap<Integer, Integer> "jumps" map,
+            second config SILENTLY OVERWROTE the first at insert-time)
+
+Square 89: Snake head -> jumps to square 3
+Square  3: Ladder bottom -> jumps to square 89
+           -> INFINITE LOOP: landing exactly on 89 sends you to 3,
+              landing exactly on 3 sends you back to 89
+```
+
+**Incident:** players landing exactly on square 3 or 89 got stuck oscillating between the two squares forever (their client showed the game "frozen" on repeated identical dice-roll animations), and the game server's per-game state machine never reached a terminal state, slowly leaking memory across thousands of stuck games over a weekend event.
+
+**Root cause:** the unified jump-map abstraction (HashMap keyed by square number) that makes snake/ladder lookup O(1) — exactly this guide's headline optimization — has an implicit invariant it must enforce: no square can be BOTH a jump source pointing INTO a cycle. That invariant was never validated at board-configuration time.
+
+**The fix:** added board-validation logic that runs a cycle-detection pass (simple graph DFS) over the jump-map at configuration save-time, rejecting any board where following jumps from any square could loop back to a previously visited square without landing on square 100 (the winning square) in between.
+
+**Lesson for a new developer:** "An O(1) HashMap lookup is a great *performance* optimization, but performance optimizations don't automatically enforce *correctness* invariants — those need to be validated explicitly, ideally at configuration/write time, not discovered by players getting stuck in production."
 
 ---
 

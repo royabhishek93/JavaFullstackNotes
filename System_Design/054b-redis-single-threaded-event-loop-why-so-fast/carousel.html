@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Redis Single-Threaded Event Loop — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 22px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 14px; line-height: 1.5; }
+  .row { display: flex; gap: 16px; align-items: center; justify-content: center; margin: 12px 0; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .redis-icon {
+    width: 60px; height: 60px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 26px; margin: 0 auto;
+  }
+  .redis-icon.small { width: 40px; height: 40px; font-size: 16px; }
+  .server-box {
+    width: 70px; height: 58px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 8px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .server-box.busy { border-color: var(--accent); }
+  .server-box.busy span { background: var(--accent); }
+  /* thread box — represents a single CPU thread */
+  .thread-box {
+    width: 44px; height: 44px; border: 2px solid var(--muted); border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; font-size: 10px;
+    color: var(--muted); margin: 0 auto;
+  }
+  .thread-box.sleeping { opacity: 0.35; border-style: dashed; }
+  .thread-box.awake { border-color: var(--green); color: var(--green); font-weight: 700; }
+  /* socket dot — represents a client connection watched by epoll */
+  .socket-dot {
+    width: 16px; height: 16px; border-radius: 50%; background: var(--border);
+    display: inline-block; margin: 3px;
+  }
+  .socket-dot.ready { background: var(--accent); }
+  .socket-grid { display: flex; flex-wrap: wrap; justify-content: center; max-width: 320px; margin: 0 auto; }
+  /* lock icon — CSS-drawn padlock for mutex overhead */
+  .lock-icon { width: 30px; height: 26px; position: relative; margin: 0 auto 4px; }
+  .lock-icon .shackle { width: 16px; height: 14px; border: 3px solid #e74c3c; border-bottom: none; border-radius: 10px 10px 0 0; position: absolute; top: 0; left: 7px; }
+  .lock-icon .body { width: 30px; height: 16px; background: #e74c3c; border-radius: 3px; position: absolute; bottom: 0; }
+  .arrow { font-size: 26px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 40px; font-weight: 800; color: var(--accent); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .badge-ap { background: rgba(0,191,165,0.2); color: var(--green); }
+  .badge-cp { background: rgba(231,76,60,0.2); color: #e74c3c; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Redis Is Single-Threaded</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="redis-icon">R</div>
+      <div class="stat" style="text-align:center">100ns</div>
+      <p style="text-align:center">One thread. No thread pool. A single Redis instance still does <b>100,000–200,000 ops/sec</b>. Adding more threads would make it <b>slower</b>, not faster — here's why.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Why Java Needs 500 Threads</h1>
+    <h2>The Problem — Blocking on Disk</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="thread-box sleeping">T1</div>sleeping</div>
+        <div class="col"><div class="thread-box sleeping">T2</div>sleeping</div>
+        <div class="col"><div class="thread-box awake">T3</div>working</div>
+        <div class="col"><div class="thread-box sleeping">T4</div>sleeping</div>
+      </div>
+      <p style="text-align:center">A MySQL request: 1ms network + <b>5–10ms disk read</b> + 1ms network = ~10ms total. Actual CPU work: 0.002ms (0.02%). Threads sleep <b>99.98%</b> of the time — that's why you need 500 threads for 500 concurrent requests.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Redis Has No Disk</h1>
+    <h2>The Solution — Pure RAM</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon small">R</div>hash table</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="stat" style="font-size:22px">100ns</div>GET lookup</div>
+      </div>
+      <p style="text-align:center">RAM access: <b>100 nanoseconds</b>. Disk access: <b>5,000,000 nanoseconds</b> (5ms). Redis is <b>100,000× faster per operation</b> — there's nothing to sleep on, so one thread is enough.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>epoll — One Thread, 10,000 Sockets</h1>
+    <h2>The Secret Weapon</h2>
+    <div class="body">
+      <div class="socket-grid">
+        <span class="socket-dot"></span><span class="socket-dot"></span><span class="socket-dot ready"></span><span class="socket-dot"></span>
+        <span class="socket-dot"></span><span class="socket-dot ready"></span><span class="socket-dot"></span><span class="socket-dot"></span>
+        <span class="socket-dot"></span><span class="socket-dot"></span><span class="socket-dot"></span><span class="socket-dot ready"></span>
+      </div>
+      <p style="text-align:center">One thread calls <b>epoll_wait()</b> — OS blocks until ANY socket has data, then returns the ready list in one wake-up. No thread-per-connection, no context switches, no 10GB of RAM for 10,000 thread stacks.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>More Threads Would Hurt Redis</h1>
+    <h2>Trap — Mutex Overhead &gt; The Work Itself</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="lock-icon"><div class="shackle"></div><div class="body"></div></div>lock: 50ns</div>
+        <div class="col" style="justify-content:center"><div class="server-box busy"><span></span><span></span><span></span></div>SET: 100ns</div>
+      </div>
+      <p style="text-align:center">Single-thread: <b>100ns work + 0ns lock = 100ns/op</b>. Multi-thread: <b>100ns + 50ns lock = 150ns/op — 50% SLOWER</b>. Amdahl's Law: 0% of command execution is parallelizable.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Why INCR Never Races</h1>
+    <h2>page_views = 99 → ?</h2>
+    <div class="body">
+      <p><span class="x-mark">✕</span> Two threads: A reads 99, B reads 99 (before A writes), A writes 100, B writes 100 — <b>lost an increment</b>, should be 101.</p>
+      <p><span class="check-mark">✓</span> Single thread: reads 99 → writes 100 → next INCR reads 100 → writes 101. Correct, every time, <b>zero locks</b>. This is why INCR/SETNX/ZADD are atomic by default.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Redis 6: I/O Threads, Not Execution Threads</h1>
+    <h2>What's Actually Multi-Threaded</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box busy"><span></span><span></span><span></span></div>I/O read/write</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="redis-icon small">R</div>main: execute</div>
+      </div>
+      <p style="text-align:center">Before Redis 6, socket I/O ate <b>30%</b> of the thread at 1M ops/sec. Redis 6 added optional <code>io-threads</code> for reading/writing raw bytes — <b>command execution stays single-threaded</b>. Background threads (BGSAVE fork, AOF rewrite, lazy-free UNLINK) never touch the main hash table either.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Threading Model by Version</h1>
+    <h2>Technology Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Version</th><th>Threading model</th></tr>
+        <tr><td>Redis 1.0–5.x</td><td>Pure single-threaded I/O + execution. Background threads for disk only.</td></tr>
+        <tr><td>Redis 6.0 (2020)</td><td>Optional I/O threads for socket read/write. Execution still single-threaded.</td></tr>
+        <tr><td>Redis 7.0 (2022)</td><td>Improved lazy-free threading, better cluster bus. Core model unchanged.</td></tr>
+      </table>
+      <p style="text-align:center">Single instance: <b>100K–200K ops/sec</b>. Pipelined: <b>500K–1M ops/sec</b>. Redis Cluster (6 nodes): <b>600K–1.2M ops/sec</b>, zero cross-node locking.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Need atomic counters/locks? → single-thread guarantees it free (INCR/SETNX). Socket I/O bottlenecked at 1M+ ops/sec? → enable <code>io-threads</code>. Need more raw throughput? → Redis Cluster, not more threads per node.</p>
+      <div class="quote-box">
+        "Redis is fast because 100ns RAM operations don't need threads — one event loop with epoll processes 10,000 connections without sleeping, and single-threaded execution eliminates lock overhead that would cost more than the operations themselves."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

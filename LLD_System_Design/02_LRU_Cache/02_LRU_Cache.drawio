@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- ROW 1 — INTERFACES  (y=40)                         -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- Cache<K,V> -->
+        <mxCell id="iface_Cache" value="&lt;&lt;interface&gt;&gt;&#xa;Cache&lt;K, V&gt;" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="180" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Cache_m1" value="+ get(K key): V" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Cache">
+          <mxGeometry x="0" y="40" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Cache_m2" value="+ put(K key, V value): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Cache">
+          <mxGeometry x="0" y="65" width="180" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- EvictionPolicy -->
+        <mxCell id="iface_EvictionPolicy" value="&lt;&lt;interface&gt;&gt;&#xa;EvictionPolicy" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="40" width="210" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_EvictionPolicy_m1" value="+ recordAccess(int key): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_EvictionPolicy">
+          <mxGeometry x="0" y="40" width="210" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_EvictionPolicy_m2" value="+ evict(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_EvictionPolicy">
+          <mxGeometry x="0" y="65" width="210" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- CacheStatistics -->
+        <mxCell id="iface_CacheStatistics" value="&lt;&lt;interface&gt;&gt;&#xa;CacheStatistics" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="510" y="40" width="200" height="115" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_CacheStatistics_m1" value="+ getHits(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_CacheStatistics">
+          <mxGeometry x="0" y="40" width="200" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_CacheStatistics_m2" value="+ getMisses(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_CacheStatistics">
+          <mxGeometry x="0" y="65" width="200" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_CacheStatistics_m3" value="+ getHitRate(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_CacheStatistics">
+          <mxGeometry x="0" y="90" width="200" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- Persistable -->
+        <mxCell id="iface_Persistable" value="&lt;&lt;interface&gt;&gt;&#xa;Persistable" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="750" y="40" width="180" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Persistable_m1" value="+ save(String path): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Persistable">
+          <mxGeometry x="0" y="40" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Persistable_m2" value="+ load(String path): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Persistable">
+          <mxGeometry x="0" y="65" width="180" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- Expirable -->
+        <mxCell id="iface_Expirable" value="&lt;&lt;interface&gt;&gt;&#xa;Expirable" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="970" y="40" width="210" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Expirable_m1" value="+ setTTL(int key, long ttl): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Expirable">
+          <mxGeometry x="0" y="40" width="210" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Expirable_m2" value="+ evictExpired(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Expirable">
+          <mxGeometry x="0" y="65" width="210" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- ROW 2 — CONCRETE CLASSES  (y=210)                  -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- Node<K,V> -->
+        <mxCell id="class_Node" value="Node&lt;K, V&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="210" width="210" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Node_f1" value="~ key: K" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Node">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Node_f2" value="~ value: V" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Node">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Node_f3" value="~ prev: Node&lt;K, V&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Node">
+          <mxGeometry x="0" y="74" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Node_f4" value="~ next: Node&lt;K, V&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Node">
+          <mxGeometry x="0" y="96" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Node_m1" value="+ Node(K key, V value)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Node">
+          <mxGeometry x="0" y="118" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUCache<K,V> -->
+        <mxCell id="class_LRUCache" value="LRUCache&lt;K, V&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="290" y="210" width="270" height="272" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_f1" value="- capacity: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_f2" value="- cache: Map&lt;K, Node&lt;K,V&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_f3" value="- head: Node&lt;K, V&gt;  (dummy MRU)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_f4" value="- tail: Node&lt;K, V&gt;  (dummy LRU)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_m1" value="+ get(K key): V  [O(1)]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="118" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_m2" value="+ put(K key, V value): void  [O(1)]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="140" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_m3" value="+ size(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="162" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_m4" value="+ clear(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="184" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_m5" value="- moveToHead(Node&lt;K,V&gt;): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="206" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_m6" value="- addToHead(Node&lt;K,V&gt;): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="228" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCache_m7" value="- removeNode(Node&lt;K,V&gt;): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCache">
+          <mxGeometry x="0" y="250" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUCacheWithTTL<K,V> -->
+        <mxCell id="class_LRUCacheWithTTL" value="LRUCacheWithTTL&lt;K, V&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="600" y="210" width="250" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithTTL_f1" value="- expirationMap: Map&lt;K, Long&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithTTL">
+          <mxGeometry x="0" y="30" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithTTL_f2" value="- ttlMillis: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithTTL">
+          <mxGeometry x="0" y="52" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithTTL_m1" value="+ get(K key): V" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithTTL">
+          <mxGeometry x="0" y="74" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithTTL_m2" value="+ put(K key, V value): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithTTL">
+          <mxGeometry x="0" y="96" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithTTL_m3" value="- isExpired(K key): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithTTL">
+          <mxGeometry x="0" y="118" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUCacheWithStats<K,V> -->
+        <mxCell id="class_LRUCacheWithStats" value="LRUCacheWithStats&lt;K, V&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="890" y="210" width="250" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithStats_f1" value="- hitCount: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithStats">
+          <mxGeometry x="0" y="30" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithStats_f2" value="- missCount: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithStats">
+          <mxGeometry x="0" y="52" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithStats_m1" value="+ get(K key): V" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithStats">
+          <mxGeometry x="0" y="74" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithStats_m2" value="+ getHitRate(): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithStats">
+          <mxGeometry x="0" y="96" width="250" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithStats_m3" value="+ printStats(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithStats">
+          <mxGeometry x="0" y="118" width="250" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CacheManager -->
+        <mxCell id="class_CacheManager" value="CacheManager" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1180" y="210" width="230" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CacheManager_f1" value="- cache: Cache&lt;K, V&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CacheManager">
+          <mxGeometry x="0" y="30" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CacheManager_m1" value="+ CacheManager(Cache&lt;K,V&gt; cache)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CacheManager">
+          <mxGeometry x="0" y="52" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CacheManager_m2" value="+ getData(int key): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CacheManager">
+          <mxGeometry x="0" y="74" width="230" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- ROW 3 — UTILITY / POLICY / VARIANT CLASSES (y=540) -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- LRUEvictionPolicy -->
+        <mxCell id="class_LRUEvictionPolicy" value="LRUEvictionPolicy" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="40" y="540" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUEvictionPolicy_f1" value="- orderMap: LinkedHashMap" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUEvictionPolicy">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUEvictionPolicy_m1" value="+ recordAccess(int key): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUEvictionPolicy">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUEvictionPolicy_m2" value="+ evict(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUEvictionPolicy">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- LFUEvictionPolicy -->
+        <mxCell id="class_LFUEvictionPolicy" value="LFUEvictionPolicy" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="300" y="540" width="240" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LFUEvictionPolicy_f1" value="- frequencyMap: Map&lt;Integer, Integer&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LFUEvictionPolicy">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LFUEvictionPolicy_m1" value="+ recordAccess(int key): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LFUEvictionPolicy">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LFUEvictionPolicy_m2" value="+ evict(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LFUEvictionPolicy">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- MRUEvictionPolicy -->
+        <mxCell id="class_MRUEvictionPolicy" value="MRUEvictionPolicy" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="580" y="540" width="220" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_MRUEvictionPolicy_m1" value="+ recordAccess(int key): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_MRUEvictionPolicy">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_MRUEvictionPolicy_m2" value="+ evict(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_MRUEvictionPolicy">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- SimpleLRUCache -->
+        <mxCell id="class_SimpleLRUCache" value="SimpleLRUCache" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="840" y="540" width="190" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- PersistentLRUCache -->
+        <mxCell id="class_PersistentLRUCache" value="PersistentLRUCache" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1070" y="540" width="200" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- FullFeaturedCache -->
+        <mxCell id="class_FullFeaturedCache" value="FullFeaturedCache" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="540" width="200" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- EDGES                                               -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- LRUCache implements Cache (dashed hollow) -->
+        <mxCell id="edge_LRUCache_Cache" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_LRUCache" target="iface_Cache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUCacheWithTTL extends LRUCache (solid hollow) -->
+        <mxCell id="edge_TTL_LRUCache" style="endArrow=block;endFill=0;" edge="1" source="class_LRUCacheWithTTL" target="class_LRUCache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUCacheWithStats extends LRUCache (solid hollow) -->
+        <mxCell id="edge_Stats_LRUCache" style="endArrow=block;endFill=0;" edge="1" source="class_LRUCacheWithStats" target="class_LRUCache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUCache uses Node (open arrow / has-a) -->
+        <mxCell id="edge_LRUCache_Node" value="has-a" style="endArrow=open;" edge="1" source="class_LRUCache" target="class_Node" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- CacheManager uses Cache interface -->
+        <mxCell id="edge_CacheManager_Cache" value="uses" style="endArrow=open;" edge="1" source="class_CacheManager" target="iface_Cache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUEvictionPolicy implements EvictionPolicy -->
+        <mxCell id="edge_LRUEvo_Evo" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_LRUEvictionPolicy" target="iface_EvictionPolicy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LFUEvictionPolicy implements EvictionPolicy -->
+        <mxCell id="edge_LFUEvo_Evo" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_LFUEvictionPolicy" target="iface_EvictionPolicy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- MRUEvictionPolicy implements EvictionPolicy -->
+        <mxCell id="edge_MRUEvo_Evo" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_MRUEvictionPolicy" target="iface_EvictionPolicy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- SimpleLRUCache implements Cache -->
+        <mxCell id="edge_Simple_Cache" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_SimpleLRUCache" target="iface_Cache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- PersistentLRUCache implements Cache -->
+        <mxCell id="edge_Persistent_Cache" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_PersistentLRUCache" target="iface_Cache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- PersistentLRUCache implements Persistable -->
+        <mxCell id="edge_Persistent_Persistable" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_PersistentLRUCache" target="iface_Persistable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- FullFeaturedCache implements Cache -->
+        <mxCell id="edge_Full_Cache" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_FullFeaturedCache" target="iface_Cache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- FullFeaturedCache implements CacheStatistics -->
+        <mxCell id="edge_Full_CacheStatistics" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_FullFeaturedCache" target="iface_CacheStatistics" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- FullFeaturedCache implements Persistable -->
+        <mxCell id="edge_Full_Persistable" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_FullFeaturedCache" target="iface_Persistable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- FullFeaturedCache implements Expirable -->
+        <mxCell id="edge_Full_Expirable" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_FullFeaturedCache" target="iface_Expirable" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- ROW 4 — VARIANT / ADVANCED CLASSES (y=700)         -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- LFUCache<K,V> — Phase 9 LFU variant follow-up -->
+        <mxCell id="class_LFUCache" value="LFUCache&lt;K, V&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="40" y="700" width="290" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LFUCache_f1" value="- capacity: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LFUCache">
+          <mxGeometry x="0" y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LFUCache_f2" value="- cache: Map&lt;K, Node&lt;K, V&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LFUCache">
+          <mxGeometry x="0" y="52" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LFUCache_f3" value="- frequencyMap: Map&lt;Integer, DoublyLinkedList&lt;K, V&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LFUCache">
+          <mxGeometry x="0" y="74" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LFUCache_f4" value="- minFrequency: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LFUCache">
+          <mxGeometry x="0" y="96" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUCacheWithSize<K,V> — Phase 7 size-based eviction variant -->
+        <mxCell id="class_LRUCacheWithSize" value="LRUCacheWithSize&lt;K, V&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="370" y="700" width="270" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithSize_f1" value="- maxSizeBytes: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithSize">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithSize_f2" value="- currentSize: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithSize">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LRUCacheWithSize_f3" value="- cache: Map&lt;K, CacheEntry&lt;K, V&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LRUCacheWithSize">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CacheEntry<K,V> — inner static class inside LRUCacheWithSize -->
+        <mxCell id="class_CacheEntry" value="CacheEntry&lt;K, V&gt;  &lt;&lt;inner static&gt;&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="370" y="840" width="270" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CacheEntry_f1" value="~ key: K" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CacheEntry">
+          <mxGeometry x="0" y="30" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CacheEntry_f2" value="~ value: V" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CacheEntry">
+          <mxGeometry x="0" y="52" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CacheEntry_f3" value="~ size: long" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CacheEntry">
+          <mxGeometry x="0" y="74" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CacheEntry_f4" value="~ prev: CacheEntry&lt;K, V&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CacheEntry">
+          <mxGeometry x="0" y="96" width="270" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CacheEntry_f5" value="~ next: CacheEntry&lt;K, V&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CacheEntry">
+          <mxGeometry x="0" y="118" width="270" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- DistributedLRUCache<K,V> — Phase 9 distributed variant -->
+        <mxCell id="class_DistLRU" value="DistributedLRUCache&lt;K, V&gt;" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="680" y="700" width="290" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DistLRU_f1" value="- ring: ConsistentHash&lt;String, LRUCache&lt;K, V&gt;&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DistLRU">
+          <mxGeometry x="0" y="30" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DistLRU_m1" value="+ get(K key): V" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DistLRU">
+          <mxGeometry x="0" y="52" width="290" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DistLRU_m2" value="+ put(K key, V value): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DistLRU">
+          <mxGeometry x="0" y="74" width="290" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CachePersistence — SRP good-example class -->
+        <mxCell id="class_CachePersistence" value="CachePersistence" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="700" width="240" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CachePersistence_m1" value="+ save(LRUCache cache): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CachePersistence">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CachePersistence_m2" value="+ load(): LRUCache" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CachePersistence">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- EDGES — new classes                                 -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- LFUCache implements Cache (dashed hollow) -->
+        <mxCell id="edge_LFU_Cache" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_LFUCache" target="iface_Cache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- LRUCacheWithSize has-a CacheEntry -->
+        <mxCell id="edge_LRUCacheWithSize_CacheEntry" value="has-a" style="endArrow=open;" edge="1" source="class_LRUCacheWithSize" target="class_CacheEntry" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- DistributedLRUCache uses LRUCache -->
+        <mxCell id="edge_DistLRU_LRUCache" value="uses" style="endArrow=open;" edge="1" source="class_DistLRU" target="class_LRUCache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- CachePersistence uses LRUCache (SRP separation) -->
+        <mxCell id="edge_CachePersistence_LRUCache" value="uses" style="endArrow=open;" edge="1" source="class_CachePersistence" target="class_LRUCache" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- LIFELINES  (width=140, 200px apart, leftmost x=60) -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <mxCell id="life_Client" value="Client" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="760" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_LRUCache" value="LRUCache&lt;K,V&gt;" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="760" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_HashMap" value="HashMap&lt;K,Node&gt;" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="760" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_DLL" value="DoublyLinkedList" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="760" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- SECTION LABELS                                      -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <mxCell id="label_get" value="GET Operation" style="text;fontStyle=1;fontSize=13;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="130" width="160" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="label_put" value="PUT Operation (new key + eviction)" style="text;fontStyle=1;fontSize=13;fillColor=#f8cecc;strokeColor=#b85450;rounded=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="400" width="290" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- GET OPERATION MESSAGES                              -->
+        <!-- lifeline centers: Client=130  LRUCache=330         -->
+        <!--                   HashMap=530 DLL=730              -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- 1. Client → LRUCache : get(key) -->
+        <mxCell id="msg_1" value="get(key)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="175" as="sourcePoint"/>
+            <mxPoint x="330" y="175" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 2. LRUCache → HashMap : cache.get(key) -->
+        <mxCell id="msg_2" value="cache.get(key)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="215" as="sourcePoint"/>
+            <mxPoint x="530" y="215" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 3. HashMap → LRUCache : node (or null) -->
+        <mxCell id="ret_1" value="node (or null)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="255" as="sourcePoint"/>
+            <mxPoint x="330" y="255" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 4. LRUCache → DLL : moveToHead(node)  [guard: node != null] -->
+        <mxCell id="msg_3" value="moveToHead(node)  [node != null]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="295" as="sourcePoint"/>
+            <mxPoint x="730" y="295" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 5. LRUCache → Client : return node.value -->
+        <mxCell id="ret_2" value="return node.value" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="345" as="sourcePoint"/>
+            <mxPoint x="130" y="345" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ═══════════════════════════════════════════════════ -->
+        <!-- PUT OPERATION MESSAGES                              -->
+        <!-- ═══════════════════════════════════════════════════ -->
+
+        <!-- 6. Client → LRUCache : put(key, value) -->
+        <mxCell id="msg_4" value="put(key, value)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="445" as="sourcePoint"/>
+            <mxPoint x="330" y="445" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 7. LRUCache → HashMap : cache.get(key) — check existence -->
+        <mxCell id="msg_5" value="cache.get(key)  [check exists]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="485" as="sourcePoint"/>
+            <mxPoint x="530" y="485" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 8. HashMap → LRUCache : null (key not found) -->
+        <mxCell id="ret_3" value="null  (new key)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="525" as="sourcePoint"/>
+            <mxPoint x="330" y="525" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 9. LRUCache → HashMap : cache.put(key, newNode) -->
+        <mxCell id="msg_6" value="cache.put(key, newNode)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="565" as="sourcePoint"/>
+            <mxPoint x="530" y="565" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 10. LRUCache → DLL : addToHead(newNode) -->
+        <mxCell id="msg_7" value="addToHead(newNode)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="605" as="sourcePoint"/>
+            <mxPoint x="730" y="605" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 11. LRUCache → DLL : removeTail()  [guard: cache.size() > capacity] -->
+        <mxCell id="msg_8" value="removeTail()  [cache.size() &gt; capacity]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="645" as="sourcePoint"/>
+            <mxPoint x="730" y="645" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 12. DLL → LRUCache : lruNode (evicted) -->
+        <mxCell id="ret_4" value="lruNode  (evicted)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="685" as="sourcePoint"/>
+            <mxPoint x="330" y="685" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 13. LRUCache → HashMap : cache.remove(lruNode.key) -->
+        <mxCell id="msg_9" value="cache.remove(lruNode.key)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="725" as="sourcePoint"/>
+            <mxPoint x="530" y="725" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- 14. LRUCache → Client : return -->
+        <mxCell id="ret_5" value="return" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="765" as="sourcePoint"/>
+            <mxPoint x="130" y="765" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,6 +1,8 @@
 # 📸 Memento Design Pattern - Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📗 Difficulty: Beginner** — ideal starting point for a new developer; read this before tackling applied system-design questions.
+
 ---
 
 **Interviewer**: "Explain the Memento Design Pattern."
@@ -152,6 +154,36 @@ They're COMPLEMENTARY patterns for the same PROBLEM DOMAIN (undo/history), chose
 ## 7. Technology Choices
 
 **You**: "**Java Serialization** (`Serializable` interface) combined with a version history table is often used to implement Memento for PERSISTENT undo across sessions. **Redux (JavaScript)** state management, despite not being OOP, uses a similar 'time-travel debugging' concept based on storing STATE SNAPSHOTS - conceptually related to Memento's ideas applied at an application-architecture level."
+
+---
+
+## 🔥 Real-World Production Issue: The Caretaker That Held References and Blocked Garbage Collection
+
+*In plain English: storing large, rarely-changing data in every single undo snapshot can quietly consume gigabytes of memory.*
+
+**The war story:**
+
+"A form-editing tool used Memento Pattern for 'draft auto-save + undo' (exactly this guide's example) — the `Caretaker` kept a history list of `Memento` snapshots. For a form with a large embedded image field, EACH Memento snapshot included a full copy of the image data, 'to keep the Originator/Memento boundary clean and simple' per the pattern's textbook description."
+
+```
+User edits a form with an embedded 8MB image attachment, making small
+text edits every few seconds (auto-save triggers createMemento() each time)
+
+Caretaker.history: [Memento(8MB), Memento(8MB), Memento(8MB), ... ]
+                     (each snapshot duplicates the FULL 8MB image,
+                      even though only a text field actually changed)
+
+After a 20-minute editing session: 240 snapshots x 8MB = ~1.9GB
+held in memory by the Caretaker, none of it ever released because
+the undo history was kept for the entire session -> browser tab
+(this was an Electron desktop app) crashed with out-of-memory
+```
+
+**Root cause:** Memento Pattern's textbook simplicity ("just snapshot everything the Originator wants to remember") doesn't automatically account for LARGE, RARELY-CHANGING fields (the image) being needlessly duplicated on EVERY snapshot, even when only a small, frequently-changing field (text) actually changed between snapshots.
+
+**The fix:** split the Memento into a small "frequently-changing state" snapshot (text fields, cheap to copy every few seconds) and a separate, reference-counted "rarely-changing large asset" reference (the image, stored ONCE and referenced by ID from each Memento rather than duplicated) — essentially applying a Flyweight-style sharing optimization on top of Memento for the large, immutable, rarely-changing portion of the state.
+
+**Lesson for a new developer:** "Memento Pattern's simplicity assumes snapshotting the FULL relevant state is cheap. When some part of that state is large and rarely changes relative to snapshot frequency, blindly copying it into every snapshot is a real memory/performance risk — recognize when to combine Memento with a sharing strategy (store large, immutable, unchanged parts once and reference them, rather than duplicating on every undo-history entry)."
 
 ---
 

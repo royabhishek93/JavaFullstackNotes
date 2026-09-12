@@ -146,7 +146,27 @@ When deps change:
 When component unmounts:
   Step 1: React runs cleanup from LAST effect
   Step 2: Component destroyed
+```
 
+```
+   React                    Effect (setup)             Cleanup (return fn)
+     │                            │                             │
+     │  [Note: Mount (symbol = TSLA)]                            │
+     │──run effect───────────────>│                             │
+     │                            │──create WebSocket #1 (self)  │
+     │                            │                             │
+     │  [Note: Re-render (symbol changes to AAPL)]               │
+     │──run cleanup from PREVIOUS effect (closes WS #1)─────────>│
+     │──run NEW effect (deps changed)────────────────────────────>
+     │                            │──create WebSocket #2 (self)  │
+     │                            │                             │
+     │  [Note: Unmount]                                          │
+     │──run cleanup from LAST effect (closes WS #2)──────────────>│
+```
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
+```
 COMMON MISTAKE — cleanup timing confusion:
 ─────────────────────────────────────────────────────────────────
 

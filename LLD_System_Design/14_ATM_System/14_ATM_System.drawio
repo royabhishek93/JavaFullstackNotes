@@ -1,0 +1,585 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== INTERFACES (y=40) ===== -->
+
+        <!-- ATMState interface -->
+        <mxCell id="iface_ATMState" value="&lt;&lt;interface&gt;&gt;&#xa;ATMState" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="20" y="40" width="230" height="165" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ATMState_m1" value="+ insertCard(atm, card)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_ATMState">
+          <mxGeometry x="0" y="40" width="230" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ATMState_m2" value="+ enterPIN(atm, pin)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_ATMState">
+          <mxGeometry x="0" y="65" width="230" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ATMState_m3" value="+ selectTransaction(atm, type, amount)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_ATMState">
+          <mxGeometry x="0" y="90" width="230" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ATMState_m4" value="+ ejectCard(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_ATMState">
+          <mxGeometry x="0" y="115" width="230" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ATMState_m5" value="+ sessionTimeout(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_ATMState">
+          <mxGeometry x="0" y="140" width="230" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- Transaction interface -->
+        <mxCell id="iface_Transaction" value="&lt;&lt;interface&gt;&gt;&#xa;Transaction" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="275" y="40" width="240" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Transaction_m1" value="+ execute(bankSvc, accountId, amount): TransactionResult" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Transaction">
+          <mxGeometry x="0" y="40" width="240" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_Transaction_m2" value="+ rollback(bankSvc, accountId, amount)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_Transaction">
+          <mxGeometry x="0" y="65" width="240" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- BankService interface -->
+        <mxCell id="iface_BankService" value="&lt;&lt;interface&gt;&gt;&#xa;BankService" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="540" y="40" width="250" height="190" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BankService_m1" value="+ verifyPIN(cardNum, pin): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BankService">
+          <mxGeometry x="0" y="40" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BankService_m2" value="+ getBalance(accountId): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BankService">
+          <mxGeometry x="0" y="65" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BankService_m3" value="+ reserveFunds(accountId, amt): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BankService">
+          <mxGeometry x="0" y="90" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BankService_m4" value="+ confirmTransaction(accountId, amt)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BankService">
+          <mxGeometry x="0" y="115" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BankService_m5" value="+ reverseTransaction(accountId, amt)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BankService">
+          <mxGeometry x="0" y="140" width="250" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_BankService_m6" value="+ blockCard(cardNumber)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_BankService">
+          <mxGeometry x="0" y="165" width="250" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CLASSES (y=280) ===== -->
+
+        <!-- ATM class (Context) -->
+        <mxCell id="class_ATM" value="ATM" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="280" width="240" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_f1" value="- currentState: ATMState" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_f2" value="- currentCard: Card" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_f3" value="- authenticatedAccountId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_f4" value="- cashDispenser: CashDispenser" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_f5" value="- bankService: BankService" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_f6" value="- lock: ReentrantLock" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_m1" value="+ insertCard(card)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_m2" value="+ enterPIN(pin)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_m3" value="+ withdraw(amount)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="206" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ATM_m4" value="+ executeWithdraw(amount)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ATM">
+          <mxGeometry x="0" y="228" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Card class -->
+        <mxCell id="class_Card" value="Card" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="280" y="280" width="220" height="206" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Card_f1" value="- cardNumber: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Card">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Card_f2" value="- maskedPAN: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Card">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Card_f3" value="- failedPINAttempts: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Card">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Card_f4" value="- blocked: boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Card">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Card_m1" value="+ recordFailedAttempt()" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Card">
+          <mxGeometry x="0" y="118" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Card_m2" value="+ isBlocked(): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Card">
+          <mxGeometry x="0" y="140" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Card_m3" value="+ getCardNumber(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Card">
+          <mxGeometry x="0" y="162" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Card_m4" value="+ getMaskedPAN(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Card">
+          <mxGeometry x="0" y="184" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- WithdrawTransaction class -->
+        <mxCell id="class_WithdrawTxn" value="WithdrawTransaction" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="520" y="280" width="240" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_WithdrawTxn_m1" value="+ execute(bankSvc, accountId, amount): TransactionResult" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_WithdrawTxn">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_WithdrawTxn_m2" value="+ rollback(bankSvc, accountId, amount)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_WithdrawTxn">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CashDispenser class -->
+        <mxCell id="class_CashDispenser" value="CashDispenser" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="780" y="280" width="210" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CashDispenser_f1" value="- cassetteLevels: Map&lt;Integer,Integer&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CashDispenser">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CashDispenser_m1" value="+ dispense(amount): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CashDispenser">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CashDispenser_m2" value="+ getCassetteLevel(): Map" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CashDispenser">
+          <mxGeometry x="0" y="74" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ReceiptPrinter class -->
+        <mxCell id="class_ReceiptPrinter" value="ReceiptPrinter" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1010" y="280" width="210" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ReceiptPrinter_m1" value="+ print(accountId, amount, type)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ReceiptPrinter">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ReceiptPrinter_m2" value="+ printBalance(accountId, balance)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ReceiptPrinter">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== STATE CLASSES (y=560) ===== -->
+
+        <!-- IdleState -->
+        <mxCell id="class_IdleState" value="IdleState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="20" y="560" width="185" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_IdleState_m1" value="+ insertCard(atm, card)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_IdleState">
+          <mxGeometry x="0" y="30" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_IdleState_m2" value="+ enterPIN(atm, pin)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_IdleState">
+          <mxGeometry x="0" y="52" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_IdleState_m3" value="+ selectTransaction(atm, type, amt)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_IdleState">
+          <mxGeometry x="0" y="74" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_IdleState_m4" value="+ ejectCard(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_IdleState">
+          <mxGeometry x="0" y="96" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_IdleState_m5" value="+ sessionTimeout(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_IdleState">
+          <mxGeometry x="0" y="118" width="185" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CardInsertedState -->
+        <mxCell id="class_CardInsertedState" value="CardInsertedState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="225" y="560" width="200" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardInsertedState_m1" value="+ insertCard(atm, card)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardInsertedState">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardInsertedState_m2" value="+ enterPIN(atm, pin)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardInsertedState">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardInsertedState_m3" value="+ selectTransaction(atm, type, amt)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardInsertedState">
+          <mxGeometry x="0" y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardInsertedState_m4" value="+ ejectCard(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardInsertedState">
+          <mxGeometry x="0" y="96" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardInsertedState_m5" value="+ sessionTimeout(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardInsertedState">
+          <mxGeometry x="0" y="118" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- VerifiedState -->
+        <mxCell id="class_VerifiedState" value="VerifiedState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="445" y="560" width="185" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_VerifiedState_m1" value="+ insertCard(atm, card)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_VerifiedState">
+          <mxGeometry x="0" y="30" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_VerifiedState_m2" value="+ enterPIN(atm, pin)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_VerifiedState">
+          <mxGeometry x="0" y="52" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_VerifiedState_m3" value="+ selectTransaction(atm, type, amt)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_VerifiedState">
+          <mxGeometry x="0" y="74" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_VerifiedState_m4" value="+ ejectCard(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_VerifiedState">
+          <mxGeometry x="0" y="96" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_VerifiedState_m5" value="+ sessionTimeout(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_VerifiedState">
+          <mxGeometry x="0" y="118" width="185" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ProcessingState -->
+        <mxCell id="class_ProcessingState" value="ProcessingState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="650" y="560" width="195" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ProcessingState_m1" value="+ insertCard(atm, card)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ProcessingState">
+          <mxGeometry x="0" y="30" width="195" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ProcessingState_m2" value="+ enterPIN(atm, pin)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ProcessingState">
+          <mxGeometry x="0" y="52" width="195" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ProcessingState_m3" value="+ selectTransaction(atm, type, amt)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ProcessingState">
+          <mxGeometry x="0" y="74" width="195" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ProcessingState_m4" value="+ ejectCard(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ProcessingState">
+          <mxGeometry x="0" y="96" width="195" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ProcessingState_m5" value="+ sessionTimeout(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ProcessingState">
+          <mxGeometry x="0" y="118" width="195" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CardBlockedState -->
+        <mxCell id="class_CardBlockedState" value="CardBlockedState" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="865" y="560" width="195" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardBlockedState_m1" value="+ insertCard(atm, card)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardBlockedState">
+          <mxGeometry x="0" y="30" width="195" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardBlockedState_m2" value="+ enterPIN(atm, pin)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardBlockedState">
+          <mxGeometry x="0" y="52" width="195" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardBlockedState_m3" value="+ selectTransaction(atm, type, amt)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardBlockedState">
+          <mxGeometry x="0" y="74" width="195" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardBlockedState_m4" value="+ ejectCard(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardBlockedState">
+          <mxGeometry x="0" y="96" width="195" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CardBlockedState_m5" value="+ sessionTimeout(atm)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CardBlockedState">
+          <mxGeometry x="0" y="118" width="195" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== ENUMS (y=740) ===== -->
+
+        <!-- TransactionResult enum -->
+        <mxCell id="enum_TxnResult" value="&lt;&lt;enum&gt;&gt;&#xa;TransactionResult" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="20" y="740" width="220" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_TxnResult_v1" value="SUCCESS" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_TxnResult">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_TxnResult_v2" value="INSUFFICIENT_FUNDS" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_TxnResult">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_TxnResult_v3" value="NETWORK_ERROR" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_TxnResult">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_TxnResult_v4" value="LIMIT_EXCEEDED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_TxnResult">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- TransactionType enum -->
+        <mxCell id="enum_TxnType" value="&lt;&lt;enum&gt;&gt;&#xa;TransactionType" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="260" y="740" width="200" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_TxnType_v1" value="WITHDRAW" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_TxnType">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_TxnType_v2" value="BALANCE_INQUIRY" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_TxnType">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_TxnType_v3" value="MINI_STATEMENT" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_TxnType">
+          <mxGeometry x="0" y="74" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== EDGES ===== -->
+
+        <!-- State implementations -->
+        <mxCell id="edge_1" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_IdleState" target="iface_ATMState" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_2" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_CardInsertedState" target="iface_ATMState" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_3" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_VerifiedState" target="iface_ATMState" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_4" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_ProcessingState" target="iface_ATMState" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_5" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_CardBlockedState" target="iface_ATMState" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WithdrawTransaction implements Transaction -->
+        <mxCell id="edge_6" value="implements" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_WithdrawTxn" target="iface_Transaction" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ATM uses -->
+        <mxCell id="edge_7" value="holds" style="endArrow=open;" edge="1" source="class_ATM" target="iface_ATMState" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_8" value="uses" style="endArrow=open;" edge="1" source="class_ATM" target="iface_BankService" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_9" value="holds" style="endArrow=open;" edge="1" source="class_ATM" target="class_CashDispenser" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_10" value="holds" style="endArrow=open;" edge="1" source="class_ATM" target="class_Card" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_11" value="holds" style="endArrow=open;" edge="1" source="class_ATM" target="class_ReceiptPrinter" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_12" value="creates" style="endArrow=open;" edge="1" source="class_ATM" target="class_WithdrawTxn" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- WithdrawTransaction uses BankService -->
+        <mxCell id="edge_13" value="uses" style="endArrow=open;" edge="1" source="class_WithdrawTxn" target="iface_BankService" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CORE ENTITY CLASSES ===== -->
+
+        <!-- Account class -->
+        <mxCell id="class_Account" value="Account" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1240" y="280" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Account_f1" value="- accountNumber: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Account">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Account_f2" value="- balance: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Account">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Account_f3" value="- accountType: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Account">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Session class -->
+        <mxCell id="class_Session" value="Session" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1480" y="280" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Session_f1" value="- card: Card" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Session">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Session_f2" value="- state: ATMState" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Session">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Session_f3" value="- timeoutSeconds: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Session">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ATM uses Account and Session -->
+        <mxCell id="edge_14" value="uses" style="endArrow=open;" edge="1" source="class_ATM" target="class_Account" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_15" value="uses" style="endArrow=open;" edge="1" source="class_ATM" target="class_Session" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== LIFELINES ===== -->
+        <!-- Centers: User=130, ATM=330, CardInsState=530, BankService=750, WithdrawTxn=960, CashDispenser=1160 -->
+
+        <mxCell id="life_User" value="User" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="770" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_ATM" value="ATM" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="770" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_CardInsState" value="CardInsertedState" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="770" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_BankService" value="BankService" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="680" y="50" width="140" height="770" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_WithdrawTxn" value="WithdrawTransaction" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="880" y="50" width="140" height="770" as="geometry"/>
+        </mxCell>
+        <mxCell id="life_CashDispenser" value="CashDispenser" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1080" y="50" width="140" height="770" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== MESSAGES ===== -->
+
+        <!-- msg_1: User -> ATM: insertCard(card) y=170 -->
+        <mxCell id="msg_1" value="1: insertCard(card)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="170" as="sourcePoint"/>
+            <mxPoint x="330" y="170" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_2: ATM -> CardInsertedState: setState + insertCard delegate y=210 -->
+        <mxCell id="msg_2" value="2: insertCard(atm, card) [setState CARD_INSERTED]" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="210" as="sourcePoint"/>
+            <mxPoint x="530" y="210" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: CardInsertedState -> ATM: y=240 -->
+        <mxCell id="ret_1" value="" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="240" as="sourcePoint"/>
+            <mxPoint x="330" y="240" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_3: User -> ATM: enterPIN y=290 -->
+        <mxCell id="msg_3" value="3: enterPIN(&quot;1234&quot;)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="290" as="sourcePoint"/>
+            <mxPoint x="330" y="290" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_4: ATM -> CardInsertedState: enterPIN y=330 -->
+        <mxCell id="msg_4" value="4: enterPIN(atm, &quot;1234&quot;)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="330" as="sourcePoint"/>
+            <mxPoint x="530" y="330" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_5: CardInsertedState -> BankService: verifyPIN y=370 -->
+        <mxCell id="msg_5" value="5: verifyPIN(cardNum, &quot;1234&quot;)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="370" as="sourcePoint"/>
+            <mxPoint x="750" y="370" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: BankService -> CardInsertedState: accountId y=400 -->
+        <mxCell id="ret_2" value="accountId" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="750" y="400" as="sourcePoint"/>
+            <mxPoint x="530" y="400" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_6: CardInsertedState -> ATM: setState(verifiedState) y=430 -->
+        <mxCell id="msg_6" value="6: setState(verifiedState)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="430" as="sourcePoint"/>
+            <mxPoint x="330" y="430" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_7: User -> ATM: withdraw(5000) y=480 -->
+        <mxCell id="msg_7" value="7: withdraw(5000)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="480" as="sourcePoint"/>
+            <mxPoint x="330" y="480" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_8: ATM creates WithdrawTransaction + calls execute y=520 -->
+        <mxCell id="msg_8" value="8: execute(bankSvc, accountId, 5000)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="520" as="sourcePoint"/>
+            <mxPoint x="950" y="520" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_9: WithdrawTxn -> BankService: getBalance y=560 -->
+        <mxCell id="msg_9" value="9: getBalance(accountId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="950" y="560" as="sourcePoint"/>
+            <mxPoint x="750" y="560" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: BankService -> WithdrawTxn: balance y=590 -->
+        <mxCell id="ret_3" value="balance=10000" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="750" y="590" as="sourcePoint"/>
+            <mxPoint x="950" y="590" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_10: WithdrawTxn -> BankService: reserveFunds y=630 -->
+        <mxCell id="msg_10" value="10: reserveFunds(accountId, 5000)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="950" y="630" as="sourcePoint"/>
+            <mxPoint x="750" y="630" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: BankService -> WithdrawTxn: txnRef y=660 -->
+        <mxCell id="ret_4" value="txnRef (reservation ok)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="750" y="660" as="sourcePoint"/>
+            <mxPoint x="950" y="660" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_5: WithdrawTxn -> ATM: SUCCESS y=690 -->
+        <mxCell id="ret_5" value="SUCCESS" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="950" y="690" as="sourcePoint"/>
+            <mxPoint x="330" y="690" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_11: ATM -> CashDispenser: dispense y=720 -->
+        <mxCell id="msg_11" value="11: dispense(5000)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="720" as="sourcePoint"/>
+            <mxPoint x="1150" y="720" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_6: CashDispenser -> ATM: true y=750 -->
+        <mxCell id="ret_6" value="true (dispensed)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1150" y="750" as="sourcePoint"/>
+            <mxPoint x="330" y="750" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_12: ATM -> BankService: confirmTransaction y=780 -->
+        <mxCell id="msg_12" value="12: confirmTransaction(accountId, 5000)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="780" as="sourcePoint"/>
+            <mxPoint x="750" y="780" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_7: BankService -> ATM: confirmed y=800 -->
+        <mxCell id="ret_7" value="confirmed" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="750" y="800" as="sourcePoint"/>
+            <mxPoint x="330" y="800" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_13: ATM -> User: "Please collect cash" y=820 (self note shown as return) -->
+        <mxCell id="msg_13" value="13: &quot;Please collect Rs.5000&quot;" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="820" as="sourcePoint"/>
+            <mxPoint x="130" y="820" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

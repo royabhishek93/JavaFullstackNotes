@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hybrid Fan-Out &amp; the Celebrity Problem — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .redis-icon {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; margin: 0 auto;
+  }
+  .server-box {
+    width: 54px; height: 46px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .server-box.hot { border-color: #e74c3c; }
+  .server-box.hot span { background: #e74c3c; }
+  .server-box.ok { border-color: #2ecc71; }
+  .server-box.ok span { background: #2ecc71; }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 28px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>The Celebrity Problem</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">200 seconds</div>
+      <p>To fan out ONE post from a 100M-follower celebrity, using the normal push strategy. Delays everyone else's feed too.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Fan-Out-on-Write Works... Until It Doesn't</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box ok"><span></span></div>12K followers<br>~50ms</div>
+        <div class="col"><div class="server-box hot"><span></span></div>100M followers<br>~42+ seconds</div>
+      </div>
+      <p style="text-align:center">Write cost scales LINEARLY with follower count. Fine for normal users, catastrophic for celebrities.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Hybrid Solution</h1>
+    <h2>Skip Fan-Out Above a Threshold</h2>
+    <div class="body">
+      <p>Classify accounts by follower count (100K-1M typical). Above it: post written ONCE to celebrity's own timeline — O(1), no fan-out job at all.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Read-Time Merge</h1>
+    <h2>Where the Cost Moves</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="redis-icon">R</div>Precomputed<br>feed</div>
+        <div class="arrow">+</div>
+        <div class="col"><div class="server-box"><span></span></div>2 celebrity<br>pulls</div>
+      </div>
+      <p style="text-align:center">Merge-sorted by timestamp. Any ONE user follows only a handful of celebrities — cost stays flat, ~15-40ms.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Real Cost by Follower Count</h1>
+    <h2>Why the Threshold Sits Where It Does</h2>
+    <div class="body">
+      <table>
+        <tr><th>Followers</th><th>Fan-Out Time</th></tr>
+        <tr><td>1,000</td><td>~0.4ms</td></tr>
+        <tr><td>100,000</td><td>~42ms (borderline)</td></tr>
+        <tr><td>1,000,000</td><td>~420ms</td></tr>
+        <tr><td>10,000,000</td><td>~4.2s (unacceptable)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Threshold Trap</h1>
+    <h2>Don't Copy Someone Else's Number</h2>
+    <div class="body">
+      <p>Too low → normal accounts pay unneeded read complexity. Too high → upper-mid-tier accounts still saturate the write path.</p>
+      <p><span class="check-mark">✓</span> Validate against YOUR fan-out fleet's measured p99 completion time.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Pipelined Writes Matter Too</h1>
+    <h2>Implementation Detail</h2>
+    <div class="body">
+      <p>Never one round-trip per follower. Pipelined Redis ZADD batch writes: 200K-400K ops/sec per shard — a 12K-follower fan-out finishes in well under 100ms.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Fan-Out Strategy Comparison</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Strategy</th><th>Write Cost</th><th>Read Cost</th></tr>
+        <tr><td>Pure push</td><td>O(followers)</td><td>&lt;5ms</td></tr>
+        <tr><td>Pure pull</td><td>O(1)</td><td>50-300ms+</td></tr>
+        <tr><td>Hybrid</td><td>O(1) for celebs</td><td>15-40ms</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Long-tail follower distribution with real celebrities? → Hybrid. All accounts roughly similar size? → Pure push is fine.</p>
+      <div class="quote-box">
+        "The key insight is that while there might be millions of celebrity FOLLOWERS in total, the number of celebrities any ONE follower follows is small and bounded, so the extra read-time cost per page-load stays flat regardless of how famous the celebrity is."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

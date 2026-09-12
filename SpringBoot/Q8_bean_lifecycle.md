@@ -16,6 +16,10 @@ Bean lifecycle controls:
 
 ## The Full Bean Lifecycle (in order)
 
+### Simplified Flow (ASCII)
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ```
 1. BeanDefinition loaded (classpath scan / @Bean / XML)
         ↓

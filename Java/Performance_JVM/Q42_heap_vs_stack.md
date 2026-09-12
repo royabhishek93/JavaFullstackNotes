@@ -10,7 +10,21 @@ Stack overflowed with recursive calls. Heap alloc failed. What's the difference?
 
 ---
 
-## 📌 Comparison
+## Memory Layout (ASCII)
+
+```
++------------------------------------+        +----------------------------------+
+| Thread Stack (per-thread, ~1MB)    |        | Heap (shared, GBs, GC-managed)   |
+|                                    |        |                                  |
+| method() frame                    |        |  ['hello' String object]        |
+|   x = 5 (primitive)               |--(s)-->|                                  |
+|   s -> ref             -----------+        |                                  |
+|   user -> ref          -----------+------->|  [User object]                   |
++------------------------------------+ (user) +----------------------------------+
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
+## �📌 Comparison
 
 | Aspect | Stack | Heap |
 |--------|-------|------|

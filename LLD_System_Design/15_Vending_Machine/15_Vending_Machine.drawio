@@ -1,0 +1,531 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== INTERFACES ===== -->
+
+        <!-- VendingState interface -->
+        <mxCell id="iface_vendingstate" value="&lt;&lt;interface&gt;&gt;&#xa;VendingState"
+          style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="340" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_vs_m1" value="+insertCoin(machine: VendingMachine, amount: int)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_vendingstate">
+          <mxGeometry x="0" y="40" width="340" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_vs_m2" value="+selectItem(machine: VendingMachine, code: String)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_vendingstate">
+          <mxGeometry x="0" y="65" width="340" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_vs_m3" value="+dispense(machine: VendingMachine)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_vendingstate">
+          <mxGeometry x="0" y="90" width="340" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_vs_m4" value="+cancel(machine: VendingMachine)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_vendingstate">
+          <mxGeometry x="0" y="115" width="340" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- PaymentStrategy interface -->
+        <mxCell id="iface_paymentstrategy" value="&lt;&lt;interface&gt;&gt;&#xa;PaymentStrategy"
+          style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="740" y="40" width="280" height="115" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ps_m1" value="+processPayment(amount: int): boolean"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_paymentstrategy">
+          <mxGeometry x="0" y="40" width="280" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ps_m2" value="+refund(amount: int): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_paymentstrategy">
+          <mxGeometry x="0" y="65" width="280" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_ps_m3" value="+getBalance(): int"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="iface_paymentstrategy">
+          <mxGeometry x="0" y="90" width="280" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== CLASSES ===== -->
+
+        <!-- VendingMachine (Context) -->
+        <mxCell id="class_vendingmachine" value="VendingMachine"
+          style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="260" width="340" height="252" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_f1" value="-currentState: VendingState"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="30" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_f2" value="-currentBalance: int"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="52" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_f3" value="-selectedItem: Item"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="74" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_f4" value="-inventory: Map&lt;String, Item&gt;"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="96" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_m1" value="+insertCoin(amount: int): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="118" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_m2" value="+selectItem(code: String): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="140" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_m3" value="+dispense(): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="162" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_m4" value="+cancel(): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="184" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_m5" value="+addItem(item: Item): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="206" width="340" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_vm_m6" value="~setState / ~addBalance / ~resetBalance [pkg]"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_vendingmachine">
+          <mxGeometry x="0" y="228" width="340" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Item -->
+        <mxCell id="class_item" value="Item"
+          style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;"
+          vertex="1" parent="1">
+          <mxGeometry x="460" y="260" width="240" height="228" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_f1" value="-code: String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_f2" value="-name: String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_f3" value="-price: int"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_f4" value="-quantity: int"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_m1" value="+isAvailable(): boolean"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_m2" value="+decrementQuantity(): void"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_m3" value="+getPrice(): int"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_m4" value="+getCode(): String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_item_m5" value="+getName(): String"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_item">
+          <mxGeometry x="0" y="206" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== UTILITY / STATE IMPLEMENTATIONS (green) ===== -->
+
+        <!-- IdleState -->
+        <mxCell id="class_idlestate" value="IdleState"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="40" y="570" width="200" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_idle_m1" value="+insertCoin(machine, amount)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_idlestate">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_idle_m2" value="IDLE &#x2192; HAS_MONEY"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_idlestate">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- HasMoneyState -->
+        <mxCell id="class_hasmoneystate" value="HasMoneyState"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="260" y="570" width="210" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_hasmoney_m1" value="+selectItem(machine, code)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_hasmoneystate">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_hasmoney_m2" value="HAS_MONEY &#x2192; DISPENSING"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_hasmoneystate">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- DispensingState -->
+        <mxCell id="class_dispensingstate" value="DispensingState"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="490" y="570" width="210" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_dispensing_m1" value="+dispense(machine)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_dispensingstate">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_dispensing_m2" value="DISPENSING &#x2192; IDLE"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_dispensingstate">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- OutOfStockState -->
+        <mxCell id="class_outofstockstate" value="OutOfStockState"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="720" y="570" width="210" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_outofstock_m1" value="+cancel(machine)"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_outofstockstate">
+          <mxGeometry x="0" y="30" width="210" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_outofstock_m2" value="OUT_OF_STOCK &#x2192; IDLE"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_outofstockstate">
+          <mxGeometry x="0" y="52" width="210" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CoinPayment -->
+        <mxCell id="class_coinpayment" value="CoinPayment"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="740" y="260" width="220" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_coin_m1" value="+processPayment(amount: int): boolean"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_coinpayment">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CardPayment -->
+        <mxCell id="class_cardpayment" value="CardPayment"
+          style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;"
+          vertex="1" parent="1">
+          <mxGeometry x="740" y="380" width="220" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_card_m1" value="+processPayment(amount: int): boolean"
+          style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;"
+          vertex="1" parent="class_cardpayment">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== EDGES ===== -->
+
+        <!-- IdleState implements VendingState -->
+        <mxCell id="edge_idle_impl" value=""
+          style="endArrow=block;endFill=0;dashed=1;" edge="1"
+          source="class_idlestate" target="iface_vendingstate" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- HasMoneyState implements VendingState -->
+        <mxCell id="edge_hasmoney_impl" value=""
+          style="endArrow=block;endFill=0;dashed=1;" edge="1"
+          source="class_hasmoneystate" target="iface_vendingstate" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- DispensingState implements VendingState -->
+        <mxCell id="edge_dispensing_impl" value=""
+          style="endArrow=block;endFill=0;dashed=1;" edge="1"
+          source="class_dispensingstate" target="iface_vendingstate" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- OutOfStockState implements VendingState -->
+        <mxCell id="edge_outofstock_impl" value=""
+          style="endArrow=block;endFill=0;dashed=1;" edge="1"
+          source="class_outofstockstate" target="iface_vendingstate" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- CoinPayment implements PaymentStrategy -->
+        <mxCell id="edge_coin_impl" value=""
+          style="endArrow=block;endFill=0;dashed=1;" edge="1"
+          source="class_coinpayment" target="iface_paymentstrategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- CardPayment implements PaymentStrategy -->
+        <mxCell id="edge_card_impl" value=""
+          style="endArrow=block;endFill=0;dashed=1;" edge="1"
+          source="class_cardpayment" target="iface_paymentstrategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- VendingMachine delegates to VendingState (State Pattern) -->
+        <mxCell id="edge_vm_uses_state" value="delegates to"
+          style="endArrow=open;" edge="1"
+          source="class_vendingmachine" target="iface_vendingstate" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- VendingMachine contains Item -->
+        <mxCell id="edge_vm_uses_item" value="contains"
+          style="endArrow=open;" edge="1"
+          source="class_vendingmachine" target="class_item" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- VendingMachine uses PaymentStrategy (Strategy Pattern) -->
+        <mxCell id="edge_vm_uses_payment" value="strategy"
+          style="endArrow=open;" edge="1"
+          source="class_vendingmachine" target="iface_paymentstrategy" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- ===== LIFELINES ===== -->
+        <!-- User: x=60, center_x=130 -->
+        <mxCell id="life_user" value="User"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+
+        <!-- VendingMachine: x=260, center_x=330 -->
+        <mxCell id="life_vm" value="VendingMachine"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+
+        <!-- IdleState: x=460, center_x=530 -->
+        <mxCell id="life_idle" value="IdleState"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+
+        <!-- HasMoneyState: x=660, center_x=730 -->
+        <mxCell id="life_hasmoney" value="HasMoneyState"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+
+        <!-- DispensingState: x=860, center_x=930 -->
+        <mxCell id="life_dispensing" value="DispensingState"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+
+        <!-- Item: x=1060, center_x=1130 -->
+        <mxCell id="life_item" value="Item"
+          style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;"
+          vertex="1" parent="1">
+          <mxGeometry x="1060" y="50" width="140" height="550" as="geometry"/>
+        </mxCell>
+
+        <!-- ===== MESSAGES ===== -->
+
+        <!-- msg_1: User -> VendingMachine: insertCoin(10) -->
+        <mxCell id="msg_1" value="insertCoin(10)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="130" as="sourcePoint"/>
+            <mxPoint x="330" y="130" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_2: VendingMachine -> IdleState: insertCoin(machine, 10) -->
+        <mxCell id="msg_2" value="insertCoin(machine, 10)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="158" as="sourcePoint"/>
+            <mxPoint x="530" y="158" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: IdleState -> VM: addBalance(10), setState(HasMoney) -->
+        <mxCell id="ret_1" value="addBalance(10), setState(HasMoneyState)"
+          style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="186" as="sourcePoint"/>
+            <mxPoint x="330" y="186" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_3: User -> VM: insertCoin(10) [2nd coin — stays in HasMoney] -->
+        <mxCell id="msg_3" value="insertCoin(10)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="224" as="sourcePoint"/>
+            <mxPoint x="330" y="224" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_4: VM -> HasMoneyState: insertCoin(machine, 10) -->
+        <mxCell id="msg_4" value="insertCoin(machine, 10)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="252" as="sourcePoint"/>
+            <mxPoint x="730" y="252" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: HasMoney -> VM: balance = 20 -->
+        <mxCell id="ret_2" value="balance = 20"
+          style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="276" as="sourcePoint"/>
+            <mxPoint x="330" y="276" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_5: User -> VM: selectItem("A1") -->
+        <mxCell id="msg_5" value="selectItem(&quot;A1&quot;)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="316" as="sourcePoint"/>
+            <mxPoint x="330" y="316" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_6: VM -> HasMoneyState: selectItem(machine, "A1") -->
+        <mxCell id="msg_6" value="selectItem(machine, &quot;A1&quot;)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="344" as="sourcePoint"/>
+            <mxPoint x="730" y="344" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_7: HasMoney -> VM: getItem("A1") -->
+        <mxCell id="msg_7" value="getItem(&quot;A1&quot;)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="372" as="sourcePoint"/>
+            <mxPoint x="330" y="372" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: VM -> HasMoney: return Item -->
+        <mxCell id="ret_3" value=": Item"
+          style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="394" as="sourcePoint"/>
+            <mxPoint x="730" y="394" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_8: HasMoney -> VM: setState(DispensingState) -->
+        <mxCell id="msg_8" value="setState(DispensingState)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="422" as="sourcePoint"/>
+            <mxPoint x="330" y="422" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_9: HasMoney -> VM: dispense() [auto-trigger after selection] -->
+        <mxCell id="msg_9" value="dispense() [auto-trigger]"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="450" as="sourcePoint"/>
+            <mxPoint x="330" y="450" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_10: VM -> DispensingState: dispense(machine) -->
+        <mxCell id="msg_10" value="dispense(machine)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="478" as="sourcePoint"/>
+            <mxPoint x="930" y="478" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_11: DispensingState -> Item: decrementQuantity() -->
+        <mxCell id="msg_11" value="decrementQuantity()"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="506" as="sourcePoint"/>
+            <mxPoint x="1130" y="506" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_12: DispensingState -> VM: resetBalance(), setState(IdleState) -->
+        <mxCell id="msg_12" value="resetBalance(), setState(IdleState)"
+          style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="534" as="sourcePoint"/>
+            <mxPoint x="330" y="534" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: VM -> User: Dispensing done, change returned -->
+        <mxCell id="ret_4" value="Dispensing: Chips. Change returned."
+          style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="562" as="sourcePoint"/>
+            <mxPoint x="130" y="562" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

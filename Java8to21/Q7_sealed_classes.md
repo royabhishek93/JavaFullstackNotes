@@ -68,6 +68,15 @@ public final class BitcoinProcessor extends PaymentProcessor { }
 // public class EvilFakeProcessor extends PaymentProcessor { }
 ```
 
+```
+[sealed class PaymentProcessor permits CreditCardProcessor, BitcoinProcessor]
+        |--> [final class CreditCardProcessor]
+        '--> [final class BitcoinProcessor]
+
+[class EvilFakeProcessor] - - (COMPILE ERROR - not in permits list) - -> [PaymentProcessor]
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ## Key Rules
 
 ```java

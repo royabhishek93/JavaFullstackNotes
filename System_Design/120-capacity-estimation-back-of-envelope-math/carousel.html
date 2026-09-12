@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Capacity Estimation: Back-of-the-Envelope Math — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#22223a;
+    --panel2:#26264a;
+    --accent:#e94560;
+    --accent2:#0f9b8e;
+    --accent3:#f2c14e;
+    --accent4:#4e8cf2;
+    --text:#eaeaf2;
+    --muted:#9a9ab0;
+    --line:#3a3a5c;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;background:#0d0d1a;color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  }
+  .stage{
+    width:540px;height:540px;margin:24px auto;
+    position:relative;overflow:hidden;
+    border-radius:14px;
+    box-shadow:0 10px 40px rgba(0,0,0,.6);
+  }
+  .slide{
+    display:none;
+    width:540px;height:540px;
+    background:var(--bg);
+    padding:34px 36px 30px;
+    position:relative;
+  }
+  .slide.active{display:block;}
+  .kicker{
+    font-size:12px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--accent3);font-weight:700;margin-bottom:6px;
+  }
+  h1{
+    font-size:25px;line-height:1.25;margin:0 0 10px;color:var(--text);
+  }
+  h2{
+    font-size:19px;margin:0 0 12px;color:var(--text);
+  }
+  p, li{
+    font-size:14px;line-height:1.5;color:var(--muted);
+  }
+  .big-stat{
+    font-size:56px;font-weight:800;color:var(--accent);
+    line-height:1;margin:14px 0 4px;
+  }
+  .stat-label{font-size:13px;color:var(--muted);}
+  .footer-badge{
+    position:absolute;bottom:16px;left:36px;right:36px;
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:11px;color:var(--muted);
+  }
+  .counter{
+    font-weight:700;color:var(--accent3);
+  }
+
+  /* DB box: rectangle with horizontal lines */
+  .db-box{
+    width:110px;height:70px;border:2px solid var(--accent4);
+    border-radius:6px;position:relative;background:var(--panel2);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .db-box .line{
+    height:2px;background:var(--accent4);margin:9px 12px 0;opacity:.55;
+  }
+  .db-label{text-align:center;font-size:11px;color:var(--muted);margin-top:6px;}
+
+  /* generic box */
+  .box{
+    border:2px solid var(--line);border-radius:8px;background:var(--panel);
+    padding:10px 12px;font-size:13px;color:var(--text);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .box.hl{border-color:var(--accent);}
+  .box.hl2{border-color:var(--accent2);}
+  .box.hl3{border-color:var(--accent3);}
+
+  .row{display:flex;align-items:center;}
+  .col{display:flex;flex-direction:column;}
+  .gap8{gap:8px;} .gap12{gap:12px;} .gap16{gap:16px;}
+
+  .arrow-right{font-size:22px;color:var(--accent);padding:0 8px;}
+  .arrow-down{font-size:22px;color:var(--accent);text-align:center;margin:2px 0;}
+
+  /* calc block for math steps */
+  .calc-block{
+    background:var(--panel);border-left:4px solid var(--accent2);
+    border-radius:6px;padding:8px 12px;margin:8px 0;font-size:13px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .calc-block .eq{color:var(--accent3);font-weight:700;}
+  .calc-block .res{color:var(--text);font-weight:700;}
+
+  /* bar chart */
+  .barchart{display:flex;align-items:flex-end;gap:18px;height:150px;margin:16px 0 6px;}
+  .bar-wrap{display:flex;flex-direction:column;align-items:center;gap:6px;width:70px;}
+  .bar{
+    width:44px;border-radius:4px 4px 0 0;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .bar-val{font-size:11px;color:var(--text);font-weight:700;}
+  .bar-name{font-size:10px;color:var(--muted);text-align:center;}
+
+  /* colored square legend */
+  .legend-item{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text);}
+  .sq{width:16px;height:16px;border-radius:3px;flex:none;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+
+  /* comparison cards */
+  .compare-wrap{display:flex;gap:14px;margin-top:10px;}
+  .compare-card{
+    flex:1;border-radius:10px;padding:14px;border:2px solid var(--line);background:var(--panel);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .compare-card h3{font-size:14px;margin:0 0 8px;}
+  .compare-card.left{border-color:var(--accent2);}
+  .compare-card.right{border-color:var(--accent);}
+  .compare-card ul{margin:0;padding-left:18px;}
+  .compare-card li{font-size:12px;margin-bottom:5px;}
+
+  table.cmp{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px;}
+  table.cmp th, table.cmp td{
+    border:1px solid var(--line);padding:6px 8px;text-align:left;color:var(--text);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  table.cmp th{background:var(--panel2);color:var(--accent3);font-size:11px;}
+  table.cmp td{background:var(--panel);}
+
+  .quote-box{
+    border:2px dashed var(--accent3);border-radius:10px;padding:16px;margin-top:14px;
+    background:var(--panel);font-style:italic;color:var(--text);font-size:14px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+
+  .tree-node{
+    border:2px solid var(--accent4);border-radius:8px;padding:8px 10px;font-size:12px;
+    background:var(--panel2);display:inline-block;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+
+  /* nav controls (hidden on print) */
+  .nav{
+    max-width:540px;margin:0 auto 30px;display:flex;justify-content:center;
+    align-items:center;gap:16px;font-family:inherit;
+  }
+  .nav button{
+    background:var(--accent);color:#fff;border:none;padding:8px 18px;
+    border-radius:6px;font-size:14px;cursor:pointer;font-weight:700;
+  }
+  .nav button:hover{background:#c93650;}
+  .nav .count{font-size:14px;color:var(--muted);}
+
+  @media print{
+    @page{ size:540px 540px; margin:0; }
+    body{background:#fff;}
+    .nav{display:none;}
+    .stage{margin:0;box-shadow:none;border-radius:0;}
+    .slide{display:block !important; page-break-after:always; box-shadow:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="stage" id="stage">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active" data-idx="1">
+    <div class="kicker">System Design · Capacity Estimation</div>
+    <h1>100 million users. Two posts a day. One shocking number.</h1>
+    <div class="big-stat">14.7 PB</div>
+    <div class="stat-label">of storage per year — from "just" 100M users posting twice a day with a 200KB photo</div>
+    <div class="row gap12" style="margin-top:26px;">
+      <div class="box hl col" style="flex:1;">
+        <div style="color:var(--accent3);font-weight:700;">200M posts/day</div>
+        <div>× 201 KB avg size</div>
+      </div>
+      <div class="arrow-right">→</div>
+      <div class="box hl col" style="flex:1;">
+        <div style="color:var(--accent);font-weight:700;">40.2 TB/day</div>
+        <div>× 365 days</div>
+      </div>
+    </div>
+    <p style="margin-top:16px;">If you can't turn "100 million DAU" into this number before you pick a database, you've already lost the interview.</p>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">1 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide" data-idx="2">
+    <div class="kicker">The Problem</div>
+    <h1>Skipping the math means guessing your architecture</h1>
+    <div class="row" style="margin-top:20px;justify-content:space-between;">
+      <div class="col" style="align-items:center;">
+        <div class="box" style="width:140px;text-align:center;">"100M DAU"</div>
+        <div class="arrow-down">↓</div>
+        <div class="box hl" style="width:140px;text-align:center;color:var(--accent);">QPS = ???</div>
+        <div class="arrow-down">↓</div>
+        <div class="box" style="width:140px;text-align:center;border-color:var(--accent);">"We'll use Kafka + Cassandra"</div>
+      </div>
+      <div class="col" style="align-items:center;">
+        <div class="box" style="width:140px;text-align:center;">"100M DAU"</div>
+        <div class="arrow-down">↓</div>
+        <div class="box hl2" style="width:140px;text-align:center;color:var(--accent2);">avg → peak QPS</div>
+        <div class="arrow-down">↓</div>
+        <div class="box" style="width:140px;text-align:center;border-color:var(--accent2);">Right-sized design</div>
+      </div>
+    </div>
+    <p style="margin-top:18px;">A single Postgres instance handles ~10,000 read QPS all day. If your real peak is 500 QPS, you just proposed sharding for a problem you don't have. If it's 70,000 QPS, no amount of tuning saves one box.</p>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">2 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 3: THE FUNNEL -->
+  <div class="slide" data-idx="3">
+    <div class="kicker">The Solution — Step 1-3</div>
+    <h1>The Estimation Funnel: DAU → Peak QPS</h1>
+    <div class="calc-block"><span class="eq">100M DAU</span> × 2 posts/day → <span class="res">200M writes/day</span></div>
+    <div class="calc-block"><span class="eq">100M DAU</span> × 20 reads/day → <span class="res">2B reads/day</span></div>
+    <div class="calc-block"><span class="eq">200M writes</span> ÷ 86,400 sec → <span class="res">~2,315 avg write QPS</span></div>
+    <div class="calc-block"><span class="eq">2B reads</span> ÷ 86,400 sec → <span class="res">~23,150 avg read QPS</span></div>
+    <div class="calc-block" style="border-left-color:var(--accent);"><span class="eq">avg × 2-3x peak factor</span> → <span class="res" style="color:var(--accent);">~7,000 peak writes/s · ~70,000 peak reads/s</span></div>
+    <p style="margin-top:10px;">Peak QPS — not average — is what your architecture must survive. Traffic is never uniform across 24 hours.</p>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">3 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 4: STORAGE & BANDWIDTH -->
+  <div class="slide" data-idx="4">
+    <div class="kicker">The Solution — Step 4-5</div>
+    <h1>Storage & Bandwidth: per-event × count</h1>
+    <div class="barchart">
+      <div class="bar-wrap">
+        <div class="bar-val">40.2 TB</div>
+        <div class="bar" style="height:60px;background:var(--accent4);"></div>
+        <div class="bar-name">per day</div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-val">14.7 PB</div>
+        <div class="bar" style="height:130px;background:var(--accent);"></div>
+        <div class="bar-name">per year</div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-val">73 TB</div>
+        <div class="bar" style="height:40px;background:var(--accent3);"></div>
+        <div class="bar-name">metadata only /yr</div>
+      </div>
+      <div class="bar-wrap">
+        <div class="bar-val">14 GB/s</div>
+        <div class="bar" style="height:95px;background:var(--accent2);"></div>
+        <div class="bar-name">peak bandwidth</div>
+      </div>
+    </div>
+    <p>200M posts × 201KB ≈ 40.2 TB/day → 14.7 PB/year. Raw media never belongs in the primary DB — object storage is mandatory. 70,000 QPS × 201KB ≈ 14 GB/s → a CDN in front of media is not optional.</p>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">4 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 5: CACHE SIZING -->
+  <div class="slide" data-idx="5">
+    <div class="kicker">The Solution — Cache Hot-Set</div>
+    <h1>Does the "hot set" fit in memory?</h1>
+    <div class="row gap12" style="margin-top:18px;align-items:center;">
+      <div class="box hl3 col" style="text-align:center;">
+        <div style="font-weight:700;">20% of 100M</div>
+        <div>active/hour</div>
+        <div style="color:var(--accent3);font-weight:700;">= 20M users</div>
+      </div>
+      <div class="arrow-right">×</div>
+      <div class="box hl3 col" style="text-align:center;">
+        <div style="font-weight:700;">2 KB</div>
+        <div>per-user cache</div>
+      </div>
+      <div class="arrow-right">=</div>
+      <div class="box hl col" style="text-align:center;">
+        <div style="font-weight:700;color:var(--accent);">40 GB</div>
+        <div>hot-set size</div>
+      </div>
+    </div>
+    <div class="row gap16" style="margin-top:24px;justify-content:center;">
+      <div class="col" style="align-items:center;">
+        <div class="db-box"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+        <div class="db-label">Redis Node ~8-16GB</div>
+      </div>
+      <div class="col" style="align-items:center;">
+        <div class="db-box"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+        <div class="db-label">Redis Node ~8-16GB</div>
+      </div>
+      <div class="col" style="align-items:center;">
+        <div class="db-box"><div class="line"></div><div class="line"></div><div class="line"></div></div>
+        <div class="db-label">Redis Node ~8-16GB</div>
+      </div>
+    </div>
+    <p style="margin-top:14px;">40GB fits comfortably in a modest Redis cluster — a handful of nodes. Not one box, not hundreds. One calculation answers "how many cache nodes."</p>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">5 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 6: LATENCY CHEAT SHEET -->
+  <div class="slide" data-idx="6">
+    <div class="kicker">Cheat Sheet</div>
+    <h1>Latency numbers every engineer should know</h1>
+    <div class="col gap8" style="margin-top:12px;">
+      <div class="row gap8"><div class="box" style="width:170px;">L1 cache ref</div><div class="bar" style="width:4px;height:10px;background:var(--accent2);"></div><div>~1 ns</div></div>
+      <div class="row gap8"><div class="box" style="width:170px;">Main memory ref</div><div class="bar" style="width:10px;height:10px;background:var(--accent2);"></div><div>~100 ns</div></div>
+      <div class="row gap8"><div class="box" style="width:170px;">SSD random read</div><div class="bar" style="width:30px;height:10px;background:var(--accent3);"></div><div>~100 μs</div></div>
+      <div class="row gap8"><div class="box" style="width:170px;">Same-DC round trip</div><div class="bar" style="width:60px;height:10px;background:var(--accent3);"></div><div>~0.5 ms</div></div>
+      <div class="row gap8"><div class="box" style="width:170px;">Redis GET</div><div class="bar" style="width:70px;height:10px;background:var(--accent3);"></div><div>~1 ms</div></div>
+      <div class="row gap8"><div class="box" style="width:170px;">Disk seek (spinning)</div><div class="bar" style="width:90px;height:10px;background:var(--accent4);"></div><div>~10 ms</div></div>
+      <div class="row gap8"><div class="box hl" style="width:170px;">Cross-region RTT</div><div class="bar" style="width:150px;height:10px;background:var(--accent);"></div><div>~100-150 ms</div></div>
+    </div>
+    <p style="margin-top:12px;">Memory is ~100,000x faster than a cross-region round trip. That's why you never put a synchronous cross-region call on the hot path.</p>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">6 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 7: READ:WRITE RATIO -->
+  <div class="slide" data-idx="7">
+    <div class="kicker">Deep Dive — The Ratio Trap</div>
+    <h1>Read:Write ratio changes your whole architecture</h1>
+    <div class="compare-wrap">
+      <div class="compare-card left">
+        <h3 style="color:var(--accent2);">Social Feed — 100:1 to 1000:1</h3>
+        <ul>
+          <li>Optimize for READ path</li>
+          <li>Cache + CDN</li>
+          <li>Read replicas</li>
+          <li>Precomputed feeds</li>
+        </ul>
+      </div>
+      <div class="compare-card right">
+        <h3 style="color:var(--accent);">Payment Ledger — ~1:1 or write-heavy</h3>
+        <ul>
+          <li>Optimize for WRITE correctness</li>
+          <li>Write-ahead log</li>
+          <li>Idempotency keys</li>
+          <li>Strong consistency</li>
+        </ul>
+      </div>
+    </div>
+    <p style="margin-top:14px;">Common trap: proposing heavy caching for a write-dominated system, or complex write-sharding for a read-dominated one that just needed replicas + cache.</p>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">7 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 8: SANITY CHECK + URL SHORTENER -->
+  <div class="slide" data-idx="8">
+    <div class="kicker">Sanity Check — Interview Walkthrough</div>
+    <h1>URL Shortener: 500M URLs/month, 100:1 read:write</h1>
+    <div class="calc-block"><span class="eq">500M ÷ 30 ÷ 86,400</span> → <span class="res">~193 avg writes/s</span></div>
+    <div class="calc-block"><span class="eq">× 2-3x peak</span> → <span class="res">~500-600 peak writes/s</span></div>
+    <div class="calc-block" style="border-left-color:var(--accent);"><span class="eq">× 100:1 ratio</span> → <span class="res" style="color:var(--accent);">~50,000-60,000 peak reads/s</span></div>
+    <div class="calc-block"><span class="eq">500 bytes/record × 500M</span> → <span class="res">~250 GB/mo (~3 TB/yr)</span></div>
+    <table class="cmp" style="margin-top:8px;">
+      <tr><th>Reference point</th><th>Single-node limit</th></tr>
+      <tr><td>Postgres/MySQL simple reads</td><td>~10,000+ QPS</td></tr>
+      <tr><td>Redis GET/SET</td><td>50,000-100,000+ ops/s</td></tr>
+    </table>
+    <p style="margin-top:8px;">600 writes/s fits one DB — no write sharding needed. 50-60K reads/s means cache is load-bearing, not optional.</p>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">8 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 9: TRAPS TABLE -->
+  <div class="slide" data-idx="9">
+    <div class="kicker">Traps & Anti-Patterns</div>
+    <h1>Where this goes wrong</h1>
+    <table class="cmp">
+      <tr><th>Trap</th><th>What happens</th></tr>
+      <tr><td>Skip estimation entirely</td><td>"Kafka + Cassandra" chosen without knowing 100 QPS vs 100,000 QPS</td></tr>
+      <tr><td>False precision</td><td>10 minutes deriving 3 sig-figs when order-of-magnitude was enough</td></tr>
+      <tr><td>Ratio backwards</td><td>Heavy caching on a write-dominated system, or sharding on a read-dominated one</td></tr>
+      <tr><td>No sanity check</td><td>Sharding at 500 QPS (over-engineered) or one box at 2M ops/s (falls over)</td></tr>
+      <tr><td>Media in primary DB</td><td>No object storage tier → DB bloats, backups and queries degrade</td></tr>
+      <tr><td>No CDN at scale</td><td>14 GB/s served from origin servers directly → not realistic</td></tr>
+    </table>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">9 / 10</span></div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + QUOTE -->
+  <div class="slide" data-idx="10">
+    <div class="kicker">Decision Framework</div>
+    <h1>Always estimate these six things</h1>
+    <div class="row gap8" style="flex-wrap:wrap;">
+      <div class="tree-node">Average QPS</div>
+      <div class="arrow-right">→</div>
+      <div class="tree-node">Peak QPS (×2-3)</div>
+      <div class="arrow-right">→</div>
+      <div class="tree-node">Storage /day /yr</div>
+    </div>
+    <div class="row gap8" style="flex-wrap:wrap;margin-top:10px;">
+      <div class="tree-node">Bandwidth</div>
+      <div class="arrow-right">→</div>
+      <div class="tree-node">Cache hot-set</div>
+      <div class="arrow-right">→</div>
+      <div class="tree-node">Read:Write ratio</div>
+    </div>
+    <div class="arrow-down" style="margin-top:10px;">↓</div>
+    <div class="tree-node" style="border-color:var(--accent);color:var(--accent3);">Sanity-check vs. ~10K DB QPS / ~50-100K Redis ops/s</div>
+    <div class="quote-box">"Round numbers, clearly stated assumptions, sanity-checked against a known reference point — not a spreadsheet."</div>
+    <div class="footer-badge"><span>Back-of-the-Envelope Math</span><span class="counter">10 / 10</span></div>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="changeSlide(-1)">‹ Prev</button>
+  <span class="count"><span id="curNum">1</span> / <span id="totalNum">10</span></span>
+  <button id="nextBtn" onclick="changeSlide(1)">Next ›</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var total = slides.length;
+  var current = 0;
+
+  function showSlide(idx){
+    if(idx < 0) idx = 0;
+    if(idx > total - 1) idx = total - 1;
+    current = idx;
+    slides.forEach(function(s, i){
+      s.classList.toggle('active', i === current);
+    });
+    document.getElementById('curNum').textContent = current + 1;
+    document.getElementById('totalNum').textContent = total;
+  }
+
+  function changeSlide(delta){
+    showSlide(current + delta);
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight'){ changeSlide(1); }
+    else if(e.key === 'ArrowLeft'){ changeSlide(-1); }
+  });
+
+  showSlide(0);
+</script>
+
+</body>
+</html>

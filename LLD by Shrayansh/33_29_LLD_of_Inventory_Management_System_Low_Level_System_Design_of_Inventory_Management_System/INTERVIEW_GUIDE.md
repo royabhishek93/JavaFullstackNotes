@@ -1,6 +1,8 @@
 # 📦 Inventory Management System - Low Level Design Interview Guide
 ## _15 YOE Architect-Level Conversational Script_
 
+**📕 Difficulty: Advanced** — concurrency, scale, or financial-correctness heavy; aim for this once you're comfortable with the Beginner/Intermediate guides.
+
 ---
 
 ## 📋 **Table of Contents**
@@ -357,6 +359,41 @@ if (inv.getAvailable() >= quantity) {           // CHECK
 ## 9. Technology Choices
 
 **You**: "**PostgreSQL** for strong consistency (inventory is money-adjacent, correctness > raw speed). **Redis** as a fast-fail pre-check layer (quick 'probably available' check before hitting DB) - NOT source of truth, just optimization to reduce DB load during flash sales."
+
+---
+
+## 🔥 Real-World Production Issue: The Reserve-Confirm-Release That Forgot the "Release"
+
+*In plain English: a stale-reservation cleanup job that checks the wrong timestamp can release items that are still actively being purchased.*
+
+**The war story:**
+
+"An e-commerce platform implemented the Reserve-Confirm-Release pattern this guide recommends (reserve stock at checkout start, confirm on payment success, release on payment failure/timeout/cart abandonment). The RESERVE and CONFIRM paths were well-tested. The RELEASE-on-abandonment path — triggered by a background job scanning for stale reservations — had a subtle bug that went unnoticed for months."
+
+```
+Background job (runs every 5 minutes):
+  SELECT * FROM reservations WHERE status='RESERVED' AND created_at < NOW() - INTERVAL '15 minutes'
+  -> release each one
+
+BUG: the query used created_at (when reservation was FIRST created)
+but some carts were legitimately updated/extended (user added another
+item, reservation record's created_at was NOT updated on that path,
+only a separate updated_at field was) -- so the job correctly found
+and released MANY reservations, but ALSO incorrectly released some
+active, in-progress carts whose reservation row was simply old,
+even though the user was actively still shopping
+
+Result: during a big sale, users would add an item to cart, take
+10+ minutes browsing (normal behavior), and find their reserved item
+SOLD OUT to someone else mid-checkout -- a wave of "item disappeared
+from my cart" complaints during peak traffic
+```
+
+**Root cause:** the release-worker's staleness check used the wrong timestamp field — a reservation's "age" should be measured from the LAST activity on it, not its original creation time, but the fix for this had been implemented inconsistently across two different code paths (initial reserve vs. cart-extend), so `created_at` silently drifted out of sync with actual reservation freshness.
+
+**The fix:** unified all reservation-touching code paths to update a single `last_activity_at` timestamp, used exclusively by the release-worker's staleness query; also added a grace-period extension API so the frontend can explicitly "heartbeat" an active checkout session to extend the reservation, rather than relying purely on a timestamp proxy for "is the user still active".
+
+**Lesson for a new developer:** "The Reserve-Confirm-Release pattern's correctness depends entirely on the RELEASE path's staleness logic being airtight — it's the least-tested path (nobody writes as many tests for 'the sad path where nothing happens for a while') but it's exactly where a subtle timestamp bug can silently oversell OR undersell inventory. Test the release/expiry path with the same rigor as the happy path."
 
 ---
 

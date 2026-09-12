@@ -13,6 +13,10 @@ Think of a circuit breaker like your home electrical breaker:
 - **OPEN** = breaker tripped, calls fail fast (no network attempt)
 - **HALF-OPEN** = testing if service recovered (let a few calls through)
 
+### State Diagram (ASCII)
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ```
      CLOSED ──────────────► OPEN
      (healthy)  failure      (tripped)

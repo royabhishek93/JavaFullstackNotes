@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cursor vs Offset Pagination — Slide Deck</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#16213e;
+    --panel2:#0f3460;
+    --accent:#9d4edd;
+    --good:#06d6a0;
+    --good-dark:#049c78;
+    --bad:#e63946;
+    --bad-dark:#a4222c;
+    --warn:#f77f00;
+    --db-color:#4cc9f0;
+    --text:#eaeaf5;
+    --muted:#a0a0c0;
+    --code-bg:#0c1524;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI', Helvetica, Arial, sans-serif;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .deck{position:relative; width:100%; min-height:100vh;}
+  .slide{
+    display:none;
+    width:100%; min-height:100vh;
+    padding:34px 56px 90px 56px;
+    flex-direction:column;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .slide.active{display:flex;}
+  .slide h1{
+    font-size:28px; margin:0 0 4px 0; color:#fff;
+    border-bottom:3px solid var(--accent); padding-bottom:10px;
+  }
+  .slide h2.sub{font-size:15px; color:var(--muted); margin:0 0 18px 0; font-weight:normal;}
+  .tag{
+    display:inline-block; font-size:11px; letter-spacing:1px; font-weight:700;
+    color:var(--bg); background:var(--accent); padding:3px 10px; border-radius:12px;
+    margin-bottom:10px; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .content{flex:1; display:flex; flex-direction:column; gap:16px; justify-content:center;}
+  .row{display:flex; gap:24px; align-items:flex-start; justify-content:center; flex-wrap:wrap;}
+  .col{flex:1; min-width:260px;}
+
+  /* ---------- panel / card ---------- */
+  .panel{
+    background:var(--panel); border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px; padding:16px 18px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .panel.bad-border{border:2px solid var(--bad);}
+  .panel.good-border{border:2px solid var(--good);}
+  .panel-title{font-weight:700; font-size:14px; margin-bottom:8px; color:#fff;}
+
+  /* ---------- code block ---------- */
+  .code{
+    background:var(--code-bg); border:1px solid rgba(255,255,255,0.08); border-radius:8px;
+    padding:10px 14px; font-family:'Courier New', monospace; font-size:12.5px;
+    color:#9be9a8; white-space:pre; overflow-x:auto; line-height:1.5;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .code .kw{color:#7cb7ff;}
+  .code .cm{color:#7a8595;}
+  .code .num{color:#f7c948;}
+
+  /* ---------- DB Cylinder ---------- */
+  .cylinder-wrap{display:flex; flex-direction:column; align-items:center;}
+  .cylinder{width:130px;}
+  .cyl-top{
+    height:22px; border-radius:50%; background:var(--db-color);
+    border:2px solid rgba(255,255,255,0.4);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .cyl-body{
+    height:64px; margin-top:-11px; background:var(--db-color); opacity:0.82;
+    border-left:2px solid rgba(255,255,255,0.4); border-right:2px solid rgba(255,255,255,0.4);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .cyl-bottom{
+    height:22px; margin-top:-11px; border-radius:50%; background:var(--db-color);
+    border:2px solid rgba(255,255,255,0.4);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .cyl-label{margin-top:8px; font-size:11.5px; color:var(--muted); text-align:center; max-width:150px;}
+
+  /* ---------- arrows ---------- */
+  .arrow-down{text-align:center; color:var(--accent); font-size:22px; line-height:1; margin:2px 0;}
+  .arrow-right{color:var(--accent); font-size:22px; padding:0 6px;}
+  .arrow-row{display:flex; align-items:center; justify-content:center; gap:6px;}
+  .arrow-label{font-size:11px; color:var(--muted);}
+
+  /* ---------- book shelf ---------- */
+  .shelf{
+    display:flex; align-items:flex-end; gap:3px; padding:10px 8px 6px 8px;
+    background:rgba(255,255,255,0.03); border-radius:6px; border:1px solid rgba(255,255,255,0.06);
+    overflow:hidden;
+  }
+  .book{
+    width:13px; border-radius:2px 2px 0 0;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .book.discarded{background:var(--bad-dark);}
+  .book.returned{background:var(--good);}
+  .book.neutral{background:#3d3d5c;}
+  .book.new{background:var(--warn);}
+  .book.dup{background:var(--bad); box-shadow:0 0 0 2px #fff2 inset;}
+  .book.seen{background:#4361ee;}
+  .shelf-caption{font-size:10.5px; text-align:center; color:var(--muted); margin-top:4px;}
+
+  /* ---------- bookmark ribbon ---------- */
+  .bookmark{
+    position:relative; width:14px; height:34px; background:var(--warn);
+    margin:0 2px; clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* ---------- scan scale bar ---------- */
+  .scanbar{display:flex; width:100%; height:34px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1);}
+  .scanbar .seg{display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:#fff;}
+  .scanbar .discard-seg{background:var(--bad-dark);}
+  .scanbar .return-seg{background:var(--good);}
+
+  /* ---------- stat callout ---------- */
+  .stat-callout{
+    background:linear-gradient(135deg, var(--panel2), var(--panel));
+    border:2px solid var(--bad); border-radius:10px; padding:14px 20px; text-align:center;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .stat-callout .big{font-size:26px; font-weight:800; color:var(--bad);}
+  .stat-callout .small{font-size:12px; color:var(--muted); margin-top:4px;}
+
+  /* ---------- server box ---------- */
+  .server{
+    width:54px; height:40px; background:var(--panel2); border:2px solid var(--accent);
+    border-radius:5px; position:relative; display:flex; flex-direction:column; justify-content:center; gap:3px; padding:0 6px;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .server .ln{height:3px; background:var(--accent); opacity:0.6; border-radius:1px;}
+  .server-grid{display:flex; flex-wrap:wrap; gap:5px; max-width:420px; justify-content:center;}
+
+  /* ---------- b-tree ---------- */
+  .btree{display:flex; flex-direction:column; align-items:center; gap:10px;}
+  .btree-row{display:flex; gap:10px;}
+  .btree-node{
+    background:var(--panel2); border:2px solid var(--db-color); border-radius:6px;
+    padding:6px 10px; font-size:11px; font-family:'Courier New',monospace; color:var(--text);
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .btree-node.hit{border-color:var(--good); color:var(--good); box-shadow:0 0 8px var(--good);}
+  .btree-node.walk{border-color:var(--good); background:rgba(6,214,160,0.15);}
+
+  /* ---------- table ---------- */
+  table.reftable{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.reftable th, table.reftable td{border:1px solid rgba(255,255,255,0.1); padding:8px 10px; text-align:left;}
+  table.reftable th{background:var(--panel2); color:#fff;}
+  table.reftable td.offcol{color:var(--bad-dark); color:#ff8a94;}
+  table.reftable td.curcol{color:var(--good);}
+  table.reftable tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+
+  /* ---------- checklist ---------- */
+  .checklist{list-style:none; padding:0; margin:0; font-size:13px; line-height:1.9;}
+  .checklist li{display:flex; align-items:flex-start; gap:8px;}
+  .mark{
+    flex:0 0 18px; height:18px; width:18px; border-radius:4px; margin-top:2px;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; color:#08111e;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .mark.yes{background:var(--good);}
+  .mark.no{background:var(--bad);}
+
+  /* ---------- example icons (css drawn) ---------- */
+  .example-card{
+    background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:10px;
+    padding:14px; width:200px; text-align:center;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  .icon{width:56px; height:44px; margin:0 auto 8px auto; position:relative;}
+  .icon-feed .bar{height:7px; background:var(--accent); border-radius:3px; margin-bottom:5px;}
+  .icon-feed .bar:nth-child(2){width:70%;}
+  .icon-feed .bar:nth-child(3){width:85%;}
+  .icon-cart{border:3px solid var(--warn); border-top:none; height:26px; width:44px; margin:10px auto 0 auto; border-radius:0 0 6px 6px; position:relative;}
+  .icon-cart::before, .icon-cart::after{content:""; position:absolute; bottom:-10px; width:10px; height:10px; border-radius:50%; background:var(--warn);}
+  .icon-cart::before{left:2px;} .icon-cart::after{right:2px;}
+  .icon-leader{display:flex; align-items:flex-end; gap:4px; height:44px; justify-content:center;}
+  .icon-leader .b{width:10px; background:var(--good);}
+  .icon-leader .b:nth-child(1){height:60%;} .icon-leader .b:nth-child(2){height:100%; background:var(--warn);} .icon-leader .b:nth-child(3){height:75%;}
+  .icon-play{width:0; height:0; border-top:14px solid transparent; border-bottom:14px solid transparent; border-left:22px solid var(--good); margin:8px auto;}
+
+  /* ---------- quote slide ---------- */
+  .quote-block{
+    background:var(--panel2); border-left:5px solid var(--accent); border-radius:8px;
+    padding:22px 26px; font-size:17px; font-style:italic; color:#fff; line-height:1.6;
+    -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:fixed; bottom:0; left:0; right:0; height:60px; background:#10101f;
+    display:flex; align-items:center; justify-content:center; gap:20px; border-top:1px solid rgba(255,255,255,0.1);
+    z-index:10;
+  }
+  .nav button{
+    background:var(--accent); color:#fff; border:none; padding:9px 20px; border-radius:6px;
+    font-size:14px; cursor:pointer; font-weight:600;
+  }
+  .nav button:disabled{background:#3d3d5c; cursor:default;}
+  .counter{font-size:14px; color:var(--muted); min-width:60px; text-align:center;}
+
+  small.footnote{color:var(--muted); font-size:11px;}
+
+  /* ---------- print ---------- */
+  @media print{
+    .nav{display:none;}
+    .slide{
+      display:flex !important; page-break-after:always; min-height:540px; width:540px;
+      padding:16px 20px 20px 20px; margin:0 auto;
+      -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    .slide h1{font-size:18px;}
+    .code{font-size:9.5px;}
+    body{background:var(--bg);}
+    @page{ size:540px 540px; margin:0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1 -->
+  <section class="slide active" id="s1">
+    <span class="tag">HOOK</span>
+    <h1>The Library With 1,000,000 Books</h1>
+    <h2 class="sub">Two librarians. Same request: "books 500,001 through 500,010."</h2>
+    <div class="content">
+      <div class="cylinder-wrap">
+        <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+        <div class="cyl-label">products / posts table — 1,000,000 rows, sorted by title</div>
+      </div>
+      <div class="row">
+        <div class="col panel bad-border">
+          <div class="panel-title" style="color:var(--bad-dark)">🄾 Offset Librarian</div>
+          <div class="shelf">
+            <div class="book discarded" style="height:30px;"></div>
+            <div class="book discarded" style="height:34px;"></div>
+            <div class="book discarded" style="height:26px;"></div>
+            <div class="book discarded" style="height:32px;"></div>
+            <div class="book discarded" style="height:28px;"></div>
+            <div class="book discarded" style="height:30px;"></div>
+            <div class="book discarded" style="height:34px;"></div>
+            <div class="book discarded" style="height:26px;"></div>
+            <div class="book discarded" style="height:32px;"></div>
+            <div class="book discarded" style="height:30px;"></div>
+            <div class="book returned" style="height:36px;"></div>
+            <div class="book returned" style="height:30px;"></div>
+            <div class="book returned" style="height:34px;"></div>
+          </div>
+          <div class="shelf-caption">Starts at book 1. Counts to 500,000. Discards them all. Picks next 10.</div>
+          <div class="arrow-row"><span class="arrow-label">Counted &amp; discarded: 500,000 books just to hand you 10.</span></div>
+        </div>
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">🄲 Cursor Librarian</div>
+          <div class="shelf">
+            <div class="book neutral" style="height:28px;"></div>
+            <div class="book neutral" style="height:30px;"></div>
+            <div class="bookmark"></div>
+            <div class="book returned" style="height:34px;"></div>
+            <div class="book returned" style="height:30px;"></div>
+            <div class="book returned" style="height:36px;"></div>
+          </div>
+          <div class="shelf-caption">Customer hands over a bookmark: "I left off here." Walk straight to it, grab next 10.</div>
+          <div class="arrow-row"><span class="arrow-label">Zero wasted work — direct walk to the bookmark.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 2 -->
+  <section class="slide" id="s2">
+    <span class="tag">THE PROBLEM</span>
+    <h1>Offset Pagination: The DB Scans What It Throws Away</h1>
+    <h2 class="sub">LIMIT 10 OFFSET 500000 → MySQL still has to walk past the first 500,000 rows.</h2>
+    <div class="content">
+      <div class="code"><span class="kw">SELECT</span> * <span class="kw">FROM</span> products
+<span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span> <span class="kw">OFFSET</span> <span class="num">500000</span>;</div>
+      <div class="row">
+        <div class="col">
+          <div class="panel-title">OFFSET 20 (page 3)</div>
+          <div class="scanbar">
+            <div class="seg discard-seg" style="flex:2;">20 discarded</div>
+            <div class="seg return-seg" style="flex:1;">10 returned</div>
+          </div>
+          <div class="shelf-caption">Rows scanned: 30 &nbsp;|&nbsp; Returned: 10 &nbsp;|&nbsp; Wasted: 20</div>
+        </div>
+        <div class="col">
+          <div class="panel-title">OFFSET 500,000 (deep page)</div>
+          <div class="scanbar">
+            <div class="seg discard-seg" style="flex:50000;">500,000 scanned &amp; discarded</div>
+            <div class="seg return-seg" style="flex:10;">10</div>
+          </div>
+          <div class="shelf-caption">Rows scanned: 500,010 &nbsp;|&nbsp; Returned: 10 &nbsp;|&nbsp; Wasted: 500,000</div>
+        </div>
+      </div>
+      <div class="row" style="align-items:center;">
+        <div class="server-grid">
+          <div class="server"><div class="ln"></div><div class="ln"></div><div class="ln"></div></div>
+          <div class="server"><div class="ln"></div><div class="ln"></div><div class="ln"></div></div>
+          <div class="server"><div class="ln"></div><div class="ln"></div><div class="ln"></div></div>
+          <div class="server"><div class="ln"></div><div class="ln"></div><div class="ln"></div></div>
+          <span style="font-size:20px; color:var(--muted);">×100 users</span>
+        </div>
+        <span class="arrow-right">→</span>
+        <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+      </div>
+      <div class="stat-callout">
+        <div class="big">50,000,000 rows scanned → 1,000 rows returned</div>
+        <div class="small">100 concurrent users at page=50000 · 0.002% of the work was useful · DB CPU pinned at 100%, latency 5–30s</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 3 -->
+  <section class="slide" id="s3">
+    <span class="tag">THE TRAP</span>
+    <h1>The Shifting-Data Duplicate Bug</h1>
+    <h2 class="sub">Between page 1 and page 2, 5 new posts get inserted at the top.</h2>
+    <div class="content">
+      <div class="panel">
+        <div class="panel-title">Page 1 request (OFFSET 0)</div>
+        <div class="shelf">
+          <div class="book seen" style="height:30px;"></div>
+          <div class="book seen" style="height:32px;"></div>
+          <div class="book seen" style="height:28px;"></div>
+          <div class="book seen" style="height:30px;"></div>
+          <div class="book seen" style="height:34px;"></div>
+          <div class="book seen" style="height:28px;"></div>
+          <div class="book seen" style="height:32px;"></div>
+          <div class="book seen" style="height:30px;"></div>
+          <div class="book seen" style="height:34px;"></div>
+          <div class="book seen" style="height:28px;"></div>
+        </div>
+        <div class="shelf-caption">User sees posts A – J (blue = already seen)</div>
+      </div>
+      <div class="arrow-down">▼ &nbsp;5 new posts inserted at the top&nbsp; ▼</div>
+      <div class="panel bad-border">
+        <div class="panel-title" style="color:var(--bad-dark)">Page 2 request (OFFSET 10) — after inserts</div>
+        <div class="shelf">
+          <div class="book new" style="height:30px;"></div>
+          <div class="book new" style="height:32px;"></div>
+          <div class="book new" style="height:28px;"></div>
+          <div class="book new" style="height:30px;"></div>
+          <div class="book new" style="height:34px;"></div>
+          <div class="book dup" style="height:30px;"></div>
+          <div class="book dup" style="height:32px;"></div>
+          <div class="book dup" style="height:28px;"></div>
+          <div class="book dup" style="height:30px;"></div>
+          <div class="book dup" style="height:34px;"></div>
+        </div>
+        <div class="shelf-caption">Orange = NEW1–NEW5 (new) &nbsp;|&nbsp; Red (pulsing border) = A–E <b>DUPLICATED</b> from page 1</div>
+      </div>
+      <div class="stat-callout">
+        <div class="big">OFFSET shifts with every insert</div>
+        <div class="small">The user's "page 2" now overlaps their "page 1" — same rows shown twice.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 4 -->
+  <section class="slide" id="s4">
+    <span class="tag">THE FIX — MECHANICS</span>
+    <h1>Cursor Pagination: Tuple Comparison + B-Tree Seek</h1>
+    <h2 class="sub">"Give me rows after this specific value" instead of "skip N rows."</h2>
+    <div class="content">
+      <div class="code"><span class="kw">SELECT</span> id, title, created_at <span class="kw">FROM</span> products
+<span class="kw">WHERE</span> (created_at, id) &lt; (<span class="num">'2024-01-15 10:30:00'</span>, <span class="num">4521</span>)
+<span class="kw">ORDER BY</span> created_at <span class="kw">DESC</span>, id <span class="kw">DESC</span>
+<span class="kw">LIMIT</span> <span class="num">10</span>; <span class="cm">-- tuple comparison, not a row-count skip</span></div>
+      <div class="row">
+        <div class="col">
+          <div class="btree">
+            <div class="btree-row"><div class="btree-node">root</div></div>
+            <div class="btree-row">
+              <div class="btree-node">…</div>
+              <div class="btree-node hit">2024-01-15<br>10:30:00 · id=4521</div>
+              <div class="btree-node">…</div>
+            </div>
+            <div class="btree-row">
+              <div class="btree-node walk">next 10</div>
+            </div>
+          </div>
+          <div class="shelf-caption">Step 1: B-tree lookup of the cursor value — <b>O(log N)</b></div>
+        </div>
+        <div class="col">
+          <div class="shelf">
+            <div class="book neutral" style="height:26px;"></div>
+            <div class="bookmark"></div>
+            <div class="book returned" style="height:30px;"></div>
+            <div class="book returned" style="height:32px;"></div>
+            <div class="book returned" style="height:28px;"></div>
+            <div class="book returned" style="height:34px;"></div>
+          </div>
+          <div class="shelf-caption">Step 2: walk forward K=10 entries in the index — <b>O(K)</b></div>
+        </div>
+      </div>
+      <div class="stat-callout" style="border-color:var(--good);">
+        <div class="big" style="color:var(--good);">Total cost: O(log N + K) ≈ 10 rows touched</div>
+        <div class="small">Page 1 and page 50,000 cost exactly the same.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 5 -->
+  <section class="slide" id="s5">
+    <span class="tag">PROOF</span>
+    <h1>No Duplicates, No Gaps</h1>
+    <h2 class="sub">Cursor = J. Anything newer than J can never leak into "after J".</h2>
+    <div class="content">
+      <div class="panel">
+        <div class="panel-title">Page 1 (cursor = null)</div>
+        <div class="shelf">
+          <div class="book seen" style="height:28px;"></div>
+          <div class="book seen" style="height:30px;"></div>
+          <div class="book seen" style="height:26px;"></div>
+          <div class="book seen" style="height:32px;"></div>
+          <div class="book seen" style="height:28px;"></div>
+          <div class="book seen" style="height:30px;"></div>
+          <div class="book seen" style="height:26px;"></div>
+          <div class="book seen" style="height:32px;"></div>
+          <div class="book seen" style="height:28px;"></div>
+          <div class="book seen" style="height:30px;"></div>
+          <div class="bookmark"></div>
+        </div>
+        <div class="shelf-caption">Returns A…J. Last row's key saved as <b>cursor = J</b> (bookmark).</div>
+      </div>
+      <div class="arrow-down">▼ &nbsp;5 new posts inserted (NEW1–NEW5, all newer than J)&nbsp; ▼</div>
+      <div class="panel good-border">
+        <div class="panel-title" style="color:var(--good)">Page 2 request: WHERE (created_at,id) &lt; (J.created_at, J.id)</div>
+        <div class="shelf">
+          <div class="book new" style="height:26px; opacity:0.35;"></div>
+          <div class="book new" style="height:28px; opacity:0.35;"></div>
+          <div class="book new" style="height:24px; opacity:0.35;"></div>
+          <div class="book new" style="height:26px; opacity:0.35;"></div>
+          <div class="book new" style="height:28px; opacity:0.35;"></div>
+          <span style="color:var(--bad); font-size:16px; align-self:center;">✕ excluded</span>
+          <div class="book returned" style="height:30px;"></div>
+          <div class="book returned" style="height:32px;"></div>
+          <div class="book returned" style="height:28px;"></div>
+          <div class="book returned" style="height:34px;"></div>
+        </div>
+        <div class="shelf-caption">NEW1–NEW5 are <b>newer</b> than J → filtered out by the WHERE clause. Only K, L, M, N… (after J) return.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 6 -->
+  <section class="slide" id="s6">
+    <span class="tag">REQUIRED INDEX</span>
+    <h1>Without This Index, Cursor Pagination Is Still a Full Scan</h1>
+    <div class="content">
+      <div class="code"><span class="kw">CREATE INDEX</span> idx_posts_cursor
+<span class="kw">ON</span> posts(created_at <span class="kw">DESC</span>, id <span class="kw">DESC</span>);</div>
+      <div class="btree">
+        <div class="btree-row"><div class="btree-node">idx_posts_cursor (B-tree)</div></div>
+        <div class="btree-row">
+          <div class="btree-node walk">created_at↓ 01-16</div>
+          <div class="btree-node walk">created_at↓ 01-15</div>
+          <div class="btree-node walk">created_at↓ 01-14</div>
+        </div>
+        <div class="shelf-caption">Sorted on (created_at DESC, id DESC) — exactly the order the cursor query needs.</div>
+      </div>
+      <div class="row">
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">EXPLAIN — with index ✓</div>
+          <table class="reftable">
+            <tr><th>field</th><th>value</th></tr>
+            <tr><td>type</td><td class="curcol">range</td></tr>
+            <tr><td>key</td><td class="curcol">idx_posts_cursor</td></tr>
+            <tr><td>Extra</td><td class="curcol">Using index condition</td></tr>
+          </table>
+        </div>
+        <div class="col panel bad-border">
+          <div class="panel-title" style="color:var(--bad-dark)">EXPLAIN — without index ✗</div>
+          <table class="reftable">
+            <tr><th>field</th><th>value</th></tr>
+            <tr><td>type</td><td class="offcol">ALL</td></tr>
+            <tr><td>key</td><td class="offcol">NULL</td></tr>
+            <tr><td>Extra</td><td class="offcol">Using filesort</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 7 -->
+  <section class="slide" id="s7">
+    <span class="tag">API CONTRACT</span>
+    <h1>What the Client Actually Sees</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col panel bad-border">
+          <div class="panel-title" style="color:var(--bad-dark)">Offset Pagination API</div>
+          <div class="code">GET /products?page=<span class="num">3</span>&amp;limit=<span class="num">10</span>
+
+{
+  <span class="cm">"data"</span>: [...],
+  <span class="cm">"total"</span>: <span class="num">1000000</span>,
+  <span class="cm">"page"</span>: <span class="num">3</span>,
+  <span class="cm">"totalPages"</span>: <span class="num">100000</span>
+}</div>
+        </div>
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Cursor Pagination API</div>
+          <div class="code">GET /products?limit=<span class="num">10</span>
+GET /products?cursor=eyJp...&amp;limit=<span class="num">10</span>
+
+{
+  <span class="cm">"data"</span>: [...],
+  <span class="cm">"nextCursor"</span>: <span class="cm">"eyJpZCI6NDUyMX0="</span>,
+  <span class="cm">"hasMore"</span>: <span class="num">true</span>
+}</div>
+        </div>
+      </div>
+      <div class="arrow-row"><span class="arrow-label">hasMore = false → nextCursor omitted → end of results.</span></div>
+    </div>
+  </section>
+
+  <!-- SLIDE 8 -->
+  <section class="slide" id="s8">
+    <span class="tag">WHEN TO USE WHICH</span>
+    <h1>Pick the Right Tool for the Access Pattern</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col panel good-border">
+          <div class="panel-title" style="color:var(--good)">Use Cursor Pagination</div>
+          <ul class="checklist">
+            <li><span class="mark yes">✓</span>Infinite scroll / feeds (social, notifications)</li>
+            <li><span class="mark yes">✓</span>Real-time data, frequent inserts</li>
+            <li><span class="mark yes">✓</span>Large datasets (millions of rows)</li>
+            <li><span class="mark yes">✓</span>Deep pagination (beyond page 100)</li>
+            <li><span class="mark yes">✓</span>Must avoid duplicates/gaps</li>
+          </ul>
+        </div>
+        <div class="col panel bad-border">
+          <div class="panel-title" style="color:var(--bad-dark)">Use Offset Pagination</div>
+          <ul class="checklist">
+            <li><span class="mark no">✕</span>Admin dashboard "go to page 47"</li>
+            <li><span class="mark no">✕</span>Static / rarely-changing data</li>
+            <li><span class="mark no">✕</span>Small datasets (&lt;10,000 rows)</li>
+            <li><span class="mark no">✕</span>Need total count / total pages</li>
+            <li><span class="mark no">✕</span>Random jump-to-page access</li>
+          </ul>
+        </div>
+      </div>
+      <div class="panel" style="border:2px solid var(--accent);">
+        <div class="panel-title">Hybrid Approach (most real products)</div>
+        <div class="row" style="justify-content:space-around;">
+          <div class="col" style="text-align:center;">
+            <div class="server"><div class="ln"></div><div class="ln"></div></div>
+            <div class="shelf-caption">Public feed API<br><b style="color:var(--good)">cursor-based</b></div>
+          </div>
+          <span class="arrow-right">→</span>
+          <div class="cylinder"><div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div></div>
+          <span class="arrow-right">←</span>
+          <div class="col" style="text-align:center;">
+            <div class="server"><div class="ln"></div><div class="ln"></div></div>
+            <div class="shelf-caption">Admin API<br><b style="color:var(--bad-dark)">offset, capped page ≤ 100</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SLIDE 9 -->
+  <section class="slide" id="s9">
+    <span class="tag">QUICK REFERENCE</span>
+    <h1>Offset vs Cursor — Side by Side</h1>
+    <div class="content">
+      <table class="reftable">
+        <tr><th></th><th>Offset Pagination</th><th>Cursor Pagination</th></tr>
+        <tr><td>SQL</td><td class="offcol">LIMIT N OFFSET M</td><td class="curcol">WHERE (col, id) &lt; X</td></tr>
+        <tr><td>DB scan cost</td><td class="offcol">O(offset + limit)</td><td class="curcol">O(log N + limit)</td></tr>
+        <tr><td>Page 50,000 perf</td><td class="offcol">Scans 500,000 rows</td><td class="curcol">Same as page 1</td></tr>
+        <tr><td>Handles new inserts</td><td class="offcol">Duplicates on page 2</td><td class="curcol">No duplicates</td></tr>
+        <tr><td>Jump to page N</td><td class="curcol">Yes</td><td class="offcol">No (forward only)</td></tr>
+        <tr><td>Total count</td><td class="curcol">Easy (SELECT COUNT)</td><td class="offcol">Expensive / skip it</td></tr>
+        <tr><td>Indexing needed</td><td>ORDER BY column</td><td>(sort_col, id) composite index</td></tr>
+        <tr><td>Best for</td><td>Admin, static data</td><td>Feeds, infinite scroll</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- SLIDE 10 -->
+  <section class="slide" id="s10">
+    <span class="tag">THE ONE-LINER</span>
+    <h1>Say This in the Interview</h1>
+    <div class="content">
+      <div class="quote-block">
+        "Offset pagination is O(N) — the DB must count N rows from the start every time; cursor
+        pagination is O(1) — the cursor <u>IS</u> the index position, so page 1 and page 10,000
+        cost exactly the same."
+      </div>
+      <div class="row">
+        <div class="example-card">
+          <div class="icon icon-feed"><div class="bar" style="width:100%"></div><div class="bar"></div><div class="bar"></div></div>
+          <b>Social Feed</b>
+          <div class="shelf-caption">Infinite scroll on (created_at, post_id) — O(1) per page.</div>
+        </div>
+        <div class="example-card">
+          <div class="icon icon-cart"></div>
+          <b>E-Commerce Orders</b>
+          <div class="shelf-caption">Order history cursor on (order_date, order_id) — page 250 = page 1.</div>
+        </div>
+        <div class="example-card">
+          <div class="icon icon-leader"><div class="b"></div><div class="b"></div><div class="b"></div></div>
+          <b>Leaderboard</b>
+          <div class="shelf-caption">Score cursor via ZREVRANGEBYSCORE — stays consistent as scores update.</div>
+        </div>
+        <div class="example-card">
+          <div class="icon icon-play"></div>
+          <b>OTT · 10M Videos</b>
+          <div class="shelf-caption">Cursor on (created_at, video_id) = 1 seek, 20 rows, zero wasted scans.</div>
+        </div>
+      </div>
+      <small class="footnote">Source: 017 — Cursor-Based Pagination vs Offset Pagination</small>
+    </div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn" onclick="go(-1)">◀ Prev</button>
+  <div class="counter"><span id="cur">1</span> / <span id="tot">10</span></div>
+  <button id="nextBtn" onclick="go(1)">Next ▶</button>
+</div>
+
+<script>
+  var slides = document.querySelectorAll('.slide');
+  var idx = 0;
+  document.getElementById('tot').textContent = slides.length;
+
+  function render(){
+    slides.forEach(function(s, i){ s.classList.toggle('active', i === idx); });
+    document.getElementById('cur').textContent = idx + 1;
+    document.getElementById('prevBtn').disabled = idx === 0;
+    document.getElementById('nextBtn').disabled = idx === slides.length - 1;
+  }
+
+  function go(delta){
+    var next = idx + delta;
+    if(next < 0 || next >= slides.length) return;
+    idx = next;
+    render();
+  }
+
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight') go(1);
+    if(e.key === 'ArrowLeft') go(-1);
+  });
+
+  render();
+</script>
+</body>
+</html>

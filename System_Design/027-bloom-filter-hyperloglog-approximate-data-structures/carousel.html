@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bloom Filter &amp; HyperLogLog — Approximate Data Structures — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c; --kafka: #231f20;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 12.5px; line-height: 1.5; overflow: hidden; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); text-align: center; }
+  .db-icon { width: 54px; height: 60px; position: relative; margin: 0 auto; }
+  .db-icon .db-top { width: 54px; height: 15px; border-radius: 50%; position: absolute; top: 0; }
+  .db-icon .db-body { width: 54px; height: 32px; position: absolute; top: 11px; opacity: 0.85; }
+  .db-icon .db-bottom { width: 54px; height: 15px; border-radius: 50%; position: absolute; bottom: 0; opacity: 0.7; }
+  .db-blue .db-top, .db-blue .db-body, .db-blue .db-bottom { background: var(--blue); }
+  .db-green .db-top, .db-green .db-body, .db-green .db-bottom { background: var(--green); }
+  .db-red .db-top, .db-red .db-body, .db-red .db-bottom { background: var(--redis); }
+  .db-yellow .db-top, .db-yellow .db-body, .db-yellow .db-bottom { background: var(--yellow); }
+  .server-box {
+    width: 54px; height: 46px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .kafka-box {
+    width: 70px; height: 46px; border: 2px solid var(--kafka); background: var(--kafka);
+    border-radius: 6px; padding: 8px; display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700; color: #fff; text-align: center; margin: 0 auto;
+  }
+  .event-box {
+    background: rgba(245, 166, 35, 0.15); border: 1px solid var(--accent);
+    padding: 6px 10px; border-radius: 4px; font-size: 11px; margin: 4px 0;
+    font-family: monospace; color: var(--accent);
+  }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; font-size: 18px; }
+  .check-mark { color: #2ecc71; font-weight: 700; font-size: 18px; }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); font-weight: 600; }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 12px; background: rgba(245,166,35,0.08); border-radius: 4px;
+    margin: 8px 0; line-height: 1.6;
+  }
+  .stat { font-size: 32px; font-weight: 800; color: var(--accent); text-align: center; margin: 16px 0; }
+  .stat-small { font-size: 14px; color: var(--muted); font-weight: 400; margin-top: 8px; }
+  code { background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  ul { margin: 8px 0; padding-left: 20px; }
+  li { margin: 4px 0; line-height: 1.4; }
+  .formula-box {
+    background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 10px; font-family: monospace; font-size: 10.5px; margin: 6px 0; color: var(--text);
+    line-height: 1.5;
+  }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+  .pill-blue { background: rgba(51,103,145,0.3); color: #7fb3d5; }
+  .pill-green { background: rgba(0,191,165,0.2); color: var(--green); }
+  .pill-red { background: rgba(216,44,32,0.25); color: #ff6b5b; }
+
+  /* Bit-array grid (Bloom filter visualization) */
+  .bit-grid { display: flex; gap: 4px; justify-content: center; margin: 10px 0; flex-wrap: wrap; }
+  .bit-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .bit-box {
+    width: 22px; height: 22px; border: 2px solid var(--muted); border-radius: 4px;
+    background: transparent;
+  }
+  .bit-box.set { background: var(--accent); border-color: var(--accent); }
+  .bit-idx { font-size: 8px; color: var(--muted); }
+  .bit-label { text-align: center; font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+
+  /* Bar comparison (memory) */
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; }
+  .bar-label { width: 96px; font-size: 10.5px; color: var(--muted); text-align: right; }
+  .bar-track { flex: 1; background: rgba(255,255,255,0.06); border-radius: 4px; height: 16px; position: relative; }
+  .bar-fill { height: 16px; border-radius: 4px; background: var(--accent); }
+  .bar-val { font-size: 10.5px; color: var(--text); margin-left: 8px; width: 70px; }
+
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active">
+    <h1>Bloom Filter &amp; HyperLogLog</h1>
+    <h2>The Hook — The Bouncer With a Sticky Note</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col">
+          <div class="db-icon db-red"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>
+          <b>Blacklist</b><br>10,000,000 names
+        </div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="bit-grid" style="gap:2px;">
+            <div class="bit-box set" style="width:12px;height:12px;"></div>
+            <div class="bit-box" style="width:12px;height:12px;"></div>
+            <div class="bit-box set" style="width:12px;height:12px;"></div>
+            <div class="bit-box" style="width:12px;height:12px;"></div>
+            <div class="bit-box" style="width:12px;height:12px;"></div>
+            <div class="bit-box set" style="width:12px;height:12px;"></div>
+          </div>
+          <b>Sticky note</b><br>100 checkboxes
+        </div>
+      </div>
+      <p style="text-align:center; font-size: 14px; margin: 10px 0;">You're a bouncer with a 10-million-name blacklist. You can't carry the list — so you carry a <b>sticky note with 100 checkboxes</b> instead.</p>
+      <p style="font-size: 12px;">3 hash "codes" from a name → check 3 boxes. All checked → <span class="pill pill-red">probably on list, deny</span>. Any unchecked → <span class="pill pill-green">definitely not, let in</span>.</p>
+      <div class="stat">10M → 100 <span class="stat-small">bits (compression, tunable error)</span></div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: BIT ARRAY MECHANICS -->
+  <div class="slide">
+    <h1>Bloom Filter Bit-Array Mechanics</h1>
+    <h2>Insert alice/bob, Query carol (false positive) / dave (definitely not)</h2>
+    <div class="body">
+      <div class="bit-grid">
+        <div class="bit-cell"><div class="bit-idx">0</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">1</div><div class="bit-box set"></div></div>
+        <div class="bit-cell"><div class="bit-idx">2</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">3</div><div class="bit-box set"></div></div>
+        <div class="bit-cell"><div class="bit-idx">4</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">5</div><div class="bit-box set"></div></div>
+        <div class="bit-cell"><div class="bit-idx">6</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">7</div><div class="bit-box set"></div></div>
+        <div class="bit-cell"><div class="bit-idx">8</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">9</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">10</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">11</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">12</div><div class="bit-box set"></div></div>
+        <div class="bit-cell"><div class="bit-idx">13</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">14</div><div class="bit-box"></div></div>
+        <div class="bit-cell"><div class="bit-idx">15</div><div class="bit-box"></div></div>
+      </div>
+      <p style="font-size: 10.5px; text-align:center; color: var(--muted);">alice → set 3,7,12 &nbsp;|&nbsp; bob → set 1,5,12(already)</p>
+      <p style="font-size: 11px;"><b>Query carol:</b> h→3,7,12 all <span class="check-mark">SET</span> → "probably in set" — <span class="pill pill-red">false positive</span> (never inserted!)</p>
+      <p style="font-size: 11px;"><b>Query dave:</b> h→2 <span class="x-mark">NOT SET</span> → STOP → "definitely not in set" <span class="check-mark">✓ 100% certain</span></p>
+      <p style="font-size: 10.5px; color: var(--muted);">No false negatives ever. False positives possible. No deletions (bit set = permanent).</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: FALSE POSITIVE RATE FORMULA -->
+  <div class="slide">
+    <h1>False Positive Rate</h1>
+    <h2>Tuning Bits-per-Element vs Accuracy</h2>
+    <div class="body">
+      <div class="formula-box">p = (1 - e^(-k·n/m))^k<br>k = hash fns · n = elements · m = bits<br>k_optimal = (m/n) × ln(2) ≈ 0.693×(m/n)</div>
+      <table style="font-size: 10px;">
+        <tr><th>n (elements)</th><th>Target FPP</th><th>m (bits)</th><th>k</th></tr>
+        <tr><td>1M</td><td>1%</td><td>≈1.2MB</td><td>7</td></tr>
+        <tr><td>1M</td><td>0.1%</td><td>≈1.8MB</td><td>10</td></tr>
+        <tr><td>5B (URL codes)</td><td>1%</td><td>≈6GB</td><td>7</td></tr>
+      </table>
+      <div class="row">
+        <div class="col"><div class="stat" style="font-size:22px; margin:4px 0;">6GB</div>Bloom filter (5B elements, 1% FPP)</div>
+        <div class="arrow">vs</div>
+        <div class="col"><div class="stat" style="font-size:22px; margin:4px 0; color:#e74c3c;">40GB</div>Exact set (5B × 8 bytes)</div>
+      </div>
+      <p style="font-size: 11px; text-align:center; color: var(--accent);">Still 6-7x smaller than exact storage, at 1% acceptable error.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: HYPERLOGLOG MECHANICS -->
+  <div class="slide">
+    <h1>HyperLogLog — The Election Exit Poll</h1>
+    <h2>Leading-Zeros Counting Estimates Cardinality</h2>
+    <div class="body">
+      <p style="font-size: 11.5px;">100M voters — instead of collecting every ID (800MB, hours), interview 10,000 random voters and extrapolate (10K records, minutes, ±0.5%).</p>
+      <div class="formula-box">stream: u1,u7,u3,u1,u2,u7,u4,u1,u3,u5<br>hash(u1)=0b1011... lz=0   hash(u7)=0b0100... lz=1<br>hash(u3)=0b0010... lz=2   hash(u4)=0b0001... lz=3 ← max<br>hash(u2)=0b1100... lz=0   hash(u5)=0b0110... lz=1</div>
+      <p style="font-size: 11.5px;">max_leading_zeros = 3 → estimate = 2³ × 0.72 ≈ 5.76 ≈ <b>6</b></p>
+      <p style="font-size: 11px; color: var(--muted);">Actual distinct: u1,u2,u3,u4,u5,u7 = 6 ✓ exact in this tiny example</p>
+      <p style="font-size: 10.5px;">Real HLL uses 2¹⁴=16,384 registers + harmonic mean to reduce variance.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: MEMORY COMPARISON -->
+  <div class="slide">
+    <h1>Memory Comparison</h1>
+    <h2>HashSet vs HyperLogLog vs Bloom Filter</h2>
+    <div class="body">
+      <p style="font-size: 11px; color: var(--muted); margin-bottom: 6px;">1 billion distinct user IDs (counting):</p>
+      <div class="bar-row"><div class="bar-label">HashSet (exact)</div><div class="bar-track"><div class="bar-fill" style="width:100%; background:#e74c3c;"></div></div><div class="bar-val">8 GB</div></div>
+      <div class="bar-row"><div class="bar-label">HyperLogLog</div><div class="bar-track"><div class="bar-fill" style="width:1%;"></div></div><div class="bar-val">12 KB</div></div>
+      <p style="font-size: 11px; color: var(--muted); margin: 10px 0 6px;">5 billion existing codes (membership, 1% FPP):</p>
+      <div class="bar-row"><div class="bar-label">Exact set</div><div class="bar-track"><div class="bar-fill" style="width:100%; background:#e74c3c;"></div></div><div class="bar-val">40 GB</div></div>
+      <div class="bar-row"><div class="bar-label">Bloom filter</div><div class="bar-track"><div class="bar-fill" style="width:15%;"></div></div><div class="bar-val">6 GB</div></div>
+      <p style="font-size: 11px; text-align:center; margin-top:10px; color: var(--accent);">HyperLogLog: 700,000× smaller for 0.81% error. Bloom filter: 6-7× smaller for 1% FPP.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: CASSANDRA SSTABLE -->
+  <div class="slide">
+    <h1>Bloom Filter in Apache Cassandra</h1>
+    <h2>Eliminating Unnecessary Disk Reads</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>Read: user_id=12345</div>
+        <div class="arrow">→</div>
+        <div class="col">
+          <div class="bit-grid" style="gap:2px;">
+            <div class="bit-box set" style="width:12px;height:12px;"></div>
+            <div class="bit-box" style="width:12px;height:12px;"></div>
+            <div class="bit-box" style="width:12px;height:12px;"></div>
+            <div class="bit-box set" style="width:12px;height:12px;"></div>
+          </div>
+          In-memory BF (per SSTable)
+        </div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="db-icon db-blue"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>SSTable (disk)</div>
+      </div>
+      <p style="font-size: 11px;"><span class="x-mark">✕</span> Definitely not present → skip SSTable entirely, <b>zero disk I/O</b><br>
+      <span class="check-mark">✓</span> Probably present → read disk to confirm (may waste 1 read)</p>
+      <p style="font-size: 11.5px; color: var(--accent); text-align:center;">70-90% of unnecessary SSTable reads eliminated.</p>
+      <div class="formula-box"># Cassandra table option<br>bloom_filter_fp_chance = 0.01   # 1% → larger BF, fewer false reads<br>bloom_filter_fp_chance = 0.1    # 10% → smaller BF, more false reads</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: REDIS COMMANDS -->
+  <div class="slide">
+    <h1>Redis Commands</h1>
+    <h2>RedisBloom + Native HyperLogLog</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="db-icon db-red"><div class="db-top"></div><div class="db-body"></div><div class="db-bottom"></div></div>Redis</div>
+        <div class="arrow">↔</div>
+        <div class="col"><div class="server-box"><span></span><span></span><span></span></div>App</div>
+      </div>
+      <p style="font-size: 11px; color: var(--muted); margin-top: 6px;"><b>Bloom Filter (RedisBloom):</b></p>
+      <div class="formula-box">BF.RESERVE short_codes 0.001 10000000000<br>BF.ADD short_codes "abc123"<br>BF.EXISTS short_codes "abc123"  # 0=absent, 1=probably present</div>
+      <p style="font-size: 11px; color: var(--muted);"><b>HyperLogLog (native):</b></p>
+      <div class="formula-box">PFADD   dau:2024-01-15 "user:123"   # O(1)<br>PFCOUNT dau:2024-01-15              # O(1) estimated count<br>PFMERGE wau:week1 dau:mon dau:tue dau:wed  # union, dedup</div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: DECISION TABLE -->
+  <div class="slide">
+    <h1>Bloom Filter vs HyperLogLog vs Exact</h1>
+    <h2>Decision Table</h2>
+    <div class="body">
+      <table style="font-size: 9.5px;">
+        <tr><th>Question</th><th>Answer</th><th>Structure</th><th>Memory</th></tr>
+        <tr><td>"Is X in this set?" (exact)</td><td>YES/NO guaranteed</td><td>HashSet/Redis SET</td><td>O(n)</td></tr>
+        <tr><td>"Is X DEFINITELY NOT in set?"</td><td>YES guaranteed, NO probabilistic</td><td><b>Bloom Filter</b></td><td>O(m) fixed</td></tr>
+        <tr><td>"How many distinct?" (exact)</td><td>Exact integer</td><td>HashSet</td><td>O(n)</td></tr>
+        <tr><td>"How many distinct?" (~0.81% OK)</td><td>Estimate</td><td><b>HyperLogLog</b></td><td>Always 12KB</td></tr>
+        <tr><td>"Have I seen X?" (dedup)</td><td>Tolerate rare FPs</td><td><b>Bloom Filter</b></td><td>O(m) fixed</td></tr>
+        <tr><td>"Frequency of X?"</td><td>Exact or approx</td><td>Count-Min Sketch</td><td>Varies</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: WHEN TO USE / NOT -->
+  <div class="slide">
+    <h1>When to Use / When NOT To</h1>
+    <h2>FPP Tolerance Drives the Decision</h2>
+    <div class="body">
+      <table style="font-size: 10px;">
+        <tr><th>Use case</th><th>FPP needed</th><th>Verdict</th></tr>
+        <tr><td>URL shortener code check</td><td>1% fine</td><td><span class="check-mark">✓</span> Bloom Filter</td></tr>
+        <tr><td>Spam / duplicate email filter</td><td>0.001% (1 in 100K)</td><td><span class="check-mark">✓</span> BF, tiny FPP</td></tr>
+        <tr><td>"Is this user admin?"</td><td>0% — security</td><td><span class="x-mark">✕</span> Never use BF</td></tr>
+        <tr><td>"What is user's balance?"</td><td>exact required</td><td><span class="x-mark">✕</span> Wrong data structure</td></tr>
+        <tr><td>Daily active users count</td><td>0.81% fine</td><td><span class="check-mark">✓</span> HyperLogLog</td></tr>
+        <tr><td>Frequent deletions needed</td><td>n/a</td><td><span class="x-mark">✕</span> BF can't delete bits</td></tr>
+      </table>
+      <p style="font-size: 10.5px; margin-top: 8px; color: var(--muted);">Rule: false positives must only cost <i>extra work</i>, never a correctness or security violation.</p>
+    </div>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + ARCHITECT QUOTE -->
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>The Architect's One-Liner</h2>
+    <div class="body">
+      <ul style="font-size: 11px; margin: 0 0 14px; padding-left: 18px; line-height: 1.6;">
+        <li><b>Need membership + false positives OK, false negatives never?</b> → Bloom Filter</li>
+        <li><b>Need distinct count, ~0.81% error acceptable?</b> → HyperLogLog</li>
+        <li><b>Need exact answer or exact stored value?</b> → HashSet / Redis SET</li>
+        <li><b>Frequent deletions or security-sensitive check?</b> → Never Bloom Filter</li>
+        <li><b>Streaming, can't pre-aggregate, millions+ distinct?</b> → HyperLogLog</li>
+      </ul>
+      <div class="quote-box">
+        "Bloom filters tell you what definitely isn't there — eliminating unnecessary lookups at scale — and HyperLogLog tells you approximately how many distinct things are there — both trading a tunable sliver of accuracy for orders-of-magnitude savings in memory."
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="next">Next →</button>
+</div>
+
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

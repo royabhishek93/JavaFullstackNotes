@@ -59,6 +59,42 @@ REAL APP: Twitter/X-style Feed
 ```
 
 ```
+┌───────────────────────────────────────────────────┐
+│ App ErrorBoundary (catch-all -> AppCrashPage)      │
+└─────────────────────────┬───────────────────────────┘
+                          │
+                          ▼
+┌───────────────────────────────────────────────────┐
+│ Route ErrorBoundary (/feed -> FeedError)           │
+└─────────────────────────┬───────────────────────────┘
+                          │
+                          ▼
+┌───────────────────────────────────────────────────┐
+│ Feed component                                     │
+└────────┬───────────────────┬───────────────┬─────────┘
+         │                   │               │
+         ▼                   ▼               ▼
+┌────────────────┐  ┌────────────────┐  ┌───────────────────────────────┐
+│ Tweet           │  │ Tweet           │  │ Tweet ErrorBoundary #247       │
+│ ErrorBoundary   │  │ ErrorBoundary   │  │ -> BrokenTweetPlaceholder      │
+│ #1 ->           │  │ #2 ->           │  │ (CRASHES)                      │
+│ BrokenTweet-    │  │ BrokenTweet-    │  │                                 │
+│ Placeholder     │  │ Placeholder     │  │                                 │
+└────────┬───────┘  └────────┬───────┘  └────────────────┬────────────────┘
+         │                    │                            ┆ (dashed edge)
+         ▼                    ▼                            ┆ "error caught HERE,
+┌────────────────┐  ┌────────────────┐                     ┆  does not propagate
+│ Tweet #1        │  │ Tweet #2        │                    ┆  past this boundary"
+│ (renders fine)  │  │ (renders fine)  │                     ▼
+└────────────────┘  └────────────────┘        ┌───────────────────────────────────┐
+                                               │ Only this tweet shows placeholder  │
+                                               │ - siblings unaffected               │
+                                               └───────────────────────────────────┘
+```
+
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
+```
 IMPLEMENTATION:
 
   class ErrorBoundary extends React.Component {

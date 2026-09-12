@@ -41,6 +41,16 @@ Client Requests --> Netty Event Loop Threads (small fixed pool)
              callback/signal resumes pipeline when data arrives
 ```
 
+### Event Loop Architecture (ASCII)
+
+```
+[20k concurrent clients] --> [Netty Event Loop (small fixed thread pool, e.g. 8 threads)]
+                                    |--(non-blocking dispatch)--> [Reactive pipeline (Mono/Flux)]
+                                    |<-(async I/O callback resumes)-|
+                                    '--> [Response streamed back]
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ---
 
 ## 3) The #1 Production Failure: Blocking Inside Reactive Pipeline

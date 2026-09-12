@@ -8,6 +8,31 @@
 
 This framing signals: you've shipped this in prod, you've been burned, you know the blast radius.
 
+## The 8 Pitfalls at a Glance
+
+```
+                          Scheduler Job Lifecycle
+         ┌──────────┬──────────┬──────────┬──────────┬──────────┬──────────┐
+         v            v            v            v            v            v            v            v
+        (1)          (2)          (3)          (4)          (5)          (6)          (7)          (8)
+  Timezone      Missing       Fetching     First-Level   Exception    N+1 SQL /    Duplicate    Multi-Instance
+  Misconfig-    @Transact-    Huge Data    Cache Leak    Handling     No           Execution    Same Job
+  uration       ional         (OOM from    (persistence  (no record/  Batching     (no row-     (no leader
+  (wrong wall-  (wrong        unbounded    context       batch/job    (per-row     level        election -
+  clock time,   boundary/     query)       never         safety net)  round        coordina-    ShedLock)
+  silent)       propagation)               released)                  trips)       tion)
+     |             |             |             |             |             |             |             |
+     v             v             v             v             v             v             v             v
+  Fix: sched-   Fix: short-  Fix: keyset  Fix: one     Fix: record  Fix:         Fix:         Fix: ShedLock
+  ule in UTC,   lived per-   pagination + tx per       status +     hibernate    idempotency  lockAtMostFor /
+  externalize   record/      heap-        batch in a   batch        batch_size + key + SELECT  lockAtLeastFor
+  timezone      batch        budgeted     separate     metric +     SEQUENCE     FOR UPDATE
+  config        transactions batch size   bean         dead-man's-  ids, or      SKIP LOCKED
+                                                        switch       bulk JPQL
+                                                        heartbeat
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ---
 
 ## Pitfall 1 — Timezone Misconfiguration

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Collaborative Filtering — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .redis-icon {
+    width: 46px; height: 46px; border-radius: 50%; background: var(--redis); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px; margin: 0 auto;
+  }
+  .server-box {
+    width: 54px; height: 46px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .arrow { font-size: 20px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 26px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Collaborative Filtering</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">5 quadrillion cells</div>
+      <p>500M users × 10M items. Netflix never asked about your taste — it just noticed thousands of others like you.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Sparse Matrix</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p>User-item interaction matrix: rows=users, cols=items, cells=preference signal. Almost entirely EMPTY — any user touches a tiny slice of the catalog.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>User-Based vs Item-Based</h1>
+    <h2>Two Ways to Read the Matrix</h2>
+    <div class="body">
+      <p><b>User-based:</b> find similar users, recommend what THEY liked.</p>
+      <p><b>Item-based:</b> find similar items via co-occurrence. Preferred at scale — catalog is more stable than the churning user base.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Matrix Factorization</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <p><code>R (users × items) ≈ U (users × k) · I (items × k)ᵀ</code></p>
+      <p>k ≈ 100 latent factors. Compresses 5 quadrillion cells → ~51 billion floats (~204GB).</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>ALS Training Loop</h1>
+    <h2>Alternating Least Squares</h2>
+    <div class="body">
+      <p>Fix item vectors → solve user vectors → fix user vectors → solve item vectors → repeat 10-20 iterations until convergence.</p>
+      <p>Distributed via Spark MLlib, 1-4 hours nightly.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Cold Start</h1>
+    <h2>The Trap</h2>
+    <div class="body">
+      <p>New user/item = completely BLANK row/column. Dot product is meaningless.</p>
+      <p><span class="check-mark">✓</span> Fallback: popularity ranking, onboarding genre picks, creator-audience proxy.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Offline Batch vs Online Serving</h1>
+    <h2>The Architecture Split</h2>
+    <div class="body">
+      <div class="row">
+        <div class="col"><div class="server-box"><span></span><span></span></div>ALS training<br>1-4 hrs</div>
+        <div class="arrow">→</div>
+        <div class="col"><div class="redis-icon">R</div>Cache lookup<br>&lt;100ms</div>
+      </div>
+      <p style="text-align:center">NEVER run training/full inference on the request path.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Strategy Comparison</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Cold-Start Safe?</th><th>Personalized?</th></tr>
+        <tr><td>Item-based CF</td><td>No</td><td>Yes</td></tr>
+        <tr><td>Content-based</td><td>Yes</td><td>Partial</td></tr>
+        <tr><td>Popularity</td><td>Yes</td><td>No</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Rich interaction history? → Item-based CF + ALS. Cold-start user/item? → Popularity/content-based fallback.</p>
+      <div class="quote-box">
+        "The critical architectural decision is splitting this into an offline batch layer and a fast online serving layer — you never want to run the heavy model computation on the request path."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

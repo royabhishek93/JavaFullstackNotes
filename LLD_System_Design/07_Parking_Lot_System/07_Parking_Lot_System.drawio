@@ -1,0 +1,609 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="Electron" version="21.0.0">
+  <diagram name="Class Diagram" id="page1">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- INTERFACES -->
+
+        <mxCell id="iface_PS" value="&lt;&lt;interface&gt;&gt;&#xa;ParkingStrategy" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="50" y="40" width="230" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_PS_m1" value="+ findSpot(v: Vehicle, levels: List): ParkingSpot" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_PS">
+          <mxGeometry x="0" y="40" width="230" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_PrS" value="&lt;&lt;interface&gt;&gt;&#xa;PricingStrategy" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="330" y="40" width="210" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_PrS_m1" value="+ calculateFee(ticket: Ticket): double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_PrS">
+          <mxGeometry x="0" y="40" width="210" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="iface_PP" value="&lt;&lt;interface&gt;&gt;&#xa;PaymentProcessor" style="swimlane;fontStyle=3;startSize=40;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="590" y="40" width="220" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="iface_PP_m1" value="+ processPayment(amount, method): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="iface_PP">
+          <mxGeometry x="0" y="40" width="220" height="25" as="geometry"/>
+        </mxCell>
+
+        <!-- ABSTRACT CLASSES -->
+
+        <mxCell id="class_V" value="&lt;&lt;abstract&gt;&gt;&#xa;Vehicle" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="50" y="180" width="220" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_V_f1" value="- licensePlate: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_V">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_V_f2" value="- type: VehicleType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_V">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_V_m1" value="+ getType(): VehicleType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_V">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_V_m2" value="+ getLicensePlate(): String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_V">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_PSp" value="&lt;&lt;abstract&gt;&gt;&#xa;ParkingSpot" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="330" y="180" width="230" height="184" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PSp_f1" value="- spotId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PSp">
+          <mxGeometry x="0" y="30" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PSp_f2" value="- spotType: SpotType" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PSp">
+          <mxGeometry x="0" y="52" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PSp_f3" value="- vehicle: Vehicle" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PSp">
+          <mxGeometry x="0" y="74" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PSp_f4" value="- status: ParkingSpotStatus" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PSp">
+          <mxGeometry x="0" y="96" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PSp_m1" value="+ assignVehicle(v): boolean [sync]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PSp">
+          <mxGeometry x="0" y="118" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PSp_m2" value="+ removeVehicle(): void [sync]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PSp">
+          <mxGeometry x="0" y="140" width="230" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PSp_m3" value="+ canFitVehicle(v): boolean [abstract]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PSp">
+          <mxGeometry x="0" y="162" width="230" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CONCRETE VEHICLE SUBCLASSES -->
+
+        <mxCell id="class_Car" value="Car" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="30" y="380" width="130" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Car_m1" value="+ Car(plate: String)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Car">
+          <mxGeometry x="0" y="30" width="130" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_Moto" value="Motorcycle" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="180" y="380" width="150" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Moto_m1" value="+ Motorcycle(plate: String)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Moto">
+          <mxGeometry x="0" y="30" width="150" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_Truck" value="Truck" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="350" y="380" width="130" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Truck_m1" value="+ Truck(plate: String)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Truck">
+          <mxGeometry x="0" y="30" width="130" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CONCRETE PARKINGSPOT SUBCLASSES -->
+
+        <mxCell id="class_CS" value="CompactSpot" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="510" y="380" width="150" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_CS_m1" value="+ canFitVehicle(): CAR or BIKE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_CS">
+          <mxGeometry x="0" y="30" width="150" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_LS" value="LargeSpot" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="680" y="380" width="130" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_LS_m1" value="+ canFitVehicle(): any" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_LS">
+          <mxGeometry x="0" y="30" width="130" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_BikeS" value="BikeSpot" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="830" y="380" width="130" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_BikeS_m1" value="+ canFitVehicle(): BIKE only" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_BikeS">
+          <mxGeometry x="0" y="30" width="130" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_HandS" value="HandicappedSpot" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="980" y="380" width="160" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HandS_m1" value="+ canFitVehicle(): reserved" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HandS">
+          <mxGeometry x="0" y="30" width="160" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- STRATEGY IMPLEMENTATIONS -->
+
+        <mxCell id="class_NSS" value="NearestSpotStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="50" y="500" width="185" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_NSS_m1" value="+ findSpot(): nearest floor first" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_NSS">
+          <mxGeometry x="0" y="30" width="185" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_OSS" value="OptimalSpotStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="255" y="500" width="185" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_OSS_m1" value="+ findSpot(): most available level" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_OSS">
+          <mxGeometry x="0" y="30" width="185" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_HPS" value="HourlyPricingStrategy" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="460" y="500" width="185" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_HPS_m1" value="+ calculateFee(): hours * rate" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_HPS">
+          <mxGeometry x="0" y="30" width="185" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_PayS" value="PaymentService" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="665" y="500" width="170" height="52" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PayS_m1" value="+ processPayment(amount, method)" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PayS">
+          <mxGeometry x="0" y="30" width="170" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- CORE ORCHESTRATION CLASSES (right column) -->
+
+        <mxCell id="class_PL" value="ParkingLot&#xa;(Singleton)" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="40" width="240" height="250" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_f1" value="- instance: ParkingLot" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_f2" value="- levels: List&lt;Level&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_f3" value="- activeTickets: ConcurrentHashMap" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_f4" value="- parkingStrategy: ParkingStrategy" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_f5" value="- pricingStrategy: PricingStrategy" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="118" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_m1" value="+ getInstance(): ParkingLot [sync]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="140" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_m2" value="+ addLevel(l: Level): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="162" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_m3" value="+ parkVehicle(v): Ticket [sync]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="184" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_m4" value="+ unparkVehicle(id): double [sync]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="206" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_PL_m5" value="+ displayAvailability(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_PL">
+          <mxGeometry x="0" y="228" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_Lv" value="Level" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="330" width="220" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lv_f1" value="- floor: int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lv">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lv_f2" value="- spots: List&lt;ParkingSpot&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lv">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lv_m1" value="+ findAvailableSpot(v): ParkingSpot [sync]" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lv">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Lv_m2" value="+ getAvailableSpotCount(): int" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Lv">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_Tk" value="Ticket" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="490" width="220" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Tk_f1" value="- ticketId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Tk">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Tk_f2" value="- entryTime: LocalDateTime" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Tk">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Tk_f3" value="- spot: ParkingSpot" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Tk">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Tk_f4" value="- vehicle: Vehicle" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Tk">
+          <mxGeometry x="0" y="96" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="class_VS" value="ValetService" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="650" width="200" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_VS_f1" value="- waitingQueue: Queue&lt;Vehicle&gt;" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_VS">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_VS_m1" value="+ acceptVehicle(v): Ticket" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_VS">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ENUMS -->
+
+        <mxCell id="enum_VT" value="&lt;&lt;enum&gt;&gt;&#xa;VehicleType" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="50" y="620" width="160" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_VT_v1" value="BIKE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_VT">
+          <mxGeometry x="0" y="30" width="160" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_VT_v2" value="CAR" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_VT">
+          <mxGeometry x="0" y="52" width="160" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_VT_v3" value="TRUCK" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_VT">
+          <mxGeometry x="0" y="74" width="160" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="enum_ST" value="&lt;&lt;enum&gt;&gt;&#xa;SpotType" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="240" y="620" width="185" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ST_v1" value="BIKE_SPOT" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ST">
+          <mxGeometry x="0" y="30" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ST_v2" value="COMPACT_SPOT" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ST">
+          <mxGeometry x="0" y="52" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ST_v3" value="LARGE_SPOT" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ST">
+          <mxGeometry x="0" y="74" width="185" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_ST_v4" value="HANDICAPPED_SPOT" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_ST">
+          <mxGeometry x="0" y="96" width="185" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="enum_PSS" value="&lt;&lt;enum&gt;&gt;&#xa;ParkingSpotStatus" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="455" y="620" width="190" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_PSS_v1" value="AVAILABLE" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_PSS">
+          <mxGeometry x="0" y="30" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_PSS_v2" value="OCCUPIED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_PSS">
+          <mxGeometry x="0" y="52" width="190" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_PSS_v3" value="RESERVED" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_PSS">
+          <mxGeometry x="0" y="74" width="190" height="22" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="enum_PM" value="&lt;&lt;enum&gt;&gt;&#xa;PaymentMethod" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="675" y="620" width="165" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_PM_v1" value="CASH" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_PM">
+          <mxGeometry x="0" y="30" width="165" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_PM_v2" value="CARD" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_PM">
+          <mxGeometry x="0" y="52" width="165" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_PM_v3" value="UPI" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_PM">
+          <mxGeometry x="0" y="74" width="165" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="enum_PM_v4" value="WALLET" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="enum_PM">
+          <mxGeometry x="0" y="96" width="165" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- EDGES -->
+
+        <!-- Extends: Vehicle subclasses -->
+        <mxCell id="edge_Car_V" style="endArrow=block;endFill=0;" edge="1" source="class_Car" target="class_V" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_Moto_V" style="endArrow=block;endFill=0;" edge="1" source="class_Moto" target="class_V" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_Truck_V" style="endArrow=block;endFill=0;" edge="1" source="class_Truck" target="class_V" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Extends: ParkingSpot subclasses -->
+        <mxCell id="edge_CS_PSp" style="endArrow=block;endFill=0;" edge="1" source="class_CS" target="class_PSp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_LS_PSp" style="endArrow=block;endFill=0;" edge="1" source="class_LS" target="class_PSp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_BikeS_PSp" style="endArrow=block;endFill=0;" edge="1" source="class_BikeS" target="class_PSp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_HandS_PSp" style="endArrow=block;endFill=0;" edge="1" source="class_HandS" target="class_PSp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Implements: Strategy classes -->
+        <mxCell id="edge_NSS_PS" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_NSS" target="iface_PS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_OSS_PS" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_OSS" target="iface_PS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_HPS_PrS" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_HPS" target="iface_PrS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_PayS_PP" style="endArrow=block;endFill=0;dashed=1;" edge="1" source="class_PayS" target="iface_PP" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: ParkingLot dependencies -->
+        <mxCell id="edge_PL_PS" value="uses" style="endArrow=open;" edge="1" source="class_PL" target="iface_PS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_PL_PrS" value="uses" style="endArrow=open;" edge="1" source="class_PL" target="iface_PrS" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Composition: ParkingLot -> Level (1..*) -->
+        <mxCell id="edge_PL_Lv" value="1..*" style="endArrow=open;" edge="1" source="class_PL" target="class_Lv" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Composition: Level -> ParkingSpot (1..*) -->
+        <mxCell id="edge_Lv_PSp" value="1..*" style="endArrow=open;" edge="1" source="class_Lv" target="class_PSp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Association: Ticket references -->
+        <mxCell id="edge_Tk_PSp" style="endArrow=open;" edge="1" source="class_Tk" target="class_PSp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="edge_Tk_V" style="endArrow=open;" edge="1" source="class_Tk" target="class_V" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ParkingLot creates Ticket -->
+        <mxCell id="edge_PL_Tk" value="creates" style="endArrow=open;dashed=1;" edge="1" source="class_PL" target="class_Tk" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- ValetService uses ParkingLot -->
+        <mxCell id="edge_VS_PL" value="uses" style="endArrow=open;dashed=1;" edge="1" source="class_VS" target="class_PL" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Payment (core entity class) -->
+        <mxCell id="class_Payment" value="Payment" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="870" y="620" width="240" height="118" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Payment_f1" value="- amount: double" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Payment">
+          <mxGeometry x="0" y="30" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Payment_f2" value="- paymentTime: LocalDateTime" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Payment">
+          <mxGeometry x="0" y="52" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Payment_f3" value="- method: PaymentMethod" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Payment">
+          <mxGeometry x="0" y="74" width="240" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_Payment_m1" value="+ processPayment(amount, method): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_Payment">
+          <mxGeometry x="0" y="96" width="240" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- ReservedSpot (concrete subclass of ParkingSpot) -->
+        <mxCell id="class_ReservedSpot" value="ReservedSpot" style="swimlane;startSize=30;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="380" width="200" height="74" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ReservedSpot_f1" value="- reservedForLicensePlate: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ReservedSpot">
+          <mxGeometry x="0" y="30" width="200" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_ReservedSpot_m1" value="+ canFitVehicle(v: Vehicle): boolean" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_ReservedSpot">
+          <mxGeometry x="0" y="52" width="200" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- DisplayBoard (Observer) -->
+        <mxCell id="class_DisplayBoard" value="DisplayBoard" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="870" y="500" width="220" height="96" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DisplayBoard_f1" value="- boardId: String" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DisplayBoard">
+          <mxGeometry x="0" y="30" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DisplayBoard_m1" value="+ update(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DisplayBoard">
+          <mxGeometry x="0" y="52" width="220" height="22" as="geometry"/>
+        </mxCell>
+        <mxCell id="class_DisplayBoard_m2" value="+ displayAvailability(): void" style="text;align=left;verticalAlign=middle;spacingLeft=4;overflow=hidden;" vertex="1" parent="class_DisplayBoard">
+          <mxGeometry x="0" y="74" width="220" height="22" as="geometry"/>
+        </mxCell>
+
+        <!-- Extends: ReservedSpot -> ParkingSpot -->
+        <mxCell id="edge_reserved_extends" style="endArrow=block;endFill=0;" edge="1" source="class_ReservedSpot" target="class_PSp" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <!-- Uses: ParkingLot -> Payment -->
+        <mxCell id="edge_lot_payment" value="uses" style="endArrow=open;" edge="1" source="class_PL" target="class_Payment" parent="1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram name="Sequence Diagram" id="page2">
+    <mxGraphModel pageWidth="1654" pageHeight="1169" grid="1" gridSize="10">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- LIFELINES -->
+
+        <mxCell id="life_Client" value="Client" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_PL" value="ParkingLot" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_PS" value="ParkingStrategy" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="460" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_Lv" value="Level" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="660" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_PSp" value="ParkingSpot" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="860" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="life_PrS" value="PricingStrategy" style="shape=umlLifeline;perimeter=mxPerimeter.RectanglePerimeter;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="50" width="140" height="620" as="geometry"/>
+        </mxCell>
+
+        <!-- SECTION LABEL: Park Vehicle -->
+        <mxCell id="label_park" value="PARK VEHICLE FLOW" style="text;fontStyle=1;fontSize=11;fillColor=#f8cecc;strokeColor=#b85450;align=center;" vertex="1" parent="1">
+          <mxGeometry x="60" y="145" width="180" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- msg_1: Client -> ParkingLot: getInstance() -->
+        <mxCell id="msg_1" value="getInstance()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="188" as="sourcePoint"/>
+            <mxPoint x="330" y="188" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_1: ParkingLot -> Client: ParkingLot instance -->
+        <mxCell id="ret_1" value="ParkingLot instance" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="208" as="sourcePoint"/>
+            <mxPoint x="130" y="208" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_2: Client -> ParkingLot: parkVehicle(vehicle) -->
+        <mxCell id="msg_2" value="parkVehicle(vehicle)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="238" as="sourcePoint"/>
+            <mxPoint x="330" y="238" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_3: ParkingLot -> ParkingStrategy: findSpot(vehicle, levels) -->
+        <mxCell id="msg_3" value="findSpot(vehicle, levels)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="268" as="sourcePoint"/>
+            <mxPoint x="530" y="268" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_4: ParkingStrategy -> Level: findAvailableSpot(vehicle) -->
+        <mxCell id="msg_4" value="findAvailableSpot(vehicle)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="298" as="sourcePoint"/>
+            <mxPoint x="730" y="298" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_5: Level -> ParkingSpot: canFitVehicle(vehicle) -->
+        <mxCell id="msg_5" value="canFitVehicle(vehicle)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="328" as="sourcePoint"/>
+            <mxPoint x="930" y="328" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_5: ParkingSpot -> Level: true -->
+        <mxCell id="ret_5" value="true" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="348" as="sourcePoint"/>
+            <mxPoint x="730" y="348" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_4: Level -> ParkingStrategy: ParkingSpot -->
+        <mxCell id="ret_4" value="ParkingSpot" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="730" y="378" as="sourcePoint"/>
+            <mxPoint x="530" y="378" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_3: ParkingStrategy -> ParkingLot: ParkingSpot -->
+        <mxCell id="ret_3" value="ParkingSpot" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="530" y="408" as="sourcePoint"/>
+            <mxPoint x="330" y="408" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_6: ParkingLot -> ParkingSpot: assignVehicle(vehicle) -->
+        <mxCell id="msg_6" value="assignVehicle(vehicle)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="438" as="sourcePoint"/>
+            <mxPoint x="930" y="438" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_6: ParkingSpot -> ParkingLot: true -->
+        <mxCell id="ret_6" value="true [spot assigned]" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="930" y="458" as="sourcePoint"/>
+            <mxPoint x="330" y="458" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_2: ParkingLot -> Client: Ticket -->
+        <mxCell id="ret_2" value="Ticket" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="483" as="sourcePoint"/>
+            <mxPoint x="130" y="483" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- SECTION LABEL: Unpark Vehicle -->
+        <mxCell id="label_unpark" value="UNPARK VEHICLE FLOW" style="text;fontStyle=1;fontSize=11;fillColor=#f8cecc;strokeColor=#b85450;align=center;" vertex="1" parent="1">
+          <mxGeometry x="60" y="508" width="200" height="28" as="geometry"/>
+        </mxCell>
+
+        <!-- msg_7: Client -> ParkingLot: unparkVehicle(ticketId) -->
+        <mxCell id="msg_7" value="unparkVehicle(ticketId)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="130" y="548" as="sourcePoint"/>
+            <mxPoint x="330" y="548" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_8: ParkingLot -> PricingStrategy: calculateFee(ticket) -->
+        <mxCell id="msg_8" value="calculateFee(ticket)" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="578" as="sourcePoint"/>
+            <mxPoint x="1130" y="578" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_8: PricingStrategy -> ParkingLot: fee amount -->
+        <mxCell id="ret_8" value="fee amount" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="1130" y="598" as="sourcePoint"/>
+            <mxPoint x="330" y="598" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- msg_9: ParkingLot -> ParkingSpot: removeVehicle() -->
+        <mxCell id="msg_9" value="removeVehicle()" style="endArrow=block;endFill=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="628" as="sourcePoint"/>
+            <mxPoint x="930" y="628" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- ret_7: ParkingLot -> Client: fee -->
+        <mxCell id="ret_7" value="fee (double)" style="endArrow=open;dashed=1;" edge="1" parent="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint x="330" y="653" as="sourcePoint"/>
+            <mxPoint x="130" y="653" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

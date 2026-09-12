@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Two-Level Ranking — Carousel</title>
+<style>
+  :root {
+    --bg: #1a1a2e; --panel: #22223a; --text: #eaeaf5; --muted: #9a9ac0;
+    --accent: #f5a623; --blue: #336791; --yellow: #e0b400; --green: #00bfa5;
+    --redis: #d82c20; --border: #3a3a5c;
+  }
+  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px;
+  }
+  .deck { width: 540px; max-width: 100%; }
+  .slide {
+    display: none; width: 540px; height: 540px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 12px; padding: 32px;
+    flex-direction: column; position: relative; overflow: hidden;
+  }
+  .slide.active { display: flex; }
+  .slide h1 { font-size: 20px; margin: 0 0 6px; color: var(--accent); }
+  .slide h2 { font-size: 15px; margin: 0 0 16px; color: var(--muted); font-weight: 500; }
+  .slide .body { flex: 1; font-size: 13px; line-height: 1.5; }
+  .row { display: flex; gap: 12px; align-items: center; justify-content: center; margin: 12px 0; flex-wrap: wrap; }
+  .col { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+  .server-box {
+    width: 54px; height: 46px; border: 2px solid var(--muted); border-radius: 6px;
+    padding: 5px; display: flex; flex-direction: column; justify-content: space-around; margin: 0 auto;
+  }
+  .server-box span { display: block; height: 3px; background: var(--muted); border-radius: 2px; }
+  .funnel-box { padding: 8px 14px; border-radius: 6px; text-align: center; font-size: 12px; margin: 4px auto; }
+  .arrow-down { text-align: center; font-size: 18px; color: var(--muted); }
+  .x-mark { color: #e74c3c; font-weight: 700; }
+  .check-mark { color: #2ecc71; font-weight: 700; }
+  table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+  th, td { border: 1px solid var(--border); padding: 5px 7px; text-align: left; }
+  th { color: var(--accent); }
+  .quote-box {
+    border-left: 3px solid var(--accent); padding: 10px 14px; font-style: italic;
+    color: var(--text); font-size: 13px; background: rgba(245,166,35,0.08); border-radius: 4px;
+  }
+  .stat { font-size: 26px; font-weight: 800; color: var(--accent); }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 540px; max-width: 100%; margin-top: 14px; }
+  .controls button { background: var(--panel); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 8px 16px; cursor: pointer; font-size: 13px; }
+  .controls button:hover { background: var(--border); }
+  .counter { font-size: 13px; color: var(--muted); }
+  @media print {
+    body { padding: 0; }
+    .controls { display: none; }
+    .slide { display: flex !important; page-break-after: always; margin: 0 auto; }
+    .slide:last-child { page-break-after: auto; }
+    @page { size: 540px 540px; margin: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <div class="slide active">
+    <h1>Two-Level Ranking</h1>
+    <h2>Slide 1 / 9 — The Hook</h2>
+    <div class="body">
+      <div class="stat">33 min → 150ms</div>
+      <p>Your best ranking model scores 1ms/item. Run it over 2M candidates and a feed takes 33 minutes to load.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Hiring Analogy</h1>
+    <h2>The Problem</h2>
+    <div class="body">
+      <p>You don't do a 3-hour interview with all 5,000 applicants. A cheap resume screen narrows it to 50 first — THEN the expensive interview happens.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Funnel</h1>
+    <h2>The Solution</h2>
+    <div class="body">
+      <div class="funnel-box" style="background:rgba(51,103,145,0.3);">2,000,000 candidates</div>
+      <div class="arrow-down">↓ Stage 1: cheap, high-recall</div>
+      <div class="funnel-box" style="background:rgba(0,191,165,0.3);">300-500 candidates</div>
+      <div class="arrow-down">↓ Stage 2: expensive, high-precision</div>
+      <div class="funnel-box" style="background:rgba(245,166,35,0.3);">Top 20</div>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Stage 1: ANN Retrieval</h1>
+    <h2>Optimizes for Recall</h2>
+    <div class="body">
+      <p>Recency filter + ANN embedding search (HNSW). Finds nearest neighbors in latent space WITHOUT scanning all 2M posts — 2-10ms even over 10M vectors.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Stage 2: Rich Re-Ranking</h1>
+    <h2>Optimizes for Precision</h2>
+    <div class="body">
+      <p>Feature vector per candidate: recency, predicted engagement, precomputed author-affinity, diversity signals. Only scores the shortlist — 50-100ms.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Latency Budget</h1>
+    <h2>Where the Time Goes</h2>
+    <div class="body">
+      <table>
+        <tr><th>Stage</th><th>Budget</th></tr>
+        <tr><td>Candidate Retrieval</td><td>20-50ms</td></tr>
+        <tr><td>Feature assembly</td><td>10-20ms</td></tr>
+        <tr><td>Ranking inference</td><td>50-100ms</td></tr>
+        <tr><td><b>Total</b></td><td><b>~100-180ms</b></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>The Invisible Trap</h1>
+    <h2>Recall@K</h2>
+    <div class="body">
+      <p>Latency: 120ms ✓ GREEN. Recall@20: 62% ⚠ SILENTLY DEGRADED.</p>
+      <p>Stage-1 dropping good candidates never shows up on a latency dashboard — measure recall@K OFFLINE, separately.</p>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Ranking Architecture Comparison</h1>
+    <h2>Comparison</h2>
+    <div class="body">
+      <table>
+        <tr><th>Approach</th><th>Latency</th><th>Precision</th></tr>
+        <tr><td>Single-stage (score all)</td><td>Seconds-minutes</td><td>Perfect</td></tr>
+        <tr><td>Recency-only</td><td>&lt;10ms</td><td>None</td></tr>
+        <tr><td>Two-level funnel</td><td>~100-180ms</td><td>High</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="slide">
+    <h1>Decision Tree &amp; Interview Answer</h1>
+    <h2>Quick Reference</h2>
+    <div class="body">
+      <p>Candidate pool in the hundreds already? → Just score directly. Millions of candidates? → Two-level funnel is the only way the precise model runs at all.</p>
+      <div class="quote-box">
+        "You can't run the expensive model over the full candidate pool — the arithmetic doesn't work. I'd split ranking into two stages: cheap high-recall retrieval, then an expensive high-precision model on just the shortlist."
+      </div>
+    </div>
+  </div>
+
+</div>
+<div class="controls">
+  <button id="prev">← Prev</button>
+  <span class="counter" id="counter">1 / 9</span>
+  <button id="next">Next →</button>
+</div>
+<script>
+  let current = 0;
+  const slides = document.querySelectorAll('.slide');
+  const counter = document.getElementById('counter');
+  function show(i) {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, idx) => s.classList.toggle('active', idx === current));
+    counter.textContent = (current + 1) + ' / ' + slides.length;
+  }
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight') show(current + 1);
+    if (e.key === 'ArrowLeft') show(current - 1);
+  });
+  show(0);
+</script>
+</body>
+</html>

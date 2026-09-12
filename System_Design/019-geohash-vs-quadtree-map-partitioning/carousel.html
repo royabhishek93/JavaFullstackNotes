@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Geohash vs QuadTree — Map Partitioning</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#20233a;
+    --panel2:#252a45;
+    --teal:#4ecdc4;
+    --amber:#ffb703;
+    --pink:#ff6b9d;
+    --blue:#2b6cb0;
+    --blueLight:#63b3ed;
+    --redis:#d82c20;
+    --text:#e8e8f0;
+    --muted:#9a9ec2;
+    --border:#3a3f63;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:'Segoe UI',Helvetica,Arial,sans-serif;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .deck{
+    width:540px;height:540px;margin:30px auto;position:relative;
+    background:var(--bg);border-radius:10px;overflow:hidden;
+    box-shadow:0 0 40px rgba(0,0,0,0.6);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .slide{
+    display:none;width:540px;height:540px;padding:22px 26px;
+    background:var(--bg);color:var(--text);position:relative;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .slide.active{display:flex;flex-direction:column;}
+  .kicker{
+    font-size:11px;letter-spacing:2px;color:var(--amber);font-weight:700;
+    text-transform:uppercase;margin-bottom:4px;
+  }
+  h1{font-size:19px;margin:0 0 8px 0;color:var(--text);line-height:1.25;}
+  h2{font-size:14px;margin:10px 0 6px 0;color:var(--teal);}
+  p, li{font-size:11.5px;line-height:1.45;color:var(--muted);}
+  .content{flex:1;overflow:hidden;}
+  code, .code{
+    display:block;background:#12142499;background:#111226;border:1px solid var(--border);
+    border-radius:6px;padding:8px 10px;font-family:'Courier New',monospace;
+    font-size:10px;color:#9ef0e6;white-space:pre-wrap;line-height:1.4;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .badge{
+    display:inline-block;background:var(--panel2);border:1px solid var(--border);
+    border-radius:20px;padding:2px 9px;font-size:10px;color:var(--pink);font-weight:600;
+  }
+  .row{display:flex;gap:10px;}
+  .col{flex:1;}
+  .footer{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:10px;color:var(--muted);border-top:1px solid var(--border);
+    padding-top:6px;margin-top:8px;
+  }
+  .arrow-down{text-align:center;font-size:20px;color:var(--teal);margin:2px 0;}
+  .arrow-right{font-size:16px;color:var(--teal);margin:0 6px;}
+
+  /* ---- 3x3 GRID (geohash neighbor cells) ---- */
+  .grid3{
+    display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+    gap:5px;width:100%;height:190px;margin-top:6px;
+  }
+  .cell{
+    border:2px solid var(--border);border-radius:5px;background:var(--panel);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:9.5px;color:var(--muted);position:relative;
+  }
+  .cell.center{border-color:var(--teal);background:#1d3b3a;color:var(--teal);font-weight:700;}
+  .cell.hit{border-color:var(--pink);background:#3a1d2a;}
+  .cell .hash{font-family:'Courier New',monospace;font-size:10px;color:#cfd3f5;}
+  .cell .tag{font-size:8.5px;margin-top:2px;}
+  .star{color:var(--pink);font-size:14px;font-weight:900;}
+
+  /* ---- TREE (quadtree) ---- */
+  .tree, .tree ul, .tree li{list-style:none;margin:0;padding:0;position:relative;}
+  .tree{text-align:center;margin-top:4px;}
+  .tree ul{display:flex;padding-top:16px;position:relative;justify-content:center;}
+  .tree li{flex:1;display:flex;flex-direction:column;align-items:center;
+    padding:16px 4px 0 4px;position:relative;}
+  .tree li::before, .tree li::after{
+    content:'';position:absolute;top:0;width:50%;height:16px;border-top:2px solid var(--teal);
+  }
+  .tree li::before{right:50%;}
+  .tree li::after{left:50%;border-left:2px solid var(--teal);}
+  .tree li:only-child::before, .tree li:only-child::after{display:none;}
+  .tree li:only-child{padding-top:0;}
+  .tree li:first-child::before, .tree li:last-child::after{border:0 none;}
+  .tree li:last-child::before{border-right:2px solid var(--teal);border-radius:0 5px 0 0;}
+  .tree li:first-child::after{border-radius:5px 0 0 0;}
+  .tree ul::before{
+    content:'';position:absolute;top:0;left:50%;border-left:2px solid var(--teal);
+    width:0;height:16px;
+  }
+  .tree li:only-child ul::before{display:none;}
+  .node{
+    display:inline-block;border:2px solid var(--border);background:var(--panel2);
+    border-radius:6px;padding:5px 6px;font-size:9px;color:var(--text);min-width:56px;
+  }
+  .node .s{display:block;font-size:8px;color:var(--muted);margin-top:2px;}
+  .node.giant{background:#233; border-color:var(--amber);min-width:110px;padding:14px 8px;}
+  .node.giant .s{color:#ffdb8a;}
+  .node.tiny{background:#2a1f33;border-color:var(--pink);min-width:40px;padding:3px 4px;font-size:8px;}
+  .node.tiny .s{font-size:7px;}
+  .node.root{border-color:var(--teal);}
+
+  /* ---- DB CYLINDER (PostGIS) ---- */
+  .cylwrap{display:flex;flex-direction:column;align-items:center;}
+  .cyl-top{width:74px;height:16px;background:var(--blue);border:2px solid var(--blueLight);border-radius:50%;}
+  .cyl-body{width:70px;margin:-8px auto 0;height:44px;background:var(--blue);
+    border-left:2px solid var(--blueLight);border-right:2px solid var(--blueLight);}
+  .cyl-bottom{width:74px;height:16px;background:#1e4e8c;border:2px solid var(--blueLight);
+    border-radius:50%;margin-top:-8px;}
+  .cyl-label{font-size:9px;color:var(--blueLight);margin-top:4px;text-align:center;font-weight:700;}
+
+  /* ---- REDIS CIRCLE ---- */
+  .redis-icon{
+    width:66px;height:66px;border-radius:50%;background:var(--redis);
+    display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;
+    color:#fff;border:3px solid #ff7a68;margin:0 auto;
+  }
+  .redis-label{font-size:9px;color:#ff9a8f;margin-top:4px;text-align:center;font-weight:700;}
+
+  table{width:100%;border-collapse:collapse;font-size:8.6px;margin-top:4px;}
+  th,td{border:1px solid var(--border);padding:4px 5px;text-align:left;color:var(--muted);}
+  th{background:var(--panel2);color:var(--teal);font-size:8.6px;}
+  td.hl{color:var(--pink);font-weight:700;}
+  .precisiontable td:first-child, .precisiontable th:first-child{white-space:nowrap;}
+
+  .quote{
+    border-left:3px solid var(--amber);padding:8px 10px;background:var(--panel);
+    font-style:italic;color:#e6d9ad;font-size:10.5px;border-radius:0 6px 6px 0;
+  }
+
+  .flow{display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:wrap;margin-top:6px;}
+  .flowbox{border:2px solid var(--border);background:var(--panel2);border-radius:6px;
+    padding:6px 8px;font-size:9.5px;color:var(--text);text-align:center;}
+  .flowbox.hi{border-color:var(--teal);color:var(--teal);}
+  .flowbox.warn{border-color:var(--pink);color:var(--pink);}
+
+  /* Nav */
+  .nav{
+    position:fixed;bottom:14px;left:50%;transform:translateX(-50%);
+    display:flex;align-items:center;gap:14px;background:#12142e;
+    border:1px solid var(--border);border-radius:30px;padding:8px 18px;z-index:50;
+  }
+  .nav button{
+    background:var(--panel2);color:var(--text);border:1px solid var(--border);
+    border-radius:20px;padding:6px 14px;font-size:12px;cursor:pointer;
+  }
+  .nav button:hover{background:var(--teal);color:#0a0a15;}
+  .counter{font-size:12px;color:var(--muted);min-width:46px;text-align:center;}
+
+  @media print{
+    @page{size:540px 540px;margin:0;}
+    body{margin:0;}
+    .nav{display:none;}
+    .deck{margin:0;box-shadow:none;border-radius:0;width:auto;height:auto;}
+    .slide{display:flex !important;page-break-after:always;break-after:page;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <section class="slide active" data-slide="1">
+    <div class="kicker">The Problem</div>
+    <h1>1 Billion Restaurants. "Find within 5km."<br>Why does your database choke?</h1>
+    <div class="content">
+      <div class="code">SELECT * FROM restaurants
+WHERE latitude  BETWEEN 40.7 AND 40.8
+  AND longitude BETWEEN -74.0 AND -73.9;
+-- looks fine... but at 1B rows it's a disaster</div>
+      <div class="arrow-down">▼</div>
+      <div class="row">
+        <div class="col">
+          <div class="flowbox warn">B-Tree index<br><span style="font-size:8.5px">sorts values on ONE line</span></div>
+        </div>
+        <div class="col" style="display:flex;align-items:center;justify-content:center;">
+          <span class="arrow-right">→</span>
+        </div>
+        <div class="col">
+          <div class="flowbox warn">Can't answer<br>"what's near this point"</div>
+        </div>
+      </div>
+      <p style="margin-top:10px;">A B-tree understands <b>1 dimension</b>. The moment you add a second <code style="display:inline;padding:1px 4px;">AND longitude BETWEEN...</code> the engine scans the whole latitude range, then filters — for 1B rows that's a seq-scan-shaped disaster.</p>
+      <p><span class="badge">FIX</span>&nbsp; Collapse 2D coordinates into 1D while preserving proximity → <b>Geohash</b> (fixed grid string) or <b>QuadTree</b> (adaptive recursive split).</p>
+    </div>
+    <div class="footer"><span>Geohash vs QuadTree</span><span>Map Partitioning</span></div>
+  </section>
+
+  <!-- SLIDE 2: GEOHASH -->
+  <section class="slide" data-slide="2">
+    <div class="kicker">Geohash</div>
+    <h1>Fixed Grid Encoding — a string that IS a location</h1>
+    <div class="content">
+      <p>World → 32 cells (base-32 of interleaved lat/lng bits) → each cell → 32 sub-cells (append 1 char) → repeat. Nearby places share a common <b>prefix</b>.</p>
+      <table class="precisiontable">
+        <tr><th>Chars</th><th>Cell size</th><th>Level</th></tr>
+        <tr><td>1</td><td>~5000km × 5000km</td><td>continent</td></tr>
+        <tr><td>2</td><td>~1250km × 625km</td><td>country</td></tr>
+        <tr><td>3</td><td>~156km × 156km</td><td>large region</td></tr>
+        <tr><td>4</td><td>~39km × 20km</td><td>city</td></tr>
+        <tr><td>5</td><td>~4.9km × 4.9km</td><td>district</td></tr>
+        <tr><td class="hl">6</td><td class="hl">~1.2km × 0.6km</td><td class="hl">neighborhood ("nearby")</td></tr>
+        <tr><td>7</td><td>~152m × 152m</td><td>street block</td></tr>
+        <tr><td>8</td><td>~38m × 19m</td><td>building</td></tr>
+      </table>
+      <h2>Prefix hierarchy for lat=40.748, lng=-73.985 → <code style="display:inline;padding:1px 5px;">dr5reu</code></h2>
+      <div class="code">"d"      → NE USA + Canada (5000km)
+"dr"     → NYC metro area
+"dr5"    → Manhattan + boroughs
+"dr5r"   → Midtown Manhattan
+"dr5re"  → few city blocks
+"dr5reu" → specific building</div>
+    </div>
+    <div class="footer"><span>2 / 10</span><span>Fixed grid, prefix = proximity</span></div>
+  </section>
+
+  <!-- SLIDE 3: 9-NEIGHBOR PROBLEM -->
+  <section class="slide" data-slide="3">
+    <div class="kicker">Critical Edge Case</div>
+    <h1>The 9-Neighbor Problem</h1>
+    <div class="content">
+      <p>A restaurant just <b>10 meters</b> away can sit in a <i>different</i> geohash cell if it's across a border. Querying only your own cell silently drops real neighbors.</p>
+      <div class="grid3">
+        <div class="cell"><span class="hash">dr5rb</span></div>
+        <div class="cell center"><span class="hash">dr5re</span><span class="tag">YOU (here)</span></div>
+        <div class="cell"><span class="hash">dr5rg</span></div>
+        <div class="cell"><span class="hash">dr5r8</span></div>
+        <div class="cell"><span class="hash">dr5rd</span></div>
+        <div class="cell hit"><span class="star">★</span><span class="hash">dr5rf</span><span class="tag">restaurant, 10m away!</span></div>
+        <div class="cell"><span class="hash">dr5r2</span></div>
+        <div class="cell"><span class="hash">dr5r9</span></div>
+        <div class="cell"><span class="hash">dr5ru</span></div>
+      </div>
+      <p style="margin-top:8px;"><span class="badge">RULE</span>&nbsp; Always query the <b>center cell + all 8 neighbors = 9 total prefixes</b>. Never query the center cell alone.</p>
+      <div class="code">WHERE geohash LIKE 'dr5re%'  -- center
+   OR geohash LIKE 'dr5rf%'  -- E
+   OR geohash LIKE 'dr5rd%'  -- W
+   OR geohash LIKE 'dr5rg%'  -- N
+   OR geohash LIKE 'dr5rs%'  -- S  ...+4 diagonals = 9 queries</div>
+    </div>
+    <div class="footer"><span>3 / 10</span><span>Fixed-grid boundary trap</span></div>
+  </section>
+
+  <!-- SLIDE 4: QUADTREE -->
+  <section class="slide" data-slide="4">
+    <div class="kicker">QuadTree</div>
+    <h1>Adaptive Recursive Splitting</h1>
+    <div class="content">
+      <p>Split a quadrant into 4 only when it holds more than <b>MAX_CAPACITY</b> points. Dense areas split deep; empty areas stay one giant leaf.</p>
+      <div class="tree">
+        <ul>
+          <li>
+            <div class="node root">World<br><span class="s">root node</span></div>
+            <ul>
+              <li>
+                <div class="node giant">Sahara Quadrant<br><span class="s">500km × 500km<br>0 restaurants<br>LEAF — never split</span></div>
+              </li>
+              <li>
+                <div class="node">NE Quadrant<br><span class="s">NYC/Boston/DC</span></div>
+                <ul>
+                  <li>
+                    <div class="node"><span class="s">split ×12 levels</span></div>
+                    <ul>
+                      <li><div class="node tiny">Manhattan block<br><span class="s">100m×100m<br>≤50 rest.</span></div></li>
+                      <li><div class="node tiny">Adjacent block<br><span class="s">100m×100m<br>≤50 rest.</span></div></li>
+                    </ul>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+      <div class="code" style="margin-top:6px;">static final int MAX_CAPACITY = 50;
+void insert(Restaurant r){
+  if (children != null) { getQuadrant(r).insert(r); return; }
+  restaurants.add(r);
+  if (restaurants.size() > MAX_CAPACITY) split();
+}</div>
+    </div>
+    <div class="footer"><span>4 / 10</span><span>Dense cities split deep, deserts stay one cell</span></div>
+  </section>
+
+  <!-- SLIDE 5: POSTGIS / GiST -->
+  <section class="slide" data-slide="5">
+    <div class="kicker">PostGIS / GiST</div>
+    <h1>SQL-Native Spatial Index (R-Tree variant)</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col cylwrap">
+          <div class="cyl-top"></div><div class="cyl-body"></div><div class="cyl-bottom"></div>
+          <div class="cyl-label">PostgreSQL<br>+ PostGIS</div>
+        </div>
+        <div class="col" style="flex:2;">
+          <div class="code">CREATE EXTENSION postgis;
+ALTER TABLE restaurants
+  ADD COLUMN location geography(POINT,4326);
+CREATE INDEX idx_loc_gist
+  ON restaurants USING GIST(location);
+
+SELECT id, name,
+  ST_Distance(location, ST_Point(-73.985,40.748)::geography) dist_m
+FROM restaurants
+WHERE ST_DWithin(location,
+  ST_Point(-73.985,40.748)::geography, 5000)
+ORDER BY dist_m LIMIT 20;</div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <div class="col flowbox hi">50M restaurants<br>ST_DWithin 5km<br><b>~5ms</b> with GiST index</div>
+        <div class="col" style="display:flex;align-items:center;justify-content:center;"><span class="arrow-right">vs</span></div>
+        <div class="col flowbox warn">Same query<br>no index<br><b>30+ seconds</b> (seq scan)</div>
+      </div>
+    </div>
+    <div class="footer"><span>5 / 10</span><span>GiST index = spatial tree, adapts like R-Tree</span></div>
+  </section>
+
+  <!-- SLIDE 6: REDIS GEOADD/GEORADIUS -->
+  <section class="slide" data-slide="6">
+    <div class="kicker">Redis GEOADD / GEORADIUS</div>
+    <h1>Geohash Under the Hood — Uber Scale</h1>
+    <div class="content">
+      <div class="row">
+        <div class="col" style="flex:0 0 90px;text-align:center;">
+          <div class="redis-icon">R</div>
+          <div class="redis-label">Redis<br>sorted-set geohash</div>
+        </div>
+        <div class="col">
+          <div class="code">GEOADD drivers:active -73.985 40.748 "driver:42"
+GEORADIUS drivers:active -73.985 40.748 5 km
+  WITHCOORD WITHDIST ASC COUNT 10</div>
+        </div>
+      </div>
+      <p style="margin-top:6px;">Coordinates stored as a 52-bit geohash integer in a sorted set → <b>O(log N)</b> writes, <b>O(N + log M)</b> reads.</p>
+      <div class="row" style="margin-top:6px;">
+        <div class="col flowbox warn">1,000,000 drivers<br>× 1 update / 3s<br>= <b>333,333 writes/sec</b></div>
+        <div class="col" style="display:flex;align-items:center;justify-content:center;"><span class="arrow-right">vs</span></div>
+        <div class="col flowbox hi">Redis single-threaded<br>caps at<br><b>~500,000 ops/sec</b></div>
+      </div>
+      <p style="margin-top:8px;"><span class="badge">SOLUTION</span>&nbsp; Redis <b>Cluster</b>, sharded by city/geographic region — spreads writes across nodes.</p>
+    </div>
+    <div class="footer"><span>6 / 10</span><span>Real-time writes need in-memory geo</span></div>
+  </section>
+
+  <!-- SLIDE 7: STALE DRIVER PROBLEM -->
+  <section class="slide" data-slide="7">
+    <div class="kicker">Operational Trap</div>
+    <h1>The Stale Driver Problem + Sharding</h1>
+    <div class="content">
+      <p>Drivers who go offline can keep appearing in <code style="display:inline;padding:1px 4px;">GEORADIUS</code> results forever unless cleaned up.</p>
+      <div class="flow">
+        <div class="flowbox">GEOADD driver loc</div>
+        <span class="arrow-right">→</span>
+        <div class="flowbox hi">SET driver:42:last_seen<br>TTL 10s</div>
+        <span class="arrow-right">→</span>
+        <div class="flowbox warn">background job<br>removes expired IDs<br>from geo set</div>
+      </div>
+      <h2 style="margin-top:12px;">Sharding by geohash prefix (&gt;10M drivers)</h2>
+      <div class="row">
+        <div class="col flowbox hi">Shard 1<br>prefix 'd'<br>Eastern US</div>
+        <div class="col flowbox hi">Shard 2<br>prefix 'e'<br>Western Europe</div>
+      </div>
+      <div class="code" style="margin-top:8px;">shard = hash(geohash_prefix_4_chars) % num_shards
+-- keeps geographic neighbors on the same shard</div>
+    </div>
+    <div class="footer"><span>7 / 10</span><span>TTL expiry + geo-aware shard key</span></div>
+  </section>
+
+  <!-- SLIDE 8: INTERVIEW CONVERSATION -->
+  <section class="slide" data-slide="8">
+    <div class="kicker">Interview Conversation</div>
+    <h1>"Design 'Find Drivers Near Me' for Uber"</h1>
+    <div class="content">
+      <div class="flow">
+        <div class="flowbox warn">Writes<br>333K/s driver pings</div>
+        <span class="arrow-right">→</span>
+        <div class="flowbox hi">Redis GEOADD<br>(sharded cluster)</div>
+      </div>
+      <div class="flow" style="margin-top:6px;">
+        <div class="flowbox warn">Reads<br>"drivers within 5km"</div>
+        <span class="arrow-right">→</span>
+        <div class="flowbox hi">Redis GEORADIUS<br>sub-millisecond</div>
+      </div>
+      <div class="flow" style="margin-top:6px;">
+        <div class="flowbox">Historical / cold-start /<br>reporting queries</div>
+        <span class="arrow-right">→</span>
+        <div class="flowbox">PostGIS + GiST<br>source of truth</div>
+      </div>
+      <p style="margin-top:10px;">Stale data → TTL 10s + background cleanup. At 10M+ drivers → shard Redis by geohash prefix ('d' → shard 1 US-East, 'e' → shard 2 Europe); the app resolves the shard from the user's own geohash prefix.</p>
+    </div>
+    <div class="footer"><span>8 / 10</span><span>Write path ≠ read path ≠ persistence path</span></div>
+  </section>
+
+  <!-- SLIDE 9: DECISION FRAMEWORK -->
+  <section class="slide" data-slide="9">
+    <div class="kicker">Decision Framework</div>
+    <h1>Geohash vs QuadTree vs PostGIS vs Redis</h1>
+    <div class="content">
+      <table>
+        <tr><th>Criteria</th><th>Geohash</th><th>QuadTree (mem)</th><th>PostGIS GiST</th><th>Redis GEORADIUS</th></tr>
+        <tr><td>Write throughput</td><td>~10K/s</td><td>instant (RAM)</td><td>~5K/s</td><td class="hl">~500K/s</td></tr>
+        <tr><td>Query latency</td><td>1-10ms (9 queries)</td><td>&lt;1ms</td><td>2-10ms</td><td class="hl">&lt;1ms</td></tr>
+        <tr><td>Data volume</td><td>100M+ rows</td><td>fits in RAM (~5GB/10M)</td><td>100M+ rows</td><td>~100M members</td></tr>
+        <tr><td>Density adaptivity</td><td>No (fixed grid)</td><td class="hl">Yes</td><td class="hl">Yes</td><td>No (fixed grid)</td></tr>
+        <tr><td>Best for</td><td>Simple, any SQL DB</td><td>In-memory proximity cache</td><td>Postgres-native spatial</td><td>Real-time location</td></tr>
+      </table>
+    </div>
+    <div class="footer"><span>9 / 10</span><span>Pick by write rate + data volume + adaptivity need</span></div>
+  </section>
+
+  <!-- SLIDE 10: DECISION TREE + QUOTE -->
+  <section class="slide" data-slide="10">
+    <div class="kicker">Decision Tree</div>
+    <h1>Which One Do You Reach For?</h1>
+    <div class="content">
+      <div class="code">Real-time location (updates every few sec)?
+  YES → Redis GEORADIUS (shard by region, >500K writes/s)
+  NO  → How many records?
+         <10M AND fits in memory?
+           YES → In-memory QuadTree (adaptive, <1ms)
+           NO  → Already on PostgreSQL?
+                  YES → PostGIS GiST (ST_DWithin)
+                  NO  → Geohash column + B-tree index
+
+Sharding the DB itself by geography?
+  YES → use geohash prefix as the shard key</div>
+      <div class="quote" style="margin-top:10px;">
+        "B-tree indexes are 1D — they can't answer spatial queries; we collapse 2D coordinates into a geohash string so standard indexed prefix lookups give us geographic proximity search, or we use a QuadTree to adaptively partition dense areas like city centers into smaller cells than sparse areas like deserts."
+      </div>
+    </div>
+    <div class="footer"><span>10 / 10</span><span>Geohash vs QuadTree — Map Partitioning</span></div>
+  </section>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">◀ Prev</button>
+  <span class="counter" id="counter">1 / 10</span>
+  <button id="nextBtn">Next ▶</button>
+</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var idx = 0;
+
+  function render(){
+    slides.forEach(function(s,i){ s.classList.toggle('active', i===idx); });
+    document.getElementById('counter').textContent = (idx+1) + ' / ' + total;
+  }
+  function go(delta){
+    idx = Math.max(0, Math.min(total-1, idx+delta));
+    render();
+  }
+  document.getElementById('prevBtn').addEventListener('click', function(){ go(-1); });
+  document.getElementById('nextBtn').addEventListener('click', function(){ go(1); });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'ArrowRight'){ go(1); }
+    else if(e.key === 'ArrowLeft'){ go(-1); }
+  });
+  render();
+})();
+</script>
+
+</body>
+</html>

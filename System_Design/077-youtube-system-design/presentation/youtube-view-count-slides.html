@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>How YouTube Counts 500M Views a Day — Abhishek</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;
+  --border:#30363d;--text:#e6edf3;--muted:#8b949e;
+  --kafka:#e47328;--redis:#d82c20;--flink:#e6526f;
+  --bigtable:#4285f4;--cf:#f6821f;--green:#3fb950;
+  --yellow:#d29922;--purple:#bc8cff;--cyan:#58a6ff;
+  --arrow:#484f58;
+}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
+  font-family:'Inter',system-ui,sans-serif;overflow:hidden}
+
+/* ── LAYOUT ── */
+.slides{width:100%;height:100%;position:relative}
+.slide{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:36px 56px;
+  opacity:0;pointer-events:none;transition:opacity .35s}
+.slide.active{opacity:1;pointer-events:all}
+
+/* ── TITLES ── */
+.slide-title{font-size:1.9rem;font-weight:800;text-align:center;margin-bottom:6px;
+  background:linear-gradient(135deg,#e6edf3,#8b949e);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:-.5px}
+.slide-sub{font-size:.9rem;color:var(--muted);text-align:center;margin-bottom:32px}
+
+/* ── REVEAL ── */
+.rv{opacity:0;transform:translateY(14px);transition:opacity .4s,transform .4s}
+.rv.show{opacity:1;transform:none}
+.rv-x{opacity:0;transform:translateX(-12px);transition:opacity .35s,transform .35s}
+.rv-x.show{opacity:1;transform:none}
+.rv-fade{opacity:0;transition:opacity .4s .1s}
+.rv-fade.show{opacity:1}
+
+/* ── NAV ── */
+.progress{position:fixed;top:20px;left:50%;transform:translateX(-50%);display:flex;gap:7px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .3s}
+.dot.active{background:var(--cyan)}
+.counter{position:fixed;bottom:20px;left:28px;font-size:.7rem;color:var(--muted);
+  font-family:'JetBrains Mono',monospace}
+.hint{position:fixed;bottom:20px;right:28px;font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.hint kbd{background:var(--bg2);border:1px solid var(--border);border-radius:4px;
+  padding:1px 7px;font-family:'JetBrains Mono',monospace;font-size:.65rem}
+
+/* ══════════════════ SLIDE 1 — ARCHITECTURE ══════════════════ */
+.arch-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:1060px}
+.arch-row{display:flex;align-items:center;gap:0;width:100%}
+.node{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0}
+.nicon{width:68px;height:68px;border-radius:15px;display:flex;align-items:center;
+  justify-content:center;font-size:1.7rem;border:2px solid var(--border)}
+.nlabel{font-size:.68rem;font-weight:700;text-align:center;max-width:78px}
+.nsub{font-size:.58rem;color:var(--muted);text-align:center;max-width:78px;line-height:1.3}
+.node-kafka .nicon{background:var(--kafka);border-color:var(--kafka);box-shadow:0 0 22px rgba(228,115,40,.3)}
+.node-flink .nicon{background:var(--flink);border-color:var(--flink);box-shadow:0 0 22px rgba(230,82,111,.3)}
+.arr{flex:1;min-width:36px;display:flex;flex-direction:column;align-items:center;
+  padding-top:26px;opacity:0;transition:opacity .4s .15s}
+.arr.show{opacity:1}
+.aline{width:100%;height:2px;background:var(--arrow);position:relative}
+.aline::after{content:'';position:absolute;right:-1px;top:50%;transform:translateY(-50%);
+  border-left:8px solid var(--arrow);border-top:5px solid transparent;border-bottom:5px solid transparent}
+.alabel{font-size:.57rem;color:var(--muted);margin-top:4px;text-align:center;
+  white-space:nowrap;font-family:'JetBrains Mono',monospace}
+.varr{display:flex;flex-direction:column;align-items:center}
+.vline{width:2px;height:22px;background:var(--arrow)}
+.vtip{border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid var(--arrow)}
+.bottom-row{display:flex;gap:20px}
+.bcard{display:flex;align-items:center;gap:11px;background:var(--bg2);
+  border:1px solid var(--border);border-radius:11px;padding:12px 16px}
+.bicon{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.bname{font-size:.8rem;font-weight:700}
+.bsub{font-size:.6rem;color:var(--muted)}
+
+/* ══════════════════ SLIDE 2 — FLINK VS KAFKA ══════════════════ */
+.fk-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;width:100%;max-width:960px}
+.fk-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:22px 20px}
+.fk-card.kafka-card{border-color:rgba(228,115,40,.4)}
+.fk-card.flink-card{border-color:rgba(230,82,111,.4)}
+.fk-head{font-size:.95rem;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.badge{font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.5px}
+.badge-lib{background:rgba(228,115,40,.18);color:var(--kafka)}
+.badge-cluster{background:rgba(230,82,111,.18);color:var(--flink)}
+.fk-sub{font-size:.75rem;color:var(--muted);margin-bottom:10px}
+.code-block{background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:10px 13px;font-family:'JetBrains Mono',monospace;font-size:.65rem;
+  color:#b5cea8;line-height:1.6}
+.fk-point{font-size:.75rem;color:var(--muted);margin-top:8px;line-height:1.5;
+  padding-left:10px;border-left:2px solid var(--border)}
+.fk-rule{grid-column:1/-1;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.25);
+  border-radius:11px;padding:14px 18px;font-size:.82rem;text-align:center;color:var(--cyan);line-height:1.6}
+
+/* ══════════════════ SLIDE 3 — REDIS (reuse two-col) ══════════════════ */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:28px;width:100%;max-width:940px}
+.col-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px 20px;display:flex;flex-direction:column;gap:12px}
+.col-card.bad{border-color:rgba(216,44,32,.4)}
+.col-card.good{border-color:rgba(63,185,80,.4)}
+.col-title{font-size:.92rem;font-weight:700;display:flex;align-items:center;gap:7px}
+.badge-bad{background:rgba(216,44,32,.2);color:var(--redis)}
+.badge-good{background:rgba(63,185,80,.2);color:var(--green)}
+.trow{display:flex;align-items:center;gap:9px;background:var(--bg);border-radius:7px;
+  padding:9px 12px;font-size:.77rem;font-family:'JetBrains Mono',monospace;
+  border:1px solid var(--border)}
+.trow.bad-row{border-left:3px solid var(--redis)}
+.trow.good-row{border-left:3px solid var(--green)}
+.tdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot-a{background:#e3b341}.dot-b{background:var(--purple)}.dot-q{background:var(--green)}
+.result{border-radius:9px;padding:11px;font-size:.82rem;font-weight:700;
+  text-align:center;font-family:'JetBrains Mono',monospace}
+.result.bad{background:rgba(216,44,32,.15);color:var(--redis);border:1px solid rgba(216,44,32,.3)}
+.result.good{background:rgba(63,185,80,.15);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.insight{grid-column:1/-1;background:rgba(88,166,255,.07);border:1px solid rgba(88,166,255,.2);
+  border-radius:11px;padding:14px 18px;font-size:.82rem;text-align:center;color:var(--cyan);line-height:1.6}
+
+/* ══════════════════ SLIDE 4 — CASSANDRA ══════════════════ */
+.steps-row{display:flex;align-items:center;gap:0;width:100%;max-width:880px}
+.step{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+  padding:24px 16px;text-align:center;position:relative}
+.step.s1.show{border-color:var(--yellow);box-shadow:0 0 18px rgba(210,153,34,.2)}
+.step.s2.show{border-color:var(--cyan);box-shadow:0 0 18px rgba(88,166,255,.2)}
+.step.s3.show{border-color:var(--green);box-shadow:0 0 18px rgba(63,185,80,.2)}
+.stepnum{position:absolute;top:-12px;left:50%;transform:translateX(-50%);
+  background:var(--bg2);border:1px solid var(--border);border-radius:20px;
+  padding:1px 10px;font-size:.65rem;font-weight:700;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.step.s1.show .stepnum{border-color:var(--yellow);color:var(--yellow)}
+.step.s2.show .stepnum{border-color:var(--cyan);color:var(--cyan)}
+.step.s3.show .stepnum{border-color:var(--green);color:var(--green)}
+.step-ico{font-size:2.2rem;display:block;margin-bottom:8px}
+.step-name{font-size:.95rem;font-weight:700;margin-bottom:3px}
+.step-tech{font-size:.65rem;font-family:'JetBrains Mono',monospace;color:var(--muted);margin-bottom:8px}
+.step-desc{font-size:.72rem;color:var(--muted);line-height:1.5}
+.sarr{width:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.sarr svg{width:28px;height:28px}
+.rule-box{width:100%;max-width:880px;background:rgba(230,82,111,.08);
+  border:1px solid rgba(230,82,111,.3);border-radius:11px;padding:12px 18px;
+  font-size:.82rem;color:var(--flink);font-weight:600;text-align:center;margin-top:20px}
+.compact-box{width:100%;max-width:880px;background:rgba(63,185,80,.06);
+  border:1px solid rgba(63,185,80,.22);border-radius:11px;padding:12px 18px;margin-top:12px}
+.compact-title{font-size:.78rem;font-weight:700;color:var(--green);margin-bottom:4px}
+.compact-desc{font-size:.72rem;color:var(--muted);line-height:1.5}
+
+/* ══════════════════ SLIDE 5 — BIGTABLE ══════════════════ */
+.bt-wrap{display:flex;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:880px}
+.bt-master{background:rgba(210,153,34,.1);border:1px solid rgba(210,153,34,.4);
+  border-radius:11px;padding:12px 24px;display:flex;align-items:center;gap:10px}
+.bt-master-label{font-size:.82rem;font-weight:700;color:var(--yellow)}
+.bt-servers{display:flex;gap:14px}
+.bt-server{background:rgba(66,133,244,.1);border:1px solid rgba(66,133,244,.35);
+  border-radius:11px;padding:12px 18px;text-align:center;min-width:140px}
+.bt-server-name{font-size:.78rem;font-weight:700;color:var(--bigtable);margin-bottom:4px}
+.bt-server-sub{font-size:.62rem;color:var(--muted)}
+.bt-gcs{width:100%;background:rgba(63,185,80,.1);border:2px solid rgba(63,185,40,.5);
+  border-radius:11px;padding:14px 24px;text-align:center}
+.bt-gcs-title{font-size:.9rem;font-weight:700;color:var(--green);margin-bottom:4px}
+.bt-gcs-sub{font-size:.72rem;color:var(--muted)}
+.bt-crash{background:rgba(216,44,32,.1);border:1px solid rgba(216,44,32,.4);
+  border-radius:11px;padding:12px 18px;width:100%}
+.bt-crash-title{font-size:.78rem;font-weight:700;color:var(--redis);margin-bottom:6px}
+.bt-crash-steps{font-size:.72rem;color:var(--muted);line-height:1.9;
+  font-family:'JetBrains Mono',monospace}
+.connector{width:2px;height:16px;background:var(--arrow);align-self:center}
+
+/* ══════════════════ SLIDE 6 — PICK ONE ══════════════════ */
+.pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;width:100%;max-width:860px}
+.pick-card{background:var(--bg2);border:2px solid var(--border);border-radius:16px;
+  padding:28px 24px;display:flex;flex-direction:column;gap:10px}
+.pick-card.bt.show{border-color:var(--bigtable);box-shadow:0 0 24px rgba(66,133,244,.2)}
+.pick-card.cass.show{border-color:var(--kafka);box-shadow:0 0 24px rgba(228,115,40,.2)}
+.pick-title{font-size:1.1rem;font-weight:800;display:flex;align-items:center;gap:8px}
+.pick-when{font-size:.75rem;color:var(--muted);margin-bottom:4px;font-weight:600}
+.pick-point{font-size:.75rem;color:var(--muted);line-height:1.7;padding-left:10px;border-left:2px solid var(--border)}
+.pick-example{font-size:.7rem;background:var(--bg3);border-radius:8px;padding:8px 12px;
+  color:var(--muted);font-family:'JetBrains Mono',monospace}
+.pick-rule{grid-column:1/-1;background:rgba(188,140,255,.07);border:1px solid rgba(188,140,255,.25);
+  border-radius:11px;padding:14px;font-size:.82rem;text-align:center;color:var(--purple);line-height:1.6}
+
+/* ══════════════════ SLIDE 7 — FLINK WINDOW ══════════════════ */
+.fw-pipeline{display:flex;align-items:center;gap:0;width:100%;max-width:960px}
+.fw-step{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:12px;
+  padding:18px 12px;text-align:center}
+.fw-step.show{border-color:var(--cyan);box-shadow:0 0 16px rgba(88,166,255,.15)}
+.fw-ico{font-size:1.8rem;display:block;margin-bottom:7px}
+.fw-name{font-size:.8rem;font-weight:700;margin-bottom:3px}
+.fw-desc{font-size:.65rem;color:var(--muted);line-height:1.4}
+.fw-arr{width:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .3s .2s}
+.fw-arr.show{opacity:1}
+.fw-arr svg{width:24px;height:24px}
+.fw-kafka{width:100%;max-width:960px;background:rgba(228,115,40,.08);
+  border:1px solid rgba(228,115,40,.3);border-radius:11px;padding:14px 18px;
+  font-size:.82rem;text-align:center;color:var(--kafka);margin-top:20px;line-height:1.6}
+
+/* ══════════════════ SLIDE 8 — GANGNAM ══════════════════ */
+.gangnam-wrap{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:700px}
+.g-video{background:var(--bg2);border:1px solid var(--border);border-radius:14px;
+  padding:20px 28px;text-align:center;width:100%}
+.g-vtitle{font-size:1rem;font-weight:700;margin-bottom:4px}
+.g-vsub{font-size:.75rem;color:var(--muted)}
+.counter-row{display:flex;flex-direction:column;gap:8px;width:100%}
+.counter-item{display:flex;align-items:center;justify-content:space-between;
+  background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 18px}
+.counter-val{font-size:1.1rem;font-weight:800;font-family:'JetBrains Mono',monospace}
+.counter-status{font-size:.8rem;font-weight:700}
+.counter-item.ok .counter-val{color:var(--green)}
+.counter-item.ok .counter-status{color:var(--green)}
+.counter-item.frozen{border-color:rgba(216,44,32,.5);background:rgba(216,44,32,.08)}
+.counter-item.frozen .counter-val{color:var(--redis);animation:pulse .8s infinite}
+.counter-item.frozen .counter-status{color:var(--redis)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.g-explain{background:rgba(210,153,34,.08);border:1px solid rgba(210,153,34,.3);
+  border-radius:11px;padding:14px 18px;font-size:.8rem;color:var(--yellow);
+  text-align:center;line-height:1.6;width:100%}
+.g-fix{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);
+  border-radius:11px;padding:14px 18px;font-size:.82rem;color:var(--green);
+  text-align:center;line-height:1.6;width:100%}
+</style>
+</head>
+<body>
+
+<div class="slides">
+
+<!-- ═══════════════ SLIDE 1 — ARCHITECTURE ═══════════════ -->
+<div class="slide active" id="slide-0">
+  <div class="slide-title">How YouTube Counts 500 Million Views a Day</div>
+  <div class="slide-sub">The architecture — playing a video and counting that view are two completely different jobs</div>
+  <div class="arch-wrap">
+    <div class="arch-row">
+      <div class="node rv" id="n-client">
+        <div class="nicon" style="background:var(--bg3)">📱</div>
+        <div class="nlabel">Client</div>
+        <div class="nsub">Web · Mobile · TV</div>
+      </div>
+      <div class="arr rv" id="a1">
+        <div class="aline"></div>
+        <div class="alabel">POST /v1/views<br>202 Accepted ⚡</div>
+      </div>
+      <div class="node node-kafka rv" id="n-kafka">
+        <div class="nicon">
+          <svg viewBox="0 0 40 40" width="36" height="36" fill="none">
+            <circle cx="20" cy="8" r="4.5" fill="white"/>
+            <circle cx="8" cy="29" r="4.5" fill="white"/>
+            <circle cx="32" cy="29" r="4.5" fill="white"/>
+            <line x1="20" y1="12.5" x2="13" y2="24.5" stroke="white" stroke-width="2"/>
+            <line x1="20" y1="12.5" x2="27" y2="24.5" stroke="white" stroke-width="2"/>
+            <line x1="8" y1="24.5" x2="32" y2="24.5" stroke="white" stroke-width="2"/>
+          </svg>
+        </div>
+        <div class="nlabel">Kafka</div>
+        <div class="nsub">7-day retention<br>Partitioned by video_id</div>
+      </div>
+      <div class="arr rv" id="a2">
+        <div class="aline"></div>
+        <div class="alabel">consume events<br>every 30 sec</div>
+      </div>
+      <div class="node node-flink rv" id="n-flink">
+        <div class="nicon">
+          <svg viewBox="0 0 40 40" width="36" height="36" fill="none">
+            <ellipse cx="20" cy="20" rx="13" ry="9" fill="none" stroke="white" stroke-width="2"/>
+            <path d="M10 20 Q20 11 30 20" stroke="white" stroke-width="2" fill="none"/>
+            <circle cx="20" cy="20" r="3" fill="white"/>
+          </svg>
+        </div>
+        <div class="nlabel">Flink</div>
+        <div class="nsub">30-sec windows<br>Dedup · Fraud</div>
+      </div>
+    </div>
+
+    <div class="varr rv" id="v-arrow">
+      <div class="vline"></div><div class="vtip"></div>
+    </div>
+
+    <div class="bottom-row rv" id="arch-bottom">
+      <div class="bcard">
+        <div class="bicon" style="background:var(--redis)">
+          <svg viewBox="0 0 36 36" width="28" height="28" fill="none">
+            <rect x="5" y="13" width="26" height="10" rx="5" fill="white"/>
+            <ellipse cx="18" cy="13" rx="13" ry="4.5" fill="white" opacity=".9"/>
+            <ellipse cx="18" cy="23" rx="13" ry="4.5" fill="white" opacity=".9"/>
+          </svg>
+        </div>
+        <div><div class="bname" style="color:var(--redis)">Redis</div>
+        <div class="bsub">INCRBY delta · sub-ms<br>Hot counter</div></div>
+      </div>
+      <div class="bcard">
+        <div class="bicon" style="background:var(--bigtable)">
+          <svg viewBox="0 0 36 36" width="28" height="28" fill="none">
+            <rect x="6" y="6" width="10" height="10" rx="2" fill="white"/>
+            <rect x="20" y="6" width="10" height="10" rx="2" fill="white" opacity=".7"/>
+            <rect x="6" y="20" width="10" height="10" rx="2" fill="white" opacity=".7"/>
+            <rect x="20" y="20" width="10" height="10" rx="2" fill="white" opacity=".5"/>
+          </svg>
+        </div>
+        <div><div class="bname" style="color:var(--bigtable)">Bigtable</div>
+        <div class="bsub">Flush 5–10 min<br>Authoritative store</div></div>
+      </div>
+      <div class="bcard rv-fade" id="cdn-card">
+        <div class="bicon" style="background:var(--cf)">
+          <svg viewBox="0 0 36 36" width="28" height="28" fill="none">
+            <circle cx="18" cy="18" r="11" fill="none" stroke="white" stroke-width="2.2"/>
+            <path d="M18 7 C13 12 13 24 18 29" stroke="white" stroke-width="1.8" fill="none"/>
+            <path d="M18 7 C23 12 23 24 18 29" stroke="white" stroke-width="1.8" fill="none"/>
+            <line x1="7" y1="18" x2="29" y2="18" stroke="white" stroke-width="1.8"/>
+          </svg>
+        </div>
+        <div><div class="bname" style="color:var(--cf)">CDN · Cloudflare</div>
+        <div class="bsub">TTL 30s–1hr<br>95% of reads served here</div></div>
+      </div>
+      <div class="rv-fade" id="viewer-card" style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:0 8px">
+        <div style="font-size:2.2rem">👁</div>
+        <div style="font-size:.7rem;font-weight:700;color:var(--green)">"1.2M views"</div>
+        <div style="font-size:.58rem;color:var(--muted)">~1-2 min stale · intentional</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 2 — FLINK VS KAFKA STREAMS ═══════════════ -->
+<div class="slide" id="slide-1">
+  <div class="slide-title">Flink vs Kafka Streams — Which Aggregator?</div>
+  <div class="slide-sub">Both do the 30-second windowed aggregation — but they are very different tools</div>
+  <div class="fk-grid">
+    <div class="fk-card kafka-card rv" id="fk-kafka">
+      <div class="fk-head">
+        <span style="font-size:1.1rem">🟠</span> Kafka Streams
+        <span class="badge badge-lib">LIBRARY</span>
+      </div>
+      <div class="fk-sub">Just a Java dependency — runs inside your app. No extra cluster.</div>
+      <div class="code-block rv" id="fk-code">
+KStream&lt;String, ViewEvent&gt; views =<br>
+&nbsp;&nbsp;builder.stream("view-events");<br>
+views.groupByKey()<br>
+&nbsp;&nbsp;.windowedBy(TimeWindows<br>
+&nbsp;&nbsp;&nbsp;&nbsp;.of(Duration.ofSeconds(30)))<br>
+&nbsp;&nbsp;.count()<br>
+&nbsp;&nbsp;.toStream()<br>
+&nbsp;&nbsp;.to("view-count-deltas");
+      </div>
+      <div class="fk-point rv" id="fk-k-point">
+        ✅ No extra infra &nbsp;·&nbsp; Low ops overhead<br>
+        ✅ Perfect for: simple windowed counting<br>
+        ⚠️ Limited: no complex multi-stream joins
+      </div>
+    </div>
+    <div class="fk-card flink-card rv" id="fk-flink">
+      <div class="fk-head">
+        <span style="font-size:1.1rem">🔴</span> Apache Flink
+        <span class="badge badge-cluster">CLUSTER</span>
+      </div>
+      <div class="fk-sub">Separate infrastructure — its own set of servers, deployed independently.</div>
+      <div class="rv" id="fk-flink-detail">
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:.72rem;color:var(--muted);line-height:1.7;margin-bottom:10px">
+          Your App Servers → Kafka → <strong style="color:var(--flink)">Flink Cluster</strong><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;↓<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Redis + Bigtable + Fraud Queue
+        </div>
+        <div class="fk-point">
+          ✅ Multi-stream joins for fraud detection<br>
+          ✅ Exactly-once with checkpointing<br>
+          ✅ Better for: complex logic at YouTube scale<br>
+          ⚠️ Higher ops overhead — separate cluster
+        </div>
+      </div>
+    </div>
+    <div class="fk-rule rv" id="fk-rule">
+      <strong>Simple rule:</strong> &nbsp;Basic counting only → <strong style="color:var(--kafka)">Kafka Streams</strong> &nbsp;·&nbsp;
+      Complex fraud logic, multi-stream → <strong style="color:var(--flink)">Flink</strong> &nbsp;·&nbsp;
+      On GCP → <strong style="color:var(--bigtable)">Dataflow / Beam</strong>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 3 — REDIS SINGLE THREAD ═══════════════ -->
+<div class="slide" id="slide-2">
+  <div class="slide-title">Why Redis INCRBY Needs No Locks</div>
+  <div class="slide-sub">The single-threaded model explained</div>
+  <div class="two-col">
+    <div class="col-card bad">
+      <div class="col-title">🔴 Multi-Thread Database <span class="badge badge-bad">PROBLEM</span></div>
+      <div class="trow bad-row rv-x" id="r-ta1"><div class="tdot dot-a"></div>Thread A reads count → <strong>1000</strong></div>
+      <div class="trow bad-row rv-x" id="r-tb1"><div class="tdot dot-b"></div>Thread B reads count → <strong>1000</strong> &nbsp;<span style="color:var(--redis);font-size:.65rem">← before A writes</span></div>
+      <div class="trow bad-row rv-x" id="r-ta2"><div class="tdot dot-a"></div>Thread A writes → <strong>1001</strong></div>
+      <div class="trow bad-row rv-x" id="r-tb2"><div class="tdot dot-b"></div>Thread B writes → <strong>1001</strong> &nbsp;<span style="color:var(--redis);font-size:.65rem">← overwrites A</span></div>
+      <div class="result bad rv" id="r-bad">Final: 1001 ✗ &nbsp;·&nbsp; Should be 1002 &nbsp;·&nbsp; One write LOST</div>
+    </div>
+    <div class="col-card good">
+      <div class="col-title">🟢 Redis — Single Thread <span class="badge badge-good">SOLUTION</span></div>
+      <div class="trow good-row rv-x" id="r-q1"><div class="tdot dot-q"></div>INCRBY 1 → reads 1000, writes <strong>1001</strong> ✓</div>
+      <div class="trow good-row rv-x" id="r-q2"><div class="tdot dot-q"></div>INCRBY 1 → reads 1001, writes <strong>1002</strong> ✓</div>
+      <div class="trow good-row rv-x" id="r-q3"><div class="tdot dot-q"></div>INCRBY 847 → reads 1002, writes <strong>1849</strong> ✓</div>
+      <div style="font-size:.68rem;color:var(--muted);padding:3px 0 0 3px" class="rv-fade" id="r-note">One thread. Commands queue. Zero overlap. Zero race condition.</div>
+      <div class="result good rv" id="r-good">Always correct &nbsp;·&nbsp; No locks &nbsp;·&nbsp; 100K ops/sec</div>
+    </div>
+    <div class="insight rv" id="r-insight">
+      💡 &nbsp;Sounds like a limitation — <strong>one thread.</strong>
+      But Redis is <em>entirely in memory</em>. That one thread handles
+      <strong style="color:var(--cyan)">100,000+ operations per second.</strong><br>
+      Bank analogy: one cashier, very long queue — no lock on the drawer needed.
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 4 — CASSANDRA WRITE PATH ═══════════════ -->
+<div class="slide" id="slide-3">
+  <div class="slide-title">Cassandra — Write Path</div>
+  <div class="slide-sub">Append-only · never modify old data · clean up in the background</div>
+  <div class="steps-row">
+    <div class="step s1 rv" id="c-s1">
+      <div class="stepnum">Step 1</div>
+      <span class="step-ico">📔</span>
+      <div class="step-name">Commit Log</div>
+      <div class="step-tech">Sequential write · Disk</div>
+      <div class="step-desc">Written to disk <strong>first</strong>, before anything else. If the server crashes — data is safe. Recovered on restart.</div>
+    </div>
+    <div class="sarr rv" id="c-a1">
+      <svg viewBox="0 0 28 28" fill="none"><line x1="3" y1="14" x2="21" y2="14" stroke="#484f58" stroke-width="2"/><path d="M17 9 L25 14 L17 19" stroke="#484f58" stroke-width="2" fill="none"/></svg>
+    </div>
+    <div class="step s2 rv" id="c-s2">
+      <div class="stepnum">Step 2</div>
+      <span class="step-ico">⚡</span>
+      <div class="step-name">MemTable</div>
+      <div class="step-tech">In-memory · RAM</div>
+      <div class="step-desc">Data in RAM — <strong>immediately readable</strong>. Sorted by key. Held until ~128 MB fills up.</div>
+    </div>
+    <div class="sarr rv" id="c-a2">
+      <svg viewBox="0 0 28 28" fill="none"><line x1="3" y1="14" x2="21" y2="14" stroke="#484f58" stroke-width="2"/><path d="M17 9 L25 14 L17 19" stroke="#484f58" stroke-width="2" fill="none"/></svg>
+    </div>
+    <div class="step s3 rv" id="c-s3">
+      <div class="stepnum">Step 3</div>
+      <span class="step-ico">💾</span>
+      <div class="step-name">SSTable</div>
+      <div class="step-tech">Immutable file · Disk</div>
+      <div class="step-desc"><strong>Never modified</strong> once written. Updates create a new file. Old files stay until compaction.</div>
+    </div>
+  </div>
+  <div class="rule-box rv" id="c-rule">⚡ The golden rule: <strong>append-only.</strong> No locking. No finding old rows. Just write a new file. This is why Cassandra handles millions of writes/sec.</div>
+  <div class="compact-box rv" id="c-compact">
+    <div class="compact-title">🧹 Background — Compaction + Bloom Filter</div>
+    <div class="compact-desc">Compaction merges SSTables periodically — keeps newest version, removes deleted data, fewer files = faster reads.<br>
+    Bloom Filter: each SSTable has a tiny helper — "Is your data definitely NOT in me?" → skip that file. Instead of checking 50 files, you check 2–3.</div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 5 — BIGTABLE ═══════════════ -->
+<div class="slide" id="slide-4">
+  <div class="slide-title">Bigtable — Architecture</div>
+  <div class="slide-sub">One giant sorted table, cut into pieces · data lives in GCS, not on the server</div>
+  <div class="bt-wrap">
+    <div class="bt-master rv" id="bt-master">
+      <span style="font-size:1.4rem">🎯</span>
+      <div>
+        <div class="bt-master-label">Master Node</div>
+        <div style="font-size:.68rem;color:var(--muted)">Manages tablet assignments · does NOT serve data · traffic controller only</div>
+      </div>
+    </div>
+    <div class="connector rv" id="bt-c1"></div>
+    <div class="bt-servers rv" id="bt-servers">
+      <div class="bt-server"><div class="bt-server-name">Tablet Server 1</div><div class="bt-server-sub">Tablets A–G</div></div>
+      <div class="bt-server"><div class="bt-server-name">Tablet Server 2</div><div class="bt-server-sub">Tablets G–M</div></div>
+      <div class="bt-server"><div class="bt-server-name">Tablet Server 3</div><div class="bt-server-sub">Tablets M–Z</div></div>
+    </div>
+    <div class="connector rv" id="bt-c2"></div>
+    <div class="bt-gcs rv" id="bt-gcs">
+      <div class="bt-gcs-title">☁️ Google Cloud Storage — Actual Data Lives Here</div>
+      <div class="bt-gcs-sub">SSTables for all tablets · Shared Write-Ahead Log · NOT on the server's local disk<br>
+      <strong style="color:var(--green)">This is the most important design decision in Bigtable.</strong></div>
+    </div>
+    <div class="bt-crash rv" id="bt-crash">
+      <div class="bt-crash-title">❌ What happens when Tablet Server 2 crashes?</div>
+      <div class="bt-crash-steps">
+        TS2 crashes → Master detects in seconds<br>
+        → Reassigns Tablets G–M to a new server (TS4)<br>
+        → TS4 reads data from GCS — <strong style="color:var(--green)">already there, nothing to copy</strong><br>
+        → Recovery in <strong style="color:var(--green)">seconds</strong>, not minutes<br>
+        <br>
+        <span style="color:var(--muted)">Traditional DB: server crashes → data stuck on local disk → copy needed → minutes</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 6 — PICK ONE ═══════════════ -->
+<div class="slide" id="slide-5">
+  <div class="slide-title">Bigtable or Cassandra — Which to Pick?</div>
+  <div class="slide-sub">Both handle petabyte-scale · the decision is about your cloud strategy</div>
+  <div class="pick-grid">
+    <div class="pick-card bt rv" id="p-bigtable">
+      <div class="pick-title"><span style="color:var(--bigtable);font-size:1.4rem">☁️</span> Pick Bigtable</div>
+      <div class="pick-when">When: You're on Google Cloud Platform</div>
+      <div class="pick-point">
+        ✅ Fully managed — Google runs it, zero ops<br>
+        ✅ Native integration with Dataflow, BigQuery<br>
+        ✅ YouTube is GCP-native — obvious fit<br>
+        ✅ Row key design handles time-series perfectly<br>
+        ⚠️ GCP-only — locked to one cloud
+      </div>
+      <div class="pick-example">Real world: YouTube · Google Analytics · Google Maps</div>
+    </div>
+    <div class="pick-card cass rv" id="p-cassandra">
+      <div class="pick-title"><span style="color:var(--kafka);font-size:1.4rem">🔶</span> Pick Cassandra</div>
+      <div class="pick-when">When: Multi-cloud or on your own servers</div>
+      <div class="pick-point">
+        ✅ Open-source — not locked to any cloud<br>
+        ✅ Masterless — no single point of failure<br>
+        ✅ Tunable consistency (ONE / QUORUM / ALL)<br>
+        ✅ CQL for flexible queries<br>
+        ⚠️ You manage it — higher ops overhead
+      </div>
+      <div class="pick-example">Real world: Netflix · Discord · Apple iCloud</div>
+    </div>
+    <div class="pick-rule rv" id="p-rule">
+      Both handle this exact problem equally well at scale.<br>
+      <strong>The only question: where are you running?</strong> &nbsp;GCP → Bigtable. Everywhere else → Cassandra.
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 7 — FLINK WINDOW INTERNALS ═══════════════ -->
+<div class="slide" id="slide-6">
+  <div class="slide-title">Inside the 30-Second Window</div>
+  <div class="slide-sub">What Flink actually does with 50,000 events before writing ONE number to Redis</div>
+  <div class="fw-pipeline">
+    <div class="fw-step rv" id="fw-1">
+      <span class="fw-ico">📥</span>
+      <div class="fw-name">Events In</div>
+      <div class="fw-desc">50,000 raw events in this 30-second window for one viral video</div>
+    </div>
+    <div class="fw-arr rv" id="fw-a1"><svg viewBox="0 0 24 24" fill="none"><line x1="2" y1="12" x2="18" y2="12" stroke="#484f58" stroke-width="2"/><path d="M14 7 L22 12 L14 17" stroke="#484f58" stroke-width="2" fill="none"/></svg></div>
+    <div class="fw-step rv" id="fw-2">
+      <span class="fw-ico">🔄</span>
+      <div class="fw-name">Deduplicate</div>
+      <div class="fw-desc">Same session_id within 60s → drop. One person, counted once.</div>
+    </div>
+    <div class="fw-arr rv" id="fw-a2"><svg viewBox="0 0 24 24" fill="none"><line x1="2" y1="12" x2="18" y2="12" stroke="#484f58" stroke-width="2"/><path d="M14 7 L22 12 L14 17" stroke="#484f58" stroke-width="2" fill="none"/></svg></div>
+    <div class="fw-step rv" id="fw-3">
+      <span class="fw-ico">🚨</span>
+      <div class="fw-name">Fraud Check</div>
+      <div class="fw-desc">Watch time = 0s on 10-min video → flag and hold. Not counted yet.</div>
+    </div>
+    <div class="fw-arr rv" id="fw-a3"><svg viewBox="0 0 24 24" fill="none"><line x1="2" y1="12" x2="18" y2="12" stroke="#484f58" stroke-width="2"/><path d="M14 7 L22 12 L14 17" stroke="#484f58" stroke-width="2" fill="none"/></svg></div>
+    <div class="fw-step rv" id="fw-4">
+      <span class="fw-ico">🔢</span>
+      <div class="fw-name">Count</div>
+      <div class="fw-desc">Group valid events by video_id. Count = 847 for video ABC.</div>
+    </div>
+    <div class="fw-arr rv" id="fw-a4"><svg viewBox="0 0 24 24" fill="none"><line x1="2" y1="12" x2="18" y2="12" stroke="#484f58" stroke-width="2"/><path d="M14 7 L22 12 L14 17" stroke="#484f58" stroke-width="2" fill="none"/></svg></div>
+    <div class="fw-step rv" id="fw-5">
+      <span class="fw-ico">⚡</span>
+      <div class="fw-name">INCRBY 847</div>
+      <div class="fw-desc">ONE write to Redis. Not 847. This is the optimisation that makes it all work.</div>
+    </div>
+  </div>
+  <div class="fw-kafka rv" id="fw-kafka">
+    🛡️ &nbsp;<strong>Kafka safety net:</strong> If Flink crashes mid-window, events are still in Kafka (7-day retention).
+    Flink rewinds to the last successful offset and replays. <strong style="color:var(--kafka)">The events were never lost. They were just waiting.</strong>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 8 — GANGNAM STORY ═══════════════ -->
+<div class="slide" id="slide-7">
+  <div class="slide-title">The Day YouTube's Counter Broke</div>
+  <div class="slide-sub">December 2012 — Gangnam Style and the 32-bit integer overflow</div>
+  <div class="gangnam-wrap">
+    <div class="g-video rv" id="g-title">
+      <div style="font-size:2rem;margin-bottom:6px">🎵</div>
+      <div class="g-vtitle">Gangnam Style — PSY</div>
+      <div class="g-vsub">The first video in YouTube history to break the view counter</div>
+    </div>
+    <div class="counter-row">
+      <div class="counter-item ok rv" id="g-1b">
+        <div class="counter-val">1,000,000,000</div>
+        <div class="counter-status">✅ 1 Billion views — world record</div>
+      </div>
+      <div class="counter-item ok rv" id="g-2b">
+        <div class="counter-val">2,000,000,000</div>
+        <div class="counter-status">✅ 2 Billion views — still going</div>
+      </div>
+      <div class="counter-item frozen rv" id="g-freeze">
+        <div class="counter-val">2,147,483,647</div>
+        <div class="counter-status">❌ FROZEN — counter stopped</div>
+      </div>
+    </div>
+    <div class="g-explain rv" id="g-int">
+      ⚠️ &nbsp;<strong>2,147,483,647 = 2³¹ − 1 = INT max</strong><br>
+      YouTube stored view counts as a 32-bit signed integer. Gangnam Style overflowed it.<br>
+      The counter froze. YouTube engineers had to stop it, migrate the column, and restart.
+    </div>
+    <div class="g-fix rv" id="g-fix">
+      ✅ &nbsp;Fix: <strong>BIGINT (64-bit)</strong> — max value: 9,223,372,036,854,775,807<br>
+      That's 9.2 quintillion. No video is breaking that counter.<br>
+      <strong style="color:var(--green)">This is exactly why we design with BIGINT from day one.</strong>
+    </div>
+  </div>
+</div>
+
+</div><!-- /slides -->
+
+<!-- Nav UI -->
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter">1 / 8</div>
+<div class="hint"><kbd>Space</kbd> / <kbd>→</kbd> advance &nbsp;<kbd>←</kbd> back</div>
+
+<script>
+const TOTAL = 8;
+let cur = 0;
+
+// Build dots
+const prog = document.getElementById('progress');
+for(let i=0;i<TOTAL;i++){
+  const d=document.createElement('div');
+  d.className='dot'+(i===0?' active':'');
+  d.id='dot-'+i;
+  prog.appendChild(d);
+}
+
+function show(id){const e=document.getElementById(id);if(e){e.classList.add('show')}}
+
+const steps=[
+  // Slide 0 — Architecture
+  [()=>show('n-client'),
+   ()=>{show('a1');show('n-kafka')},
+   ()=>{show('a2');show('n-flink')},
+   ()=>{show('v-arrow');show('arch-bottom')},
+   ()=>show('cdn-card'),
+   ()=>show('viewer-card')],
+  // Slide 1 — Flink vs Kafka
+  [()=>show('fk-kafka'),
+   ()=>show('fk-code'),
+   ()=>show('fk-k-point'),
+   ()=>{show('fk-flink');show('fk-flink-detail')},
+   ()=>show('fk-rule')],
+  // Slide 2 — Redis
+  [()=>show('r-ta1'),()=>show('r-tb1'),
+   ()=>show('r-ta2'),()=>show('r-tb2'),()=>show('r-bad'),
+   ()=>show('r-q1'),()=>show('r-q2'),()=>show('r-q3'),
+   ()=>show('r-note'),()=>show('r-good'),()=>show('r-insight')],
+  // Slide 3 — Cassandra
+  [()=>show('c-s1'),
+   ()=>{show('c-a1');show('c-s2')},
+   ()=>{show('c-a2');show('c-s3')},
+   ()=>show('c-rule'),
+   ()=>show('c-compact')],
+  // Slide 4 — Bigtable
+  [()=>show('bt-master'),
+   ()=>{show('bt-c1');show('bt-servers')},
+   ()=>{show('bt-c2');show('bt-gcs')},
+   ()=>show('bt-crash')],
+  // Slide 5 — Pick One
+  [()=>show('p-bigtable'),
+   ()=>show('p-cassandra'),
+   ()=>show('p-rule')],
+  // Slide 6 — Flink Window
+  [()=>show('fw-1'),
+   ()=>{show('fw-a1');show('fw-2')},
+   ()=>{show('fw-a2');show('fw-3')},
+   ()=>{show('fw-a3');show('fw-4')},
+   ()=>{show('fw-a4');show('fw-5')},
+   ()=>show('fw-kafka')],
+  // Slide 7 — Gangnam
+  [()=>show('g-title'),
+   ()=>show('g-1b'),
+   ()=>show('g-2b'),
+   ()=>show('g-freeze'),
+   ()=>show('g-int'),
+   ()=>show('g-fix')]
+];
+
+let si=new Array(TOTAL).fill(-1);
+
+function goSlide(n){
+  document.getElementById('slide-'+cur).classList.remove('active');
+  document.getElementById('dot-'+cur).classList.remove('active');
+  cur=Math.max(0,Math.min(TOTAL-1,n));
+  document.getElementById('slide-'+cur).classList.add('active');
+  document.getElementById('dot-'+cur).classList.add('active');
+  document.getElementById('counter').textContent=(cur+1)+' / '+TOTAL;
+}
+
+function advance(){
+  const ns=si[cur]+1;
+  if(ns<steps[cur].length){steps[cur][ns]();si[cur]=ns;}
+  else if(cur<TOTAL-1){goSlide(cur+1);}
+}
+function back(){if(cur>0){goSlide(cur-1);}}
+
+document.addEventListener('keydown',e=>{
+  if(['ArrowRight','ArrowDown',' '].includes(e.key)){e.preventDefault();advance();}
+  if(['ArrowLeft','ArrowUp'].includes(e.key)){e.preventDefault();back();}
+});
+document.addEventListener('click',()=>advance());
+</script>
+</body>
+</html>

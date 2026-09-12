@@ -50,6 +50,21 @@ This is **the most asked GC question** in senior interviews. Understanding gener
 
 ---
 
+## 🔄 Object Promotion Flow (ASCII)
+
+```
+ [New Object] --> [Eden]
+                     |--(Minor GC: survives)--> [Survivor 0] --(Minor GC: age++)--> [Survivor 1]
+                     |                                ^                                  |
+                     |                                '------(Minor GC: age++)-----------'
+                     |
+                     '--(Minor GC: dies)--> [Garbage Collected]
+
+ [Survivor 0] --(age >= 15)--> [Old Generation]
+ [Survivor 1] --(age >= 15)--> [Old Generation]
+```
+*(Full Mermaid source: see [mermaid-diagrams.md](mermaid-diagrams.md))*
+
 ## 🏗️ The Three Generations
 
 ### 1. Young Generation (1/3 of heap)

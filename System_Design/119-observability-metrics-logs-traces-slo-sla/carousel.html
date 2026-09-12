@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Observability: Metrics, Logs, Traces & SLI/SLO/SLA — Carousel</title>
+<style>
+  :root{
+    --bg:#1a1a2e;
+    --panel:#16213e;
+    --panel2:#0f3460;
+    --pink:#e94560;
+    --teal:#4ecca3;
+    --yellow:#f9ed69;
+    --purple:#9b5de5;
+    --text:#eaeaea;
+    --muted:#9aa3b2;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .deck{
+    width:540px;height:540px;margin:20px auto;position:relative;
+    background:var(--bg);border-radius:14px;overflow:hidden;
+    box-shadow:0 0 0 1px #2b2b45;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .slide{
+    display:none;flex-direction:column;width:540px;height:540px;
+    padding:28px 30px 22px 30px;position:relative;
+    background:var(--bg);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .slide.active{display:flex;}
+  .kicker{
+    font-size:11px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--pink);font-weight:700;margin-bottom:6px;
+  }
+  h1{font-size:23px;margin:0 0 10px 0;line-height:1.25;color:#fff;}
+  h2{font-size:16px;margin:0 0 8px 0;color:var(--teal);}
+  p{font-size:13px;line-height:1.5;color:var(--text);margin:4px 0;}
+  .muted{color:var(--muted);font-size:12px;}
+  .stat{
+    font-size:44px;font-weight:800;color:var(--pink);line-height:1;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .stat-sub{font-size:13px;color:var(--muted);margin-top:4px;}
+  .bullets{margin:8px 0;padding-left:0;list-style:none;}
+  .bullets li{
+    font-size:12.5px;line-height:1.5;margin-bottom:7px;padding-left:16px;
+    position:relative;color:var(--text);
+  }
+  .bullets li::before{
+    content:"▸";position:absolute;left:0;color:var(--teal);font-weight:700;
+  }
+
+  /* server / component boxes */
+  .box-row{display:flex;gap:10px;margin:10px 0;flex-wrap:wrap;}
+  .server-box{
+    flex:1;min-width:70px;background:var(--panel);border:1px solid #2b3a5e;
+    border-radius:8px;padding:10px 8px;text-align:center;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .server-box .label{font-size:11px;font-weight:700;color:#fff;margin-bottom:6px;}
+  .server-box .line{height:3px;background:#2b3a5e;border-radius:2px;margin:4px 0;}
+  .server-box.teal{border-color:var(--teal);}
+  .server-box.teal .line{background:var(--teal);}
+  .server-box.yellow{border-color:var(--yellow);}
+  .server-box.yellow .line{background:var(--yellow);}
+  .server-box.pink{border-color:var(--pink);}
+  .server-box.pink .line{background:var(--pink);}
+  .server-box .desc{font-size:10.5px;color:var(--muted);margin-top:6px;line-height:1.35;}
+
+  /* arrows */
+  .arrow{align-self:center;color:var(--muted);font-size:18px;padding:0 2px;}
+
+  /* colored square legend for tech comparisons */
+  .sq{
+    display:inline-block;width:12px;height:12px;border-radius:3px;
+    margin-right:6px;vertical-align:middle;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .sq.teal{background:var(--teal);} .sq.yellow{background:var(--yellow);}
+  .sq.pink{background:var(--pink);} .sq.purple{background:var(--purple);}
+
+  /* trace waterfall */
+  .waterfall{margin-top:10px;}
+  .wf-row{display:flex;align-items:center;margin-bottom:8px;}
+  .wf-label{width:118px;font-size:10.5px;color:var(--muted);flex-shrink:0;}
+  .wf-track{flex:1;background:#0d1526;border-radius:4px;height:20px;position:relative;overflow:hidden;}
+  .wf-bar{
+    height:100%;border-radius:4px;position:absolute;top:0;left:0;
+    display:flex;align-items:center;padding-left:6px;
+    font-size:10px;color:#0d1526;font-weight:700;white-space:nowrap;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+
+  /* comparison table */
+  table.cmp{width:100%;border-collapse:collapse;margin-top:8px;}
+  table.cmp th, table.cmp td{
+    font-size:10.5px;padding:6px 6px;text-align:left;border-bottom:1px solid #2b3a5e;
+    color:var(--text);
+  }
+  table.cmp th{color:var(--teal);font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;}
+
+  /* burn bar */
+  .burn-wrap{background:#0d1526;border-radius:8px;height:26px;position:relative;overflow:hidden;margin:10px 0 4px 0;}
+  .burn-fill{height:100%;background:linear-gradient(90deg,var(--teal),var(--yellow),var(--pink));}
+  .freeze-line{position:absolute;top:-4px;bottom:-4px;width:2px;background:#fff;}
+  .freeze-tag{position:absolute;top:-18px;font-size:9px;color:#fff;}
+
+  /* nested circles */
+  .circles{position:relative;width:200px;height:200px;margin:6px auto;}
+  .circle{position:absolute;border-radius:50%;display:flex;align-items:flex-start;justify-content:center;padding-top:10px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .circle span{font-size:10px;font-weight:700;color:#0d1526;}
+  .c1{width:200px;height:200px;left:0;top:0;background:var(--pink);}
+  .c2{width:140px;height:140px;left:30px;top:30px;background:var(--yellow);}
+  .c3{width:80px;height:80px;left:60px;top:60px;background:var(--teal);}
+
+  /* real world mini cards */
+  .rw-row{display:flex;gap:8px;margin-top:8px;}
+  .rw-card{flex:1;background:var(--panel);border-radius:8px;padding:8px;border-left:3px solid var(--pink);}
+  .rw-card .name{font-size:10.5px;font-weight:700;color:#fff;}
+  .rw-card .num{font-size:15px;font-weight:800;color:var(--pink);margin:4px 0;}
+  .rw-card .d{font-size:9.5px;color:var(--muted);line-height:1.3;}
+
+  /* decision tree */
+  .tree-node{
+    background:var(--panel);border:1px solid #2b3a5e;border-radius:8px;
+    padding:7px 10px;font-size:11px;color:#fff;text-align:center;margin:0 auto;
+  }
+  .tree-arrow-down{text-align:center;color:var(--muted);font-size:16px;line-height:1;margin:2px 0;}
+  .quote-box{
+    margin-top:10px;background:var(--panel2);border-left:4px solid var(--teal);
+    border-radius:6px;padding:10px 12px;font-size:11px;font-style:italic;color:var(--text);
+    line-height:1.5;
+  }
+
+  footer.page{position:absolute;bottom:14px;left:30px;right:30px;display:flex;justify-content:space-between;align-items:center;}
+  .counter{font-size:11px;color:var(--muted);}
+  .brand{font-size:11px;color:var(--muted);}
+
+  /* nav controls (screen only) */
+  .nav{display:flex;justify-content:center;gap:14px;margin:14px auto;width:540px;}
+  .nav button{
+    background:var(--panel);color:var(--text);border:1px solid #2b3a5e;
+    border-radius:6px;padding:8px 18px;font-size:13px;cursor:pointer;
+  }
+  .nav button:hover{background:var(--panel2);}
+  .nav .counter-big{font-size:13px;color:var(--muted);align-self:center;}
+
+  @media print{
+    @page{ size:540px 540px; margin:0; }
+    body{margin:0;}
+    .nav{display:none;}
+    .deck{margin:0;box-shadow:none;border-radius:0;}
+    .slide{display:none;page-break-after:always;}
+    .slide.active{display:flex;}
+  }
+</style>
+</head>
+<body>
+
+<div class="deck" id="deck">
+
+  <!-- SLIDE 1: HOOK -->
+  <div class="slide active" data-n="1">
+    <div class="kicker">System Design · Observability</div>
+    <h1>3 A.M. And Checkout Is<br>"Sometimes Slow"</h1>
+    <p class="muted">15 microservices. No shared trace ID. Where do you even start?</p>
+    <div class="box-row" style="margin-top:18px;">
+      <div style="flex:1;">
+        <div class="stat">280ms</div>
+        <div class="stat-sub">total checkout request latency</div>
+      </div>
+      <div class="arrow">→</div>
+      <div style="flex:1;">
+        <div class="stat" style="color:var(--yellow);">190ms</div>
+        <div class="stat-sub">buried 3 services deep — the actual root cause</div>
+      </div>
+    </div>
+    <div class="box-row" style="margin-top:20px;">
+      <div class="server-box teal"><div class="label">GATEWAY</div><div class="line"></div><div class="line" style="width:60%"></div></div>
+      <div class="server-box teal"><div class="label">ORDER</div><div class="line"></div><div class="line" style="width:70%"></div></div>
+      <div class="server-box pink"><div class="label">PAYMENT</div><div class="line"></div><div class="line" style="width:90%"></div></div>
+      <div class="server-box" style="border-color:#e94560;background:#3a1622;"><div class="label" style="color:var(--pink);">FRAUD?</div><div class="line" style="background:var(--pink);"></div></div>
+    </div>
+    <p class="muted" style="margin-top:14px;">Without a shared trace ID, this is a guessing game across five services' clocks. This carousel shows the exact order engineers use metrics, logs and traces to find it in seconds — plus the error-budget math that decides if it's a page-now incident.</p>
+    <footer class="page"><span class="counter">1 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 2: THE PROBLEM -->
+  <div class="slide" data-n="2">
+    <div class="kicker">The Problem</div>
+    <h1>One Metric. One Log.<br>Zero Connection.</h1>
+    <div class="box-row" style="margin-top:14px;">
+      <div class="server-box teal">
+        <div class="label">METRIC</div>
+        <div class="stat" style="font-size:22px;">72</div>
+        <div class="desc">One number. Cheap, real-time. Tells you WHAT — never WHY.</div>
+      </div>
+      <div class="server-box yellow">
+        <div class="label">LOG</div>
+        <div class="line"></div><div class="line" style="width:80%"></div><div class="line" style="width:55%"></div>
+        <div class="desc">Rich detail on ONE event. Useless unless you know where to look.</div>
+      </div>
+    </div>
+    <p style="margin-top:10px;">This ONE patient's heart rate spiked at 2:14 PM. Walk me through everything that happened — across the ER, radiology and the pharmacy — in the exact causal order.</p>
+    <div class="box-row" style="margin-top:6px;">
+      <div class="server-box pink" style="opacity:0.5;"><div class="label">ER</div></div>
+      <div class="arrow" style="color:#e94560;">┄</div>
+      <div class="server-box pink" style="opacity:0.5;"><div class="label">RADIOLOGY</div></div>
+      <div class="arrow" style="color:#e94560;">┄</div>
+      <div class="server-box pink" style="opacity:0.5;"><div class="label">PHARMACY</div></div>
+      <div class="arrow" style="color:#e94560;">┄</div>
+      <div class="server-box" style="border-color:#e94560;background:#3a1622;"><div class="label" style="color:var(--pink);">?</div></div>
+    </div>
+    <p class="muted" style="margin-top:10px;">Neither metrics nor logs alone show WHERE in a chain of a dozen services a problem started — and manually grepping logs across twelve services simply does not scale.</p>
+    <footer class="page"><span class="counter">2 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 3: THREE PILLARS -->
+  <div class="slide" data-n="3">
+    <div class="kicker">The Solution — Three Pillars</div>
+    <h1>Metrics · Logs · Traces</h1>
+    <div class="box-row" style="margin-top:8px;">
+      <div class="server-box teal">
+        <div class="label"><span class="sq teal"></span>METRICS</div>
+        <div class="line"></div><div class="line" style="width:65%"></div>
+        <div class="desc">Numeric time series. Cheap to store, cheap to alert on. Fast &amp; coarse.</div>
+      </div>
+      <div class="server-box yellow">
+        <div class="label"><span class="sq yellow"></span>LOGS</div>
+        <div class="line"></div><div class="line" style="width:80%"></div><div class="line" style="width:40%"></div>
+        <div class="desc">Timestamped textual events. Rich, but expensive at scale.</div>
+      </div>
+      <div class="server-box pink">
+        <div class="label"><span class="sq pink"></span>TRACES</div>
+        <div class="line"></div><div class="line" style="width:90%"></div><div class="line" style="width:60%"></div>
+        <div class="desc">One request's full journey across every service, shared trace ID.</div>
+      </div>
+    </div>
+    <ul class="bullets" style="margin-top:14px;">
+      <li>Metrics: "page someone if heart rate exceeds 140" — good for alerting, bad at explaining WHY.</li>
+      <li>Logs: rich context per event — but need to already know roughly where to look.</li>
+      <li>Traces: the only view that shows causal, cross-service timing in one place.</li>
+      <li>Retention trap: raw logs typically kept only 7–30 days hot, then archived — full-fidelity retention at metric-like durations is cost-prohibitive.</li>
+    </ul>
+    <footer class="page"><span class="counter">3 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 4: TRACE WATERFALL -->
+  <div class="slide" data-n="4">
+    <div class="kicker">Distributed Trace — One Request, One Trace ID</div>
+    <h1>Checkout: 280ms Total</h1>
+    <div class="waterfall">
+      <div class="wf-row"><div class="wf-label">Gateway</div><div class="wf-track"><div class="wf-bar" style="width:12%;background:var(--teal);">12ms</div></div></div>
+      <div class="wf-row"><div class="wf-label">Order Service</div><div class="wf-track"><div class="wf-bar" style="width:45%;background:var(--teal);">45ms</div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ Inventory Check</div><div class="wf-track"><div class="wf-bar" style="width:8%;background:#2f9e79;">8ms</div></div></div>
+      <div class="wf-row"><div class="wf-label">Payment Service</div><div class="wf-track"><div class="wf-bar" style="width:75%;background:var(--yellow);">210ms</div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ Fraud Score</div><div class="wf-track"><div class="wf-bar" style="width:68%;background:var(--pink);">190ms ← root cause</div></div></div>
+      <div class="wf-row"><div class="wf-label">Notification</div><div class="wf-track"><div class="wf-bar" style="width:5%;background:#5c6b8a;">5ms</div></div></div>
+    </div>
+    <p style="margin-top:12px;">traceparent: <span style="color:var(--muted);">00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01</span> — one trace ID carried across every hop (W3C Trace Context).</p>
+    <p class="muted">One query — "show trace 4bf92f..." — surfaces the bottleneck in seconds. OpenTelemetry SDK head-sampling overhead: typically 1–5% CPU at 1–10% sampling rates.</p>
+    <footer class="page"><span class="counter">4 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 5: SAME INCIDENT, THREE VIEWS -->
+  <div class="slide" data-n="5">
+    <div class="kicker">Same Incident — Three Views</div>
+    <h1>Metric → Log → Trace</h1>
+    <div class="server-box teal" style="text-align:left;margin-bottom:8px;">
+      <div class="label"><span class="sq teal"></span>METRIC — fires the alert</div>
+      <p style="margin:4px 0 0 0;font-size:11px;">payment_service_p99_latency_ms &gt; 500 for 5 min → PagerDuty pages on-call.</p>
+    </div>
+    <div class="server-box yellow" style="text-align:left;margin-bottom:8px;">
+      <div class="label"><span class="sq yellow"></span>LOG — first place engineer looks</div>
+      <p style="margin:4px 0 0 0;font-size:11px;">14:02:11Z ERROR payment-service [traceId=4bf92f...] "Fraud service call timed out after 200ms, falling back to manual review queue." Tells WHAT — not WHY, not if systemic.</p>
+    </div>
+    <div class="server-box pink" style="text-align:left;">
+      <div class="label"><span class="sq pink"></span>TRACE — root cause</div>
+      <p style="margin:4px 0 0 0;font-size:11px;">fraud-score span = 190ms. 50 more traces from the same window: EVERY fraud-score span is 150–200ms, up from a 20ms baseline → points at fraud-service's own dependency (DB or ML endpoint) as true root cause.</p>
+    </div>
+    <footer class="page"><span class="counter">5 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 6: SAMPLING COMPARISON -->
+  <div class="slide" data-n="6">
+    <div class="kicker">Trap — Sampling</div>
+    <h1>Head-Based vs Tail-Based</h1>
+    <table class="cmp">
+      <tr><th></th><th><span class="sq teal"></span>Head-Based</th><th><span class="sq pink"></span>Tail-Based</th></tr>
+      <tr><td>Decision point</td><td>At request START</td><td>AFTER request completes</td></tr>
+      <tr><td>Typical rule</td><td>Random 1%, or 100% w/ debug header</td><td>Keep all errors / slow traces, sample 1% of "fine" ones</td></tr>
+      <tr><td>Risk</td><td>May sample OUT the 1-in-10,000 request that errored</td><td>None — errors always kept</td></tr>
+      <tr><td>Cost</td><td>Cheap, simple</td><td>Buffering + collector-side complexity/cost layer</td></tr>
+      <tr><td>Best for</td><td>Low-stakes, high-volume baseline visibility</td><td>Debugging real production incidents</td></tr>
+    </table>
+    <p class="muted" style="margin-top:14px;">Cardinality trap: a `userId` label on a metric can blow up storage/query cost by orders of magnitude. High-cardinality data belongs in logs/traces — never metric labels.</p>
+    <footer class="page"><span class="counter">6 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 7: SLI/SLO/SLA -->
+  <div class="slide" data-n="7">
+    <div class="kicker">SLI · SLO · SLA · Error Budget</div>
+    <h1>The Promise, and the Budget</h1>
+    <div class="circles">
+      <div class="circle c1"><span>SLA 99.9%</span></div>
+      <div class="circle c2"><span>SLO 99.95%</span></div>
+      <div class="circle c3"><span>SLI actual</span></div>
+    </div>
+    <ul class="bullets" style="margin-top:6px;">
+      <li>SLI: the measured metric — e.g. 99.95% of requests, last 28 days, under 200ms.</li>
+      <li>SLO: internal target — deliberately tighter than the SLA on purpose.</li>
+      <li>SLA: external contractual promise — your alarm fires BEFORE you breach it.</li>
+      <li>Error budget = (1 − 0.9995) × 28 days × 24h × 60min ≈ <b>20.16 min/month</b>.</li>
+      <li>Burn-rate alert: page if current pace would exhaust the month's budget in &lt;6h (fast burn); slow creeping burn → ticket, not a page.</li>
+    </ul>
+    <footer class="page"><span class="counter">7 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 8: BURN-DOWN + REAL WORLD -->
+  <div class="slide" data-n="8">
+    <div class="kicker">Error Budget Burn-Down · Real World</div>
+    <h1>43.2 Min Budget, 30 Days</h1>
+    <p class="muted">SLO 99.9% over rolling 30 days → allowed budget = 43.2 minutes downtime-equivalent.</p>
+    <div class="burn-wrap">
+      <div class="burn-fill" style="width:81%;"></div>
+      <div class="freeze-line" style="left:80%;"><span class="freeze-tag" style="left:-34px;">FREEZE &lt;20%</span></div>
+    </div>
+    <p style="font-size:11px;">Day 1–20: minor blips, 10 min consumed (23%). Day 21: major incident, +25 min → <b>35 min consumed (81%)</b>. Only 8.2 min left for remaining 9 days.</p>
+    <div class="rw-row">
+      <div class="rw-card"><div class="name">Swiggy-scale delivery</div><div class="num">100%</div><div class="d">tail-sampling → 100% of real incidents keep a full trace, ~15% collector cost increase, at 40K req/s peak</div></div>
+      <div class="rw-card"><div class="name">Paytm-style UPI</div><div class="num">20 min</div><div class="d">99.95% SLO vs 99.9% SLA → ~20 min/month budget; one 40-min bank outage froze deploys 11 days</div></div>
+      <div class="rw-card"><div class="name">Zomato-scale metrics</div><div class="num">8x</div><div class="d">userId label: 500 → 2M time series, ~8x metrics bill spike in a month</div></div>
+    </div>
+    <footer class="page"><span class="counter">8 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 9: COMPARISON TABLE -->
+  <div class="slide" data-n="9">
+    <div class="kicker">Decision Framework</div>
+    <h1>Which Tool, Which Question</h1>
+    <table class="cmp">
+      <tr><th>Question</th><th>Tool</th><th>Why</th></tr>
+      <tr><td>Anything wrong right now?</td><td><span class="sq teal"></span>Metrics + alerting</td><td>Cheap, real-time, coarse</td></tr>
+      <tr><td>Trend over last week?</td><td><span class="sq teal"></span>Metrics (time series)</td><td>Efficient at that granularity</td></tr>
+      <tr><td>What happened to THIS request?</td><td><span class="sq yellow"></span>Logs + trace-id</td><td>Rich detail, need to know where</td></tr>
+      <tr><td>Which of 15 services is the bottleneck?</td><td><span class="sq pink"></span>Distributed tracing</td><td>Only view with causal cross-service timing</td></tr>
+      <tr><td>Meeting our reliability promise?</td><td><span class="sq purple"></span>SLI vs SLO/SLA + budget</td><td>Quantitative, not "be careful"</td></tr>
+      <tr><td>Freeze deploys this week?</td><td><span class="sq purple"></span>Error budget burn rate</td><td>Data-driven, not subjective</td></tr>
+    </table>
+    <footer class="page"><span class="counter">9 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+  <!-- SLIDE 10: DECISION TREE + QUOTE -->
+  <div class="slide" data-n="10">
+    <div class="kicker">Decision Tree · Interview Answer</div>
+    <h1>The Order of Operations</h1>
+    <div class="tree-node">Confirm it's real → check p50/p95/p99 metrics</div>
+    <div class="tree-arrow-down">↓</div>
+    <div class="tree-node">Still unclear which of 15 services? → pull a trace, read the waterfall</div>
+    <div class="tree-arrow-down">↓</div>
+    <div class="tree-node">Trace narrows it to one span → pull that service's logs + trace ID</div>
+    <div class="tree-arrow-down">↓</div>
+    <div class="tree-node">Check against SLO → is error budget burning fast?</div>
+    <div class="quote-box">
+      "Metrics are cheap and fast, so that's where I start, not logs. Logs alone across 15 services won't scale — that's exactly the case for distributed tracing, since every request already carries a trace ID through context propagation. Once tracing narrows it down, THEN I'd pull logs — because I already know precisely where to look. And I'd frame it against our SLO: if we're burning error budget fast enough to exhaust the month's allowance in a few hours, that's a page-now incident, not a ticket."
+    </div>
+    <footer class="page"><span class="counter">10 / 10</span><span class="brand">Observability Deep Dive</span></footer>
+  </div>
+
+</div>
+
+<div class="nav">
+  <button id="prevBtn">← Prev</button>
+  <span class="counter-big" id="counterBig">1 / 10</span>
+  <button id="nextBtn">Next →</button>
+</div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var total = slides.length;
+  var current = 0;
+
+  function render(){
+    slides.forEach(function(s, i){
+      s.classList.toggle('active', i === current);
+    });
+    document.getElementById('counterBig').textContent = (current + 1) + ' / ' + total;
+  }
+
+  function next(){ current = Math.min(current + 1, total - 1); render(); }
+  function prev(){ current = Math.max(current - 1, 0); render(); }
+
+  document.getElementById('nextBtn').addEventListener('click', next);
+  document.getElementById('prevBtn').addEventListener('click', prev);
+
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight') next();
+    if (e.key === 'ArrowLeft') prev();
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>

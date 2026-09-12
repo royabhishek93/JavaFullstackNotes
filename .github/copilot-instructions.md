@@ -84,3 +84,10 @@ Use emoji/priority tables to guide focus:
 - Include at least one code example showing the unexpected behavior
 - Add interview Q&A based on what you'd ask candidates
 - Reference related files if they provide complementary knowledge
+
+<!-- mermaid-ai-skills:start -->
+## Mermaid Diagrams
+
+When the user asks to create, edit, or visualize a diagram, follow the
+instructions in `.github/instructions/mermaid.instructions.md`.
+<!-- mermaid-ai-skills:end -->
