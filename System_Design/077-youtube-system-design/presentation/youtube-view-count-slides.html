@@ -243,14 +243,109 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .g-fix{background:rgba(63,185,80,.08);border:1px solid rgba(63,185,80,.3);
   border-radius:11px;padding:14px 18px;font-size:.82rem;color:var(--green);
   text-align:center;line-height:1.6;width:100%}
+
+/* ══ SLIDE 0 — HOOK ══ */
+.hook-wrap{display:flex;flex-direction:column;align-items:center;gap:18px;max-width:700px;width:100%}
+.ytmock{background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;width:100%;max-width:460px}
+.ytbar{background:var(--bg3);padding:8px 14px;font-size:.7rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.ytthumb{background:linear-gradient(135deg,#0d1117,#1a1a2e,#16213e);height:88px;display:flex;align-items:center;justify-content:center;font-size:3rem}
+.ytcount{padding:10px 14px;display:flex;align-items:center;gap:9px;font-size:.82rem}
+.frozen-n{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--redis);animation:pulse .9s infinite}
+.frozen-b{background:rgba(216,44,32,.18);color:var(--redis);font-size:.62rem;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid rgba(216,44,32,.35)}
+.hook-h{font-size:1rem;text-align:center;line-height:1.6;max-width:620px}
+.hook-m{font-size:.86rem;color:var(--muted);text-align:center;line-height:1.6;max-width:580px}
+.pills{display:flex;gap:9px;flex-wrap:wrap;justify-content:center}
+.pl{padding:6px 15px;border-radius:20px;font-size:.78rem;font-weight:700}
+.pl-k{background:rgba(228,115,40,.18);color:var(--kafka);border:1px solid rgba(228,115,40,.35)}
+.pl-f{background:rgba(230,82,111,.18);color:var(--flink);border:1px solid rgba(230,82,111,.35)}
+.pl-r{background:rgba(216,44,32,.18);color:var(--redis);border:1px solid rgba(216,44,32,.35)}
+.pl-c{background:rgba(188,140,255,.18);color:var(--purple);border:1px solid rgba(188,140,255,.35)}
+.pl-b{background:rgba(66,133,244,.18);color:var(--bigtable);border:1px solid rgba(66,133,244,.35)}
+
+/* ══ SLIDE 1 — SCALE ══ */
+.scale-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:700px;width:100%}
+.big-n{font-size:3.2rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--cyan);letter-spacing:-2px;display:block;text-align:center}
+.n-lbl{font-size:.82rem;color:var(--muted);text-align:center;margin-top:3px}
+.calc-row{display:flex;align-items:center;gap:12px;font-size:.88rem;background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:13px 20px;width:100%}
+.c-res{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1.05rem;color:var(--green)}
+.c-avg{color:var(--muted);font-size:.76rem}
+.c-eq{color:var(--muted)}
+.viral-row{display:flex;align-items:center;gap:12px;background:rgba(216,44,32,.08);border:1px solid rgba(216,44,32,.28);border-radius:12px;padding:13px 18px;width:100%}
+.vb{background:rgba(216,44,32,.18);color:var(--redis);font-size:.66rem;font-weight:700;padding:3px 9px;border-radius:10px;border:1px solid rgba(216,44,32,.35);white-space:nowrap}
+.vn{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:1rem;color:var(--redis);white-space:nowrap}
+.prob-box{background:rgba(88,166,255,.07);border:2px solid rgba(88,166,255,.26);border-radius:12px;padding:15px 22px;font-size:.98rem;color:var(--cyan);text-align:center;width:100%;line-height:1.6;font-weight:600}
 </style>
 </head>
 <body>
 
 <div class="slides">
 
-<!-- ═══════════════ SLIDE 1 — THE LOCKING PROBLEM ═══════════════ -->
+<!-- ═══ SLIDE 0 — HOOK ═══ -->
 <div class="slide active" id="slide-0">
+  <div class="slide-title">How YouTube Counts 500 Million Views a Day</div>
+  <div class="slide-sub">By Abhishek &nbsp;·&nbsp; Java Full-Stack Developer</div>
+  <div class="hook-wrap">
+    <div class="rv" id="hk-player">
+      <div class="ytmock">
+        <div class="ytbar">▶&nbsp; youtube.com &nbsp;·&nbsp; Web · Mobile · TV</div>
+        <div class="ytthumb">🎬</div>
+        <div class="ytcount">
+          <span style="color:var(--muted)">👁</span>
+          <span class="frozen-n">2,847,293</span>
+          <span style="color:var(--muted);font-size:.76rem">views</span>
+          <span class="frozen-b rv" id="hk-badge">FROZEN — doesn't move</span>
+        </div>
+      </div>
+    </div>
+    <div class="hook-h rv" id="hk-h1">
+      That frozen counter is one of the most deliberate engineering decisions in the platform.
+    </div>
+    <div class="hook-h rv" id="hk-h2">
+      Today I'll show you exactly why — using these five pieces:
+    </div>
+    <div class="pills rv" id="hk-pills">
+      <span class="pl pl-k">⚡ Kafka</span>
+      <span class="pl pl-f">🔴 Flink</span>
+      <span class="pl pl-r">🟥 Redis</span>
+      <span class="pl pl-c">🟣 Cassandra</span>
+      <span class="pl pl-b">🔷 Bigtable</span>
+    </div>
+    <div class="hook-m rv" id="hk-h3">
+      Not as buzzwords. As pieces of a puzzle that fit together for a very specific reason.
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 1 — SCALE ═══ -->
+<div class="slide" id="slide-1">
+  <div class="slide-title">The Scale Problem</div>
+  <div class="slide-sub">Understand the numbers before designing anything</div>
+  <div class="scale-wrap">
+    <div class="rv" id="sc-500m">
+      <span class="big-n">500,000,000</span>
+      <div class="n-lbl">video plays every single day</div>
+    </div>
+    <div class="calc-row rv" id="sc-calc">
+      <span>÷ 86,400 seconds in a day</span>
+      <span class="c-eq">=</span>
+      <span class="c-res">~6,000 writes / sec</span>
+      <span class="c-avg">average</span>
+    </div>
+    <div class="viral-row rv" id="sc-viral">
+      <span class="vb">🔥 VIRAL SPIKE</span>
+      <span class="vn">60,000 – 100,000 / sec</span>
+      <span style="font-size:.8rem">on a single video</span>
+    </div>
+    <div class="prob-box rv" id="sc-prob">
+      60,000 writes &nbsp;·&nbsp; per second &nbsp;·&nbsp; on <strong>one row</strong><br>
+      <span style="font-size:.84rem;font-weight:400">That is the problem we are solving.</span>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ SLIDE 1 — THE LOCKING PROBLEM ═══════════════ -->
+<div class="slide" id="slide-2">
   <div class="slide-title">The Obvious Solution Fails</div>
   <div class="slide-sub">What happens to a single database row under 60,000 writes per second</div>
   <div class="lock-wrap">
@@ -294,7 +389,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 
 
 <!-- ═══════════════ SLIDE 1 — ARCHITECTURE ═══════════════ -->
-<div class="slide" id="slide-1">
+<div class="slide" id="slide-3">
   <div class="slide-title">How YouTube Counts 500 Million Views a Day</div>
   <div class="slide-sub">The architecture — playing a video and counting that view are two completely different jobs</div>
   <div class="arch-wrap">
@@ -390,7 +485,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 
 
 <!-- ═══════════════ SLIDE 2 — FLINK VS KAFKA STREAMS ═══════════════ -->
-<div class="slide" id="slide-2">
+<div class="slide" id="slide-4">
   <div class="slide-title">Flink vs Kafka Streams — Which Aggregator?</div>
   <div class="slide-sub">Both do the 30-second windowed aggregation — but they are very different tools</div>
   <div class="fk-grid">
@@ -446,7 +541,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 3 — REDIS SINGLE THREAD ═══════════════ -->
-<div class="slide" id="slide-3">
+<div class="slide" id="slide-5">
   <div class="slide-title">Why Redis INCRBY Needs No Locks</div>
   <div class="slide-sub">The single-threaded model explained</div>
   <div class="two-col">
@@ -477,7 +572,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 4 — CASSANDRA WRITE PATH ═══════════════ -->
-<div class="slide" id="slide-4">
+<div class="slide" id="slide-6">
   <div class="slide-title">Cassandra — Write Path</div>
   <div class="slide-sub">Append-only · never modify old data · clean up in the background</div>
   <div class="steps-row">
@@ -519,7 +614,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 5 — BIGTABLE ═══════════════ -->
-<div class="slide" id="slide-5">
+<div class="slide" id="slide-7">
   <div class="slide-title">Bigtable — Architecture</div>
   <div class="slide-sub">One giant sorted table, cut into pieces · data lives in GCS, not on the server</div>
   <div class="bt-wrap">
@@ -558,7 +653,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 6 — PICK ONE ═══════════════ -->
-<div class="slide" id="slide-6">
+<div class="slide" id="slide-8">
   <div class="slide-title">Bigtable or Cassandra — Which to Pick?</div>
   <div class="slide-sub">Both handle petabyte-scale · the decision is about your cloud strategy</div>
   <div class="pick-grid">
@@ -595,7 +690,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 7 — FLINK WINDOW INTERNALS ═══════════════ -->
-<div class="slide" id="slide-7">
+<div class="slide" id="slide-9">
   <div class="slide-title">Inside the 30-Second Window</div>
   <div class="slide-sub">What Flink actually does with 50,000 events before writing ONE number to Redis</div>
   <div class="fw-pipeline">
@@ -637,7 +732,7 @@ views.groupByKey()<br>
 
 
 <!-- ═══════════════ SLIDE 8 — GANGNAM STORY ═══════════════ -->
-<div class="slide" id="slide-8">
+<div class="slide" id="slide-10">
   <div class="slide-title">The Day YouTube's Counter Broke</div>
   <div class="slide-sub">December 2012 — Gangnam Style and the 32-bit integer overflow</div>
   <div class="gangnam-wrap">
@@ -677,11 +772,11 @@ views.groupByKey()<br>
 
 <!-- Nav UI -->
 <div class="progress" id="progress"></div>
-<div class="counter" id="counter">1 / 8</div>
+<div class="counter" id="counter">1 / 11</div>
 <div class="hint"><kbd>Space</kbd> / <kbd>→</kbd> advance &nbsp;<kbd>←</kbd> back</div>
 
 <script>
-const TOTAL = 9;
+const TOTAL = 11;
 let cur = 0;
 
 // Build dots
@@ -696,7 +791,18 @@ for(let i=0;i<TOTAL;i++){
 function show(id){const e=document.getElementById(id);if(e){e.classList.add('show')}}
 
 const steps=[
-  // Slide 0 — The Locking Problem
+  // Slide 0 — Hook
+  [()=>show('hk-player'),
+   ()=>show('hk-badge'),
+   ()=>show('hk-h1'),
+   ()=>{show('hk-h2');show('hk-pills')},
+   ()=>show('hk-h3')],
+  // Slide 1 — Scale Problem
+  [()=>show('sc-500m'),
+   ()=>show('sc-calc'),
+   ()=>show('sc-viral'),
+   ()=>show('sc-prob')],
+  // Slide 2 — The Locking Problem
   [()=>show('lock-row'),
    ()=>show('lock-queue'),
    ()=>show('lock-result'),
